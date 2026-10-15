@@ -11,12 +11,28 @@ import json
 from pathlib import Path
 
 
+HIANYZIK = "hianyzik"
+
+
 def betolt(mappa: Path | str, nev: str = "arany.json") -> dict:
-    return json.loads((Path(mappa) / nev).read_text(encoding="utf-8"))
+    """Az aranyhalmaz-fájl; ha nincs a mappában (a termékkel nem szállított, személyes adatból épült halmaz), egy üres,
+    `hianyzik` állapotú halmaz jön vissza, hogy a feladatmodul (a prompt és a pontozó) importálható maradjon: az éles
+    láncok a promptot innen veszik, a mérés pedig `hianyzik(...)`-kal kimondja, hogy nincs mit mérni."""
+    ut = Path(mappa) / nev
+    if not ut.is_file():
+        return {"verzio": "nincs", "allapot": HIANYZIK, "tetelek": [], "fejezetek": [], "jegyzetek": [], "parok": [],
+                "hianyzik": True, "fajl": str(ut)}
+    return json.loads(ut.read_text(encoding="utf-8"))
+
+
+def hianyzik(arany: dict) -> bool:
+    return bool(arany.get("hianyzik")) or arany.get("allapot") == HIANYZIK
 
 
 def verzio(arany: dict) -> str:
     v = str(arany["verzio"])
+    if hianyzik(arany):
+        return f"{v}-{HIANYZIK}"
     return v if arany.get("allapot") == "jovahagyott" else f"{v}-vazlat"
 
 

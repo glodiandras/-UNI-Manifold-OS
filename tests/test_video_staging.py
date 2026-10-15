@@ -7,82 +7,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from modulok.ytdlp import klon, konvertalas, staging, utnorm
+from modulok.ytdlp import konvertalas, staging
 from tests.helpers import tmpdir
 from tests.video_segedek import FFMPEG, ffmpeg_elerheto, forras, szintetikus_video
 
 JOBS = Path("/J/jobs")
 STAG = Path("/S/staging")
 ELOK = "[indokolt] nincs runtime/ffmpeg (bin/mos runtime fetch ffmpeg)"
-
-
-class UtnormTeszt(unittest.TestCase):
-    def n(self, ut):
-        return utnorm.normalizal(ut, jobs=JOBS, staging=STAG)
-
-    def test_a_ket_merve_alak(self):
-        """2026-10-04-én a 264 state.json-ban két abszolút alak állt: az app-support/iCloud és a régi SSD-gyökér."""
-        self.assertEqual(self.n("/Users/u/Library/Application Support/Manifold-media/jobs/youtube-abc"), JOBS / "youtube-abc")
-        self.assertEqual(self.n("/Users/u/Library/Mobile Documents/iCloud~md~obsidian/Documents/ytdlp/staging/Zanza/Irodalom/Cím"),
-                         STAG / "Zanza" / "Irodalom" / "Cím")
-        self.assertEqual(self.n("/Volumes/Work/Manifold-OS/var/state/Manifold-media/jobs/youtube-abc"), JOBS / "youtube-abc")
-        self.assertEqual(self.n("/Volumes/Work/Manifold-OS/modulok/ytdlp/staging/Zanza/Történelem/A"), STAG / "Zanza" / "Történelem" / "A")
-
-    def test_a_tobbi_alak_is_feloldodik(self):
-        self.assertEqual(self.n("/Volumes/Work/Obsidian/ytdlp/staging/YouTube/Irodalom/X"), STAG / "YouTube" / "Irodalom" / "X")
-        self.assertEqual(self.n("/Volumes/Work/Manifold-OS legacy/Legacy/modulok/ytdlp/staging/Zanza/I/A"), STAG / "Zanza" / "I" / "A")
-        self.assertEqual(self.n("/Volumes/Work/Manifold-OS v2/var/state/Manifold-media/jobs/youtube-q/"), JOBS / "youtube-q")
-        self.assertEqual(self.n("staging/Zanza/I/A"), STAG / "Zanza" / "I" / "A")
-        self.assertEqual(self.n("jobs/youtube-r"), JOBS / "youtube-r")
-        self.assertEqual(self.n("Zanza/Irodalom/A cím"), STAG / "Zanza" / "Irodalom" / "A cím")
-        with mock.patch.dict(os.environ, {"HOME": "/Users/teszt"}):
-            self.assertEqual(self.n("~/ytdlp/staging/Zanza/I/A"), STAG / "Zanza" / "I" / "A")
-
-    def test_nfd_nev_nfc_re_alakul(self):
-        import unicodedata
-        nfd = unicodedata.normalize("NFD", "/Users/u/Documents/ytdlp/staging/Zanza/Irodalom/Bánk bán")
-        self.assertEqual(self.n(nfd), STAG / "Zanza" / "Irodalom" / "Bánk bán")
-
-    def test_ismeretlen_alak_none(self):
-        for ut in ("/tmp/valami/mas", "/Users/u/Desktop/x", "", None, 5, "..", "../kifele"):
-            self.assertIsNone(self.n(ut), ut)
-
-    def test_alak_nevek(self):
-        self.assertEqual([utnorm.alak(u) for u in (
-            "/Users/u/Library/Application Support/Manifold-media/jobs/x", "/Users/u/Library/Mobile Documents/iCloud~md~obsidian/D",
-            "/Volumes/Work/Manifold-OS/var/x", "/Volumes/Work/Manifold-OS legacy/Legacy/x", "/Volumes/Work/Manifold-OS v2/x",
-            "/Volumes/Work/Obsidian/ytdlp/x", "~/x", "rel/x", "/ismeretlen")],
-            ["app_support", "icloud", "regi_gyoker", "legacy", "v2", "kozbenso", "tilde", "relativ", "ismeretlen"])
-
-    def test_felmeres_egy_ujgyokeru_allomanyon(self):
-        with tmpdir() as t:
-            jobs, stag = Path(t) / "jobs", Path(t) / "staging"
-            (stag / "Zanza" / "Irodalom" / "Cím").mkdir(parents=True)
-            for kulcs, mm, st in (
-                    ("youtube-a", "/Users/u/Library/Application Support/Manifold-media/jobs/youtube-a",
-                     "/Users/u/Library/Mobile Documents/iCloud~md~obsidian/Documents/ytdlp/staging/Zanza/Irodalom/Cím"),
-                    ("youtube-b", "/Volumes/Work/Manifold-OS/var/state/Manifold-media/jobs/youtube-b",
-                     "/Volumes/Work/Manifold-OS/modulok/ytdlp/staging/Zanza/Irodalom/Cím")):
-                (jobs / kulcs).mkdir(parents=True)
-                (jobs / kulcs / "state.json").write_text(json.dumps({
-                    "munkamappa": mm, "staging": st, "lepesek": {"visszajelzes": {"mappa": st}}}), encoding="utf-8")
-            (jobs / "youtube-c").mkdir()
-            (jobs / "youtube-c" / "state.json").write_text("nem json", encoding="utf-8")
-            r = utnorm.felmeres(jobs, stag)
-            self.assertEqual(r["state_json"], 2)
-            self.assertEqual(r["alakok"], {"app_support": 1, "icloud": 2, "regi_gyoker": 3})
-            self.assertEqual(r["kulcsok"]["staging"], {"osszes": 2, "letezik": 2, "nem_oldhato": 0})
-            self.assertEqual(r["kulcsok"]["munkamappa"]["letezik"], 2)
-            self.assertEqual(len(r["olvasasi_hibak"]), 1)
-
-    def test_a_tarolt_ut_nem_irodik_ujra(self):
-        with tmpdir() as t:
-            jobs = Path(t) / "jobs" / "youtube-a"
-            jobs.mkdir(parents=True)
-            szoveg = json.dumps({"munkamappa": "/Users/u/x/Manifold-media/jobs/youtube-a"})
-            (jobs / "state.json").write_text(szoveg, encoding="utf-8")
-            utnorm.felmeres(Path(t) / "jobs", Path(t))
-            self.assertEqual((jobs / "state.json").read_text(encoding="utf-8"), szoveg)
 
 
 class StagingTeszt(unittest.TestCase):
@@ -140,68 +71,6 @@ class StagingTeszt(unittest.TestCase):
         self.assertIsNone(staging.keres_azonosito("abc123", self.d / "nincs"))
 
 
-class KlonTeszt(unittest.TestCase):
-    def setUp(self):
-        self._t = tmpdir()
-        self.addCleanup(self._t.cleanup)
-        self.d = Path(self._t.name)
-        self.f = self.d / "forras"
-        for rel, b in (("Zanza/Irodalom/A/video.mp4", b"v" * 4096), ("Zanza/Irodalom/A/source.md", b"# a\n"), ("YouTube/B/video.mp4", b"w" * 100),
-                       ("x/.DS_Store", b"")):
-            (self.f / rel).parent.mkdir(parents=True, exist_ok=True)
-            (self.f / rel).write_bytes(b)
-        (self.d / "arch").mkdir()
-        (self.d / "arch" / "downloaded.txt").write_text("youtube abc\n", encoding="utf-8")
-
-    def test_meretlista(self):
-        m = klon.meretlista(self.f)
-        self.assertEqual((m["fajl"], m["bajt"]), (4, 4096 + 4 + 100))
-        self.assertEqual(m["agak"]["Zanza/Irodalom"], {"fajl": 2, "bajt": 4100})
-        self.assertIn(".mp4", m["kiterjesztesek"])
-        szoveg = klon.lista_szoveg(m, 10 * 1024 ** 3)
-        self.assertIn("Zanza/Irodalom", szoveg)
-        self.assertIn("szabad hely", szoveg)
-
-    def test_igen_nelkul_csak_lista(self):
-        r = klon.klonoz(self.f, self.d / "cel", igen=False, log=lambda s: None)
-        self.assertFalse(r["klonozva"])
-        self.assertFalse((self.d / "cel").exists())
-
-    @unittest.skipUnless(sys.platform == "darwin", "[indokolt] APFS-klón (cp -c) csak macOS-en; K-tétel: tests/kezi/video_proba.py")
-    def test_klon_apfs_en_bajtra_azonos_es_nem_foglal(self):
-        cel = self.d / "uj" / "staging"
-        r = klon.klonoz(self.f, cel, igen=True, archivum_forras=self.d / "arch", archivum_cel=self.d / "uj" / "archive", log=lambda s: None)
-        self.assertTrue(r["klonozva"])
-        self.assertEqual(klon.meretlista(cel)["bajt"], klon.meretlista(self.f)["bajt"])
-        self.assertEqual((cel / "Zanza/Irodalom/A/video.mp4").read_bytes(), b"v" * 4096)
-        self.assertEqual((self.d / "uj" / "archive" / "downloaded.txt").read_text(encoding="utf-8"), "youtube abc\n")
-        (cel / "Zanza/Irodalom/A/video.mp4").write_bytes(b"modositva")        # a klón írása nem érinti a forrást
-        self.assertEqual((self.f / "Zanza/Irodalom/A/video.mp4").read_bytes(), b"v" * 4096)
-
-    def test_meglevo_celt_nem_ir_felul(self):
-        (self.d / "cel").mkdir()
-        (self.d / "cel" / "x").write_text("x", encoding="utf-8")
-        with self.assertRaises(klon.KlonHiba):
-            klon.klonoz(self.f, self.d / "cel", igen=True, log=lambda s: None)
-        self.assertEqual((self.d / "cel" / "x").read_text(encoding="utf-8"), "x")
-
-    def test_nem_letezo_forras(self):
-        with self.assertRaises(klon.KlonHiba):
-            klon.meretlista(self.d / "nincs")
-
-    def test_valodi_masolat_gyanuja_hiba(self):
-        """Ha a szabad hely a küszöbnél jobban fogy, a klón valódi másolatnak tűnik (más kötet, nem APFS)."""
-        eredeti = klon.shutil.disk_usage
-        hivasok = []
-
-        def hamis(p):
-            hivasok.append(p)
-            u = eredeti(p)
-            return type(u)(u.total, u.used, u.free - (0 if len(hivasok) == 1 else 500 * 1024 ** 2))
-        with mock.patch.object(klon.shutil, "disk_usage", hamis), self.assertRaises(klon.KlonHiba):
-            klon.klonoz(self.f, self.d / "cel2", igen=True, df_kuszob_bajt=100 * 1024 ** 2, log=lambda s: None)
-
-
 FIX_MKV = """Input #0, matroska,webm, from 'x.mkv':
   Duration: 00:05:22.37, start: 0.000000, bitrate: 1543 kb/s
   Stream #0:0(eng): Video: h264 (High), yuv420p(tv, bt709, progressive), 1920x1080 [SAR 1:1 DAR 16:9], 30 fps (default)
@@ -233,6 +102,7 @@ FIX_HANG = """Input #0, mp3, from 'a.mp3':
   Duration: 00:03:00.00, start: 0.025057, bitrate: 128 kb/s
   Stream #0:0: Audio: mp3, 44100 Hz, stereo, fltp, 128 kb/s
 """
+
 
 
 class FelmeresSzovegTeszt(unittest.TestCase):

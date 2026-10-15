@@ -1,5 +1,4 @@
-"""`bin/mos video …` — a videólánc parancsai (C20a, C20b). Csak a `letoltes` használ hálózatot (D3); a `staging-klon` a kifejezett `--igen`
-után klónoz. A vaultba csak az `integral` ír (C20b), a gépi-írás szolgáltatáson át, modellt a workeren át kér (a betöltő tölt); kézzel
+"""`bin/mos video …` — a videólánc parancsai (C20a, C20b). Csak a `letoltes` használ hálózatot (D3). A vaultba csak az `integral` ír (C20b), a gépi-írás szolgáltatáson át, modellt a workeren át kér (a betöltő tölt); kézzel
 csak `--proba`-val (a vault APFS-klónjára), élesben a feladatsor lépéseként."""
 from __future__ import annotations
 
@@ -17,7 +16,7 @@ if str(REPO) not in sys.path:
 
 from core import config  # noqa: E402
 
-from . import klon, konvertalas, staging, utnorm  # noqa: E402
+from . import konvertalas, staging  # noqa: E402
 from .eszkoz import pin as _pin, sha256 as _sha256  # noqa: E402
 
 
@@ -108,45 +107,6 @@ def cmd_felmeres(cfg, args) -> int:
         for r in nem_nativ[:20]:
             print(f"  nem natív: {r['ut']} — {r['ok']} → {r['terv']}")
     return 0
-
-
-def cmd_staging_klon(cfg, args) -> int:
-    legacy = args.forras or (os.path.join(os.environ["MOS_LEGACY"], "modulok", "ytdlp", "staging") if os.environ.get("MOS_LEGACY") else None)
-    if not legacy:
-        print("HIBA: add meg a forrást (--forras <legacy>/modulok/ytdlp/staging) vagy a MOS_LEGACY-t; a legacy útja nincs beégetve", file=sys.stderr)
-        return 2
-    cel = Path(args.cel or cfg.path("staging"))
-    try:
-        r = klon.klonoz(legacy, cel, igen=args.igen,
-                        archivum_forras=Path(legacy).parent / "archive", archivum_cel=Path(args.cel).parent / "archive" if args.cel else cfg.path("ytdlp_archivum"))
-    except klon.KlonHiba as e:
-        print(f"HIBA: {e}", file=sys.stderr)
-        return 1
-    if not args.igen:
-        print("\nA klónozáshoz add meg: --igen (a forrásba nem írok, a célt nem írom felül).")
-    if args.json:
-        _json(r)
-    return 0
-
-
-def _utak(cfg, args) -> tuple[Path, Path]:
-    return Path(args.jobs or cfg.path("video_jobs")), Path(args.staging or cfg.path("staging"))
-
-
-def cmd_utnorm(cfg, args) -> int:
-    jobs, stag = _utak(cfg, args)
-    r = utnorm.felmeres(jobs, stag)
-    if args.json:
-        _json(r)
-    else:
-        print(f"{r['state_json']} state.json a {jobs} alatt; a feloldás gyökerei: staging = {stag}")
-        for a, n in r["alakok"].items():
-            print(f"  {a:<12} {n:>4} út")
-        for k, v in r["kulcsok"].items():
-            print(f"  {k:<20} {v['letezik']}/{v['osszes']} létezik, nem oldható fel: {v['nem_oldhato']}")
-        if r["nem_letezo_db"]:
-            print(f"  {r['nem_letezo_db']} út a jelenlegi gyökerek alatt nem létezik, pl.: {r['nem_letezo'][:2]}")
-    return 1 if r["nem_letezo_db"] or r["olvasasi_hibak"] else 0
 
 
 def cmd_leltar(cfg, args) -> int:
@@ -344,19 +304,6 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--limit", type=int, default=0)
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_felmeres)
-
-    p = al.add_parser("staging-klon", help="a legacy staging APFS-klónja méretlistával")
-    p.add_argument("--forras", help="a legacy staging (alap: $MOS_LEGACY/modulok/ytdlp/staging)")
-    p.add_argument("--cel", help="alap: [utak] staging")
-    p.add_argument("--igen", action="store_true", help="a felhasználó jóváhagyása: nélküle csak a méretlista")
-    p.add_argument("--json", action="store_true")
-    p.set_defaults(fn=cmd_staging_klon)
-
-    p = al.add_parser("utnorm", help="a state.json-ok régi útjainak feloldása (csak olvas)")
-    p.add_argument("--jobs")
-    p.add_argument("--staging")
-    p.add_argument("--json", action="store_true")
-    p.set_defaults(fn=cmd_utnorm)
 
     p = al.add_parser("leltar", help="a staging forrásmappái és integration_status-a (csak olvas)")
     p.add_argument("--staging")

@@ -135,6 +135,9 @@ def _beallitas_kivonat(keres: dict) -> dict:
 
 def _valaszt(mod_, cfg: config.Config, limit: int | None, tetel_idk: list[str] | None) -> tuple[list[dict], int]:
     """A kiválasztott tételek és a halmaz teljes tételszáma (a `--limit`/`--tetel` nélküli)."""
+    arany = getattr(mod_, "ARANY", None)
+    if isinstance(arany, dict) and (arany.get("hianyzik") or arany.get("allapot") == "hianyzik"):
+        raise ValueError(f"ehhez a feladathoz nincs aranyhalmaz ({arany.get('fajl', 'arany.json')}): a mérés nem indítható")
     tetelek = list(mod_.tetelek(cfg))
     osszes = len(tetelek)
     if tetel_idk:
