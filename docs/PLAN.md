@@ -172,6 +172,7 @@ A Markdown marad az igazság; a `.manifold/` bármikor törölhető, a vault Obs
 | R10 | **macOS 26 minimum** szűkíti a célközönséget | közepes | elfogadva v1-re (a pin-váltás újramérést igényelne); V1.1: régebbi wheel-pin kísérlet |
 | R11 | **A Developer-infrastruktúra elrejtése közben funkció sérül** (feature freeze szelleme) | közepes | semmit nem törlünk, csak kapcsolunk; a teljes tesztkészlet minden fázis után |
 | R12 | **Feature-freeze ütközés** (79. döntés) | alacsony | ez a terv a felhasználó kifejezett döntése (CLAUDE.md-kivétel), a NAPLO-ba kerül |
+| R13 | **Éles láncok az eval-modulokból veszik a promptot** (a füzetlánc a `modulok/eval/ocr_kezi/feladat.py`-t importálja, amely importkor az aranyhalmazt töltötte) — friss telepítésen minden fotó hibát adott | magas (F1-ben toleráns betöltővel kezelve) | F6: a promptok és a pontozók kerüljenek az eval-adattól független modulba; az aranyhalmaz csak a méréshez töltődjön |
 
 A termékesítés **módosítja** a v2 döntéseit: 6. (telepítés nélkül), 79(d) (home alá nem írunk), a doctor `/Applications` és Application Support tiltása, 2.2 „var a vault kötetén” (marad, de a vault alatt), `local.manifold-os.app`. Minden más döntés marad.
 
@@ -193,7 +194,10 @@ Minden fázis végén: tesztek futnak, a változott fájlok és a maradék kock�
 | **F8 Migráció + demo + doku** | Obsidian-import dry-run/napló/visszafordítás; v2-import (Developer mód); demo workspace generátor (50–100 anonim jegyzet, PDF, kód, matek, kártyák, kvíz, források, gráf, naptár-példák, AI-memóriák), „Try Manifold”, reset; beépített dokumentáció (16 oldal) a demo workspace-ben is | 3 agent (opus: migráció; sonnet: demo-generátor; sonnet: doku) | migrációs teszt zöld; demo 7 folyam reprodukálható |
 | **F9 Installer + tesztszintek + RC** | `packaging/` (bundle, relokálható venv, hordozható git, DMG, sign/notarize opció, `runtime_fetch.py`), RootLocator, `epites.json` befagyasztás; fresh-install / multi-user / migráció tesztszintek; biztonsági + mentés/visszaállítás audit; UX-polish; `v1.0.0-rc1` | 3 agent (opus: packaging; opus: tesztszintek; sonnet: polish) | a 32. pont auditjai; DoD-lista |
 
-A F6 mérési része **a felhasználó feladata** (valódi modellekkel, tétlen gépen); a kód csak a folyamatot teszi egyszerűvé.
+| **F10 Többnyelvű kód-munkafelület** | a C++ munkafelület általánosítása nyelvi profilokra (`modulok/kod` + nyelvi adapterek): homokozott fordítás/futtatás, tesztblokkok, sorhoz kötött diagnosztika, az öt AI-mód nyelv-paraméterrel és saját kalibrációval; v1: C/C++ (LLVM), Python és JavaScript/TypeScript (a beágyazott runtime-ból), letölthető/rendszer-eszközlánc: Java, Go, Rust, Swift; a `.cpp` jegyzetek változatlanul működnek. A részletes terv: `docs/plan/parity/CODE-WORKBENCH.md` (tervezői panel + bírálat eredménye) | 3 agent (opus: nyelvi profil-réteg + homokozó; sonnet: adapterek + tesztek; sonnet: UI) | minden v1 nyelvre: fordít/fut/tesztel homokozóban, AI-módok kalibrálatlan modellnél „próba” |
+| **F11 Szerkesztő-paritás az Obsidiannal** | az Obsidian-paritás audit (`docs/plan/parity/`, 14 alrendszer, cáfolással ellenőrzött hiánylista) „must” és „should” tételeinek megvalósítása, a kritikus top-25 sorrendjében; minden tétel egy ellenőrzőlista-sor, teszttel | 4–6 agent alrendszerenként (opus a szerkesztő-magra: élő nézet, linkek, tulajdonságok; sonnet a többire) | a „must” lista 100 %, a „should” ≥ 80 %, a meglévő Manifold-erősségek sértetlenek (regressziós kapu) |
+
+A F6 mérési része **a felhasználó feladata** (valódi modellekkel, tétlen gépen); a kód csak a folyamatot teszi egyszerűvé. Az F10 és az F11 az F5 után, az F6-tal párhuzamosan is futhat (diszjunkt fájlok).
 
 ---
 
