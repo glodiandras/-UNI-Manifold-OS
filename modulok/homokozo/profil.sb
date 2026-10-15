@@ -1,0 +1,33 @@
+;; A CAS-homokozó sandbox-exec profilja (C24a). Minden út paraméter (-D), beégetett út nincs; a rendszer-
+;; könyvtárak (/usr/lib, /System, dyld) a Python és a SymPy betöltéséhez kellenek.
+;;
+;; Mérve (2026-10-04, macOS 27): a `/` literál olvasása nélkül a Python SIGABRT-tal áll le; a SymPy importja
+;; ~0,8 s, a csúcs-RSS ~86 MB. A `file-read-metadata` globális: egy fájl LÉTEZÉSE és mérete kideríthető, a
+;; tartalma és a mappák listája nem. Hálózat, fork, exec (a Pythonon kívül), jel, mach-lookup: tiltva.
+(version 1)
+(deny default)
+
+(allow process-exec
+  (literal (param "PY_EXE"))
+  (literal (param "PY_EXE_VALOS")))
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (literal (param "KOD_MODULOK"))                 ; csak a mappa listája (az import-kereső kéri), a tartalma nem
+  (literal (param "KOD_EVAL"))
+  (subpath (param "PY_PREFIX"))
+  (subpath (param "PY_BASE"))
+  (subpath (param "KOD_HOMOKOZO"))
+  (subpath (param "KOD_MATEK"))
+  (subpath (param "KOD_GRAFIKON"))              ; C35a: a felismerő és az elemző kódja (az adat nem)
+  (subpath (param "KOD_KOZOS"))
+  (subpath "/usr/lib")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random"))
+
+(allow file-write-data (literal "/dev/null"))

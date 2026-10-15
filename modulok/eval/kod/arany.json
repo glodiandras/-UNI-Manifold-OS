@@ -1,0 +1,772 @@
+{
+ "verzio": "v1",
+ "allapot": "jovahagyott",
+ "keszult": "2026-10-08",
+ "jovahagyva": "2026-10-08 (koordinátor, a felhasználó felhatalmazásával; K297)",
+ "leiras": "C36b: a kod router-feladat aranyhalmaza. 12 saját feladat (ciklus/tömb, rendezés/keresés, DP, gráf, szám/sztring), feladatonként 3 egysoros beültetett hiba; a feladatok/kNN/ fájljai a forrás, ezt a fájlt a keszit.py --ir írja a homokozós ellenőrzés után.",
+ "menet": 100,
+ "feladatok": [
+  {
+   "id": "k01",
+   "cim": "Leghosszabb emelkedő szakasz",
+   "tema": "ciklus_tomb",
+   "nehezseg": 1,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "9c2c4197365648ac1baf57e0dd53866676c94d53b616261b93a27c6d59557ced",
+    "ref.cpp": "27de9a30429b54e54922dd336b70d9b75d77749bc12fed54194799071c12dced",
+    "lassu.cpp": "f5eb0b396f6a4d074ad214e595159d3ea744247be372a3862620b06807fafea1",
+    "bemenet.py": "54b4329a27e1cccb077836054640e2cb990cc1637753942c44c8f007dc5e6b0c",
+    "meta.json": "b982828a1eeeff6c61427e09ec9902c4aa74927a30bfddcccbc5ceb70807c634"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "feltetel",
+     "sor": 11,
+     "eredeti": "        if (a[i] > a[i - 1]) cur++;",
+     "csere": "        if (a[i] >= a[i - 1]) cur++;",
+     "magyarazat": "Az egyenlő szomszédokat is emelkedésnek veszi, pedig szigorú növekedés kell.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "7\n1 2 2 3 4 5 1\n",
+      "vart": "4\n",
+      "kapott": "6\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "index",
+     "sor": 10,
+     "eredeti": "    for (int i = 1; i < n; i++) {",
+     "csere": "    for (int i = 1; i < n - 1; i++) {",
+     "magyarazat": "A ciklus az utolsó elemet kihagyja, így a sorozat végén álló szakasz rövidebbnek látszik.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-3",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5\n-3 -1 0 4 10\n",
+      "vart": "5\n",
+      "kapott": "4\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "inicializalas",
+     "sor": 9,
+     "eredeti": "    int best = 1, cur = 1;",
+     "csere": "    int best = 0, cur = 1;",
+     "magyarazat": "A legjobb hossz 0-ról indul, ezért egyelemű bemenetre 0-t ír ki 1 helyett.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "1\n-3\n",
+      "vart": "1\n",
+      "kapott": "0\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k02",
+   "cim": "Legnagyobb árfolyam-emelkedés",
+   "tema": "ciklus_tomb",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "b435436370bc472e64c197e9d309366c3664c6b7a474066b7fb965c95ff60ecf",
+    "ref.cpp": "5592efa0720734c572b7297b70dadd8837606d5f95c9215107cc7a263e723571",
+    "lassu.cpp": "3440113a3d1f857130fed33e063d053a237b55c1fc4675100ecd5fd71efd6a16",
+    "bemenet.py": "6e98fc41ffaf369ad6844b8d3f1c10cedf27913ec204a9f264360d73c5d4dda8",
+    "meta.json": "6e17edca6fe0ee4239f492139decc70c3578410997be1ff6a5a580e38562e647"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "tulcsordulas",
+     "sor": 14,
+     "eredeti": "        long long kulonbseg = a[i] - legkisebb;",
+     "csere": "        int kulonbseg = a[i] - legkisebb;",
+     "magyarazat": "A különbség (akár 4·10^9) nem fér el int-ben, ezért a nagy emelkedés hibás, negatív értékké válik.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "3\n1 3999999999 7\n",
+      "vart": "3999999998\n",
+      "kapott": "6\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "sorrend",
+     "sor": 16,
+     "eredeti": "        legkisebb = min(legkisebb, a[i]);",
+     "csere": "        legkisebb = min(legkisebb, a[i - 1]);",
+     "magyarazat": "A minimum egy lépéssel le van maradva: az előző napi ár csak a következő lépésben kerül bele.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-4",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4\n3999999999 1 3999999999 4\n",
+      "vart": "3999999998\n",
+      "kapott": "3\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "inicializalas",
+     "sor": 12,
+     "eredeti": "    long long best = 0;",
+     "csere": "    long long best = -1;",
+     "magyarazat": "A legjobb nyereség -1-ről indul, így nyereség nélkül -1-et ír ki 0 helyett.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "3\n5 4 3\n",
+      "vart": "0\n",
+      "kapott": "-1\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k03",
+   "cim": "Szakaszösszegek",
+   "tema": "rendezes_kereses",
+   "nehezseg": 1,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "3943a325c96e40c76d601679569c0687352f967b88ae69ff2057198c98ae284a",
+    "ref.cpp": "7c162bac8fda4edebdb6b31d0e46343233c504d7b42a00037d8fabcee5b84e66",
+    "lassu.cpp": "ecb6f7f3e8c3d636460f702d82e15c5219fd356c44764e8366bfabef1ed67a20",
+    "bemenet.py": "827b75e9117ea92241f15e70b460b8dcf8bc53c039028280c62ff399e34a8410",
+    "meta.json": "ae65e285c23185444e2365a643be6db06e5ee9cd6016e398f8c29f731ad9e9d5"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "index",
+     "sor": 18,
+     "eredeti": "        cout << p[r] - p[l - 1] << \"\\n\";",
+     "csere": "        cout << p[r] - p[l] << \"\\n\";",
+     "magyarazat": "A p[l] kivonásával az l-edik elem is kimarad az összegből; p[l - 1] kellene.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 3\n1 2 3 4 5\n1 5\n2 4\n3 3\n",
+      "vart": "15\n9\n3\n",
+      "kapott": "14\n7\n0\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "tulcsordulas",
+     "sor": 9,
+     "eredeti": "    vector<long long> p(n + 1, 0);",
+     "csere": "    vector<int> p(n + 1, 0);",
+     "magyarazat": "Az előtag-összegek int-ben túlcsordulnak, ha az elemek nagyok.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-45",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 4\n-1000000000 -1000000000 -1000000000 -1000000000 5\n1 5\n1 2\n3 5\n2 3\n",
+      "vart": "-3999999995\n-2000000000\n-1999999995\n-2000000000\n",
+      "kapott": "294967301\n-2000000000\n-1999999995\n-2000000000\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "index",
+     "sor": 10,
+     "eredeti": "    for (int i = 1; i <= n; i++) {",
+     "csere": "    for (int i = 1; i < n; i++) {",
+     "magyarazat": "Az utolsó elem beolvasása kimarad, ezért a kérdések rossz számokat olvasnak be.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 3\n1 2 3 4 5\n1 5\n2 4\n3 3\n",
+      "vart": "15\n9\n3\n",
+      "kapott": "-9\n-7\n0\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k04",
+   "cim": "Párok adott összeggel",
+   "tema": "rendezes_kereses",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "f633aaf5550ed422f5cd47ac187319a0d4ad92741b3e7521afcfc33b132a4d7d",
+    "ref.cpp": "35511cd9ede11a9853bfcb7de3265fb3e14f520fb3035fe018120125d9425dd0",
+    "lassu.cpp": "83e0cb034aa61a713115c0a4922acd3d7f9d66576651a17ae745a054761db7fc",
+    "bemenet.py": "9163f459de13cd8e3dd175026beb285b9d3861b80c607400162ff31527699147",
+    "meta.json": "74ccdb93a50fbda66eb878bc53291c6d31006fb396e8f8e5cbc9bbd4c1f2700b"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "tulcsordulas",
+     "sor": 11,
+     "eredeti": "    long long parok = 0;",
+     "csere": "    int parok = 0;",
+     "magyarazat": "A párok száma n = 200 000-nél elérheti a 2·10^10-t, ami int-ben túlcsordul.",
+     "bizonyitek": {
+      "fajta": "nagy",
+      "forras": "nagy",
+      "allapot": "hibas_kimenet",
+      "leiras": "egy nagy bemeneten (első sora: 200000 -1422909964)",
+      "vart": "19999900000\n",
+      "kapott": "-1474936480\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "feltetel",
+     "sor": 15,
+     "eredeti": "        if (db.count(s - x)) parok += db[s - x];",
+     "csere": "        if (x != s - x && db.count(s - x)) parok += db[s - x];",
+     "magyarazat": "Kizárja az egyenlő értékű párokat (x + x = s), pedig két különböző helyen álló azonos elem is pár.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 6\n1 5 3 3 2\n",
+      "vart": "2\n",
+      "kapott": "1\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "index",
+     "sor": 12,
+     "eredeti": "    for (int i = 0; i < n; i++) {",
+     "csere": "    for (int i = 1; i < n; i++) {",
+     "magyarazat": "A ciklus 1-től indul, így csak n - 1 számot olvas be, az utolsó elem kimarad.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4 0\n0 0 0 0\n",
+      "vart": "6\n",
+      "kapott": "3\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k05",
+   "cim": "Mérések egy tartományban",
+   "tema": "rendezes_kereses",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "ff1b5acec27b295faa002fc071d910ef59c9f37ac2013ddec3966c3d00610c35",
+    "ref.cpp": "541bf05a4305a11bce3745ee59d641f29469ce0edd142a7695da11603c65d87a",
+    "lassu.cpp": "f36e29e62c5fb4d6a228f39da19940ac487bef6b49f2d3ebb187fbe99c311c8c",
+    "bemenet.py": "be847b5ae45ab517d62c7a774062b360af42a6773affb55b27fa833f84ffd237",
+    "meta.json": "f1dac7b5380c2445c31cdfbc7d907f0e3550d0b3374227609a66868e51404fbc"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "index",
+     "sor": 16,
+     "eredeti": "        auto jobb = upper_bound(a.begin(), a.end(), r);",
+     "csere": "        auto jobb = lower_bound(a.begin(), a.end(), r);",
+     "magyarazat": "A lower_bound az r értékű elemeket nem számolja bele, pedig a zárt intervallum jobb végpontja is benne van.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "6 3\n5 1 9 3 3 7\n3 7\n10 20\n1 1\n",
+      "vart": "4\n0\n1\n",
+      "kapott": "3\n0\n0\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "ido",
+     "sor": 17,
+     "eredeti": "        cout << (jobb - bal) << \"\\n\";",
+     "csere": "        cout << count_if(a.begin(), a.end(), [&](long long x) { return l <= x && x <= r; }) << \"\\n\";",
+     "magyarazat": "Minden kérdésnél végigszámolja a teljes tömböt, ez n·q lépés, túl lassú.",
+     "bizonyitek": {
+      "fajta": "ido",
+      "forras": "nagy",
+      "allapot": "idotullepes",
+      "leiras": "egy nagy bemeneten (első sora: 200000 100000)"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "sorrend",
+     "sor": 11,
+     "eredeti": "    sort(a.begin(), a.end());",
+     "csere": "    sort(a.rbegin(), a.rend());",
+     "magyarazat": "Csökkenő sorrendbe rendez, a bináris keresés viszont növekvő sorrendet feltételez.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "6 3\n5 1 9 3 3 7\n3 7\n10 20\n1 1\n",
+      "vart": "4\n0\n1\n",
+      "kapott": "6\n0\n0\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k06",
+   "cim": "Legjobb k napos időszak",
+   "tema": "ciklus_tomb",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "6c540d524373294a0f2dc50ac54ed2f2c61cefe20498ccb89b110a47f2556f6b",
+    "ref.cpp": "d9e10d444b13f538472c551cf9aca1d9af84d85fc3de1a767cade2720f9a8670",
+    "lassu.cpp": "e1a3fb7901e614a6411e12c3acaf2094cdc1a0e2ab69fb76fa827a28f2aaab73",
+    "bemenet.py": "05d501d71c5f626641c14aa23137a6cad1c6bd0b5401c9b833806059d477ad30",
+    "meta.json": "703cfdfa6756442ae94962548bdb939a2d6b0b9379ef61c65ff14d62af20da49"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "index",
+     "sor": 14,
+     "eredeti": "    for (int i = k; i < n; i++) {",
+     "csere": "    for (int i = k; i < n - 1; i++) {",
+     "magyarazat": "A csúszó ablak az utolsó helyzetét már nem vizsgálja, így az utolsó k nap összege kimarad.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 2\n1 3 -2 5 4\n",
+      "vart": "9\n",
+      "kapott": "4\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "inicializalas",
+     "sor": 13,
+     "eredeti": "    long long best = ablak;",
+     "csere": "    long long best = 0;",
+     "magyarazat": "A legjobb összeg 0-ról indul, ezért ha minden ablak negatív, 0-t ír ki.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "3 3\n-1 -2 -3\n",
+      "vart": "-6\n",
+      "kapott": "0\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "sorrend",
+     "sor": 15,
+     "eredeti": "        ablak += a[i] - a[i - k];",
+     "csere": "        ablak += a[i - k] - a[i];",
+     "magyarazat": "Fordított a kivonás: a belépő elemet vonja le és a kilépőt adja hozzá, így az ablak összege elromlik.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5 2\n1 3 -2 5 4\n",
+      "vart": "9\n",
+      "kapott": "7\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k07",
+   "cim": "Lépcsőzés",
+   "tema": "rekurzio_dp",
+   "nehezseg": 1,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "aa48f723f139ff43f6fd3b0f8cbdcace9219c85cefad8d112a034b2a1f4e7703",
+    "ref.cpp": "0594bc66b0e605dd73173f456f27f8cc7bd8cf80e07caae87d3b9feb15b74d2b",
+    "lassu.cpp": "636475108da7c0fea505d9a73f6501cbcc2ab4390647c7ea9074e296389bed7e",
+    "bemenet.py": "7f4d6a56f27f0e13f3fdd6ed80207856568de5c83fa9874511fd739d1cc0542a",
+    "meta.json": "cec55f9b9f83105d6cb16da1599f006b0994f3b480340af105797875b6c7e634"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "alapeset",
+     "sor": 10,
+     "eredeti": "    dp[0] = 1;",
+     "csere": "    dp[1] = 1;",
+     "magyarazat": "Az alapeset a 0. fok (egyféleképpen állunk a lépcső alján); a dp[1] = 1 mellett dp[0] = 0 marad, így a 2-es és 3-as lépés a lépcső aljáról nem számít.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4\n",
+      "vart": "7\n",
+      "kapott": "4\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "feltetel",
+     "sor": 12,
+     "eredeti": "        for (int lepes = 1; lepes <= 3 && lepes <= i; lepes++) {",
+     "csere": "        for (int lepes = 1; lepes < 3 && lepes <= i; lepes++) {",
+     "magyarazat": "A ciklusfeltétel miatt a 3-as lépés kimarad, csak 1-es és 2-es lépéseket számol.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4\n",
+      "vart": "7\n",
+      "kapott": "5\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "tulcsordulas",
+     "sor": 9,
+     "eredeti": "    vector<long long> dp(n + 1, 0);",
+     "csere": "    vector<int> dp(n + 1, 0);",
+     "magyarazat": "A három előző érték összege a maradékképzés előtt meghaladhatja az int felső határát.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-5",
+      "allapot": "hibas_kimenet",
+      "bemenet": "80\n",
+      "vart": "997451737\n",
+      "kapott": "-961053425\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k08",
+   "cim": "Hátizsák",
+   "tema": "rekurzio_dp",
+   "nehezseg": 3,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "a6b153203bc2792cf04cbfadaa747deecabba4a804732364669f66a8c5a3fbaa",
+    "ref.cpp": "45877d5cc7c616b0747450cba4330e3132d85b39ebb8874f4a89855c4f80b273",
+    "lassu.cpp": "06d7a387d15b695829cb380d13f8d82d2567263469b025566056ab846149f3ac",
+    "bemenet.py": "41ce0ea1f2730b10ae7d72b39c9b87c1b4e2139928c3493f4823c93c5e7ec86f",
+    "meta.json": "37cb53896ab45c036c6b9c6e700e4f752b0d2c678d4038374a3fcb5a8825f436"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "sorrend",
+     "sor": 12,
+     "eredeti": "        for (int j = W; j >= w; j--) {",
+     "csere": "        for (int j = w; j <= W; j++) {",
+     "magyarazat": "Növekvő irányú bejárásnál ugyanaz a tárgy többször is bekerülhet, pedig mindegyikből csak egy van; csökkenő irány kell.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "1 10\n3 5\n",
+      "vart": "5\n",
+      "kapott": "15\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "alapeset",
+     "sor": 7,
+     "eredeti": "    vector<long long> dp(W + 1, 0);",
+     "csere": "    vector<long long> dp(W + 1, -1);",
+     "magyarazat": "Az alapeset (üres hátizsák) értéke 0 lenne; a -1 kezdőérték minden összeget eggyel elront.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "3 5\n2 3\n3 4\n4 5\n",
+      "vart": "7\n",
+      "kapott": "6\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "index",
+     "sor": 16,
+     "eredeti": "    cout << dp[W] << \"\\n\";",
+     "csere": "    cout << dp[W - 1] << \"\\n\";",
+     "magyarazat": "A W - 1 kapacitás eredményét írja ki, pedig W összsúly fér a hátizsákba.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "3 5\n2 3\n3 4\n4 5\n",
+      "vart": "7\n",
+      "kapott": "5\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k09",
+   "cim": "Legkevesebb átszállás",
+   "tema": "graf",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "d6dcffbdc0afaf2517e0b3a2e521809d245f8103f2c253364bc2ea02a62e22b3",
+    "ref.cpp": "98f09a661bd6581a84dfcdae8bcb1ef5960578ede48dbfcd08a69c12b05e2a53",
+    "lassu.cpp": "f3a6df2c7f20a5ac916b69b7159d386ec67db3cb0d01ece5fdfba18def088338",
+    "bemenet.py": "7d5b9997d8d9790762b307395c34fa9809d46a4bd58f4da740c485fc6f10715c",
+    "meta.json": "972177806f0e659047b27f96845cbdff72dc4d49b5911490e574b4c3e65c753d"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "inicializalas",
+     "sor": 18,
+     "eredeti": "    tav[1] = 0;",
+     "csere": "    tav[1] = 1;",
+     "magyarazat": "A kiinduló megálló távolsága 0 lenne; az 1-es kezdőérték minden távolságot eggyel növel.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4 4\n1 2\n2 3\n3 4\n1 3\n",
+      "vart": "2\n",
+      "kapott": "3\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "ido",
+     "sor": 23,
+     "eredeti": "        for (int v : g[u]) {",
+     "csere": "        for (int v = 1; v <= n; v++) if (count(g[u].begin(), g[u].end(), v)) {",
+     "magyarazat": "A szomszédokat az összes csúcs végigpróbálásával keresi, ez n² lépés, nagy gráfon túl lassú.",
+     "bizonyitek": {
+      "fajta": "ido",
+      "forras": "nagy",
+      "allapot": "idotullepes",
+      "leiras": "egy nagy bemeneten (első sora: 100000 99999)"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "index",
+     "sor": 30,
+     "eredeti": "    cout << tav[n] << \"\\n\";",
+     "csere": "    cout << tav[n - 1] << \"\\n\";",
+     "magyarazat": "Az n - 1-es megálló távolságát írja ki az n-es helyett.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "4 4\n1 2\n2 3\n3 4\n1 3\n",
+      "vart": "2\n",
+      "kapott": "1\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k10",
+   "cim": "Családfa mélysége",
+   "tema": "graf",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "f98db7aeac2847258ed2cc1a2ff24f32505bf4bbfe07fa123f084276be7628da",
+    "ref.cpp": "2ee356e8ff468b6ea1bf8ba14a25b034fc364c555bd8f0c770084e0e7e14c73f",
+    "lassu.cpp": "ed1be8dcb7974eb2347f1d918bf56e91a17b0e88c3ae4956a9a82a3ea91cc449",
+    "bemenet.py": "45399cbf298e0e728f1e0dd2769c8d2dcf0ddee0f025ff359326c008a010d3fe",
+    "meta.json": "34d53585ff345ba7110e2c296f76a6a97d40fddffc231c8724e3b3e1722a7f7d"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "alapeset",
+     "sor": 8,
+     "eredeti": "    if (szulo[v] == 0) return 0;",
+     "csere": "    if (szulo[v] == 0) return 1;",
+     "magyarazat": "A rekurzió alapesete (az ős mélysége) 0 lenne; az 1 minden mélységet eggyel növel.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5\n0 1 1 2 4\n",
+      "vart": "3\n",
+      "kapott": "4\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "ido",
+     "sor": 9,
+     "eredeti": "    if (melyseg[v] != -1) return melyseg[v];",
+     "csere": "    // if (melyseg[v] != -1) return melyseg[v];",
+     "magyarazat": "A kiszámolt mélységet nem használja fel újra, így egy hosszú láncon minden csúcsnál végigmegy az ősig: n² lépés.",
+     "bizonyitek": {
+      "fajta": "ido",
+      "forras": "nagy",
+      "allapot": "idotullepes",
+      "leiras": "egy nagy bemeneten (első sora: 100000)"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "sorrend",
+     "sor": 20,
+     "eredeti": "    for (int v = 1; v <= n; v++) legmelyebb = max(legmelyebb, mely(v));",
+     "csere": "    for (int v = 1; v <= n; v++) legmelyebb = max(legmelyebb, melyseg[v]);",
+     "magyarazat": "A tárolt mélységet olvassa, mielőtt bárki kiszámolta volna, így minden érték -1, és 0 lesz az eredmény.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "5\n0 1 1 2 4\n",
+      "vart": "3\n",
+      "kapott": "0\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k11",
+   "cim": "Prímek száma",
+   "tema": "szam_sztring",
+   "nehezseg": 2,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "4e974a50fca980575d3b51ceea3bda3dfeb992b0194af488478b9f6a4e07f930",
+    "ref.cpp": "f71610826a00738a1491d7be923e138d74cb3f37d8e4e1bdb9ef7f52756a7eca",
+    "lassu.cpp": "f284274c4a93def02bdaef1ba45c67c40ac9032fbe9cca805cd6c047312aa80e",
+    "bemenet.py": "6bebbd5b3fdc9f71a1815d3cbda7974702ba33db464259c47748e892a88815c9",
+    "meta.json": "3796c68e20900c50c597d94d9d0e9b69707ef0be3124184d4bd5b04d707f3e15"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "feltetel",
+     "sor": 10,
+     "eredeti": "    for (long long i = 2; i * i <= n; i++) {",
+     "csere": "    for (long long i = 2; i * i < n; i++) {",
+     "magyarazat": "Ha n egy prím négyzete, a szita leáll, mielőtt az n-et áthúzná, így az n prímnek számít.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-3",
+      "allapot": "hibas_kimenet",
+      "bemenet": "25\n",
+      "vart": "9\n",
+      "kapott": "10\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "index",
+     "sor": 15,
+     "eredeti": "    for (int i = 2; i <= n; i++)",
+     "csere": "    for (int i = 2; i < n; i++)",
+     "magyarazat": "A számlálás az n-et kihagyja, így ha n prím, eggyel kevesebbet ír ki.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-6",
+      "allapot": "hibas_kimenet",
+      "bemenet": "41\n",
+      "vart": "13\n",
+      "kapott": "12\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "inicializalas",
+     "sor": 7,
+     "eredeti": "    vector<bool> prim(n + 1, true);",
+     "csere": "    vector<bool> prim(n + 1, false);",
+     "magyarazat": "A szita minden számot eleve nem prímnek jelöl, így semmit sem talál.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "10\n",
+      "vart": "4\n",
+      "kapott": "0\n"
+     }
+    }
+   ]
+  },
+  {
+   "id": "k12",
+   "cim": "A leggyakoribb betű",
+   "tema": "szam_sztring",
+   "nehezseg": 1,
+   "idokorlat_s": 2.0,
+   "sha256": {
+    "leiras.md": "3658c557b3dda37f6d1d6f2fca326a7a62bdcd4362dcc5e1bd362bb1553de57e",
+    "ref.cpp": "62bc255421b70d37606d6a78dab24f5f5fc8d6fd3b6a4bb6de6711526deebe1a",
+    "lassu.cpp": "6462429578c1406949c686d352df101b2674052d11c0b4ce209413b7a1500bb9",
+    "bemenet.py": "6ae7ecfe0dfe2fd89ec043faaf42962423bc31c7c202a75b8646b16f5e28b762",
+    "meta.json": "b1390ceff18d3000c6b87dfb077fee2377b26e0aad8e5feb3a333e20a720a7af"
+   },
+   "hibak": [
+    {
+     "id": "h1",
+     "fajta": "feltetel",
+     "sor": 11,
+     "eredeti": "        if (db[i] > db[legjobb]) legjobb = i;",
+     "csere": "        if (db[i] >= db[legjobb]) legjobb = i;",
+     "magyarazat": "A >= miatt döntetlennél a későbbi betűt választja, pedig az ábécében előbb állót kell.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-2",
+      "allapot": "hibas_kimenet",
+      "bemenet": "zzyy\n",
+      "vart": "y 2\n",
+      "kapott": "z 2\n"
+     }
+    },
+    {
+     "id": "h2",
+     "fajta": "index",
+     "sor": 10,
+     "eredeti": "    for (int i = 1; i < 26; i++) {",
+     "csere": "    for (int i = 1; i < 25; i++) {",
+     "magyarazat": "A ciklus a z betűt kihagyja, így ha az a leggyakoribb, rossz választ ad.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "kicsi-3",
+      "allapot": "hibas_kimenet",
+      "bemenet": "zzy\n",
+      "vart": "z 2\n",
+      "kapott": "y 1\n"
+     }
+    },
+    {
+     "id": "h3",
+     "fajta": "sorrend",
+     "sor": 13,
+     "eredeti": "    cout << char('a' + legjobb) << \" \" << db[legjobb] << \"\\n\";",
+     "csere": "    cout << db[legjobb] << \" \" << char('a' + legjobb) << \"\\n\";",
+     "magyarazat": "A kiírás sorrendje fordított: előbb a betű, utána a szám kell.",
+     "bizonyitek": {
+      "fajta": "teszt",
+      "forras": "teszt-1",
+      "allapot": "hibas_kimenet",
+      "bemenet": "abracadabra\n",
+      "vart": "a 5\n",
+      "kapott": "5 a\n"
+     }
+    }
+   ]
+  }
+ ]
+}

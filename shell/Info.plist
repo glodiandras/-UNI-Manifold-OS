@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>hu</string>
+	<key>CFBundleName</key><string>Manifold</string>
+	<key>CFBundleDisplayName</key><string>Manifold</string>
+	<key>CFBundleExecutable</key><string>Manifold</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>CFBundleIdentifier</key><string>local.manifold-os.app</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>0.0.1</string>
+	<key>CFBundleVersion</key><string>1</string>
+	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+	<key>LSMinimumSystemVersion</key><string>13.0</string>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSSupportsAutomaticTermination</key><false/>
+	<key>NSSupportsSuddenTermination</key><false/>
+	<!-- a core a 127.0.0.1-en fut: helyi hálózat, TLS nélkül -->
+	<key>NSAppTransportSecurity</key>
+	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>A Manifold az SSD-n lévő Manifold-OS-t indítja, és a vaultot olvassa és írja.</string>
+	<!-- naptár és emlékeztetők (C29): az EventKit-engedély szövegei -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>A Manifold a Naptár eseményeit olvassa: a tervezett tanulást, az órarendet és a dolgozatok határidejét, hogy a Ma oldalon és a tanulási tervben látszódjanak. Naptáresemény csak a te jóváhagyásodra íródik. Az adat a gépen marad.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>A Manifold a Naptár eseményeit olvassa: a tervezett tanulást, az órarendet és a dolgozatok határidejét. Naptáresemény csak a te jóváhagyásodra íródik. Az adat a gépen marad.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>A Manifold az Emlékeztetők közül csak a saját „Manifold” listáját kezeli: a jegyzeteid 📅 határidős feladataiból készít és tart naprakészen emlékeztetőket, hogy a telefonodon is megjelenjenek. A többi listádhoz nem nyúl. Az adat a gépen marad; a szinkron az iCloud-fiókodon át csak a saját eszközeidre megy.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>A Manifold az Emlékeztetők közül csak a saját „Manifold” listáját kezeli: a jegyzeteid 📅 határidős feladataiból készít emlékeztetőket. A többi listádhoz nem nyúl. Az adat a gépen marad; a szinkron az iCloud-fiókodon át csak a saját eszközeidre megy.</string>
+</dict>
+</plist>

@@ -1,0 +1,9 @@
+# Internal planning and audit material: kept in the repository, excluded from `git archive` / release bundles.
+docs/plan/** export-ignore
+docs/dev/DECISIONS-v2.md export-ignore
+# Text normalisation
+* text=auto eol=lf
+*.icns binary
+*.png binary
+*.jpg binary
+*.gz binary

@@ -1,0 +1,998 @@
+# Manifold-OS 2.0 konfiguráció.
+#
+# Semmi nincs beégetve: minden út helyőrzős, a feloldás futásidőben történik (LEGACY-SZERZODESEK L49).
+#   {os}   a Manifold-OS gyökere — a csomag saját helyéből számolva (a MOS_ROOT felülírja)
+#   {home} a felhasználó saját mappája
+#   bármely [utak] kulcs, pl. {work}, {var}
+# Minden [utak] kulcs felülírható környezeti változóval: MOS_<KULCS> (pl. MOS_VAULT);
+# a konfigfájlt a MOS_CONFIG jelöli ki.
+
+[utak]
+work    = "{os}/.."                  # az SSD gyökere (Work)
+vault   = "{work}/Manifold"          # a vault — csak a core ír bele
+modulok = "{os}/modulok"
+runtime = "{os}/runtime"             # hordozható Python, uv, Node, wheelhouse (gitignore)
+var     = "{os}/var"                 # állapot, modellek, indexek (gitignore, Spotlight-kizárt)
+state   = "{var}/state"
+models  = "{var}/models"             # HF_HOME
+venv    = "{var}/venv"
+cache   = "{var}/cache"              # minden gyorsítótár (uv, pip) — a home alatt soha
+tmp     = "{var}/tmp"                # a vault kötetén (APFS) → atomi os.replace
+runs    = "{var}/runs"               # kör-riportok, feladatnaplók (L52–L53)
+run     = "{var}/run"                # zárfájlok (kor.lock, L17)
+szemelyes = "{var}/szemelyes"        # a személyes adatréteg (L56)
+ytdlp   = "{modulok}/ytdlp"          # a ytdlp-lánc munkafája (C20)
+vault_git = "{var}/vault.git"        # a vault pillanatkép-tárolója (L01)
+ytdlp_git = "{var}/ytdlp.git"
+staging = "{ytdlp}/staging"          # a videólánc staging-ja (C20a): szolgáltató/tárgy/cím/{video, metaadat, source.md, …}; APFS-klón a legacyből, gitignore-olt
+ytdlp_archivum = "{ytdlp}/archive"   # a letöltési archívum (duplikátum-védelem: downloaded.txt, index.json); gitignore-olt
+video_jobs = "{state}/Manifold-media/jobs"   # a médiajobok állapota (state.json; L51) — a legacy-ből átvett, a port csak olvassa
+video_eredeti = "{archive}/video-eredeti"    # a konvertálás előtti eredeti (nem törlünk: archive/ alá, indokkal)
+video_visszavont = "{archive}/video-visszavont"   # C20b: a visszavont tétel vaultbeli videó-klónja (nem törlünk: archive/ alá, indokkal)
+apkg_visszavont = "{archive}/apkg-visszavont"     # 83: a visszavont `.apkg`-import vaultbeli médiája (nem törlünk: archive/ alá, indokkal)
+video_bejovo = "{var}/video/bejovo"   # C20b: a Bevitel szakaszba behúzott videók beérkező mappája (a `video_integralas` innen veszi át)
+binaris_naplo = "{state}/binaris-naplo.jsonl"  # a bináris mozgásnapló (L19)
+fuzet   = "{state}/Manifold-fuzet"   # a füzetlánc munkamappája (L36; C21): allapot.json (a legacy 522 kötése is), naplo.jsonl, a modell válaszai, az OCR-szöveg (a vaulton kívül, I33)
+fuzet_bejovo = "{var}/fuzet/bejovo"  # a felületen behúzott füzetfotók beérkező mappája (C21): mindig figyelt mappa
+ffmpeg = "{runtime}/ffmpeg/ffmpeg"   # a pinelt statikus build (bin/mos runtime fetch ffmpeg); a home-beli (~/.local/bin) és a PATH-os tiltott
+node = "{runtime}/node/bin/node"     # a yt-dlp JS-kihívás megoldójának futtatója (yt-dlp-ejs)
+feladatok_db = "{var}/feladatok.sqlite"   # a tartós feladatsor (C03)
+router_db = "{var}/router.sqlite"         # kalibrációs tábla és hő-alapszintek (C05)
+tanulas_db = "{var}/tanulas.sqlite"     # kártyák FSRS-állapota és válasznaplója, később a kvíz (C23a, C22); a belső mentésben
+automatika_db = "{var}/automatika.sqlite"   # a közös automatika-ütemező állapota (C23b, T149); a belső mentésben
+index   = "{var}/index"               # a vault-index (C06): vault.sqlite — újraépíthető a vaultból
+app_dist = "{os}/app/dist"           # a felület lefordított csomagja; a core szolgálja ki (egy origin)
+vault_kepek = "{cache}/vault-kepek"  # kicsinyített vault-képek (C11a, L55): a `/media?w=` gyorsítótára, bármikor törölhető
+felulet = "{state}/felulet.json"     # a felület tartós állapota (C07): téma, elrendezés, legutóbbiak
+naptar_seged = "{os}/Manifold.app/Contents/MacOS/Manifold"   # az EventKit-segéd (C29): a héj CLI-módja, a `--naptar` kapcsolóval
+hej_cli = "{os}/Manifold.app/Contents/MacOS/Manifold"   # a héj futtathatójának CLI-módja a nem naptári parancsokhoz (`--kuka`, CX-004); ugyanaz a bináris, mint a `naptar_seged` (32(a)), de külön kulcs, hogy a `MOS_NAPTAR_SEGED` ál-segédje (tesztek) ne vigye magával a Kukát; a `MOS_HEJ_CLI` felülírja
+sandbox_exec = "/usr/bin/sandbox-exec"   # a CAS-homokozó elzárása (C24a): a macOS része; hiányában a homokozó nem fut
+llvm    = "{runtime}/llvm"           # a hordozható LLVM (clang++, clangd, clang-format): a C++ munkafelület eszközlánca (C36a); bin/mos cpp telepit
+sdk     = "{runtime}/sdk"            # a macOS SDK egyszeri másolata (C36a): a sysroot; a rendszer fordítója és SDK-ja nem használt
+archive = "{os}/archive"
+backup  = "{home}/Manifold-backup"   # a BELSŐ lemezen: szövegmentés SSD-hiba ellen
+
+[core]
+port = 0                             # 0 = szabad port; a héj a kézfogásból tudja meg (a `MOS_CORE_PORT` felülírja)
+mentetlen_turelem_mp = 15            # a WS-kapcsolat bontása után ennyi ideig marad a mentetlen-halmaz (a gép nem ír bele; C29.7b)
+kor_zar_turelem_mp = 3.0             # a felhasználói visszavonás/visszaállítás/átnevezés ennyit vár a foglalt kör-zárra (a kör végi bundle, 34.), utána 409
+naplo_max_mb = 20                    # a futó `{runs}/core.log` méretplafonja: elérésekor forog (core.log.1 … .5), a faulthandler az új fájlra áll
+kezelo_idokorlat_mp = 30             # egy kapcsolat egy socket-művelete (olvasás/írás) legfeljebb ennyit vár (T003; a WS a felépülés után korlátlan); a rendezett leállás ennél tovább (35 s) vár a kérésekre
+leallas_fokozas_mp = 20              # a héj kilépése (stdin-zárás) után ennyi múlva a még futó feladat azonnal leáll (a tétel vége helyett)
+
+[vault]
+kor_zar_varakozas_mp = 2.0           # az ütközés-felülírás (`felulir`) ennyit vár a kör-zárra, utána 423 (C29.7b, T116)
+proba_klon_max_nap = 7               # a gépi írás D9-próbaklónjai ({tmp}/proba/<kör>/, a vault APFS-klónja) ennyi nap után törlődnek egy új próbakör előtt (0: soha)
+
+# ------------------------------------------------------------------ pillanatképek (L01–L18)
+# Külső git-könyvtár: a munkafába NEM kerül .git. Csak szöveg kerül be; a bináris médiát a
+# move-napló követi. A tároló saját info/exclude-ja a `kizar` listából generálódik.
+
+[pillanat.vault]
+munkafa = "{vault}"
+git_dir = "{vault_git}"
+kivetelek = "{os}/config/pillanat-kivetelek-vault.json"   # korábbi kevert commitok védett gazdai útjai (L16)
+kizar = [
+  ".DS_Store", "._*", ".trash/",
+  ".obsidian/workspace*.json", ".obsidian/cache",
+  "__pycache__/", "*.pyc",
+  "*.manifold-tmp",
+]
+# A bináris (média-, dokumentum-) mintákat a `core/mediatipus.py` adja minden tárolóhoz, kis- és nagybetűvel (C20a, T142):
+# a pillanatkép kizárólistája és a média-engedélylista így egy forrásból jön (`snapshot.repos`).
+
+[pillanat.ytdlp]
+munkafa = "{ytdlp}"
+git_dir = "{ytdlp_git}"
+# A projekt saját .gitignore-ja is érvényes (média, venv, titkok); ez csak kiegészíti.
+kizar = [".DS_Store", "._*", "__pycache__/", "*.pyc", ".pytest_cache/", ".venv.nosync/"]
+# a `*.part`, `*.ytdl`, `*.temp`, `*.eredeti` és a médiamintákat a core/mediatipus.py adja (Javító 3, A3-09)
+
+# ------------------------------------------------------------------ vault-séma (C11b, L33–L34)
+[sema]
+vault = "{os}/config/vault-sema.json"   # mezősorrend, értékkészletek, kivételosztályok; a tulajdonság-szerkesztő és a gépi írók tartják
+
+[mentes]
+megtartott_bundle = 10               # tárolónként ennyi bundle marad a {backup} alatt (L18); a kódtárból is
+megtartott_migracio = 5              # fájlonként ennyi migráció előtti SQLite-másolat marad (33. döntés, C29.7b)
+kodtar = "{os}"                      # a 2.0 kódtárának git-munkafája (33. döntés): `git bundle --all` a {backup}/mos-kodtar-*.bundle-be
+ido_perc = 30                        # tétlenségben ennyi percenként bundle, ha a HEAD változott (34. döntés); minden gépi kör végén is
+allapot_ido_perc = 60                # az állapotmásolat (mos-allapot-*) az időzítőből legfeljebb ennyi percenként; kilépéskor mindig, ha változott
+allapot_megtartott = 5               # az állapotmásolatból ennyi legújabb marad …
+allapot_napi = 14                    # … és az utolsó ennyi nap mindegyikéből a nap utolsó másolata (a változatlan fájl hard link)
+kilepes_turelem_mp = 20              # a kilépési mentés legfeljebb ennyit vár a kör-zárra (egy futó időzített mentés vagy gépi írás végére)
+
+# ------------------------------------------------------------------ teljes külső mentés (80(g), CX-012)
+# Verziózott, inkrementális mentés külső kötetre (`bin/mos teljes-mentes ment|ellenoriz|visszaallit`): minden futás új
+# időbélyeges változat, a változatlan fájl az előző ellenőrzött változatból hard linkkel (exFAT-on másolat). A modellek,
+# a var/venv, a runtime/ és az újraépíthető {index} nincs benne (bin/mos runtime fetch + install, bin/mos models pull;
+# az indexet a core építi újra); az átmeneti {tmp}, {cache}, {run}, {runs} és a gyökér rejtett mappái (.claude/) soha.
+[teljes_mentes]
+megtartott = 10                      # a célmappában ennyi kész változat marad; a régebbi kész változat törlődik
+kihagy = ["staging", "archive"]      # [utak]-kulcsok, amelyek nem kerülnek a mentésbe (a videólánc staging-ja ~55 GB, a bevitt videó a vaultban van; az archive/ eredetijei)
+cel = ""                             # a lemezfigyelő célmappája a külső köteten (üres: nincs figyelés)
+figyelo_be = false                   # true: a futó app a csatlakoztatott célkötetre magától sorba állít egy mentést
+figyelo_ora = 24                     # … ha az utolsó ellenőrzött teljes mentés ennél régebbi (óra); az indulási szünet után
+
+# ------------------------------------------------------------------ feladatsor (C03)
+[feladatsor]
+indulasi_szunet_mp = 180             # a visszatöltött sor csak ennyi után indul (D8: a megnyitás nem indít munkát)
+max_parhuzamos = 2                   # egyszerre legfeljebb ennyi feladat; ebből egy modell- és egy vault-író
+naplo_max_nap = 60                   # a `{runs}/feladatok/*.log` ennél régebbi példánya induláskor törlődik (az `{runs}/eval` mérési riportjai nem)
+naplo_max_db = 500                   # e fölött a legrégebbi (de legalább egy napja álló) naplók törlődnek
+max_futas_mp = 21600                 # egy feladat legnagyobb futásideje (6 óra); utána azonnal leáll, `hiba` lesz. 0: nincs korlát
+
+[feladatsor.max_futas_tipus_mp]      # típusonként felülírja a `max_futas_mp`-t (a többi típusé az alap)
+mentes = 3600
+teljes_mentes = 43200
+video_letoltes = 43200
+video_integralas = 43200
+video_bejaras = 7200
+
+# ------------------------------------------------------------------ vault-index (C06)
+# Az index az app megnyitásakor indul (háttérszál, modell nélkül); utána csak a változott fájl olvasódik.
+[index]
+figyelo = "fsevents"                 # fsevents | lekerdezes (stat-alapú tartalék)
+latencia_mp = 0.03                   # az FSEvents gyűjtési ideje
+lekerdezes_mp = 2                    # a tartalék figyelő bejárási időköze
+max_talalat = 200                    # a keresés és az említések alapkorlátja
+regex_idokorlat_mp = 2               # a keresés felhasználói regexeinek együttes időkorlátja (H5); túllépés: 400
+bazis_idokeret_mp = 2                # egy Bases-lekérdezés teljes időkerete (T040, C29.8); túllépés: ok=false + hibak; 0: nincs keret
+pdf_idokorlat_mp = 300               # C25c: egy PDF szövegkinyerésének felső korlátja a gyermekfolyamatban (a legnagyobb mért: ~9 s)
+
+# ------------------------------------------------------------------ hibrid keresés, „Kérdezz a vaulttól” (C25b-mag; docs/C25B-TERV.md)
+# A vektortár a {index}/vektor.sqlite (újraépíthető, a belső mentésbe nem kerül, 33. döntés). Minden érték kalibrálatlan induló
+# érték: a valódi vaulton a K160 méri (a `modulok/eval/kereses/hibrid.py` a kereses/parok.json párjain).
+[kereses.hibrid]
+rrf_k = 60                           # RRF: pont = Σ súly / (k + hely)
+lexikai_suly = 1.0
+vektor_suly = 1.0
+jelolt_n = 100                       # ágonként ennyi jelölt jegyzet
+darab_n = 200                        # a vektor-ág ennyi darabot kér
+lexikai_jegyzet_darab = 10           # a vault-válasz jelöltjei: a lexikailag legjobb ennyi jegyzet minden darabja
+# C25b (2026-10-08; a parok.json 50 párja a vault.git 2ed889c fáján, bge_m3 + bge_reranker_v2_m3; NAPLO C25b):
+# recall@1/5/10, MRR — fts .78/.86/.86/.805 · fts+rerank .66/.80/.88/.737 · fts+vektor .66/.82/.90/.739 ·
+# fts+vektor+rerank .72/.90/.90/.796; az átfogalmazott kérdéseken fts .55/.70 → .60/.80 (recall@1/@5).
+# M12: a vektor+rerank a legjobb vektor nélküli változatnál (fts) +0,04 recall@5 → a vektorindex épül; a reranker csak a
+# vektorral együtt javít (egyedül ront), és csak a hibrid módban fut. A ⌘⇧F alapja a lexikai keresés marad (az első
+# találat ott jobb: recall@1 .78 vs .72); a „Jelentés szerint” kapcsoló és a „Kérdezz” a hibridet használja.
+vektor = true
+rerank = true
+rerank_n = 20
+
+[kereses.kerdezz]
+darab_n = 6                          # ennyi forrás kerül a promptba
+min_fedes = 0.34                     # „elég forrás”: a kérdés töveinek ennyi része a darabban …
+min_hasonlosag = 0.5                 # … vagy legalább ennyi a koszinusz (vektor-ág mellett)
+max_tokens = 700
+max_mondat = 8
+forras_max_karakter = 1600
+
+# ------------------------------------------------------------------ sablonok, napi jegyzet, „Ma” oldal (C15)
+# A formátumok a moment.js részhalmazát használják (core/sablon.py); `[szó]` a szó szerinti szöveg.
+[sablon]
+mappa = "_Template"                  # a vault sablonmappája (az Obsidian templates.json-jával azonos)
+datum = "YYYY-MM-DD"                 # a {{date}} alapformátuma
+ido = "HH:mm"                        # a {{time}} alapformátuma
+nyelv = "hu"                         # a hónap- és napnevek nyelve: hu | en
+
+[naplo]
+# A napi jegyzet vault-relatív útja (kiterjesztés nélkül), a vault konvenciója szerint: X01/ÉÉÉÉ-HH/Napló/ÉÉÉÉ-HH-NN.
+ut = "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+sablon = "Napi jegyzet"              # ha a sablonmappában van ilyen nevű .md, az a napi jegyzet váza (a beépített helyett)
+canvas = "YYYY-MM"                   # a havi canvas neve (L59 szomszédja): a `Canvas:` mező csak létező canvasra mutat
+dolgozat_mappa = "Dolgozatok"        # a felkészülési jegyzet mappaneve (L59): <hónap>/Dolgozatok/ÉÉÉÉ-HH-NN - Tantárgy.md
+naptar_regi_ora = 36                 # ennyi óra után jelzi a Ma oldal, hogy a naptáradat régi
+kiertekelo_nevek = ["Dolgozat kiértékelő", "Dolgozat Napló"]   # a dolgozat-eredményeket tartalmazó jegyzetek névrészletei (C28b; ékezet- és kisbetű-független)
+
+# ------------------------------------------------------------------ naptár és emlékeztetők (C29, 32. döntés)
+# A naptár csak olvas; naptáresemény csak a jóváhagyott tanulási blokkból íródik (D12). Az emlékeztetők az Apple
+# Emlékeztetők „Manifold” listájába mennek (a jegyzetek `📅` feladataiból); háttérdémon nincs, a szinkron az app
+# futása alatt megy. Az EventKit-segéd a Manifold.app csomagjában él (az `[utak]` `naptar_seged` kulcsa).
+[naptar]
+automatikus = true                   # az app futása alatt magától szinkronizál (az első percek után)
+szinkron_perc = 15                   # a naptár olvasásának és az emlékeztetők lehúzásának ritmusa
+indulasi_kesleltetes_mp = 60         # az indulás utáni első szinkron előtt ennyit vár (D8)
+mult_nap = 120                       # a szinkron ablaka: ma − mult_nap … ma + jovo_nap (L58)
+jovo_nap = 180
+tanulas_naptar = ""                  # a jóváhagyott tanulási blokk naptára (azonosító vagy név); üres: az első írható „tanulás” kategóriájú
+
+[emlekezteto]
+be = true                            # a nyitott `📅` feladatok tükrözése az Emlékeztetőkbe
+lista = "Manifold"                   # az emlékeztető-lista neve
+forras = ""                          # a lista fiókja (pl. iCloud); üres: a rendszer alapértelmezett emlékeztető-fiókja
+ora = "09:00"                        # a jegyzetben csak dátum áll: a határidő ezen az órán esedékes
+riasztas = true                      # abszolút riasztás a határidő pillanatára (így a telefon is értesít)
+lejart_nap = 14                      # új tükör csak a legfeljebb ennyi napja lejárt feladatra készül
+jovo_nap = 180                       # … és legfeljebb ennyi nappal előre
+huzas_perc = 5                       # az emlékeztetők állapotának lehúzása ennyi percenként
+kesz_datum = true                    # a kipipált sor végére `✅ ÉÉÉÉ-HH-NN` kerül (az Obsidian Tasks írásmódja)
+torles_max = 25                      # egy körben legfeljebb ennyi tükör törlődik (védelem a hibás indexállapot ellen)
+
+[javaslat]
+be = true                            # tanulásiblokk-javaslat (jóváhagyásra) a közelgő dolgozatokra
+perc = 60                            # egy blokk hossza
+elorenezes_nap = 10                  # ennyi napra előre néz a dolgozatok után
+max_darab = 6                        # egyszerre legfeljebb ennyi nyitott javaslat
+sav_kezd = "16:00"                   # a javasolt blokk ebben a napszakban fér el (szabad sáv)
+sav_veg = "20:30"
+
+# ------------------------------------------------------------------ felkészültség-becslés és dolgozat-oldal (C28a; docs/C28-TERV.md)
+# A számot kód számolja (kártya-felidézés, kvíz, frissesség, tanult idő), a súlyok **kalibrálatlan induló értékek**: a C28b
+# illeszti őket a valódi dolgozat-eredményekre. Mért tudás (kártya vagy kvíz) nélkül nincs szám.
+[felkeszultseg]
+elore_nap = 60                       # ennyi napra előre listázza a közelgő dolgozatokat
+mult_nap = 3                         # ennyi napig mutatja a már lezárt dolgozatot
+ablak_nap = 21                       # a tanult idő és a kvíz ablaka a dolgozat előtt (nap)
+suly_kartya = 0.40                   # az összetevők súlya (az összegük nem kell 1 legyen: a számolt összetevőkön újranormálódnak)
+suly_kviz = 0.35
+suly_frissesseg = 0.10
+suly_ido = 0.15
+min_bizonyitek = 0.15                # wK·cK + wQ·cQ ennyi alatt nincs szám („nincs mért tudás”)
+kartya_n0 = 5                        # ennyi kártyától teljes a kártya-bizalom
+kviz_n0 = 10                         # ennyi (időben csökkentett) kvízkérdéstől teljes a kvíz-bizalom
+kviz_felezes_nap = 14                # a kvízeredmény súlya ennyi nap alatt felére csökken
+felezes_nap = 10                     # a frissesség felezési ideje az utolsó tanulás óta (nap)
+cel_perc = 60                        # ennyi tanult perctől teljes az idő-összetevő (témánként)
+min_tanulas_mp = 60                  # ennyi aktív másodperc alatt a nap nem számít tanulásnak az utolsó tanulás számításában
+jo = 0.80                            # e fölött „jó”
+gyenge = 0.60                        # e alatt „gyenge” (a gyenge pontok küszöbe)
+cel = 0.85                           # a napi terv célszintje témánként
+napi_perc = 45                       # a napi terv egy napra jutó ideje
+szelet_perc = 15                     # a napi terv szeletei
+max_terv_nap = 21                    # legfeljebb ennyi nappal előre tervez
+gyenge_kartya_db = 5                 # témánként ennyi leggyengébb kártyát mutat
+atnevezes_kovetes = true             # a tracker tanult idejét az átnevezés előtti útvonalakról is összeadja (git-ből, olvasáskor)
+kalibralt = false                    # a `bin/mos felkeszultseg kalibral --rogzit` írja át (C28b), ha a súlyokat a valódi eredményekre illesztette
+kalibracio_min = 8                   # ennyi kalibrációs pont (lezárt dolgozat eredménnyel ÉS mért tudással a D−N. napon) alatt a súlyok nem változnak
+kalibracio_elotte_nap = 3            # a kalibrációs pont becslése a dolgozat előtti D−N. nap végére rekonstruált állapot (a kilátás)
+kalibracio_vissza_nap = 400          # ennyi napra visszamenőleg keres lezárt dolgozatot a kalibrációhoz
+kalibracio_ridge = 0.1               # az illesztés húzása az induló súlyok felé (λ·‖w − w₀‖²)
+
+# ------------------------------------------------------------------ kártyák és FSRS (C23a; docs/C23-TERV.md)
+# A kártya a vaultban él (kísérőjegyzet, `> [!card]` callout, `^c-…` azonosító), az ütemezés állapota a {tanulas_db}-ben,
+# az azonosítóhoz kötve. Az FSRS a py-fsrs (D3: jóváhagyva), a paraméterei az alapértékek.
+[kartya]
+mappa = "ATTCHMNTS - cards"          # a kísérőjegyzetek lapos mappája (45. döntés, T058): a sémaosztály előtag-illesztéssel
+utotag = " — kártyák"                # a kísérőjegyzet neve: <forrás alapneve><utotag>.md
+megtartas = 0.9                      # desired_retention
+max_intervallum_nap = 36500
+tanulasi_lepesek = ["1m", "10m"]     # learning_steps (s | m | h | d)
+ujratanulasi_lepesek = ["10m"]       # relearning_steps
+fuzz = true                          # az intervallum kis véletlen szórása (a tesztek kikapcsolják)
+uj_naponta = 20                      # új kártya naponta (a „Mai ismétlés” limitje)
+nap_kezdete_ora = 4                  # a nap fordulója helyi időben (az Anki 4 órás fordulója)
+torles_max = 50                      # egy szinkron legfeljebb ennyi kártyát jelöl töröltnek (védelem a hibás olvasás ellen)
+
+# AI-generálás a kapukkal (C23b; modulok/kartya/generalas.py, docs/C23-TERV.md 5.): a mennyiség a jegyzet sűrűségéből
+[kartya.generalas]
+max_kartya = 30                      # jegyzetenként legfeljebb (kézi „Kártyák ebből”)
+auto_max_kartya = 10                 # az automatikus mód jegyzetenként és körönként legfeljebb ennyit (a koordinátor döntése, 2026-10-08)
+suruseg = 0.5                        # tényes mondatonként ennyi kártya
+vak_kuszob = 0.5                     # vak önellenőrzés: a modell válasza a kártya válaszának tövei közül legalább ennyit fed
+duplikat_jaccard = 0.8               # karakter-3gram Jaccard a meglévő, a törölt és az elfogadott kártyák kérdéseire
+
+# CX-011: történeti beállítások. A `be` kulcsot a core nem olvassa: a kártya automatikus fogyasztója 80(a) óta feltétel nélkül nincs
+# regisztrálva (`core/automatika.alap_fogyasztok`), és a feladatsor az automatikus típust el is utasítja; a többi kulcs csak a mérőeszközöké.
+[kartya.automatika]
+be = false                           # történeti, nem olvasott: 80(a) AI csak gombra — a kártya nem indul magától, `true`-ra sem (CX-011); a „Kártyák ebből” kézi parancs marad
+kuszob = 0.2                         # „erősen módosult”: hosszal súlyozott mondathalmaz-Jaccard-távolság (C23b mérése: +30% új szakasz 0,23–0,26; 3 elgépelés 0; 1 mondat ≤ 0,08; a jóváhagyás: K305)
+uj_karakter = 600                    # vagy ennyi karakternyi új mondat
+csend_perc = 10
+min_hossz = 400                      # az új jegyzet legalább ennyi karakter (tisztított mondatok)
+koteg = 3                            # egy automatikus feladat legfeljebb ennyi jegyzetet visz
+
+# ------------------------------------------------------------------ közös forráshűség-kapu (C22a; docs/C22-TERV.md, docs/C22-KAPU-MERES.md)
+# Egy kapu a kvíznek, a kártyának, a vault-válasznak és az összefoglalónak (modulok/kapuk). A küszöböket a
+# `bin/mos kapu meres` méri a C18 `szoveg` halmazán (2026-10-04, arany v1-vázlat: pozitívok ≥ 91,8%, rontások makró 97,8%
+# elutasítva; docs/C22-KAPU-MERES.md); a `[kapuk.<fogyasztó>]` felülírhatja (ma a hossz-határokat).
+[kapuk]
+idezet_kuszob = 0.85                 # az idézet hasonlósága a forráshoz (1,0: szó szerint)
+tamogatas_kuszob = 0.5               # az állítás tartalmi töveinek aránya a bizonyítékban
+bizonyitek = "mondat+cim"            # idezet | mondat | mondat+cim: amihez az állítást mérjük
+kenyes = true                        # a számok és tulajdonnevek az állításban a bizonyítékban is állnak
+tagadas = "bevezetett"               # bevezetett | paritas | ki
+
+[kapuk.osszefoglalo]
+idezet_min_szo = 4
+idezet_max_szo = 45
+
+[kapuk.kartya]
+idezet_min_szo = 3
+idezet_max_szo = 60
+
+[kapuk.kviz]
+idezet_min_szo = 4
+idezet_max_szo = 60
+
+[kapuk.valasz]
+idezet_min_szo = 4
+idezet_max_szo = 120
+
+# ------------------------------------------------------------------ kvíz (C22a; docs/C22-TERV.md)
+# A kvíz a vaultban él (a legacy `ATTCHMNTS - quizes` formátuma, L47), az eredménye a {tanulas_db}-ben. A kérdésszám- és
+# kapuparaméterek a legacy `calibration.json` `kviz` blokkjából; az éles generálás és a mérés a C22b.
+[kviz]
+mappa = "ATTCHMNTS - quizes"         # a kvízjegyzetek lapos mappája; a felület `kviz/allando.ts` előtagja ennek tükre (teszt őrzi)
+kerdes_alap = 10
+kerdes_min = 3
+kerdes_max = 30
+tulgeneralas = 1.6                   # ennyiszer több jelöltet kérünk, mint ahány kérdés kell (a kapuk elvetnek)
+karakter_per_kerdes = 150
+darab_max_karakter = 2200
+szakasz_min_karakter = 20
+hivas_max_kerdes = 5
+token_per_kerdes = 230
+idezet_max_karakter = 420            # a visszajelzésben mutatott forrásmondat legfeljebb ennyi karakter
+duplikat_jaccard = 0.6
+kerulendo_max = 12
+engedett_jelek = ["✓", "✗", "▸"]     # a vault stílus-szabályának engedett szimbólumai
+
+# ------------------------------------------------------------------ összefoglalás (C26a; docs/C26-TERV.md)
+# Az összefoglaló kísérőjegyzet saját `ATTCHMNTS - …` mappában él (45. döntés, T058); minden állítása mellett forrás-link és a
+# jegyzet szó szerinti mondata áll (a forráshűség-kapu a `[kapuk.osszefoglalo]` profillal). Az éles generálás a C26b.
+[osszefoglalas]
+mappa = "ATTCHMNTS - summaries"      # a kísérőjegyzetek lapos mappája; a sémaosztály előtag-illesztéssel (C26b írja a vault-sema.json-ba)
+utotag = " — összefoglaló"           # a kísérőjegyzet neve: <forrás alapneve><utótag>.md
+darab_max_karakter = 2200            # egy modellhívás egysége
+szakasz_min_karakter = 20
+karakter_per_allitas = 350           # darabonként ennyi karakterenként kérünk egy állítást
+allitas_per_darab_max = 6
+allitas_min = 3                      # ennél kevesebb átment állításból nem készül összefoglaló
+allitas_max = 12
+allitas_max_szo = 45
+token_per_allitas = 140
+idezet_max_karakter = 420            # a jegyzetben mutatott forrásmondat legfeljebb ennyi karakter
+duplikat_jaccard = 0.6
+mappa_max_per_jegyzet = 3            # mappa-szint: egy jegyzetből legfeljebb ennyi állítás
+mappa_allitas_max = 10
+mappa_max_jegyzet = 40               # mappa-szint (C26b): legfeljebb ennyi jegyzet-összefoglaló kerül a modell elé
+mappa_max_uj = 4                     # mappa-szint (C26b): egy kérésben a hiányzó jegyzet-összefoglalókból ennyit készít el (+ a mappa-szint = legfeljebb 5 gépi írás)
+gyorsitotar_ora = 12                 # (C26b) a modell-válaszok gyorsítótára a {tmp} alatt: az elakadt írás újrapróbája nem hívja újra a modellt
+kontextus_max_karakter = 24000       # a külső AI-nak szánt kontextus-csomag mérete
+ablak_mp = 60                        # videó-szint: az átirat időablaka
+
+# Automatikus mód döntései (tiszta függvények; az ütemező a C23b, a memóriaőr a Kapu.admit). A küszöböt a C23b méri.
+[osszefoglalas.automatika]
+be = false                           # történeti, nem olvasott: 80(a) AI csak gombra — az összefoglaló nem indul magától, `true`-ra sem (CX-011); a kézi parancsok maradnak
+csend_perc = 10                      # ennyi perce nem változhatott a jegyzet
+kuszob = 0.3                         # „erősen módosult”: hosszal súlyozott mondathalmaz-Jaccard-távolság
+min_hossz = 400                      # az új jegyzet legalább ennyi karakter
+uj_karakter = 600                    # ennyi karakternyi új mondat már önmagában „erős” módosulás
+koteg = 2                            # (C26b) egy automatikus feladatban legfeljebb ennyi jegyzet
+ujraproba_ora = 1                    # (C26b) a beküldött, de nem befejezett jegyzet újrapróbája
+
+# ------------------------------------------------------------------ PDF-olvasó és lejátszó (C16)
+# A füzetlánc (C21; docs/C21-TERV.md, L36, L48): a figyelt mappák új fotói → olvasás (`fuzet_fejezet`) → választás
+# (`fuzet_valaszto`) → átirat (`ocr_kezi`) → egy gépi tétel/fotó (`mos-fuzet`). A `mappak` a `fuzet_bejovo` melletti további,
+# vaulton KÍVÜLI mappák (abszolút út, `~` vagy `{work}`-szerű kulcs; pl. a telefonról érkező fotók mappája); a vaulton belüli tilos.
+[fuzet]
+mappak = ["{work}/Notebooks - digitalized", "{work}/Rendezetlen"]   # K291 (2026-10-14): + a felhasználó rendezetlen mappája (csak a képeit olvassa, gombra); a legacy füzetláncának forrásmappája (a 522 kötött fotó innen jött; ma üres)
+cel_mappa = "ATTCHMNTS - photos"       # L36: a fotók helye a vaultban
+szakasz = "Füzet"                      # L36: a cél jegyzet `## Füzet` szakasza
+kepletek_max = 20                      # a képlet-callout legfeljebb ennyi képletet visz (az átirat $…$-aiból)
+max_foto = 40                          # egy kör legfeljebb ennyi fotót dolgoz fel (a többi a következő körre marad)
+figyelo_be = false                     # történeti kulcs, a core nem olvassa: 80(a), 80(h) óta a füzetmappa figyelője feltétel nélkül nem indul, `true`-ra sem (CX-011); a füzetlánc csak kifejezett indításra fut (`fuzet.aktivba`, `fuzet_lanc`)
+figyelo_indulasi_szunet_mp = 300       # történeti kulcs, a core nem olvassa (80(a), 80(h)): a figyelő nem indul; D8: az indulás után ennyi ideig nem nézett volna
+figyelo_periodus_mp = 60               # történeti kulcs, a core nem olvassa: a figyelt mappák stat-ellenőrzésének gyakorisága volt
+figyelo_nyugalom_mp = 30               # történeti kulcs, a core nem olvassa: a legutóbb módosult fotó ennyi ideig állt volna (a másolás befejeződjön)
+
+[media]
+video_mappa = "ATTCHMNTS - Videos"   # a videók lapos mappája (AI01 PB07, D6); a mellékletek a <Téma>/Média/ rétegben
+reteg_mappa = "Média"                # a melléklet-réteg mappaneve (felirat, info.json, forrásleíró jegyzet; L44)
+nyelvek = ["hu", "en"]               # a felirat nyelvi elsőbbsége, ha egy médiához több .vtt van
+kepek_max_mb = 500                   # C33 (T177): a kicsinyített képek gyorsítótára ({vault_kepek}) e fölött LRU-ban takarul
+kepek_max_nap = 90                   # az ennél régebben használt kicsinyített kép törlődik (az árva — forrás eltűnt — mindig)
+
+[pdf.tags]
+# A kiemelés-fájl (`<PDF> – kiemelések.md`) tárgy-címkéje a PDF legfelső mappájának első betűjéből; más betű: üres Tags.
+M = "Mathematics"
+F = "Physics"
+T = "History"
+I = "Literature"
+D = "Informatics"
+N = "Grammar"
+E = "English"
+
+# ------------------------------------------------------------------ modellgazda (C05)
+# A worker-folyamat az EGYETLEN betöltési pont (L22). A négy szabály (L22–L28) értékei a legacy
+# calibration.json `helyi_modell` blokkjából, változatlanul (L31: a 2.0-ban a forrás ez a fájl).
+# Felülírás: MANIFOLD_MODELL_KERET_GB (keret), MANIFOLD_MODELL_ZAR (a zár útja).
+[modellgazda]
+port = 0                             # 0 = szabad port; a worker a kézfogásban és a {run}/worker.pid-ben adja
+cache_gb = 0.25                      # mx.set_cache_limit — a csúcs ettől kicsi (a 2026-09-23-i 10 GB-os eset)
+prefill_lepes = 256                  # darabolt beolvasás (prefill_step_size)
+min_szabad_szazalek = 20             # memóriaőr: ez alatt kiürít és vár (kern.memorystatus_level)
+tartalek_szazalek = 5                # a visszatöltéshez a küszöb + tartalék + a modell saját része kell
+helyreallas_mp = 30                  # ennyi ideig folyamatosan legyen elég szabad memória
+zar = "{state}/modell.lock"          # gépszintű modellzár (L23)
+probalkozas = 3                      # GPU-memóriahibánál ennyiszer próbálja (L26)
+tetlen_urites_perc = 10              # ennyi tétlenség után a modell kiürül
+chat_idokorlat_mp = 900              # a chat-kérés válaszának felső korlátja (a kliens; a gondolkodó modell egy tétele ~600 s)
+chat_idokorlat_auto_mp = 7200        # … `auto` módban (a worker sorában a tétlenségre is várhat); utána egy óvatos újrapróba, ha a worker tétlen
+
+[keret]
+munka = 5.0     # alap: a felhasználó dolgozik mellette
+tavol = 9.0     # csak tartós tétlenségben (aktivitas.tavol_perc), vagy a CLI saját workerén (MANIFOLD_MODELL_KERET_GB, M3: a kérés keret-mezője csak szűkít)
+
+# Aktivitásjel (1. / 2. döntés): a felület jele (gépelés, egér → POST /api/aktivitas) és a macOS
+# rendszerszintű tétlensége (HIDIdleTime); a frissebb számít.
+[aktivitas]
+aktiv_mp = 120                       # ennyi időn belüli jel = aktív használat: automatikus munka nem tölt be modellt
+tavol_perc = 15                      # ennyi tétlenség után jár a távol-keret
+rendszer_tetlenseg = true            # a HIDIdleTime is számít (másik appban gépelés)
+
+# Hőfigyelés (ventilátor nélküli M4). C19 (2026-10-07, docs/MERES-2026-10-07.md): egy futáson belül a token/s az utolsó
+# negyedben az első negyed 0,86–1,21-szerese volt (valódi hőesés nem látszott), a küszöb marad; a hamis szüneteket (63 a K28-ban)
+# a feladatfüggő sebesség okozta, ezért az alapszint a modell × kontextus-méret osztály szerint áll (core/modell/ho.py).
+[ho]
+bekapcsolva = true
+min_token = 32                       # ennél rövidebb generálás nem minta
+alap_minta = 5                       # az alapszint az első ennyi hűvös minta mediánja
+ablak = 5                            # a tartós esés: az utolsó ennyi minta mediánja
+kuszob = 0.7                         # az alapszint ennyiszerese alatt → hűtési szünet
+hutes_mp = 120
+
+# Router (TERV 4.): feladat → az első kalibrált, keretbe férő modell (var/router.sqlite).
+# [router.feladat.<név>].tavolra_var: ha a jobb modell csak távol-keretbe fér, várjon-e rá (true),
+# vagy fusson a keretbe férő gyengébbel (false, alap).
+[router]
+feladatok = ["ocr_kezi", "ocr_keplet", "atirat", "szoveg", "kviz", "matek", "matek_ellenorzo",
+             "beagyazas", "rerank", "osztalyozas", "fuzet_fejezet", "fuzet_valaszto", "matek_cas", "kod", "grafikon",
+             "tema", "kotes", "kiegeszites", "kifejtes", "osszefoglal_kijeloles"]
+# C20b: a tema/kotes a médiatársítás két ítélete (modulok/eval/tema, modulok/eval/kotes). J4: az asszisztens két kijelölés-módja
+# (⌘J kijelöléssel: kifejtes, ⇧⌘J: osszefoglal_kijeloles) saját aranyhalmazzal; a folytatás a `kiegeszites`-en marad.
+
+[router.feladat.ocr_kezi]
+tavolra_var = true                   # a füzet ma a 9B+12B-vel 87/97 — a gyengébbel nem ír a vaultba
+
+# Mérés (`mos eval`, C18.1). Érvényességi kapu: ha a levágott, hurkos, üres vagy hibás tételek aránya
+# nagyobb az `ervenyes_kuszob`-nál, az értékelés `ervenyes: false`, és a `--rogzit` nem ír kalibrálható
+# sort (a kalibráció a 2026-10-03-i mérésből: NAPLO C18.1). A `[meres.feladat.<f>]` a feladat kérésének
+# alap-beállítása; a modell szakasza és annak `meres.<f>` alszakasza felülírja (kulcsok: gondolkodas,
+# gondolkodas_token, max_tokens_szorzo, repetition_penalty, repetition_context_size, temperature).
+[meres]
+ervenyes_kuszob = 0.10
+
+# A szoveg kérése (ossz 1500, kartya 1800 token) a promptjához szűk: 6–10 állítás egyenként ≤ 40 szavas
+# idézettel magyarul ~1500 token; a 2026-10-03-i mérésben a ministral3_3b 6/40 válasza hurok nélkül is
+# levágódott (C18.1). A determinisztikus generálás miatt változatlan kerettel az újramérés ugyanazt adná.
+[meres.feladat.szoveg]
+max_tokens_szorzo = 1.5
+
+# A kviz kérése (C22m; docs/C22M-TERV.md 3.): egy hívás 5 kérdést ad; a keretet a tétel adja (5 × [kviz] token_per_kerdes
+# + 150 = 1300, a lánc élesen ugyanennyit kér), így nincs szorzó. A gondolkodó modelleknél a gondolkodás ki: a kvízlánc
+# generáló hívása nem gondolkodik (a modell-szintű `gondolkodas` felülírhatja).
+[meres.feladat.kviz]
+gondolkodas = false
+
+# J4: az asszisztens kijelölés-módjai interaktívak (a felhasználó vár a válaszra): a gondolkodó modell sem gondolkodik; az éles
+# kérés ugyanezt a beállítást kapja (`kiegeszites_modell.general` → `eval.keres_beallitas`).
+[meres.feladat.kifejtes]
+gondolkodas = false
+
+[meres.feladat.osszefoglal_kijeloles]
+gondolkodas = false
+
+# Ismétlés-büntetés a hosszú kézírás-OCR-re (K31, 2026-10-03; NAPLO C18.1): a könyvtár 20 tokenes ablakával
+# 1.05–1.15 sem szüntette meg a sor-hurkot (qwen3_vl_4b 3/5); 64-es ablakkal 1.10 mellett 0/5 hurok (glm_ocr:
+# 3 → 1). Az 1.15 nem jobb, egy glm-választ angol leírásba vitt; az enyhébb érték a képletek valódi ismétlését
+# kevésbé torzítja. Az ocr_keplet (200 token, 0–1 hurok) büntetés nélkül marad.
+[meres.feladat.ocr_kezi]
+repetition_penalty = 1.10
+repetition_context_size = 64
+
+[meres.feladat.fuzet_fejezet]
+repetition_penalty = 1.10
+repetition_context_size = 64
+
+# A füzetlánc forgatás-próbája (C21; nem router-feladat, a lánc a `fuzet_fejezet` modelljének küldi): ugyanaz a kézírás-olvasás
+[meres.feladat.fuzet_forgatas]
+repetition_penalty = 1.10
+repetition_context_size = 64
+
+# ------------------------------------------------------------------ modellregiszter (L30, C05)
+# A config/letoltes.toml minden modellje (a tesztek ellenőrzik az egyezést: név, repo, minta, csucs_gb).
+# `futtato`: a betöltő háttere; `kepessegek`: szoveg | kep | hang | beagyazas | rerank;
+# `csucs_gb`: a keret-döntés alapja (csucs_mert = true: a legacy mérte, különben becslés, C04);
+# `konvertalas = true`: nem MLX-formátum, a betöltő nem tölti be, amíg nincs konvertálva.
+# `csalad` (C24b): a modellcsalád a modellkártya alapmodellje szerint (nem a névből); minden `szoveg`-képességű modellnél
+# kötelező (teszt őrzi). A „második vélemény” (`Router.valaszt(…, kizart_csalad=)`) ebből zár ki. Az OCR-modellek a nyelvi
+# dekóderük családját kapják (PaddleOCR-VL: ERNIE; a Qwen-alapú OCR-ek: qwen).
+
+[modellek.qwen35_9b]
+repo = "mlx-community/Qwen3.5-9B-MLX-4bit"
+revizio = "938d8919941c6e7efd3c7150eff7fe9d12afa631"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["ocr_kezi", "szoveg", "kviz", "matek", "matek_cas", "kod"]
+csucs_gb = 7.3
+gondolkodas = false                  # a Qwen3.5 sablonja a 4B/9B-nél alapból gondolkodna (C18.1)
+csucs_mert = true
+
+[modellek.qwen35_9b.meres.kviz]      # K135 előpróba (C19): 1/3 levágva 1300 tokenen, érdemi, bőbeszédű válasz
+max_tokens_szorzo = 1.6
+
+[modellek.gemma4_12b]
+repo = "mlx-community/gemma-4-12B-it-4bit"
+revizio = "73bcf09092aa277861d5a191b989b666f7f32e8f"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep", "hang"]
+csalad = "gemma"
+feladat = ["ocr_kezi", "szoveg", "kviz", "matek_ellenorzo", "atirat", "kod"]
+csucs_gb = 8.5                       # K80 (2026-10-07): a K28 mért mlx-csúcsa 8,405 (fuzet_fejezet, két kép); a legacyé 7,5 volt
+csucs_mert = true
+
+[modellek.gemma4_12b.meres_kihagy]
+ocr_kezi = "K32 előpróba (2026-10-04): a fekvő fotóknál LaTeX-sorokat hurkol (2/3 levágva az 1500 tokenes kereten, 1 hurok; 67%); ~4 óra lett volna az éles mérésben érvénytelen sorra. A fuzet_fejezet és a szoveg érvényes, azok maradnak. A kulcs törlése visszahozza; a hurok a modell viselkedése, a 1.10-es ismétlés-büntetéssel is előjön"
+
+[modellek.qwen3_vl_4b]
+repo ="mlx-community/Qwen3-VL-4B-Instruct-4bit"
+revizio = "2fd8dacbdb8f1e54b8c005f081ec5bf79c56376b"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["ocr_kezi", "ocr_keplet", "szoveg", "kviz", "kiegeszites", "kifejtes", "osszefoglal_kijeloles"]
+csucs_gb = 4.6                       # K80 (2026-10-07): a K28 mért mlx-csúcsa 4,533 (szoveg), 4,358 (fuzet_fejezet); a legacyé 4,0 volt
+csucs_mert = true
+
+[modellek.qwen3_vl_4b.meres_kihagy]
+ocr_kezi = "K28 (2026-10-06; elemzés és próba 2026-10-07, meres-ujra): 24/97 levágva, 12 hurok (25%); a csak levágott tételek is hurkok, csak 200 karakternél hosszabb blokk-periódussal. A 256 tokenes ismétlés-ablak (a 64 helyett) a 24 hibás tételből 17-et hagyott hibásnak, és a találatot sem javította (17 → 15): a blokk-ismétlés a modell viselkedése. A qwen35_4b (0,64) és a qwen35_9b (0,72) érvényes sora lefedi a feladatot; a fuzet_fejezet és a többi feladata marad. A kulcs törlése visszahozza"
+kviz = "K135 (C19, 2026-10-07): 7/20 levágva az 1300 tokenen (bőbeszédű magyarázat, a 4–5. kérdésnél szakad), a lezárt kérdések gyengék (a kapun alig megy át: pontszám 0,039, a sor leggyengébbje). A keretemelés az érvényességen segítene, a pontszámon nem: a router nem választaná. A kulcs törlése visszahozza"
+
+[modellek.whisper_turbo_mlx]
+repo = "mlx-community/whisper-large-v3-turbo"
+revizio = "a4aaeec0636e6fef84abdcbe3544cb2bf7e9f6fb"
+futtato = "mlx-whisper"
+kepessegek = ["hang"]
+feladat = ["atirat"]
+csucs_gb = 2.6
+
+[modellek.bge_m3]
+repo = "BAAI/bge-m3"
+revizio = "5617a9f61b028005a4858fdac845db406aefb181"
+futtato = "sentence-transformers"
+kepessegek = ["beagyazas"]
+feladat = ["beagyazas", "osztalyozas"]
+csucs_gb = 3.3
+minta = ["*.json", "pytorch_model.bin", "sentencepiece.bpe.model", "tokenizer*", "1_Pooling/*"]
+
+[modellek.paddleocr_vl_16]
+repo = "mlx-community/PaddleOCR-VL-1.6-4bit"
+revizio = "c8987b277bdd8aaec8bd265d154f391bd03ad165"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "ernie"
+# Az ocr_kezi a fekvő fotót két képként (bal és jobb oldal, `kozos/kep.py: oldalak`) küldi; a PaddleOCR-VL egy
+# képet fogad, a worker a bemenet feldolgozásán hibával áll meg ("index 1 is out of bounds for axis 0 with size
+# 1"): a K32 előpróbán 3/3, a 2026-10-03-i mérésben 90 tétel hibázott. Az ocr_keplet (egy kivágás) működik. Az
+# ocr_kezi-re csak a kérés egy képre alakítása hozhatná vissza (külön chat), ezért a lista nem tartalmazza.
+feladat = ["ocr_keplet"]
+csucs_gb = 1.6
+
+[modellek.glm_ocr]
+repo = "mlx-community/GLM-OCR-4bit"
+revizio = "97f587506984cc92fa69b2694b4128e53db6b081"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "glm"
+feladat = ["ocr_kezi", "ocr_keplet"]
+csucs_gb = 2.2
+
+[modellek.chandra_ocr2]
+repo = "1qh/chandra-ocr-2-4bit-mlx"
+revizio = "f2439e222c625376876e26564aeddde1a23cf0b7"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["ocr_kezi", "ocr_keplet"]
+csucs_gb = 4.1
+
+[modellek.chandra_ocr2.meres_kihagy]
+ocr_kezi = "K28 (2026-10-06; elemzés 2026-10-07, meres-ujra): 43/97 levágva az 1500 tokenes kereten, hurok nélkül: a modell natív kimenete HTML-elrendezés (data-bbox div-ek, angol alt képleírások), a tokenek fele jelölés. A levágott tételek ugyanúgy találnak (19/44), mint a tiszta tételek (19/53): a pontszám (0,39, a sor leggyengébbje; az ocr_keplet 0,18) nem a keret miatt alacsony, egy ≥ 3750 tokenes újramérés ~4 óra lenne a routerben esélytelen sorra. A kulcs törlése visszahozza"
+
+[modellek.parakeet_v3]
+repo = "mlx-community/parakeet-tdt-0.6b-v3"
+revizio = "ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15"
+futtato = "mlx-audio"
+kepessegek = ["hang"]
+feladat = ["atirat"]
+csucs_gb = 3.6
+
+[modellek.whisper_large_v3_hu]
+repo = "Trendency/whisper-large-v3-hu"
+revizio = "9635aaee7c4a83dc09ea2f420602eb550b44dc8e"
+futtato = "mlx-whisper"
+kepessegek = ["hang"]
+feladat = ["atirat"]
+csucs_gb = 4.2
+minta = ["*.safetensors", "*.json", "merges.txt", "vocab.json"]
+konvertalas = true
+
+[modellek.qwen35_4b]
+repo = "mlx-community/Qwen3.5-4B-MLX-4bit"
+revizio = "32f3e8ecf65426fc3306969496342d504bfa13f3"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["szoveg", "kviz", "matek", "ocr_kezi", "matek_cas", "kod", "kifejtes", "osszefoglal_kijeloles"]
+csucs_gb = 4.1
+gondolkodas = false                  # a Qwen3.5 sablonja a 4B/9B-nél alapból gondolkodna (C18.1)
+
+# K135 előpróba (C19, 2026-10-07): a kvíz-válasz 3/3 levágva az 1300 tokenes kereten — érdemi, csak bőbeszédű (hosszú
+# magyarázat, a 4–5. kérdésnél szakad); modell-szintű keretemelés, a többi kviz-sor ujjlenyomata nem változik.
+[modellek.qwen35_4b.meres.kviz]
+max_tokens_szorzo = 1.6
+
+# Feladatonkénti kihagyás: a modell a regiszterben és a többi feladatán marad, a mérési lista csak ezt hagyja ki.
+[modellek.qwen35_4b.meres_kihagy]
+fuzet_fejezet = "K32 előpróba (2026-10-04): az IMG_1301 fotón 540 tokenig prózát ír a kért TANTÁRGY/CÍMEK/TARTALOM/FEJEZET sorok helyett (1/3 levágva; a 360 → 540 keret nem segített); a prompt a legacyé. A kulcs törlése visszahozza"
+
+[modellek.qwen35_2b]
+repo ="mlx-community/Qwen3.5-2B-MLX-4bit"
+revizio = "93760be4f1f69842a46bc13dbdc0f19e291392a3"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["osztalyozas", "szoveg", "kviz"]
+csucs_gb = 2.7
+gondolkodas = false                  # a Qwen3.5 sablonja a 4B/9B-nél alapból gondolkodna (C18.1)
+meres_kihagy = "K32 előpróba (2026-10-04): a szoveg 1/3 tétele levágva a 2700 tokenes kereten, 2/3 formátumhiba; a kártya-kérés ugyanazt a mondatot ismétli a JSON-ban. Két próba (a keret emelése, 1.10-es ismétlés-büntetés 64-es ablakkal) sem segített; az osztalyozas-nak nincs aranyhalmaza, így a modellnek más mérhető feladata nincs. A kulcs törlése visszahozza"
+
+[modellek.qwen35_08b]
+repo = "mlx-community/Qwen3.5-0.8B-MLX-4bit"
+revizio = "5d894f8cc4ef3e6c88537bf3746ed262f549da6a"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["osztalyozas"]
+csucs_gb = 1.5
+gondolkodas = false                  # a Qwen3.5 sablonja a 4B/9B-nél alapból gondolkodna (C18.1)
+
+[modellek.gemma4_e4b]
+repo = "mlx-community/gemma-4-e4b-it-4bit"
+revizio = "475b9088d29754a3379866cf5aeb6b41acd313c2"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep", "hang"]
+csalad = "gemma"
+feladat = ["szoveg", "kviz", "atirat", "matek_ellenorzo"]
+csucs_gb = 6.5
+
+[modellek.gemma4_e4b.meres_kihagy]
+matek_ellenorzo = "K32 előpróba (2026-10-04): a 3 tételből kettőn rossz ítélet (a helyes levezetésre is HIBÁT mond), a harmadikon az 1200 és a 2400 tokenes kereten is ugyanott ismétli magát. A kulcs törlése visszahozza"
+
+[modellek.ministral3_8b_reasoning]
+repo ="mlx-community/Ministral-3-8B-Reasoning-2512-4bit"
+revizio = "0b6f067915514745478c14fd55698fbb2d2863cc"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "mistral"
+feladat = ["matek_ellenorzo", "matek", "matek_cas", "kod"]
+csucs_gb = 7.9                       # K80 (2026-10-07): a 13 200 tokenes matek_ellenorzo-kérés mért mlx-csúcsa 7,811 (becslés volt: 7,0)
+gondolkodo = true                    # mindig gondolkodik (a sablon nem kapcsolja ki)
+gondolkodas_token = 6000             # a feladat max_tokens-éhez adódik (C18.1; az előpróba igazítja)
+
+# K28 piros sora (3/20 levágva a 7200-as kereten; 2026-10-07, meres-ujra): a 3 tételből 12 000-es gondolkodási kerettel 2 lezárul
+# (9693 és 10 460 token), a harmadik (h03) 13 200-on is mérlegel; 1/20 = 5% a küszöb alatt. A matek és a grafikon kerete marad.
+[modellek.ministral3_8b_reasoning.meres.matek_ellenorzo]
+gondolkodas_token = 12000
+
+[modellek.ministral3_8b_reasoning.meres.kod]   # C36b: kattintásra válaszol; a kódmodellek közös gondolkodási kerete
+gondolkodas_token = 3000
+
+[modellek.qwen3_embedding_06b]
+repo = "Qwen/Qwen3-Embedding-0.6B"
+revizio = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+futtato = "sentence-transformers"
+kepessegek = ["beagyazas"]
+feladat = ["beagyazas", "osztalyozas"]
+csucs_gb = 2.1
+minta = ["model.safetensors", "*.json", "merges.txt", "vocab.json", "1_Pooling/*"]
+
+[modellek.qwen3_reranker_06b]
+repo = "Qwen/Qwen3-Reranker-0.6B"
+revizio = "e61197ed45024b0ed8a2d74b80b4d909f1255473"
+futtato = "transformers"
+kepessegek = ["rerank"]
+feladat = ["rerank"]
+csucs_gb = 2.1
+
+[modellek.bge_reranker_v2_m3]
+repo = "BAAI/bge-reranker-v2-m3"
+revizio = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+futtato = "sentence-transformers"
+kepessegek = ["rerank"]
+feladat = ["rerank"]
+csucs_gb = 3.3
+minta = ["model.safetensors", "*.json", "sentencepiece.bpe.model"]
+
+[modellek.dots_mocr]
+repo = "mlx-community/dots.mocr-4bit"
+revizio = "708b576de556b0cdba615ecd211db3b951ec09ef"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["ocr_kezi", "ocr_keplet"]
+csucs_gb = 4.7
+
+[modellek.dots_mocr.meres_kihagy]
+ocr_kezi = "K28 (2026-10-06; elemzés 2026-10-07, meres-ujra): 29/97 levágva, 15 hurok (30%); a hibás tételek a prompt visszhangja és hallucináció (\"# Magyar Németek\", \"First image: …\"), a csak levágottak is blokkszintű ismétlések: a dots.mocr saját elrendezés-promptot vár, az ismétlés-büntetés ezen nem segít. A tiszta tételeken is csak 0,56 (qwen35_4b 0,64, qwen35_9b 0,74). Az ocr_keplet sora (0,93) érvényes, marad. A kulcs törlése visszahozza"
+
+[modellek.nanonets_ocr2]
+repo = "mlx-community/Nanonets-OCR2-3B-4bit"
+revizio = "fe1396cbeb46cc71cba355907b5d6e11f3553f45"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "qwen"
+feladat = ["ocr_kezi", "ocr_keplet"]
+csucs_gb = 4.2
+
+[modellek.nanonets_ocr2.meres_kihagy]
+ocr_kezi = "K28 (2026-10-06): 10/97 levágva, 8 hurok (10,3%). Újramérés 2026-10-07 (meres-ujra) 256 tokenes ismétlés-ablakkal: a korábbi 10 hibás tételből 7 rendbe jött, de máshol új hurkok jöttek (levágott 11, hurok 10; 12%), a pontszám 0,40 → 0,38, a feladat leggyengébbje. A hurok a modell viselkedése; a feladatot a glm_ocr, a qwen35_4b és a qwen35_9b érvényes sora lefedi. Az ocr_keplet sora (0,92) érvényes, marad. A kulcs törlése visszahozza"
+
+[modellek.whisper_hu_turbo]
+repo = "sarpba/whisper-hu-large-v3-turbo-finetuned"
+revizio = "9d63092bd80b66729b86f2c6d044a964afb39f7f"
+futtato = "mlx-whisper"
+kepessegek = ["hang"]
+feladat = ["atirat"]
+csucs_gb = 2.6
+minta = ["model.safetensors", "*.json", "merges.txt", "vocab.json"]
+konvertalas = true
+
+[modellek.whisper_large_v3]
+repo = "mlx-community/whisper-large-v3-mlx"
+revizio = "49e6aa286ad60c14352c404340ded53710378a11"
+futtato = "mlx-whisper"
+kepessegek = ["hang"]
+feladat = ["atirat"]
+csucs_gb = 4.2
+
+[modellek.gemma4_e2b]
+repo = "mlx-community/gemma-4-e2b-it-4bit"
+revizio = "238767527555cb75a05732a84dff5d6ba0dd6809"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep", "hang"]
+csalad = "gemma"
+feladat = ["szoveg", "kviz", "osztalyozas", "atirat"]
+csucs_gb = 4.7
+
+[modellek.ministral3_3b]
+repo = "mlx-community/Ministral-3-3B-Instruct-2512-4bit"
+revizio = "a962dcb09eee4169c890e544c9eb938f1113fdee"
+futtato = "mlx-vlm"
+kepessegek = ["szoveg", "kep"]
+csalad = "mistral"
+feladat = ["szoveg", "kviz"]
+csucs_gb = 3.8
+
+[modellek.ministral3_3b.meres_kihagy]
+kviz = "K135 (C19, 2026-10-07): a teljes sor érvénytelen (8/20 levágva az 1300 tokenen, 1 szó-hurok: „egy szónak vagy mondatnak …”), a lezárt kérdések gyengék (tautologikus disztraktorok, a kérdés ismétlése a válaszban); pontszám 0,107, a sor leggyengébbje. Keretemeléssel csak hosszabb ismétlés lenne. A kulcs törlése visszahozza"
+
+[modellek.qwen3_embedding_4b]
+repo = "mlx-community/Qwen3-Embedding-4B-4bit-DWQ"
+revizio = "b5d88f1fe49b50d2ac01b4692ca2d387f14f9c72"
+futtato = "mlx-embeddings"
+kepessegek = ["beagyazas"]
+feladat = ["beagyazas"]
+csucs_gb = 3.3
+
+[modellek.embeddinggemma_300m]
+repo = "mlx-community/embeddinggemma-300m-8bit"
+revizio = "c8316c9e35cf8830541b04d315398c67faa6e497"
+futtato = "mlx-embeddings"
+kepessegek = ["beagyazas"]
+feladat = ["beagyazas"]
+csucs_gb = 1.2
+
+# ------------------------------------------------------------------ C36b: C++ kódmodellek (router-feladat: `kod`)
+# A C36-előkészítés (2026-10-03, D3) letöltött modelljei (docs/MODELL-JELOLTEK.md 8.); a revízió a helyi `refs/main` (C19, 63(c)),
+# a csúcs a jelölttábla becslése (1,1 × súly + 0,8 GB; a mérés igazítja). A gondolkodó modellek kerete a kattintásra válaszolás miatt
+# szűk (a C36 kérése: token-plafon); az előpróba igazítja. Az opcionális kör (`meres_kihagy`) a regiszterben van, a mérésből kimarad.
+[modellek.qwen3_4b_thinking_2507]
+repo = "mlx-community/Qwen3-4B-Thinking-2507-4bit"
+revizio = "627b019c66f22d4de0a641d289b41497651a55c9"
+futtato = "mlx-lm"
+kepessegek = ["szoveg"]
+csalad = "qwen"
+feladat = ["kod"]
+csucs_gb = 3.3
+gondolkodo = true                    # csak gondolkodó mód
+gondolkodas_token = 3000
+
+[modellek.nemotron3_nano_4b]
+repo = "mlx-community/NVIDIA-Nemotron-3-Nano-4B-4bit"
+revizio = "c4d79ba1901d99806ef757642a552acebb851a35"
+futtato = "mlx-lm"
+kepessegek = ["szoveg"]
+csalad = "nemotron"
+feladat = ["kod"]
+csucs_gb = 4.1                       # Audit 4 (2026-10-14): a K296 mért mlx-csúcsa 4,023 (kod); a letöltési becslés 3,3 volt
+gondolkodas = false                  # kapcsolható gondolkodás; kattintásra a gyors válasz (az előpróba dönthet másként)
+
+[modellek.ministral3_3b_reasoning]
+repo = "mlx-community/Ministral-3-3B-Reasoning-2512-4bit"
+revizio = "2cd2087aad40c28747f8ede17851de6035f12b16"
+futtato = "mlx-lm"
+kepessegek = ["szoveg"]
+csalad = "mistral"
+feladat = ["kod"]
+csucs_gb = 3.8
+gondolkodo = true
+gondolkodas_token = 3000
+
+[modellek.seed_coder_8b_reasoning]
+repo = "mlx-community/Seed-Coder-8B-Reasoning-bf16-mlx-4Bit"   # közösségi 4 bites konverzió
+revizio = "30dd89e431c95db36d839b55ba82e29f423b82d5"
+futtato = "mlx-lm"
+kepessegek = ["szoveg"]
+csalad = "seed"
+feladat = ["kod"]
+csucs_gb = 5.9
+gondolkodo = true
+gondolkodas_token = 3000
+
+[modellek.nemotron_nano_9b_v2]
+repo = "mlx-community/NVIDIA-Nemotron-Nano-9B-v2-4bits"
+revizio = "863ab70142ead81e0776777baf1225bfcea77816"
+futtato = "mlx-lm"
+kepessegek = ["szoveg"]
+csalad = "nemotron"
+feladat = ["kod"]
+csucs_gb = 6.3
+gondolkodas = false
+
+# ------------------------------------------------------------------ CAS-homokozó (C24a; modulok/homokozo)
+# A SymPy-számítás külön folyamatban, `sandbox-exec` profil alatt (fájl, hálózat, exec, fork tiltva). Az idő
+# feladatonként: puha korlát a gyermekben (`setitimer`), kemény a szülőben (SIGKILL a folyamatcsoportra). A memória:
+# a szülő `mintavetel_ms`-onként olvassa a gyermek phys_footprint-jét, és a korlát fölött SIGKILL (T059: a
+# `setrlimit` macOS-en ValueError). A mintavétel közti foglalás a korlátot túllépheti (mérve 2026-10-04: egy
+# 800 MB-os lista ~60 ms alatt jön létre). Alapállapotban a gyermek ~70 MB; egy indítás ~0,9 s (a SymPy importja).
+[homokozo]
+idokorlat_s = 10.0                   # egy feladat (kód vagy hívás) felső ideje
+lepes_idokorlat_s = 3.0              # a levezetés egy sorának megoldáshalmaza; túllépve: „nem eldönthető”
+memoria_mb = 768
+mintavetel_ms = 20
+kimenet_max_kb = 256                 # egy feladat válasza a protokoll-csatornán; fölötte ölés
+indulas_s = 20.0                     # a gyermek kézfogásáig (SymPy-import)
+max_ujrainditas = 50                 # egy hívásban ennyi leállított gyermek után a többi feladat homokozo_hiba
+
+# ------------------------------------------------------------------ videólánc (C20a; docs/C20-TERV.md)
+# A letöltés a yt-dlp-vel az egyetlen hálózati lépés (D3); a vaultba a C20a lánc nem ír (a bevitel a C20b `mozgat` művelete).
+[video]
+max_link = 20                        # egy feladatban legfeljebb ennyi link
+bejaras_max = 50                     # 84. d. (javasolt): egy oldal bejárásából ennél több videó letöltése külön megerősítést kér (UI: jelölő, CLI: --max N)
+bejaras_plafon = 200                 # … és megerősítéssel is legfeljebb ennyi (a bejáró crawl.max_items-e)
+eredeti_megtart = true               # a konvertálás előtti eredeti az archive/ alá költözik (nem törlünk); false: marad a staging-ben `.eredeti` néven
+konvertalas_crf = 20                 # a libx264 minőség (alacsonyabb = jobb); a remux (-c copy) nem kódol újra
+konvertalas_szal = 2                 # a kódolás szálai: az app használata mellett is használható marad
+nativ_video = ["h264", "hevc"]       # a WKWebView natív lejátszója ezeket a videókodekeket játssza (mp4/mov/m4v konténerben)
+nativ_hang = ["aac", "mp3", "alac"]
+vault_mappa = "ATTCHMNTS - Videos"   # C20b: a gépi írás `mozgat` videó-profiljának egyetlen célmappája (elhelyezes.ALAP_VIDEO_MAPPA)
+bizonytalan_tema = "ir"              # C20b (D1): a bizonytalan témájú videó is beíródik és visszavonható ("ir"); "kihagy": `nincs_tema` végállapot
+integralas_max = 50                  # C20b: egy bevitel-feladat legfeljebb ennyi staging-forrást dolgoz fel
+bejovo_max_gb = 20                   # C20b: egy behúzott videó legfeljebb ekkora (a feltöltés darabolva, POST /api/video/bejovo)
+
+# 84. döntés (javasolt kiegészítés, 2026-10-14): a bejárt videóoldal közvetlen videófájlja (`<a href="….mp4">`) a beágyazott lejátszó
+# helyett (modulok/ytdlp/kozvetlen.py). A minőség-jelölő a fájlnév egy szakasza (`lecture1-1080p.mp4`); a nyelvi útszakasz (`/es/`, `/pt/`)
+# az oldal nyelvétől (`<html lang>`) eltérve szinkron, kimarad. Megfelelő fájl nélkül a beágyazott lejátszó marad.
+[video.kozvetlen]
+be = true
+kiterjesztes = [".mp4", ".mov", ".m4v"]
+minoseg = ["1080p", "720p"]          # elsőbbség; egyik sincs → a beágyazott lejátszó
+kizar = ["hdr"]                      # ilyen jelölőjű változat nem választható (a HDR a WKWebView-ban és a konvertálásban gond)
+valtozat_minta = '[-_.](?:\d{3,4}p|[248]k|hdr|sdr)(?=[-_.]|$)'   # a fájlnév-törzsből lehúzva → az alapnév (a felirat és a diák párja)
+felirat = [".srt", ".vtt"]           # a videó saját (azonos alapnevű, az oldal nyelvén álló) felirata; a staging `video.<nyelv>.vtt`-je
+nyelv_szegmens = '^[a-z]{2}(?:[-_][a-z]{2})?$'                   # ilyen útszakasz nyelvet jelöl (`lang/en/`, `/es/`)
+alap_nyelv = "en"                    # ha az oldal nem mondja meg a nyelvét
+[grafikon]                           # C35a: a ```plot blokk CAS-jellemzői (POST /api/grafikon/elemzes; core/grafikon_api.py)
+elemzes_idokorlat_s = 30.0           # az alfolyamat (a homokozóval) egy kérésre; túllépve leáll, 503
+gyorsitotar_db = 256                 # kifejezés × ablak, LRU; a homokozó-hiba nem kerül bele
+varakozas_s = 20.0                   # A3-30: a homokozó zárára várakozás egy kérésre; túllépve 503 „foglalt” (a futás maga az `elemzes_idokorlat_s`)
+
+[matek]                              # C24b: a levezetés-ellenőrzés végpontja (POST /api/matek/levezetes; core/matek_api.py)
+levezetes_idokorlat_s = 90.0         # az alfolyamat (a homokozóval) egy kérésre; a sorok `lepes_idokorlat_s`-e ([homokozo]) ezen belül
+varakozas_s = 20.0                   # egyszerre egy alfolyamat; a zárra ennyit vár egy kérés, túllépve 503 „foglalt”
+
+# A ```plot automatikus beírása (C35b-mag; modulok/grafikon/automatika.py): tiszta döntések a C26a közös mértékével; az ütemező a C23b.
+# A tiltólista (`{state}/plot-tiltolista.json`) és a beírás-napló a `core/plot_allapot.py`-é; a vaultba semmi nem kerül.
+[grafikon.automatika]
+be = false                           # történeti, nem olvasott: 80(a) AI csak gombra — a grafikon-beírás nem indul magától, `true`-ra sem (CX-011); a „Grafikonok beírása ebbe a jegyzetbe” kézi parancs marad
+csend_perc = 10                      # ennyi perce nem változhatott a jegyzet
+kuszob = 0.3                         # „erősen módosult” (közös mérték: hosszal súlyozott mondathalmaz-Jaccard-távolság)
+min_hossz = 40                       # a jegyzet tisztított szövege legalább ennyi karakter
+uj_karakter = 600                    # ennyi karakternyi új mondat már önmagában „erős” módosulás
+max_jegyzet = 5                      # egy futásban legfeljebb ennyi jegyzet (az app használata mellett is könnyű marad)
+varakozas_mp = 5.0                   # nyitott, mentetlen jegyzetre ennyit vár a gépi írás, utána elhalasztja (következő futás)
+# C35b: a döntést a közös ütemező hozza (core/automatika.py, "grafikon" fogyasztó): max_jegyzet = egy feladat kötege.
+modell_ag = false                    # a modell-ág ÉLES írása a `grafikon` router-feladat kalibrált modelljével (a bizonytalan képletekre). Alapból
+                                     # hamis: addig, amíg az éles blokk-író prompt mérése (`bin/mos grafikon modell-meres`) 0 téves blokkot nem mutat
+                                     # (K331), a modell-ág kimenete csak próba; a koordinátor kapcsolja be a számok alapján
+ujraproba_ora = 1.0                  # a feldolgozatlanul maradt (modellre váró) jegyzet ennyi óra után újra sorra kerül
+
+# ------------------------------------------------------------------ Asszisztens (C30a; core/asszisztens/, core/higienia.py)
+# Modell nélküli mag: jegyzethigiénia-riport (háttérszál, aktív használat alatt szünetel), linkeletlen említések,
+# heti szokásminta-javaslat, elfogadási statisztika és küszöb. A hiányzó kulcs az alapot adja (`beallitasok.py`).
+[asszisztens]
+higienia_arva_canvas = true          # a canvas-ból érkező link „bejövő linknek” számít-e (K176: igen — a tantárgyi canvas szerkezeti kapcsolat; a havi napló-canvas jegyzetei az `X01 - Napló & To-Do/` előtaggal kizártak)
+higienia_arva_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]   # útelőtagok: nem árva-jelöltek
+higienia_arva_tulajdonsag_kizart = ["Canvas", "Source"]   # ezek a frontmatter-linkek nem jegyzet-kapcsolatok
+higienia_min_koz_mp = 60             # két teljes számítás között legalább ennyi idő
+higienia_tick_mp = 10                # a háttérszál ellenőrzési üteme
+higienia_uj_max = 20                 # a „Ma” oldalra kerülő új tételek száma
+emlites_min_hossz = 4                # ennél rövidebb jegyzetnév nem javasolható
+emlites_max = 50
+emlites_cim_alak = true              # K177: a szótár a címrészt is tartalmazza (az `NN - ` előtag és a ` — Feladattár` nélkül): a prózai „ciklusok” a `05 - Ciklusok`-ra egyezik
+emlites_cim_min_szo = 2              # címrész-egyezés bárhol ennyi (névelő nélküli) szótól; kevesebb szónál csak ugyanabban a tantárgy-mappában (az első útszegmens)…
+emlites_cim_egyszavas_max_db = 10    # …és csak ha a szót legfeljebb ennyi jegyzet tartalmazza (ritka a vaultban); mérés: tests/kezi/emlites_meres.py
+emlites_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]     # erre a jegyzetre nem javasol linket
+emlites_szotar_frissites_mp = 2      # a névszótár legfeljebb ennyi időnként épül újra
+emlites_hasonlosag_kuszob = 0.55     # C30b (K205 (b)): a linkjavaslat szűrője — a jegyzet és a cél C25c-hasonlósága (`POST /api/kereses/hasonlosag`) ennél kisebb → nincs javaslat; a küszöb-szorzóval nő (szigorúbb: ×1,5). Mérés: tests/kezi/hasonlosag_meres.py
+szokas_ablak_het = 8
+szokas_min_het = 4                   # ennyi hét kell az ablakból (a küszöb-szorzóval nő)
+szokas_min_perc = 20                 # ennyi aktív perc számít „tanult” napnak
+szokas_napszak = true                # C30b (K205 (a)): a hét napja × tantárgy mintát napszakkal egészíti ki (a `tr_aktiv_ora`-ból: „szerda este matek”)
+kuszob_ablak_nap = 30                # a döntések ablaka
+kuszob_min_db = 10                   # ennél kevesebb döntésből nincs következtetés
+kuszob_alacsony = 0.15               # ez alatti elfogadási arány → szigorúbb küszöb
+kuszob_nema_db = 20
+kuszob_nema = 0.05                   # ez alatti arány ennyi döntés után → a fajta nem javasol (az ablak kifutásával enged)
+kuszob_szigoru_szorzo = 1.5
+# J1: az önhangoló gyakoriság (core/asszisztens/hangolo.py): fajta × helyzet, kopó számlálók a {state}/asszisztens.json-ban
+hangolas_felezes_nap = 21.0          # a döntések súlya ennyi nap alatt feleződik
+hangolas_nema_db = 5                 # ennyi (súlyozott) döntés után…
+hangolas_nema_arany = 0.15           # …ez alatti elfogadási arány → a helyzet néma (a fajta egésze kétszer annyiból)
+# J3: a javaslat-kártya (core/asszisztens/mintatar.py), modell nélkül
+kartya_alap_mp = 90.0                # két kártya között legalább ennyi idő (a hangolás szorzójával)
+kartya_min_testver = 3               # a szerkezeti minta legalább ennyi testvérjegyzetből
+kartya_szerkezet_arany = 0.6         # a testvérek ekkora részében álló `##` szakasz hiánya javasolható
+kartya_muvelet_min_db = 3            # címke, sablon, link: ennyi ismétlés után tanult minta
+kartya_tartalom_kuszob = 0.75        # a kapcsolódó jegyzet hasonlósága (C25c vektortár) legalább ennyi
+kartya_elutasitott_nap = 30          # az elutasított javaslat ennyi napig nem tér vissza
+
+[asszisztens.kiegeszites]
+modell = false                     # CX-011: csak a kézzel elfogadott helyi minták; a kalibráció ezt nem kapcsolja be (Audit 4, 2026-10-14: a ⌘J
+                                   # kifejtés qwen35_4b 0,917 és a ⇧⌘J összefoglalás qwen3_vl_4b 0,894 kalibrált — `true`-ra állítva élesen futnak;
+                                   # a `folytat` kalibrált sor nélkül, kiegeszites 0,50, nem fut). J2: true →
+                                   # a `kiegeszites` router-feladat kalibrált, munkakeretbe (5 GB) férő modellje fut a workeren át
+                                   # (a `folytat` kérése a mért kérés; a kifejtés és az összefoglalás „próba”, D9)
+proba_modell = ""                  # J2: kalibrált sor nélkül ez a regiszterbeli modell futhat, mindig „próba” jelöléssel (üres: nincs)
+
+[asszisztens.tantargy_nevek]         # a `tr_aktiv` tantárgy-címkéi (a `[pdf.tags]` szótára) → a javaslat szövegében látszó név
+History = "történelem"
+Literature = "irodalom"
+Mathematics = "matematika"
+Physics = "fizika"
+Informatics = "informatika"
+Grammar = "nyelvtan"
+English = "angol"
+
+# ------------------------------------------------------------------ C++ munkafelület (C36a; modulok/cpp, modulok/homokozo/program.py)
+# A fordítás és a futtatás külön `sandbox-exec` profil alatt fut (profil_fordit.sb, profil_futtat.sb): a lefordított program
+# a homokozón kívül sehol nem fut. Az idő a szülőben kemény korlát (SIGKILL a folyamatcsoportra) + RLIMIT_CPU háló; a memóriát
+# a szülő `mintavetel_ms`-onként olvassa (phys_footprint; T059: `setrlimit` macOS-en nem korlátoz).
+[cpp]
+std = "c++17"
+gyors = ["-O2", "-Wall", "-Wextra"]
+# A hibakereső mód: az -O1 a sanitizerek ajánlott szintje; az első hiba megállítja a programot (-fno-sanitize-recover).
+hibakereso = ["-O1", "-g", "-fno-omit-frame-pointer", "-fsanitize=address,undefined", "-fno-sanitize-recover=all", "-Wall", "-Wextra"]
+linker = "lld"                       # csak "lld" (az LLVM saját ld64.lld-je) él; a régi "rendszer" a fordító-profil alatt nem futhat (az exec csak az LLVM bin/-ből engedett), K168: figyelmen kívül marad, a doctor jelzi
+fordit_idokorlat_s = 30.0
+fordit_memoria_mb = 2048
+fordit_munka_max_mb = 256             # a fordítás munka mappájába (forrás, objektum, bináris, ideiglenes) írható adat; egy fájlra RLIMIT_FSIZE is
+fordit_munka_max_fajl = 1024
+teszt_idokorlat_s = 2.0              # tesztenként, ha a `teszt` blokk nem ad sajátot
+teszt_idokorlat_max_s = 10.0         # a `teszt` blokk idokorlat-ja ennél nem lehet több
+hibakereso_idoszorzo = 3.0           # a sanitizeres futás lassabb: az időkorlát ennyiszeres
+memoria_mb = 256                     # egy teszt csúcs-memóriája (a `teszt` blokk `--- memoria` szakasza felülírhatja)
+teszt_memoria_max_mb = 1024          # a `--- memoria` szakasz ennél nem lehet több (C36a2)
+lebego_eps = 1e-6                    # a `--- osszevetes` `lebego` módjának alap-tűrése (C36a2)
+hibakereso_memoria_mb = 1024         # az ASan árnyékmemóriája miatt
+kimenet_max_kb = 1024                # a stdout felső határa; fölötte ölés
+stderr_max_kb = 64
+munka_max_mb = 16                    # a program saját ideiglenes mappájába írható adat felső határa
+munka_max_fajl = 256
+mintavetel_ms = 20
+formazas = "{BasedOnStyle: LLVM, IndentWidth: 4, ColumnLimit: 100, AllowShortFunctionsOnASingleLine: Inline}"
+sablon = "C++ feladat"                # ha a sablonmappában van ilyen nevű .md, az a feladat-jegyzet váza (a beépített helyett)

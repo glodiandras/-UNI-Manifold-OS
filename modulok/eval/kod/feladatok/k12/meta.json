@@ -1,0 +1,12 @@
+{
+ "id": "k12",
+ "cim": "A leggyakoribb betű",
+ "tema": "szam_sztring",
+ "nehezseg": 1,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "feltetel", "sor": 11, "eredeti": "        if (db[i] > db[legjobb]) legjobb = i;", "csere": "        if (db[i] >= db[legjobb]) legjobb = i;", "magyarazat": "A >= miatt döntetlennél a későbbi betűt választja, pedig az ábécében előbb állót kell."},
+  {"id": "h2", "fajta": "index", "sor": 10, "eredeti": "    for (int i = 1; i < 26; i++) {", "csere": "    for (int i = 1; i < 25; i++) {", "magyarazat": "A ciklus a z betűt kihagyja, így ha az a leggyakoribb, rossz választ ad."},
+  {"id": "h3", "fajta": "sorrend", "sor": 13, "eredeti": "    cout << char('a' + legjobb) << \" \" << db[legjobb] << \"\\n\";", "csere": "    cout << db[legjobb] << \" \" << char('a' + legjobb) << \"\\n\";", "magyarazat": "A kiírás sorrendje fordított: előbb a betű, utána a szám kell."}
+ ]
+}

@@ -1,0 +1,61 @@
+# --- Python -----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.venv.nosync/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Secrets (see README "Security"): never commit any of these --------------
+# The pipeline itself never creates them; the patterns exist so that a manually
+# added credential file cannot be committed by accident.
+*.env
+.env*
+*.netrc
+.netrc
+cookies.txt
+*cookies*.txt
+*.pem
+*.key
+secrets.yaml
+config/local.yaml
+config/*.local.yaml
+
+# --- Downloaded media -------------------------------------------------------
+# Markdown / JSON inside staging/ IS tracked on purpose: that is the payload a
+# later Claude instance reads. Only the heavy media files are excluded.
+staging/**/*.mp4
+staging/**/*.mkv
+staging/**/*.webm
+staging/**/*.m4v
+staging/**/*.mov
+staging/**/*.avi
+staging/**/*.flv
+staging/**/*.m4a
+staging/**/*.mp3
+staging/**/*.opus
+staging/**/*.wav
+staging/**/*.part
+staging/**/*.ytdl
+staging/**/*.temp
+staging/**/*.eredeti
+staging/**/*.mts
+staging/**/*.mpg
+staging/**/*.wmv
+staging/**/*.aiff
+
+# --- Runtime state ----------------------------------------------------------
+logs/*.log
+logs/*.jsonl
+archive/
+
+# --- macOS ------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+Icon?
+._*

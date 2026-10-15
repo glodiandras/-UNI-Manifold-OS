@@ -1,0 +1,22 @@
+In file included from hiba.cpp:2:
+fej.h: In function 'int g()':
+fej.h:1:19: error: expected ';' before '}' token
+    1 | int g() { return 1 }
+      |                   ^~
+      |                   ;
+hiba.cpp: In function 'int main()':
+hiba.cpp:9:5: error: expected ',' or ';' before 'int'
+    9 |     int nem_hasznalt;
+      |     ^~~
+hiba.cpp:10:13: error: 'y' was not declared in this scope
+   10 |     cout << y << endl;
+      |             ^
+hiba.cpp:11:6: error: too few arguments to function 'int f(int, int)'
+   11 |     f(1);
+      |     ~^~~
+hiba.cpp:5:5: note: declared here
+    5 | int f(int a, int b) { return a + b; }
+      |     ^
+hiba.cpp:8:9: warning: unused variable 'x' [-Wunused-variable]
+    8 |     int x = 3
+      |         ^

@@ -1,0 +1,12 @@
+{
+ "id": "k08",
+ "cim": "Hátizsák",
+ "tema": "rekurzio_dp",
+ "nehezseg": 3,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "sorrend", "sor": 12, "eredeti": "        for (int j = W; j >= w; j--) {", "csere": "        for (int j = w; j <= W; j++) {", "magyarazat": "Növekvő irányú bejárásnál ugyanaz a tárgy többször is bekerülhet, pedig mindegyikből csak egy van; csökkenő irány kell."},
+  {"id": "h2", "fajta": "alapeset", "sor": 7, "eredeti": "    vector<long long> dp(W + 1, 0);", "csere": "    vector<long long> dp(W + 1, -1);", "magyarazat": "Az alapeset (üres hátizsák) értéke 0 lenne; a -1 kezdőérték minden összeget eggyel elront."},
+  {"id": "h3", "fajta": "index", "sor": 16, "eredeti": "    cout << dp[W] << \"\\n\";", "csere": "    cout << dp[W - 1] << \"\\n\";", "magyarazat": "A W - 1 kapacitás eredményét írja ki, pedig W összsúly fér a hátizsákba."}
+ ]
+}

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "multimedia-source-pipeline"
+version = "0.1.0"
+description = "AI-ready multimedia source ingestion pipeline (video -> metadata -> transcript -> Obsidian-compatible source notes)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+keywords = ["yt-dlp", "obsidian", "transcript", "source-pipeline", "staging"]
+
+dependencies = [
+    "yt-dlp>=2024.1.1",
+    "PyYAML>=6.0",
+    # python.org macOS builds ship without a CA bundle, which makes every HTTPS
+    # request fail with CERTIFICATE_VERIFY_FAILED. yt-dlp uses certifi when it
+    # is importable, so this is what makes the pipeline work out of the box.
+    "certifi>=2024.2.2",
+    # Static FFmpeg binary inside the venv - no system-wide install needed.
+    # Without FFmpeg only pre-muxed (~360p) formats could be downloaded.
+    "imageio-ffmpeg>=0.5",
+    # YouTube player-challenge ("n") solver scripts. Needs a JS runtime
+    # (node or deno) on PATH; without it YouTube serves 360p only.
+    "yt-dlp-ejs>=0.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+# Local speech-to-text backends are optional on purpose: the pipeline must stay
+# usable (with transcript_status: pending) when none of them is installed.
+faster-whisper = [
+    "faster-whisper>=1.0",
+]
+# Apple Silicon only: Whisper on the GPU through MLX. Fastest and most accurate
+# local option here, and the default when it is installed.
+mlx = [
+    "mlx-whisper>=0.4",
+]
+
+[project.scripts]
+msp-download = "msp.cli.download:main"
+msp-inspect = "msp.cli.inspect:main"
+msp-validate = "msp.cli.validate:main"
+msp-transcribe = "msp.cli.transcribe:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/msp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"

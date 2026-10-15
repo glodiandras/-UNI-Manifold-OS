@@ -1,0 +1,113 @@
+{
+  "verzio": "cx-1",
+  "allapot": "vazlat",
+  "tetel": [
+    {
+      "id": "01",
+      "elotte": "A derékszögű háromszög befogói a és b, átfogója c. A Pitagorasz-tétel szerint ",
+      "utana": "",
+      "elfogadhato": [
+        "a² + b² = c²",
+        "a^2 + b^2 = c^2"
+      ]
+    },
+    {
+      "id": "02",
+      "elotte": "A víz kémiai képlete ",
+      "utana": ".",
+      "elfogadhato": [
+        "H2O",
+        "H₂O"
+      ]
+    },
+    {
+      "id": "03",
+      "elotte": "Az egységnyi idő alatt megtett út az átlagos sebesség. Képlete: ",
+      "utana": "",
+      "elfogadhato": [
+        "v=s/t",
+        "s/t",
+        "s / t",
+        "\\frac{s}{t}"
+      ]
+    },
+    {
+      "id": "04",
+      "elotte": "A háromszög belső szögeinek összege ",
+      "utana": ".",
+      "elfogadhato": [
+        "180 fok"
+      ]
+    },
+    {
+      "id": "05",
+      "elotte": "A fotoszintézis során a növények fényenergiából ",
+      "utana": " energiát állítanak elő.",
+      "elfogadhato": [
+        "kémiai"
+      ]
+    },
+    {
+      "id": "06",
+      "elotte": "A magyar államalapítás Szent ",
+      "utana": " királyhoz kötődik.",
+      "elfogadhato": [
+        "István"
+      ]
+    },
+    {
+      "id": "07",
+      "elotte": "Az egyenes arányosság grafikonja az origón átmenő ",
+      "utana": ".",
+      "elfogadhato": [
+        "egyenes"
+      ]
+    },
+    {
+      "id": "08",
+      "elotte": "Newton második törvénye: F = ",
+      "utana": ".",
+      "elfogadhato": [
+        "m · a",
+        "m*a",
+        "ma",
+        "m a",
+        "m × a",
+        "m \\cdot a"
+      ]
+    },
+    {
+      "id": "09",
+      "elotte": "A szabályos hatszögnek ",
+      "utana": " egyenlő hosszúságú oldala van.",
+      "elfogadhato": [
+        "hat",
+        "6"
+      ]
+    },
+    {
+      "id": "10",
+      "elotte": "A sejt örökítőanyagát a dezoxiribonukleinsav, röviden ",
+      "utana": " hordozza.",
+      "elfogadhato": [
+        "DNS"
+      ]
+    },
+    {
+      "id": "11",
+      "elotte": "A logaritmusra igaz: log_a(a) = ",
+      "utana": ".",
+      "elfogadhato": [
+        "1"
+      ]
+    },
+    {
+      "id": "12",
+      "elotte": "A kovalens kötésben az atomok közös ",
+      "utana": " alakítanak ki.",
+      "elfogadhato": [
+        "elektronpár"
+      ]
+    }
+  ]
+}

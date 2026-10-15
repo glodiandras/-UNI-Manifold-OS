@@ -1,0 +1,291 @@
+#!/usr/bin/env bash
+# Manifold-OS 2.0 belépési pont. A saját helyéből számol, így az SSD bármely csatolási pontján működik.
+# Interpreter: $MOS_PYTHON → var/venv → runtime/python. A rendszer Pythonja SOHA (PATH-fallback nincs).
+set -euo pipefail
+
+src="${BASH_SOURCE[0]}"
+while [ -h "$src" ]; do
+  dir="$(cd -P "$(dirname "$src")" && pwd)"
+  src="$(readlink "$src")"
+  [[ "$src" != /* ]] && src="$dir/$src"
+done
+MOS_HOME="$(cd -P "$(dirname "$src")/.." && pwd)"
+export MOS_ROOT="$MOS_HOME"
+RT="$MOS_HOME/runtime"
+
+# Munkafa-mód (T002, 2. audit): git worktree-ben a `.git` fájl, nem mappa. Az eszköztár (var/venv, runtime) a fő
+# checkoutból jöhet (csak olvasva), az ÁLLAPOT és a belső lemezes mentés a munkafa SAJÁT var/-jában él. Egy symlinkelt
+# var/ a valódi run/state/index/pos.sqlite-ot adná át egy félkész kódnak, ezért hiba.
+MUNKAFA_FO=""
+if [ -f "$MOS_HOME/.git" ]; then
+  export MOS_MUNKAFA=1
+  if [ -h "$MOS_HOME/var" ]; then
+    echo "HIBA: munkafa-mód: a var/ symlink ($(readlink "$MOS_HOME/var")): az ott indított core a valódi állapotot használná. Töröld; a munkafának saját var/ kell (az eszköztár a fő checkoutból jön)." >&2
+    exit 1
+  fi
+  export MOS_BACKUP="${MOS_BACKUP:-$MOS_HOME/var/backup}"
+  fo="$(cd "$MOS_HOME" && cd "$(git rev-parse --git-common-dir 2>/dev/null)/.." 2>/dev/null && pwd -P)" || fo=""
+  if [ -n "$fo" ] && [ "$fo" != "$MOS_HOME" ]; then
+    MUNKAFA_FO="$fo"
+    [ -e "$MOS_HOME/runtime" ] || { [ -d "$fo/runtime" ] && RT="$fo/runtime"; } || true
+  fi
+fi
+
+# Minden gyorsítótár és ideiglenes fájl az SSD-n; a ~/.cache és a ~/Library/Caches érintetlen.
+export HF_HOME="${HF_HOME:-$MOS_HOME/var/models}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+export PYTHONDONTWRITEBYTECODE=1
+export XDG_CACHE_HOME="$MOS_HOME/var/cache"
+export UV_CACHE_DIR="$MOS_HOME/var/cache/uv"
+export PIP_CACHE_DIR="$MOS_HOME/var/cache/pip"
+export UV_PYTHON_INSTALL_DIR="$RT/python-uv"
+export UV_PYTHON_DOWNLOADS=never
+export UV_NO_CONFIG=1
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+export TMPDIR="$MOS_HOME/var/tmp"
+export SSL_CERT_FILE="${SSL_CERT_FILE:-/etc/ssl/cert.pem}"
+# Hordozható git (C34, docs/KIADAS.md): ha a runtime/git/bin/git telepítve van (D3-jóváhagyás után), a rendszer gitje elé kerül a PATH-on,
+# így a core, a mentés és minden gyermekfolyamat azt használja; nélküle a rendszer-git (Xcode Command Line Tools) marad.
+if [ -x "$RT/git/bin/git" ]; then export PATH="$RT/git/bin:$PATH"; fi
+export PYTHONPATH="$MOS_HOME${PYTHONPATH:+:$PYTHONPATH}"
+mkdir -p "$MOS_HOME/var/tmp" "$MOS_HOME/var/cache" 2>/dev/null || true
+# L50 (C34, T190): a var/ Spotlight-kizárt — a jelölőfájlt a bin/mos hozza létre (a doctor ellenőrzi); a munkafa saját var/-ja is
+[ -e "$MOS_HOME/var/.metadata_never_index" ] || : > "$MOS_HOME/var/.metadata_never_index" 2>/dev/null || true
+
+hiba() { echo "HIBA: $*" >&2; exit 1; }
+
+python_kereses() {
+  local cand
+  for cand in "${MOS_PYTHON:-}" "$MOS_HOME/var/venv/bin/python" "${MUNKAFA_FO:+$MUNKAFA_FO/var/venv/bin/python}" "$RT/python/bin/python3"; do
+    if [ -n "$cand" ] && [ -x "$cand" ]; then echo "$cand"; return 0; fi
+  done
+  hiba "nincs Python. Futtasd: bin/mos runtime fetch, majd bin/mos runtime install"
+}
+
+sha256_of() { shasum -a 256 "$1" | cut -d' ' -f1; }
+
+# D3 (C34, T188): a pin URL-jének eredeti fájlnevén a runtime/dl alá (a pin váltása más fájlnév, így a régi fájl nem keveredhet
+# az újjal), előbb `.resz` néven; SHA-hibánál a fájl törlődik (sem a sérült, sem a részleges nem marad az újrapróbához).
+# Eredmény: a LETOLTOTT változóban az érvényes fájl útja (a `hiba` az egész szkriptet leállítja, ezért nem `$(…)`).
+letolt() { # url sha256
+  local url="$1" sha="$2" nev f
+  nev="${url##*/}"; nev="${nev%%\?*}"
+  [ -n "$nev" ] || hiba "a pin URL-jének nincs fájlneve: $url"
+  mkdir -p "$RT/dl"
+  f="$RT/dl/$nev"
+  if [ -f "$f" ] && [ "$(sha256_of "$f")" != "$sha" ]; then
+    echo "a(z) $nev sha256-ja eltér a pintől (sérült, részleges vagy másik verzió): törlöm, újra letöltöm" >&2
+    rm -f "$f"
+  fi
+  if [ ! -f "$f" ]; then
+    rm -f "$f.resz"
+    curl -fsSL --retry 2 --connect-timeout 20 -o "$f.resz" "$url" || { rm -f "$f.resz"; hiba "a letöltés sikertelen: $url"; }
+    if [ "$(sha256_of "$f.resz")" != "$sha" ]; then rm -f "$f.resz"; hiba "SHA256 eltér: $nev (a letöltött fájl törölve)"; fi
+    mv "$f.resz" "$f"
+  fi
+  LETOLTOTT="$f"
+}
+
+# A parancs kimenetében szerepel-e a pinelt verzió (pontos számcsoport: a 3.14.7 nem egyezik a 3.14.70-nel).
+verzio_egyezik() { # varhato parancs…
+  local varhato="$1" ki; shift
+  ki="$("$@" 2>&1)" || return 1
+  printf '%s\n' "$ki" | grep -Eq "(^|[^0-9.])${varhato//./\\.}([^0-9.]|$)"
+}
+
+# A régi kibontott verzió félretétele: CLAUDE.md §4 — a runtime/ saját tartalma sem törlődik némán, az elavult a `regi/` alá megy.
+regi_felre() { # út
+  local d="$1" cel
+  [ -e "$d" ] || return 0
+  cel="$RT/regi/$(basename "$d")-$(date +%Y%m%d-%H%M%S)-$$"
+  mkdir -p "$RT/regi"; mv "$d" "$cel"
+  echo "a régi $(basename "$d") félretéve: $cel (törölhető, ha a venv újraépült: bin/mos runtime install)" >&2
+}
+
+# Egy tar.gz kibontása a $RT/<nev> alá a pinelt verzióra: ha a jelenlegi nem a pinelt, az új előbb ideiglenes mappába, a verzió
+# ellenőrzése után cserél (a pin-váltás tehát valóban lecseréli, a hibás archívum a működő telepítést nem rontja el).
+kibont_ha_kell() { # nev archivum varhato-verzio ellenorzo-relativ-parancs [verzio-kapcsolo]
+  local nev="$1" arc="$2" ver="$3" bin="$4" kapcs="${5:---version}" uj="$RT/.$1.uj"
+  if verzio_egyezik "$ver" "$RT/$nev/$bin" "$kapcs"; then return 0; fi
+  rm -rf "$uj"; mkdir -p "$uj"
+  tar xzf "$arc" -C "$uj" --strip-components=1 || { rm -rf "$uj"; hiba "a(z) $(basename "$arc") nem bontható ki"; }
+  verzio_egyezik "$ver" "$uj/$bin" "$kapcs" || { rm -rf "$uj"; hiba "a kibontott $nev nem a pinelt $ver ($(basename "$arc"))"; }
+  regi_felre "$RT/$nev"
+  mv "$uj" "$RT/$nev"
+  echo "$nev $ver kibontva: $RT/$nev"
+}
+
+uv_telepit() { # archivum varhato-verzio
+  local arc="$1" ver="$2" uj="$RT/.uv.uj"
+  if verzio_egyezik "$ver" "$RT/uv" --version; then return 0; fi
+  rm -rf "$uj"; mkdir -p "$uj"
+  tar xzf "$arc" -C "$uj" --strip-components=1 || { rm -rf "$uj"; hiba "a(z) $(basename "$arc") nem bontható ki"; }
+  verzio_egyezik "$ver" "$uj/uv" --version || { rm -rf "$uj"; hiba "a kibontott uv nem a pinelt $ver"; }
+  regi_felre "$RT/uv"; regi_felre "$RT/uvx"
+  cp "$uj/uv" "$uj/uvx" "$RT/" && rm -rf "$uj"
+  echo "uv $ver telepítve: $RT/uv"
+}
+
+# A videólánc ffmpeg-je (C20a, D3): a wheel sha256-ja és a kicsomagolt bináris sha256-ja is egyezzen a rögzítettel.
+ffmpeg_telepit() {
+  local cel="$RT/ffmpeg/ffmpeg"
+  mkdir -p "$RT/ffmpeg"
+  if [ -x "$cel" ] && [ "$(sha256_of "$cel")" = "$FFMPEG_BIN_SHA256" ]; then
+    echo "ffmpeg rendben: $cel"; return 0
+  fi
+  letolt "$FFMPEG_URL" "$FFMPEG_SHA256"
+  "$RT/python/bin/python3" -B -c '
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as z, open(sys.argv[3], "wb") as ki:
+    ki.write(z.read(sys.argv[2]))
+' "$LETOLTOTT" "$FFMPEG_MEMBER" "$cel.tmp"
+  [ "$(sha256_of "$cel.tmp")" = "$FFMPEG_BIN_SHA256" ] || { rm -f "$cel.tmp"; hiba "SHA256 eltér: a kicsomagolt ffmpeg"; }
+  chmod 755 "$cel.tmp" && mv "$cel.tmp" "$cel"
+  echo "ffmpeg ${FFMPEG_VERSION} kicsomagolva: $cel"
+}
+
+runtime_fetch() {
+  # shellcheck disable=SC1091
+  . "$MOS_HOME/config/runtime-pins.env"
+  if [ "${1:-}" = ffmpeg ]; then ffmpeg_telepit; return; fi      # csak a videólánc ffmpeg-je (C20a)
+  mkdir -p "$RT/dl"
+  letolt "$UV_URL" "$UV_SHA256"; local uv_f="$LETOLTOTT"
+  letolt "$PY_URL" "$PY_SHA256"; local py_f="$LETOLTOTT"
+  letolt "$NODE_URL" "$NODE_SHA256"; local node_f="$LETOLTOTT"
+  uv_telepit "$uv_f" "$UV_VERSION"
+  kibont_ha_kell python "$py_f" "$PY_VERSION" bin/python3
+  kibont_ha_kell node "$node_f" "$NODE_VERSION" bin/node
+  mkdir -p "$RT/wheels"
+  "$RT/python/bin/python3" -B -m pip download --no-deps --only-binary=:all: --require-hashes \
+    -r "$MOS_HOME/config/requirements.lock" -d "$RT/wheels"
+  ffmpeg_telepit
+  echo "kész: a futtatókörnyezet letöltve ($RT); utána: bin/mos runtime install"
+}
+
+runtime_install() {
+  [ -x "$RT/uv" ] && [ -x "$RT/python/bin/python3" ] || hiba "hiányzik a runtime (bin/mos runtime fetch)"
+  # A var/venv a 2.0 saját, újraépíthető mappája, de a régi csak AKKOR törlődik, ha az új felépült: előbb félreteszi, és ha az
+  # offline építés bukik, a hibás újat eldobja, a régit visszateszi (a venv shebangjai a végleges útra épülnek, ezért helyben épül).
+  local venv="$MOS_HOME/var/venv" regi="$MOS_HOME/var/venv.regi.$$"
+  [ -e "$venv" ] && mv "$venv" "$regi"
+  if ! "$RT/uv" venv "$venv" --python "$RT/python/bin/python3" --no-config --offline \
+     || ! "$RT/uv" pip install --python "$venv/bin/python" --offline --no-index \
+          --find-links "$RT/wheels" --require-hashes --no-config -r "$MOS_HOME/config/requirements.lock"; then
+    rm -rf "$venv"
+    if [ -e "$regi" ]; then mv "$regi" "$venv"; hiba "a venv építése sikertelen; a korábbi var/venv visszakerült"; fi
+    hiba "a venv építése sikertelen (nem volt korábbi var/venv)"
+  fi
+  rm -rf "$regi"
+  echo "kész: var/venv újraépítve, hálózat nélkül"
+}
+
+cmd="${1:-}"; [ $# -gt 0 ] && shift
+# Ha egy Pythont igénylő parancshoz nincs értelmező, a `python_kereses` tiszta hibaüzenete után itt áll le a szkript (a `set -e`
+# a sima értékadásra érvényes); különben az `exec "$(python_kereses)"` üres parancsot hívna („exec: : not found”).
+case "$cmd" in
+  runtime|app|exec|"") ;;
+  *) PYTHON_KIVALASZTVA="$(python_kereses)" ;;
+esac
+case "$cmd" in
+  epites) exec "$(python_kereses)" -B -m core.epites "$@" ;;
+  teljes-mentes) exec "$(python_kereses)" -B -m core.teljes_mentes "$@" ;;
+  higienia) exec "$(python_kereses)" -B -m core.higienia "$@" ;;
+  kereses) # a hibrid keresés (C25b-mag): hibrid, allapot, forrasok, meres; csak olvas
+           exec "$(python_kereses)" -B -m core.index.hibrid "$@" ;;
+  doctor)  exec "$(python_kereses)" -B -m core doctor "$@" ;;
+  visszaallit) # C31 (T065): egy pillanatkép-tároló visszaállítása bundle-ből; csak hiányzó/üres {vault_git}, meglévő fájlt nem ír felül
+           exec "$(python_kereses)" -B -m core.visszaallitas "$@" ;;
+  core)    [ "${1:-}" = start ] || hiba "használat: mos core start"; shift; exec "$(python_kereses)" -B -m core start "$@" ;;
+  runtime)
+    case "${1:-}" in
+      fetch) shift; runtime_fetch "$@" ;;
+      install) runtime_install ;;
+      *) hiba "használat: mos runtime fetch [ffmpeg]|install" ;;
+    esac ;;
+  letoltes) # álnév: mos models pull
+           HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 exec "$(python_kereses)" -B -m core.letoltes "$@" ;;
+  models)
+    case "${1:-}" in
+      pull) shift  # az egyetlen hálózati parancs (D3): jóváhagyás után a config/letoltes.toml modelljei a {models} alá
+            HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 exec "$(python_kereses)" -B -m core.letoltes "$@" ;;
+      list) shift; exec "$(python_kereses)" -B -m core.modell lista "$@" ;;
+      *) hiba "használat: mos models pull [elso|opcionalis|mind|név…] [--lista] [--igen] [--token] | mos models list" ;;
+    esac ;;
+  matek)   # a matek-motor modell nélküli magja (C24a): levezetés, mértékegység, arany, homokozo-proba; csak olvas
+           exec "$(python_kereses)" -B "$MOS_HOME/modulok/matek/__main__.py" "$@" ;;
+  grafikon) # a ```plot blokk (C35a): felismer, jegyzet, elemez, elemez-json, arany, vektorok; C35b-mag: terv, beiras, automatikus, tiltolista, modell-ellenorzes (olvasó/próba); C35b: modell-meres
+           exec "$(python_kereses)" -B "$MOS_HOME/modulok/grafikon/__main__.py" "$@" ;;
+  fuzet)   # a füzetlánc (C21): lanc, ellenoriz (élesen csak a feladatsorból; kézzel --proba), allapot, kivag
+           exec "$(python_kereses)" -B "$MOS_HOME/modulok/fuzet/__main__.py" "$@" ;;
+  bench|eval|router|worker)  # a modellréteg (C05): mérés, aranyhalmaz, router-tábla, kézi worker
+           exec "$(python_kereses)" -B -m core.modell "$cmd" "$@" ;;
+  app)     # a felület (C07): npm csak a lockfájlból, offline; a cache a var/ alatt (D3)
+           export PATH="$RT/node/bin:$PATH" npm_config_cache="$MOS_HOME/var/cache/npm" npm_config_update_notifier=false
+           [ -x "$RT/node/bin/node" ] || hiba "nincs Node (bin/mos runtime fetch)"
+           cd "$MOS_HOME/app"
+           case "${1:-}" in
+             install) shift
+                      # alapból offline (a csomagok a var/cache/npm-ből); egy FRISS gépen az első telepítés `--online`: egyszeri
+                      # hálózati lépés (D3, a felhasználó igenjével) — a csomagok a lockfájl hash-ei szerint a var/cache/npm-be
+                      # töltődnek, utána minden telepítés offline megy
+                      case "${1:-}" in
+                        "")       npm ci --offline --ignore-scripts ;;
+                        --online) npm ci --ignore-scripts ;;
+                        *)        hiba "használat: mos app install [--online]" ;;
+                      esac
+                      # 29(a) döntés (C34, T187): a pdf.js opcionális natív @napi-rs/canvas-a nem települ (a felület `useWasm: false`
+                      # mellett fut); az `npm ci` az opcionális függőséget a lock szerint mégis felrakhatja, ezért itt kiesik (a
+                      # node_modules az `npm ci` friss, újraépíthető terméke); a doctor a megmaradását HIBÁnak jelzi
+                      for d in node_modules/@napi-rs/canvas*; do
+                        [ -e "$d" ] || continue
+                        rm -rf "$d"; echo "29(a): a(z) $d nem települ (opcionális natív függőség), eltávolítva"
+                      done
+                      exit 0 ;;
+             build)   [ -d node_modules ] || hiba "nincs app/node_modules (bin/mos app install${MUNKAFA_FO:+; munkafában: ln -s \"$MUNKAFA_FO/app/node_modules\" app/node_modules — csak eszköztár})"
+                      npm run --silent check && exec npm run --silent build ;;
+             test)    shift; exec npx vitest run "$@" ;;
+             watch)   exec npm run --silent watch ;;
+             *)       hiba "használat: mos app install [--online]|build|test|watch" ;;
+           esac ;;
+  test)    # `bin/mos test` = az egész készlet (discover); `bin/mos test test_x [tests.test_y tests/test_z.py] [-v -k …]` = csak
+           # a megnevezett modulok (T082): a discover a pozicionális argumentumot kezdőmappának vette, így a `test_x`
+           # ImportError volt, a `tests.test_x` pedig mind a ~1000 tesztet futtatta
+           nevek=()
+           while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
+             n="${1%/}"; n="${n%.py}"; n="${n//\//.}"
+             case "$n" in tests) ;; tests.*) nevek+=("$n") ;; *) nevek+=("tests.$n") ;; esac
+             shift
+           done
+           if [ "${#nevek[@]}" -gt 0 ]; then
+             exec "$(python_kereses)" -B -m unittest "${nevek[@]}" "$@"
+           fi
+           exec "$(python_kereses)" -B -m unittest discover -s "$MOS_HOME/tests" -t "$MOS_HOME" "$@" ;;
+  perf)    # a falióra-alapú teljesítménykapuk külön parancsban, TÉTLEN gépen (T008): Python `tests/perf_*.py` (Bases, index-
+           # késleltetés) és vitest `app/tests/perf/*.perf.ts` (fuzzy, gráf-fizika), egymás után; az alap készletben
+           # (`bin/mos test`, `bin/mos app test`) abszolút ms-kapu nincs, csak arány. Futó modell/mérés mellett nem értelmezhető.
+           export MOS_TELJESITMENY=1
+           rc=0
+           "$(python_kereses)" -B -m unittest discover -s "$MOS_HOME/tests" -t "$MOS_HOME" -p 'perf_*.py' "$@" || rc=$?
+           ( export PATH="$RT/node/bin:$PATH" npm_config_cache="$MOS_HOME/var/cache/npm" npm_config_update_notifier=false
+             [ -x "$RT/node/bin/node" ] && [ -d "$MOS_HOME/app/node_modules" ] || { echo "perf: nincs Node vagy app/node_modules: a vitest perf kihagyva" >&2; exit 1; }
+             cd "$MOS_HOME/app" && exec npx vitest run ) || rc=$?
+           exit "$rc" ;;
+  kartya)  exec "$(python_kereses)" -B -m modulok.kartya "$@" ;;   # C23a: ellenoriz | szinkron | export | import --proba
+  video)   # a videólánc (C20a): felmeres | staging-klon | utnorm | leltar | eszkoz-ellenorzes | letoltes <url> | selftest | test
+           export PATH="$RT/node/bin:$PATH"
+           exec "$(python_kereses)" -B -m modulok.ytdlp "$@" ;;
+  kviz)    exec "$(python_kereses)" -B -m modulok.kviz "$@" ;;     # C22a: ellenoriz | proba (a vaultba nem ír, modellt nem hív)
+  osszefoglalas) exec "$(python_kereses)" -B -m modulok.osszefoglalas "$@" ;;    # C26a: ellenoriz | proba | kontextus (csak olvas); C26b: general (feladat-lépés, a core-on át ír) | meres
+  kapu)    # C22a: a forráshűség-kapu: meres | minta | ellenoriz (csak olvas); C33 (T069): minden más alak (`mos kapu`,
+           # `mos kapu kezi [nev…]`) a klónos kézi próbák futtatója, összesítéssel a {runs}/kapu-<idő>.json-ba
+           case "${1:-}" in
+             meres|minta|ellenoriz) exec "$(python_kereses)" -B -m modulok.kapuk "$@" ;;
+             kezi) shift; exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
+             *) exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
+           esac ;;
+  cpp)     exec "$(python_kereses)" -B -m modulok.cpp "$@" ;;   # C36a: allapot | telepit | ellenoriz | formaz | homokozo-proba
+  felkeszultseg) exec "$(python_kereses)" -B -m core.felkeszultseg "$@" ;;   # C28b: eredmeny (csak olvas) | kalibral [--rogzit] (az index ideiglenes mappába épül)
+  exec)    export PATH="$RT/node/bin:$PATH"; exec "$@" ;;   # csak a felület buildjéhez (Node)
+  *)       hiba "használat: mos <doctor | visszaallit <bundle> [--tar vault] [--igen] | core start | runtime fetch [ffmpeg]|install | models pull|list | bench | eval | router tabla|valaszt | worker | app install [--online]|build|test|watch | kartya ellenoriz|szinkron|export|import | cpp allapot|telepit|ellenoriz|formaz|homokozo-proba | felkeszultseg eredmeny|kalibral | matek levezetes|egyseg|arany|homokozo-proba | kviz ellenoriz|proba | osszefoglalas ellenoriz|proba|kontextus|general|meres | kapu [kezi] [próba…] | kapu meres|minta|ellenoriz | grafikon felismer|jegyzet|elemez|elemez-json|arany|vektorok|terv|beiras|automatikus|tiltolista|modell-ellenorzes|modell-meres | fuzet lanc|ellenoriz|allapot|kivag | higienia | kereses hibrid|allapot|forrasok|meres | video felmeres|staging-klon|utnorm|leltar|eszkoz-ellenorzes|letoltes|selftest|test | test [modul…] | perf | exec ...>" ;;
+esac

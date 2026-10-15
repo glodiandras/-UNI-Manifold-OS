@@ -1,0 +1,12 @@
+{
+ "id": "k03",
+ "cim": "Szakaszösszegek",
+ "tema": "rendezes_kereses",
+ "nehezseg": 1,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "index", "sor": 18, "eredeti": "        cout << p[r] - p[l - 1] << \"\\n\";", "csere": "        cout << p[r] - p[l] << \"\\n\";", "magyarazat": "A p[l] kivonásával az l-edik elem is kimarad az összegből; p[l - 1] kellene."},
+  {"id": "h2", "fajta": "tulcsordulas", "sor": 9, "eredeti": "    vector<long long> p(n + 1, 0);", "csere": "    vector<int> p(n + 1, 0);", "magyarazat": "Az előtag-összegek int-ben túlcsordulnak, ha az elemek nagyok."},
+  {"id": "h3", "fajta": "index", "sor": 10, "eredeti": "    for (int i = 1; i <= n; i++) {", "csere": "    for (int i = 1; i < n; i++) {", "magyarazat": "Az utolsó elem beolvasása kimarad, ezért a kérdések rossz számokat olvasnak be."}
+ ]
+}

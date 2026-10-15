@@ -1,0 +1,12 @@
+{
+ "id": "k11",
+ "cim": "Prímek száma",
+ "tema": "szam_sztring",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "feltetel", "sor": 10, "eredeti": "    for (long long i = 2; i * i <= n; i++) {", "csere": "    for (long long i = 2; i * i < n; i++) {", "magyarazat": "Ha n egy prím négyzete, a szita leáll, mielőtt az n-et áthúzná, így az n prímnek számít."},
+  {"id": "h2", "fajta": "index", "sor": 15, "eredeti": "    for (int i = 2; i <= n; i++)", "csere": "    for (int i = 2; i < n; i++)", "magyarazat": "A számlálás az n-et kihagyja, így ha n prím, eggyel kevesebbet ír ki."},
+  {"id": "h3", "fajta": "inicializalas", "sor": 7, "eredeti": "    vector<bool> prim(n + 1, true);", "csere": "    vector<bool> prim(n + 1, false);", "magyarazat": "A szita minden számot eleve nem prímnek jelöl, így semmit sem talál."}
+ ]
+}

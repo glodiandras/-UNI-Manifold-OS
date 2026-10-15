@@ -1,0 +1,12 @@
+{
+ "id": "k02",
+ "cim": "Legnagyobb árfolyam-emelkedés",
+ "tema": "ciklus_tomb",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "tulcsordulas", "sor": 14, "eredeti": "        long long kulonbseg = a[i] - legkisebb;", "csere": "        int kulonbseg = a[i] - legkisebb;", "magyarazat": "A különbség (akár 4·10^9) nem fér el int-ben, ezért a nagy emelkedés hibás, negatív értékké válik."},
+  {"id": "h2", "fajta": "sorrend", "sor": 16, "eredeti": "        legkisebb = min(legkisebb, a[i]);", "csere": "        legkisebb = min(legkisebb, a[i - 1]);", "magyarazat": "A minimum egy lépéssel le van maradva: az előző napi ár csak a következő lépésben kerül bele."},
+  {"id": "h3", "fajta": "inicializalas", "sor": 12, "eredeti": "    long long best = 0;", "csere": "    long long best = -1;", "magyarazat": "A legjobb nyereség -1-ről indul, így nyereség nélkül -1-et ír ki 0 helyett."}
+ ]
+}

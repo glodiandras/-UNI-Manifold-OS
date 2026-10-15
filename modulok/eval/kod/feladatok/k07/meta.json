@@ -1,0 +1,12 @@
+{
+ "id": "k07",
+ "cim": "Lépcsőzés",
+ "tema": "rekurzio_dp",
+ "nehezseg": 1,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "alapeset", "sor": 10, "eredeti": "    dp[0] = 1;", "csere": "    dp[1] = 1;", "magyarazat": "Az alapeset a 0. fok (egyféleképpen állunk a lépcső alján); a dp[1] = 1 mellett dp[0] = 0 marad, így a 2-es és 3-as lépés a lépcső aljáról nem számít."},
+  {"id": "h2", "fajta": "feltetel", "sor": 12, "eredeti": "        for (int lepes = 1; lepes <= 3 && lepes <= i; lepes++) {", "csere": "        for (int lepes = 1; lepes < 3 && lepes <= i; lepes++) {", "magyarazat": "A ciklusfeltétel miatt a 3-as lépés kimarad, csak 1-es és 2-es lépéseket számol."},
+  {"id": "h3", "fajta": "tulcsordulas", "sor": 9, "eredeti": "    vector<long long> dp(n + 1, 0);", "csere": "    vector<int> dp(n + 1, 0);", "magyarazat": "A három előző érték összege a maradékképzés előtt meghaladhatja az int felső határát."}
+ ]
+}

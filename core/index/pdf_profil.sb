@@ -1,0 +1,27 @@
+;; A PDF-szövegkinyerő gyermek sandbox-exec profilja (C25c). Minden út paraméter (-D), beégetett út nincs. A gyermek a
+;; Pythont, a venvet (benne a PyMuPDF-et), a saját szkriptjét és EGYETLEN PDF-et olvashat; írni csak a /dev/null-ba;
+;; hálózat, fork, exec (a Pythonon kívül), jel, mach-lookup tiltva. A CAS-homokozó profiljának (modulok/homokozo/profil.sb)
+;; mintája: a `/` literál olvasása nélkül a Python SIGABRT-tal áll le; a `file-read-metadata` globális.
+(version 1)
+(deny default)
+
+(allow process-exec
+  (literal (param "PY_EXE"))
+  (literal (param "PY_EXE_VALOS")))
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (literal (param "GYEREK"))
+  (literal (param "PDF"))
+  (subpath (param "PY_PREFIX"))
+  (subpath (param "PY_BASE"))
+  (subpath "/usr/lib")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random"))
+
+(allow file-write-data (literal "/dev/null"))

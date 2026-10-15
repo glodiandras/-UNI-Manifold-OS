@@ -1,0 +1,558 @@
+/*
+ * A Notion-réteg (C09) stílusa: `/` menü, blokkfogó és menü, lebegő eszköztár, táblázatszerkesztő. Minden érték
+ * token (styles/tokens.css, DESIGN.md 11.); új szín vagy méret előbb token lesz.
+ */
+
+/* ---------------------------------------------------------------- közös menü */
+
+.nt-menu {
+  min-width: 232px;
+  max-width: 320px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: var(--t-1);
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+  line-height: var(--sor-ui);
+  scrollbar-width: thin;
+  scrollbar-color: var(--keret-eros) transparent;
+}
+
+.nt-menu-lista {
+  display: flex;
+  flex-direction: column;
+}
+
+.nt-menu-csoport {
+  padding: var(--t-2) var(--t-2) var(--t-1);
+  font-size: var(--betu-kicsi);
+  line-height: var(--sor-kicsi);
+  font-weight: var(--suly-kozepes);
+  color: var(--szoveg-halvany);
+}
+
+.nt-menu-vissza {
+  border-bottom: var(--keret-vastag) solid var(--keret);
+  margin-bottom: var(--t-1);
+}
+
+.nt-menu-elem {
+  display: flex;
+  align-items: center;
+  gap: var(--t-2);
+  min-height: var(--magassag-sor);
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.nt-menu-elem.aktiv {
+  background: var(--hatter-kijelolt);
+}
+
+.nt-menu-elem.letiltva {
+  color: var(--szoveg-halvany);
+  cursor: default;
+}
+
+.nt-menu-elem.veszely:not(.letiltva) {
+  color: var(--hiba);
+}
+
+.nt-menu-ikon {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  color: var(--szoveg-halvany);
+}
+
+.nt-menu-elem.aktiv .nt-menu-ikon {
+  color: var(--szoveg);
+}
+
+.nt-menu-elem.veszely:not(.letiltva) .nt-menu-ikon {
+  color: inherit;
+}
+
+.nt-menu-nev {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nt-menu-nev mark {
+  background: none;
+  color: var(--kiemeles);
+  font-weight: var(--suly-felkover);
+}
+
+.nt-menu-jelzo,
+.nt-menu-pipa,
+.nt-menu-nyil {
+  flex: none;
+  color: var(--szoveg-halvany);
+  font-size: var(--betu-kicsi);
+}
+
+.nt-menu-jelzo {
+  font-family: var(--betu-mono);
+}
+
+.nt-menu-nyil {
+  display: inline-flex;
+}
+
+.nt-menu-ures {
+  padding: var(--t-2);
+  color: var(--szoveg-halvany);
+}
+
+/* a `/` menü a CodeMirror tooltipjében, a blokkmenü a body-n lebeg */
+
+.szerkeszto .cm-editor .cm-tooltip.nt-perjel,
+.szerkeszto .cm-editor .cm-tooltip.nt-eszkoztar {
+  border: none;
+  border-radius: var(--kerekites-nagy);
+  background: var(--hatter-emelt);
+  box-shadow: var(--arnyek-atfedes);
+}
+
+.nt-lebego {
+  position: fixed;
+  z-index: var(--reteg-atfedes);
+  border-radius: var(--kerekites-nagy);
+  background: var(--hatter-emelt);
+  box-shadow: var(--arnyek-atfedes);
+  outline: none;
+}
+
+/* ---------------------------------------------------------------- blokkfogó és húzás */
+
+.nt-fogo {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--magassag-suru);
+  height: var(--magassag-suru);
+  padding: 0;
+  border: none;
+  border-radius: var(--kerekites-kicsi);
+  background: transparent;
+  color: var(--szoveg-halvany);
+  cursor: grab;
+  touch-action: none;
+  transition: background var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.nt-fogo[hidden] {
+  display: none;
+}
+
+.nt-fogo:hover {
+  background: var(--hatter-hover);
+  color: var(--szoveg);
+}
+
+.nt-fogo:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav);
+}
+
+.nt-fogo.huz {
+  background: var(--hatter-aktiv);
+  color: var(--szoveg);
+  cursor: grabbing;
+}
+
+.nt-celvonal {
+  position: absolute;
+  z-index: 3;
+  height: 2px;
+  border-radius: var(--kerekites-jel);
+  background: var(--akcent);
+  pointer-events: none;
+}
+
+.nt-celvonal[hidden] {
+  display: none;
+}
+
+.nt-szellem {
+  position: fixed;
+  z-index: var(--reteg-ertesites);
+  max-width: 280px;
+  padding: var(--t-1) var(--t-2);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  border-radius: var(--kerekites);
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  box-shadow: var(--arnyek-atfedes);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+  line-height: var(--sor-ui);
+  pointer-events: none;
+}
+
+.nt-szellem[hidden] {
+  display: none;
+}
+
+.cm-editor.nt-huzas {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------------------------------------------------------------- lebegő eszköztár */
+
+.nt-eszkoztar {
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+}
+
+.nt-eszk-sor {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--t-1);
+}
+
+.nt-eszk-sor[hidden] {
+  display: none;
+}
+
+.nt-eszk-gomb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--magassag-gomb);
+  height: var(--magassag-gomb);
+  padding: 0;
+  border: none;
+  border-radius: var(--kerekites);
+  background: transparent;
+  color: var(--szoveg-masodlagos);
+  cursor: pointer;
+  transition: background var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.nt-eszk-gomb[hidden] {
+  display: none;
+}
+
+.nt-eszk-gomb:hover {
+  background: var(--hatter-hover);
+  color: var(--szoveg);
+}
+
+.nt-eszk-gomb:active {
+  background: var(--hatter-aktiv);
+}
+
+.nt-eszk-gomb[aria-pressed='true'] {
+  background: var(--hatter-kijelolt);
+  color: var(--akcent-szoveg);
+}
+
+.nt-eszk-gomb:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.nt-eszk-elvalaszto {
+  align-self: stretch;
+  width: var(--keret-vastag);
+  margin: var(--t-1) 2px;
+  background: var(--keret-eros);
+}
+
+.nt-eszk-mezo {
+  width: 240px;
+  height: var(--magassag-gomb);
+  padding: 0 var(--t-2);
+  border: var(--keret-vastag) solid var(--keret-mezo);
+  border-radius: var(--kerekites);
+  background: var(--hatter);
+  color: var(--szoveg);
+  font: inherit;
+}
+
+.nt-eszk-mezo:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--keret-vastag);
+}
+
+/* ---------------------------------------------------------------- táblázatszerkesztő */
+
+.cm-tablazat.nt-tabla {
+  overflow: visible;
+  cursor: default;
+  padding: var(--t-4) 0 var(--t-5);
+}
+
+.nt-tabla-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.nt-tabla table {
+  margin: 0;
+}
+
+.nt-tabla :is(th, td) {
+  position: relative;
+  min-width: 4em;
+  cursor: text;
+}
+
+.nt-tabla :is(th, td):empty::before {
+  content: '\200b';
+}
+
+.nt-tabla :is(th, td):focus-visible,
+.nt-tabla :is(th, td).szerkesztes {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.nt-cella-mezo {
+  display: block;
+  width: 100%;
+  min-width: 4em;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.nt-fogo-sav {
+  position: absolute;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--kerekites-kicsi);
+  background: var(--hatter-emelt);
+  color: var(--szoveg-halvany);
+  box-shadow: var(--arnyek-atfedes);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.nt-oszlop-fogo {
+  top: -18px;
+  left: 50%;
+  width: var(--magassag-suru);
+  height: 16px;
+  transform: translateX(-50%) rotate(90deg);
+}
+
+.nt-sor-fogo {
+  top: 50%;
+  left: -22px;
+  width: 16px;
+  height: var(--magassag-suru);
+  transform: translateY(-50%);
+}
+
+.nt-tabla:hover .nt-fogo-sav,
+.nt-tabla:focus-within .nt-fogo-sav,
+.nt-tabla.huz .nt-fogo-sav {
+  opacity: 1;
+}
+
+.nt-fogo-sav:hover {
+  color: var(--szoveg);
+}
+
+.nt-fogo-sav:focus-visible {
+  opacity: 1;
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--keret-vastag);
+}
+
+.nt-plusz {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--magassag-gomb-kicsi);
+  height: var(--magassag-gomb-kicsi);
+  padding: 0;
+  border: none;
+  border-radius: var(--kerekites-kicsi);
+  background: transparent;
+  color: var(--szoveg-halvany);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.nt-plusz-oszlop {
+  top: 4px;
+  right: -24px;
+}
+
+.nt-plusz-sor {
+  bottom: -24px;
+  left: 4px;
+}
+
+.nt-tabla:hover .nt-plusz,
+.nt-tabla:focus-within .nt-plusz {
+  opacity: 1;
+}
+
+.nt-plusz:hover {
+  background: var(--hatter-hover);
+  color: var(--szoveg);
+}
+
+.nt-plusz:focus-visible {
+  opacity: 1;
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--keret-vastag);
+}
+
+.nt-tabla-vonal {
+  position: absolute;
+  z-index: 3;
+  background: var(--akcent);
+  pointer-events: none;
+}
+
+.nt-tabla-vonal[hidden] {
+  display: none;
+}
+
+.nt-tabla-vonal[data-fajta='sor'] {
+  height: 2px;
+}
+
+.nt-tabla-vonal[data-fajta='oszlop'] {
+  width: 2px;
+}
+
+.nt-tabla.csak-olvashato :is(th, td) {
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nt-fogo,
+  .nt-fogo-sav,
+  .nt-plusz,
+  .nt-eszk-gomb {
+    transition: none;
+  }
+}
+
+/* A `[[` kiegészítés menüje (C10): a név mellett a mappa is látszik, ezért szélesebb; a jelző nem monospace és rövidül. */
+.nt-linkmenu {
+  min-width: 320px;
+  max-width: min(560px, calc(100vw - 32px));
+}
+
+.nt-linkmenu .nt-menu-jelzo {
+  flex: 0 1 40%;
+  min-width: 0;
+  overflow: hidden;
+  font-family: inherit;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nt-linkmenu .nt-menu-nev {
+  flex: 1 1 60%;
+}
+
+/* A nyers frontmatter tulajdonság-javaslatai (a CodeMirror kiegészítője, `fmKiegeszites.ts`): a `[[` menü megjelenésével. */
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites {
+  border: none;
+  border-radius: var(--kerekites-nagy);
+  background: var(--hatter-emelt);
+  box-shadow: var(--arnyek-atfedes);
+  color: var(--szoveg);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+  line-height: var(--sor-ui);
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites > ul {
+  min-width: 232px;
+  max-width: min(480px, calc(100vw - 32px));
+  max-height: 340px;
+  padding: var(--t-1);
+  font-family: inherit;
+  scrollbar-width: thin;
+  scrollbar-color: var(--keret-eros) transparent;
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites > ul > li {
+  display: flex;
+  align-items: center;
+  gap: var(--t-2);
+  min-height: var(--magassag-sor);
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites);
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites > ul > li[aria-selected] {
+  background: var(--hatter-kijelolt);
+  color: var(--szoveg);
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites .cm-completionLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites .cm-completionMatchedText {
+  color: var(--kiemeles);
+  font-weight: var(--suly-felkover);
+  text-decoration: none;
+}
+
+.szerkeszto .cm-editor .cm-tooltip.fm-kiegeszites .cm-completionDetail {
+  flex: 0 1 40%;
+  min-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  color: var(--szoveg-halvany);
+  font-size: var(--betu-kicsi);
+  font-style: normal;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.szerkeszto .cm-editor .cm-tooltip.cm-completionInfo {
+  border: none;
+  border-radius: var(--kerekites);
+  background: var(--hatter-emelt);
+  box-shadow: var(--arnyek-atfedes);
+  color: var(--szoveg-masodlagos);
+  font-size: var(--betu-kicsi);
+}

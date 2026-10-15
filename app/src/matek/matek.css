@@ -1,0 +1,27 @@
+/* A levezetés-ellenőrzés margójele (C24b): a jel a sor bal margójában, a hibás sor halvány hibás háttérrel. Csak tokenből. */
+
+.cm-editor .cm-line.matek-jel {
+  position: relative;
+}
+
+.cm-editor .cm-line.matek-jel::before {
+  content: attr(data-matek-jel);
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--t-5));
+  font-size: var(--betu-kicsi);
+  font-family: var(--betu-rendszer);
+  color: var(--szoveg-halvany);
+  pointer-events: none;
+}
+
+.cm-editor .cm-line.matek-jel-ok::before {
+  color: var(--siker);
+}
+
+.cm-editor .cm-line.matek-jel-hiba {
+  background: var(--hiba-hatter);
+}
+
+.cm-editor .cm-line.matek-jel-hiba::before {
+  color: var(--hiba);
+}

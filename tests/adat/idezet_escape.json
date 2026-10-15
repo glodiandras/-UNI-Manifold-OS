@@ -1,0 +1,21 @@
+{
+  "leiras": "A PDF-idézet sorának védelme (C32, T168): a core `pdfkiemeles._escape` és a felület `media/beszuras.ts` `idezetSor` közös vektorai. A `be` a kiemelt szöveg, a `ki` a jegyzetbe írt idézet-sor.",
+  "esetek": [
+    {"be": "egyszerű mondat", "ki": "egyszerű mondat"},
+    {"be": "# Cím", "ki": "\\# Cím"},
+    {"be": "1. pont", "ki": "\\1. pont"},
+    {"be": "- elem", "ki": "\\- elem"},
+    {"be": "> idézet", "ki": "\\> idézet"},
+    {"be": "---", "ki": "\\---"},
+    {"be": "```kód", "ki": "\\```kód"},
+    {"be": "| cella |", "ki": "\\| cella |"},
+    {"be": "<div>", "ki": "\\<div>"},
+    {"be": "a [[b]] %%c%%", "ki": "a [​[b]​] %​%c%​%"},
+    {"be": "a mondat végén ^abc-12", "ki": "a mondat végén \\^abc-12"},
+    {"be": "a ^b közben", "ki": "a ^b közben"},
+    {"be": "x^2 a végén", "ki": "x^2 a végén"},
+    {"be": "csak ^", "ki": "csak ^"},
+    {"be": "2^n", "ki": "2^n"},
+    {"be": "a\t^k1", "ki": "a \\^k1"}
+  ]
+}

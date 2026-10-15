@@ -1,0 +1,142 @@
+/* A ```plot grafikon (C35a): csak design-tokenekből. A JSXGraph saját stíluslapját (`jsxgraph.css`: fix színek, kék keret)
+   nem töltjük be; a szükséges szabályok (a tábla pozíciója, a feliratok) itt, tokenekkel. */
+
+.plot-blokk {
+  position: relative;
+  width: 100%;
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites-nagy);
+  background: var(--hatter);
+  overflow: hidden;
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-kicsi);
+}
+
+.plot-tabla {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+  touch-action: none;
+  cursor: grab;
+  outline: none;
+}
+
+.plot-tabla:active {
+  cursor: grabbing;
+}
+
+.plot-tabla:focus-visible {
+  box-shadow: inset 0 0 0 var(--fokusz-vastag) var(--fokusz-gyuru);
+}
+
+.plot-tabla svg text {
+  cursor: default;
+  user-select: none;
+}
+
+.plot-tabla .JXGtext {
+  font-family: var(--betu-rendszer);
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* a gombok és az eszköztár: csak hoverre vagy fókuszra (Csend és elérés), billentyűvel is elérhető */
+.plot-eszkoztar {
+  position: absolute;
+  top: var(--t-2);
+  right: var(--t-2);
+  display: flex;
+  gap: var(--t-1);
+  opacity: 0;
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.plot-blokk:hover .plot-eszkoztar,
+.plot-blokk:focus-within .plot-eszkoztar {
+  opacity: 1;
+}
+
+.plot-eszkoztar button {
+  min-width: var(--magassag-gomb);
+  height: var(--magassag-gomb);
+  padding: 0 var(--t-2);
+  border: var(--keret-vastag) solid var(--keret-eros);
+  border-radius: var(--kerekites);
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  font: inherit;
+  font-size: var(--betu-ui);
+  cursor: pointer;
+}
+
+.plot-eszkoztar button:hover {
+  background: var(--hatter-hover);
+}
+
+.plot-eszkoztar button:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--keret-vastag);
+}
+
+.plot-hover-pont {
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--kerekites-kor);
+  border: 2px solid var(--hatter);
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
+.plot-hover-ertek {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 2px var(--t-2);
+  border-radius: var(--kerekites-kicsi);
+  border: var(--keret-vastag) solid var(--keret-eros);
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  box-shadow: var(--arnyek-atfedes);
+  white-space: nowrap;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot-jelmagyarazat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--t-1) var(--t-3);
+  padding: var(--t-1) var(--t-3) var(--t-2);
+  color: var(--szoveg-masodlagos);
+}
+
+.plot-jelmagyarazat-elem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--t-1);
+}
+
+.plot-jelmagyarazat-elem i {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: var(--kerekites-jel);
+}
+
+.plot-figyelmeztetes {
+  padding: var(--t-1) var(--t-3) var(--t-2);
+  color: var(--szoveg-halvany);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plot-eszkoztar {
+    transition: none;
+  }
+}

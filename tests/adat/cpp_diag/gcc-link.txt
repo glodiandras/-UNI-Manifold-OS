@@ -1,0 +1,3 @@
+/usr/bin/ld: /tmp/ccBZF28T.o: in function `main':
+link.cpp:(.text.startup+0xa): undefined reference to `hianyzo(int)'
+collect2: error: ld returned 1 exit status

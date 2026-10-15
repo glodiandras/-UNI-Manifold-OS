@@ -1,0 +1,12 @@
+{
+ "id": "k10",
+ "cim": "Családfa mélysége",
+ "tema": "graf",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "alapeset", "sor": 8, "eredeti": "    if (szulo[v] == 0) return 0;", "csere": "    if (szulo[v] == 0) return 1;", "magyarazat": "A rekurzió alapesete (az ős mélysége) 0 lenne; az 1 minden mélységet eggyel növel."},
+  {"id": "h2", "fajta": "ido", "sor": 9, "eredeti": "    if (melyseg[v] != -1) return melyseg[v];", "csere": "    // if (melyseg[v] != -1) return melyseg[v];", "magyarazat": "A kiszámolt mélységet nem használja fel újra, így egy hosszú láncon minden csúcsnál végigmegy az ősig: n² lépés."},
+  {"id": "h3", "fajta": "sorrend", "sor": 20, "eredeti": "    for (int v = 1; v <= n; v++) legmelyebb = max(legmelyebb, mely(v));", "csere": "    for (int v = 1; v <= n; v++) legmelyebb = max(legmelyebb, melyseg[v]);", "magyarazat": "A tárolt mélységet olvassa, mielőtt bárki kiszámolta volna, így minden érték -1, és 0 lesz az eredmény."}
+ ]
+}

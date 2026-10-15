@@ -1,0 +1,354 @@
+{
+ "verzio": "v1",
+ "allapot": "jovahagyott",
+ "keszult": "2026-10-03",
+ "jovahagyva": "2026-10-07",
+ "ellenorzes": {
+  "datum": "2026-10-07",
+  "ki": "a koordinátor (Claude), a felhasználó megbízásából (K27: „dönts helyettem”)",
+  "modszer": "a 15 képlet zérushelyei, szélsőértékei és aszimptotái kézzel újraszámolva a halmaz szabálya szerint (zárt ablak; a végpont nem szélsőérték, a zérushely a végponton is számít)",
+  "eredmeny": "hibát nem találtam: 15/15",
+  "megjegyzes": "a g06 és a g07 ablakának bal végpontja egyben az értelmezési tartomány széle: szélsőértékként nem szerepel, a szabállyal összhangban. Ismert határeset (nem javítva, a pontozó csak `x=c`/`y=c` alakot vet össze): a g15 (sqrt(3x^2+1)) ferde aszimptotái (y=±sqrt(3)·x) nem szerepelnek; a ferde aszimptotát megadó modell az aszimptota-részpontot (0,1 súly) ezen a tételen elveszti. A C19 rétegzett mintájában figyelendő"
+ },
+ "forras": "15 függvényképlet a vault matek-jegyzeteiből (M05–M09); a nevezetes pontok sympy-val számolva, az ablakon belül",
+ "szabaly": "a zérushely és a szélsőérték az `ablak` zárt intervallumán értendő; szélsőértéknek a belső pont és a töréspont számít, az ablak végpontja nem; az aszimptota `x=…` (függőleges) vagy `y=…` (vízszintes) alakú",
+ "kepletek": [
+  {
+   "id": "g01",
+   "forras": "M05 - Függvények/Elmélet/06F - A másodfokú függvény — Feladattár.md:27",
+   "keplet": "y = -x^2",
+   "szoveg": "f: y = -x^2",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "-x^2",
+    "ablak": "[-4, 4]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "0"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "0",
+      "tipus": "maximum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g02",
+   "forras": "M05 - Függvények/Elmélet/06F - A másodfokú függvény — Feladattár.md:102",
+   "keplet": "y = x^2 + 2",
+   "szoveg": "f: y = x^2 + 2",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "x^2+2",
+    "ablak": "[-4, 4]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "2",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g03",
+   "forras": "M05 - Függvények/Elmélet/06F - A másodfokú függvény — Feladattár.md:171",
+   "keplet": "y = (x + 5)^2",
+   "szoveg": "- $f: y = (x + 5)^2 = x^2 + 10x + 25$ - balra $5$ egységgel",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "(x+5)^2",
+    "ablak": "[-9, -1]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "-5"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "-5",
+      "y": "0",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g04",
+   "forras": "M05 - Függvények/Elmélet/05F - Az abszolútérték-függvény — Feladattár.md:48",
+   "keplet": "y = 2|x|",
+   "szoveg": "y = 2|x|",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "2*Abs(x)",
+    "ablak": "[-5, 5]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "0"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "0",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g05",
+   "forras": "M05 - Függvények/Elmélet/05F - Az abszolútérték-függvény — Feladattár.md:117",
+   "keplet": "y = |x| - 3",
+   "szoveg": "y = |x| - 3",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "Abs(x)-3",
+    "ablak": "[-6, 6]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "-3",
+     "3"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "-3",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g06",
+   "forras": "M05 - Függvények/Elmélet/07F - A négyzetgyökfüggvény — Feladattár.md:195",
+   "keplet": "y = 4\\sqrt{x} + 3",
+   "szoveg": "y = 4\\sqrt{x} + 3",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "4*sqrt(x)+3",
+    "ablak": "[0, 9]",
+    "ertelmezes": "Interval(0, oo)",
+    "zerushelyek": [],
+    "szelsoertekek": [],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g07",
+   "forras": "M05 - Függvények/Elmélet/03F - Függvénytulajdonságok — Feladattár.md:26",
+   "keplet": "f(x) = \\sqrt{x+3} - 2",
+   "szoveg": "**Példa**: $f(x) = \\sqrt{x+3} - 2$",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "sqrt(x+3)-2",
+    "ablak": "[-3, 8]",
+    "ertelmezes": "Interval(-3, oo)",
+    "zerushelyek": [
+     "1"
+    ],
+    "szelsoertekek": [],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g08",
+   "forras": "M05 - Függvények/Elmélet/10F - Függvénytranszformációk — Feladattár.md:288",
+   "keplet": "y = -2x^2 + 8",
+   "szoveg": "y = -2(x - 0)^2 + 8 = -2(x + 0)^2 + 8",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "-2*x^2+8",
+    "ablak": "[-4, 4]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "-2",
+     "2"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "8",
+      "tipus": "maximum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g09",
+   "forras": "M05 - Függvények/Elmélet/11 - Az inverz függvény fogalma.md:43",
+   "keplet": "f(x) = 2x + 1",
+   "szoveg": "Az inverz hozzárendelési szabályát a következőképpen kapjuk meg. Az $y = f(x)$ egyenletből $x$-et kifejezzük $y$ segítségével, majd — mivel az inverznél a két változó szerepet cserél — $x$-et és $y$-t felcseréljük. Például az $f(x) = 2x + 1$ függvényből $y = 2x+1$, innen $x = \\dfrac{y-1}{2}$, tehát az inverz hozzárendelési szabálya $f^{-1}(x) = \\dfrac{x-1}{2}$.",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "2*x+1",
+    "ablak": "[-4, 4]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "-1/2"
+    ],
+    "szelsoertekek": [],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g10",
+   "forras": "M06 - Exponenciális és logaritmusfüggvény/Elmélet/02F - Az exponenciális függvény — Feladattár.md:483",
+   "keplet": "g(x) = 2^{2-x} + 5",
+   "szoveg": "*Eredmény:* $g(x) = 0.5^{x-2} + 5$ vagy egyenértékűen $g(x) = 2^{-(x-2)} + 5 = 2^{2-x} + 5 = 4 \\cdot 2^{-x} + 5$",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "2^(2-x)+5",
+    "ablak": "[-3, 6]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [],
+    "szelsoertekek": [],
+    "aszimptotak": [
+     "y=5"
+    ]
+   }
+  },
+  {
+   "id": "g11",
+   "forras": "M06 - Exponenciális és logaritmusfüggvény/Elmélet/12 - Logaritmus, exponenciális és logaritmusfüggvény.md:110",
+   "keplet": "g(x) = \\log_2 x",
+   "szoveg": "Például: $f: \\mathbb{R} \\to \\mathbb{R}^+$, $f(x) = 2^x$ függvény és a $g: \\mathbb{R}^+ \\to \\mathbb{R}$, $g(x) = \\log_2 x$ függvény egymásnak inverzei, ugyanis $g(f(x)) = \\log_2 2^x = x$, illetve $f(g(x)) = 2^{\\log_2 x} = x$, valamint az egyik függvény értelmezési tartománya a másik függvény értékkészlete és viszont.",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "log(x,2)",
+    "ablak": "[0, 9]",
+    "ertelmezes": "Interval.open(0, oo)",
+    "zerushelyek": [
+     "1"
+    ],
+    "szelsoertekek": [],
+    "aszimptotak": [
+     "x=0"
+    ]
+   }
+  },
+  {
+   "id": "g12",
+   "forras": "M07 - Trigonometria/Elmélet/14 - Trigonometria — szögfüggvények, tételek és transzformációk.md:91",
+   "keplet": "y = \\sin(2x)",
+   "szoveg": "**Hiba**: $y=\\sin(2x)$ periódusát $4\\pi$-nek venni.",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "sin(2*x)",
+    "ablak": "[0, 2*pi]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "0",
+     "pi/2",
+     "pi",
+     "3*pi/2",
+     "2*pi"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "pi/4",
+      "y": "1",
+      "tipus": "maximum"
+     },
+     {
+      "x": "3*pi/4",
+      "y": "-1",
+      "tipus": "minimum"
+     },
+     {
+      "x": "5*pi/4",
+      "y": "1",
+      "tipus": "maximum"
+     },
+     {
+      "x": "7*pi/4",
+      "y": "-1",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g13",
+   "forras": "M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/11 - Szélsőérték és a második derivált.md:33",
+   "keplet": "f(x) = x^3 - 3x",
+   "szoveg": "Legyen $f(x) = x^3 - 3x$. Ekkor $f'(x) = 3x^2 - 3 = 3(x-1)(x+1)$, így a stacionárius helyek $x = -1$ és $x = 1$. A második derivált $f''(x) = 6x$. Mivel $f''(-1) = -6 < 0$, az $x = -1$-ben lokális maximum van ($f(-1) = 2$); mivel $f''(1) = 6 > 0$, az $x = 1$-ben lokális minimum van ($f(1) = -2$).",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "x^3-3*x",
+    "ablak": "[-3, 3]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [
+     "-sqrt(3)",
+     "0",
+     "sqrt(3)"
+    ],
+    "szelsoertekek": [
+     {
+      "x": "-1",
+      "y": "2",
+      "tipus": "maximum"
+     },
+     {
+      "x": "1",
+      "y": "-2",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g14",
+   "forras": "M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/18 - Differenciálszámítás.md:49",
+   "keplet": "f(x) = x^2 - 4x + 5",
+   "szoveg": "Pl. $f: \\mathbb{R} \\to \\mathbb{R}$, $f(x) = x^2 - 4x + 5$. Differenciálhányados az $x_0 = 1$ helyen:",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "x^2-4*x+5",
+    "ablak": "[-2, 6]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [],
+    "szelsoertekek": [
+     {
+      "x": "2",
+      "y": "1",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  },
+  {
+   "id": "g15",
+   "forras": "M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/08 - Az összetett függvény.md:32",
+   "keplet": "h(x) = \\sqrt{3x^2+1}",
+   "szoveg": "Egy összetett kifejezést gyakran kell belső és külső függvényre bontani — ez a deriválás láncszabályának előfeltétele. Például a $h(x) = \\sqrt{3x^2 + 1}$ függvénynél a belső függvény $f(x) = 3x^2 + 1$, a külső $g(u) = \\sqrt{u}$, így $h = g \\circ f$.",
+   "vart": {
+    "valtozo": "x",
+    "kifejezes": "sqrt(3*x^2+1)",
+    "ablak": "[-4, 4]",
+    "ertelmezes": "Reals",
+    "zerushelyek": [],
+    "szelsoertekek": [
+     {
+      "x": "0",
+      "y": "1",
+      "tipus": "minimum"
+     }
+    ],
+    "aszimptotak": []
+   }
+  }
+ ]
+}

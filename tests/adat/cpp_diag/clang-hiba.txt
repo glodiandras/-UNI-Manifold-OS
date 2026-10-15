@@ -1,0 +1,19 @@
+In file included from hiba.cpp:2:
+./fej.h:1:19: error: expected ';' after return statement
+    1 | int g() { return 1 }
+      |                   ^
+      |                   ;
+hiba.cpp:8:14: error: expected ';' at end of declaration
+    8 |     int x = 3
+      |              ^
+      |              ;
+hiba.cpp:10:13: error: use of undeclared identifier 'y'
+   10 |     cout << y << endl;
+      |             ^
+hiba.cpp:11:5: error: no matching function for call to 'f'
+   11 |     f(1);
+      |     ^
+hiba.cpp:5:5: note: candidate function not viable: requires 2 arguments, but 1 was provided
+    5 | int f(int a, int b) { return a + b; }
+      |     ^ ~~~~~~~~~~~~
+4 errors generated.

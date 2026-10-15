@@ -1,0 +1,46 @@
+// A gráfnézet telepítése (C13): a nézet regisztrálása és a parancsai. Az `App.svelte` hívja egyszer.
+
+import type { Felulet } from '../lib/elrendezes/felulet.svelte';
+import { nezetek } from '../lib/elrendezes/nezetek.svelte';
+import { Network } from '../lib/ikon/ikonok';
+import type { Regiszter } from '../lib/parancsok/regiszter';
+import Graf from './Graf.svelte';
+
+export function grafTelepit(reg: Regiszter, felulet: Felulet): () => void {
+  const m = felulet.munkaterulet;
+  const leNezet = nezetek.regisztral({
+    id: 'graf.nezet',
+    illeszkedik: (f) => f.ut === null && f.nezet?.tipus === 'graf',
+    komponens: Graf,
+    prioritas: -50, // az „Új fül” (−100) fölött: az üres fül nézete csak `ut === null` és nézet-állapot nélkül marad
+  });
+  const leParancsok = reg.regisztralMind([
+    {
+      id: 'graf.megnyit',
+      nev: 'Gráfnézet megnyitása',
+      kategoria: 'Gráf',
+      ikon: Network,
+      futtat: () => {
+        felulet.atfedes = null;
+        m.megnyitNezet('graf', { mod: 'globalis' });
+      },
+    },
+    {
+      id: 'graf.helyi',
+      nev: 'Helyi gráf a jegyzetből',
+      kategoria: 'Gráf',
+      ikon: Network,
+      elerheto: () => !!m.aktivFul?.ut,
+      futtat: () => {
+        const ut = m.aktivFul?.ut;
+        if (!ut) return;
+        felulet.atfedes = null;
+        m.megnyitNezet('graf', { mod: 'helyi', kozeppont: ut, melyseg: 1 });
+      },
+    },
+  ]);
+  return () => {
+    leParancsok();
+    leNezet();
+  };
+}

@@ -1,0 +1,519 @@
+# =============================================================================
+# Multimedia Source Pipeline - central configuration
+# =============================================================================
+# Every path is either absolute or relative to the project root (the directory
+# that contains this config/ folder). Nothing is hardcoded in the source.
+#
+# Override on the command line with:  --config path/to/other.yaml
+# or with the environment variable:   MSP_CONFIG=path/to/other.yaml
+# =============================================================================
+
+# Root of the staging tree. This is NOT the production Obsidian vault.
+output_root: "./staging"
+
+video:
+  # Target resolution. The pipeline always takes the best format at or below
+  # this height that the platform actually offers.
+  max_height: 1080
+  preferred_extension: mp4
+  # Download the best video and the best audio stream separately and mux them
+  # into one file with FFmpeg. This is what makes 1080p possible at all: above
+  # ~360p practically every platform serves video and audio as separate DASH
+  # streams, and a pre-muxed (progressive) file simply does not exist there.
+  #
+  # Requires FFmpeg: in Manifold-OS 2.0 the pinned static build under runtime/ffmpeg/ (bin/mos runtime fetch ffmpeg).
+  # 'download.py --check' shows which one is used.
+  #
+  # Set to false to go back to single-file downloads without FFmpeg; expect
+  # 360p from YouTube-hosted videos in that case.
+  allow_merge: true
+  merge_output_format: mp4
+  # Optional explicit yt-dlp format selector. null => derived from the settings
+  # above as:
+  #   bestvideo[height<=H][ext=EXT]+bestaudio[ext=m4a] / bestvideo[height<=H]+bestaudio
+  #   / best[height<=H][ext=EXT] / best[height<=H] / best
+  # With allow_merge: false a selector that would need merging is rejected.
+  format_selector: null
+
+metadata:
+  save_json: true
+  # Recorded as the content language when the provider reports none (many
+  # YouTube videos do not). Leave null to keep "language: null" - an honest
+  # "not reported". Setting it, e.g. to "hu", is your assertion about your own
+  # corpus; --language overrides it per run.
+  default_language: null
+  # Also store the complete, unfiltered yt-dlp info dict next to metadata.json
+  # as metadata.raw.json. Large (often >100 kB) but occasionally useful when a
+  # provider exposes fields the curated schema does not carry.
+  save_raw_info: false
+
+transcript:
+  # true => every download is transcribed right away. A failure here is a
+  # warning, never a failed download: the media and the notes are already on
+  # disk and transcribe.py --pending can retry later.
+  # Manifold-OS 2.0 port (C20a): false - the transcript (mlx-whisper background in the model worker) is the C20b's job;
+  # a staged source stays `pending`. Do not turn this on in the port: the ASR engines here load models on their own.
+  enabled: false
+  status: pending
+  # auto | subtitles | mlx_whisper | faster_whisper | whisper_cpp
+  # 'auto' tries them in that order and uses the first available one.
+  backend: auto
+  # Language given to the ASR engine. "hu" is set explicitly rather than left
+  # to auto-detection: Whisper occasionally mistakes short Hungarian openings
+  # for another language, and a wrong guess ruins the whole transcript.
+  # null => let the engine detect it.
+  language: "hu"
+  # Fidelity requirement (AI01 #14): never "beautify" a transcript by default.
+  # If you enable any post-processing, transcript_postprocessed is set to true
+  # in the transcript frontmatter so that a later integration step knows the
+  # text is no longer character-exact.
+  postprocess: false
+  whisper_cpp:
+    # Path or command name of the whisper.cpp CLI (whisper-cli / main).
+    binary: null
+    # Path to a .bin GGML model file.
+    model: null
+    extra_args: []
+  # Apple Silicon GPU backend (pip install -e ".[mlx]"). large-v3-turbo is
+  # roughly as fast as a CPU "small" run but far more accurate on Hungarian.
+  mlx_whisper:
+    model: "mlx-community/whisper-large-v3-turbo"
+  # Default ASR. large-v3-turbo is markedly better on Hungarian than the small
+  # model (proper nouns, endings) and still runs at roughly half real time on
+  # an Apple Silicon CPU with int8. The first run downloads ~1.6 GB.
+  faster_whisper:
+    model: "large-v3-turbo"
+    device: "auto"
+    compute_type: "int8"
+    # Both settings are what keep a transcript complete; see README section 9.
+    vad_filter: true
+    condition_on_previous_text: false
+
+subtitles:
+  # Provider-supplied subtitles are downloaded as separate files (no FFmpeg
+  # needed) and can be turned into a transcript with:
+  #   scripts/transcribe.py PATH --backend subtitles
+  download: false
+  languages: ["hu", "en"]
+  # yt-dlp subtitle format preference (no conversion is performed).
+  formats: "vtt/srt/best"
+  # Machine-generated captions are ASR output, not a human transcript. They are
+  # still recorded honestly (transcript_engine says where the text came from).
+  include_auto: false
+
+organization:
+  provider_folder: true
+  subject_folder: true
+  # Used when no subject can be determined and none is given with --subject.
+  default_subject: "Besorolatlan"
+  # extractor key / hostname -> human-readable provider folder name
+  provider_names:
+    zanza.tv: "Zanza"
+    zanza: "Zanza"
+    youtube: "YouTube"
+    "youtube:tab": "YouTube"
+    vimeo: "Vimeo"
+    generic: "Web"
+    cs50.harvard.edu: "CS50"
+
+subjects:
+  # IMPORTANT (open decision #3 in CLAUDE.md): these names should match the
+  # Manifold vault's own subject taxonomy character for character (accents,
+  # capitalisation). They are NOT verified against the vault - the build phase
+  # has no vault access. Correct this list before the first integration run.
+  #
+  # The first eight entries are zanza.tv's own subject sections, verified
+  # against the live site in September 2026. The rest are the usual school
+  # subjects, kept so that sources from other providers land somewhere sane.
+  #
+  # If the vault names a subject differently (say "Nyelvtan" where zanza.tv
+  # says "Magyar nyelv"), change the alias target below - the alias table is
+  # the single place where that mapping lives.
+  taxonomy:
+    - "Történelem"
+    - "Irodalom"
+    - "Magyar nyelv"
+    - "Matematika"
+    - "Filozófia"
+    - "Etika"
+    - "Társadalomismeret"
+    - "Testnevelés és sport"
+    - "Fizika"
+    - "Kémia"
+    - "Biológia"
+    - "Földrajz"
+    - "Informatika"
+    - "Angol"
+    - "Besorolatlan"
+  # Lowercase, accent-free alias -> canonical taxonomy entry. Used to normalise
+  # --subject values, batch-file subject hints and provider URL/tag heuristics.
+  # The left-hand side of the first block is exactly what appears in a
+  # zanza.tv URL path (https://zanza.tv/<subject>/<topic>/<video>).
+  aliases:
+    tortenelem: "Történelem"
+    irodalom: "Irodalom"
+    magyar-nyelv: "Magyar nyelv"
+    matematika: "Matematika"
+    filozofia: "Filozófia"
+    etika: "Etika"
+    tarsadalomismeret: "Társadalomismeret"
+    testneveles-es-sport: "Testnevelés és sport"
+    testneveles_es_sport: "Testnevelés és sport"
+    # convenience aliases for typing and for other providers
+    history: "Történelem"
+    literature: "Irodalom"
+    magyar: "Magyar nyelv"
+    nyelvtan: "Magyar nyelv"
+    grammar: "Magyar nyelv"
+    matek: "Matematika"
+    math: "Matematika"
+    maths: "Matematika"
+    philosophy: "Filozófia"
+    ethics: "Etika"
+    fizika: "Fizika"
+    physics: "Fizika"
+    kemia: "Kémia"
+    chemistry: "Kémia"
+    biologia: "Biológia"
+    biology: "Biológia"
+    foldrajz: "Földrajz"
+    geography: "Földrajz"
+    informatika: "Informatika"
+    it: "Informatika"
+    angol: "Angol"
+    english: "Angol"
+
+  # Topic words used as the LAST resort, when neither --subject, a batch hint,
+  # the metadata nor the URL identifies the subject. This is what keeps videos
+  # from a platform with no subject in its URL (YouTube) out of the default
+  # folder. The subject with the most matches wins; ties go to the longer
+  # match. Recorded as subject_source: "keywords" so an inferred subject stays
+  # distinguishable from a read one.
+  #
+  # Matching is accent- and case-insensitive substring matching, which is what
+  # makes Hungarian suffixes work ("kozepkorban" contains "kozepkor"). For the
+  # same reason a keyword must be at least 4 characters: shorter ones match
+  # inside unrelated words.
+  keywords:
+    "Történelem":
+      - ókor
+      - középkor
+      - újkor
+      - király
+      - császár
+      - birodal
+      - háború
+      - forradal
+      - csata
+      - dinasztia
+      - polisz
+      - athén
+      - spárta
+      - róma
+      - egyiptom
+      - hellén
+      - hellenizmus
+      - népvándorlás
+      - reformáció
+      - felvilágosodás
+      - trianon
+      - kiegyezés
+      - árpád
+      - hunyadi
+      - mohács
+      - köztársaság
+      - principatus
+      - hadsereg
+      - keresztes
+      - feudalizmus
+      - jobbágy
+      - uralkod
+      - honfoglal
+      - lovag
+      - nemesség
+      - rendi
+      - iszlám
+      - kalifa
+      - pápa
+      - inkvizíció
+      - görög
+      - kereszténység
+      - egyház
+      - reneszánsz
+      - aranybulla
+      - tatárjárás
+      - triumvirátus
+      - civilizáció
+      - vallás
+      - államalapít
+      - szent istván
+      - fejedelem
+      - hódít
+      - gyarmat
+      - rabszolga
+    "Irodalom":
+      - vers
+      - költő
+      - költészet
+      - regény
+      - novella
+      - dráma
+      - ballada
+      - elbeszélés
+      - szonett
+      - líra
+      - epika
+      - eposz
+      - petőfi
+      - arany jános
+      - jókai
+      - móricz
+      - józsef attila
+      - shakespeare
+      - romantika
+      - realizmus
+      - műelemzés
+    "Nyelvtan":
+      - helyesírás
+      - mondattan
+      - szófaj
+      - nyelvtan
+      - toldalék
+      - hangtan
+      - mondatelemzés
+      - állítmány
+      - alárendelő
+      - szóalkotás
+    "Matematika":
+      - egyenlet
+      - függvény
+      - geometria
+      - derivált
+      - integrál
+      - valószínűség
+      - halmaz
+      - vektor
+      - logaritmus
+      - trigonometria
+      - számtan
+      - statisztika
+      - mértan
+    "Fizika":
+      - newton
+      - energia
+      - gyorsulás
+      - elektromos
+      - mágnes
+      - optika
+      - hullám
+      - atomfizika
+      - termodinamika
+      - kvantum
+      - gravitáció
+      - mozgás
+    "Kémia":
+      - kémia
+      - molekula
+      - vegyület
+      - kémiai
+      - oldat
+      - periódusos
+      - kovalens
+      - szerves kémia
+      - atommag
+    "Biológia":
+      - sejt
+      - genetika
+      - evolúció
+      - ökoszisztéma
+      - fotoszintézis
+      - öröklődés
+      - szervrendszer
+      - baktérium
+      - növény
+    "Földrajz":
+      - éghajlat
+      - kontinens
+      - domborzat
+      - tektonika
+      - népesség
+      - térkép
+      - vízrajz
+      - talaj
+    "Informatika":
+      - algoritmus
+      - programozás
+      - számítógép
+      - adatbázis
+      - hálózat
+      - bináris
+      - python
+      - operációs rendszer
+      # 2026-10-14: angol nyelvű kurzusok (CS50): a „vers” a „university”-ben az Irodalomra húzta;
+      # a több, specifikus találat itt nyer (a pontozás a találatok száma, utána a leghosszabb szó)
+      - computer science
+      - programming
+      - algorithm
+      - cs50
+      - data structure
+      - compiler
+      - javascript
+      - scratch
+      - flask
+      - artificial intelligence
+    "Filozófia":
+      - filozófia
+      - etika
+      - platón
+      - arisztotelész
+      - descartes
+      - erkölcs
+      - metafizika
+
+archive:
+  # Duplicate protection. Disabling this does not disable the on-disk checks.
+  enabled: true
+  dir: "./archive"
+
+logging:
+  dir: "./logs"
+  # DEBUG | INFO | WARNING | ERROR
+  level: INFO
+  # Machine-readable event stream (logs/events.jsonl) next to the text log.
+  json_events: true
+
+playlist:
+  # Safety switch (spec section 13): a playlist URL is refused unless the run
+  # explicitly asks for playlist mode with --playlist.
+  enabled: false
+  # Hard stop: a playlist larger than this aborts instead of silently pulling
+  # hundreds of videos. Raise per run with --max-items.
+  max_items: 50
+
+crawl:
+  # download.py --crawl URL: read a listing page (a subject or topic page such
+  # as https://zanza.tv/tortenelem), find every video page below it and stage
+  # them all as one batch. Already staged pages are neither fetched nor
+  # downloaded again, so re-running the same crawl only picks up new videos.
+  #
+  # The crawler reads robots.txt first and never fetches a disallowed page. It
+  # stays on the start page's host and below its path, sends no cookie and no
+  # credential, and drops a page that redirects elsewhere (e.g. to a login).
+  #
+  # Minimum pause between two page requests, in seconds. A longer Crawl-delay
+  # in the site's robots.txt always wins (zanza.tv asks for 10).
+  delay_seconds: 10
+  # Link levels followed below the start page.
+  # zanza.tv: subject page (0) -> topic page (1) -> video page (2).
+  max_depth: 2
+  # Hard stop on pages read: a wrong start page aborts instead of wandering.
+  max_pages: 400
+  # A crawl that finds more video pages than this aborts. Raise per run with
+  # --max-items.
+  max_items: 200
+  # A page is a video page when its HTML matches one of these regular
+  # expressions (an embedded player). Video pages are not crawled further.
+  embed_patterns:
+    - 'youtube(?:-nocookie)?\.com/embed/[A-Za-z0-9_-]{6,}'
+    # a youtu.be short link as an iframe source (a mere <a href="https://youtu.be/…"> on a
+    # listing page does NOT make it a video page)
+    - '<iframe[^>]+src=["'']?https?://(?:www\.)?youtu\.be/[A-Za-z0-9_-]{6,}'
+    # CS50's own player (video.cs50.io/<YouTube id>) on cs50.harvard.edu week pages;
+    # the 2.0 discovery (modulok/ytdlp/bejaras.py) maps it to the YouTube video
+    - 'video\.cs50\.io/[A-Za-z0-9_-]{6,}'
+    - 'player\.vimeo\.com/video/\d+'
+    - '<video[\s>]'
+  # How the crawler names itself. Keep it honest.
+  user_agent: "multimedia-source-pipeline (personal study archive; honours robots.txt)"
+
+download:
+  retries: 5
+  fragment_retries: 5
+  socket_timeout: 30
+  # null => no limit. Example: "2M"
+  ratelimit: null
+  # Resume interrupted downloads instead of restarting them.
+  resume: true
+
+ytdlp:
+  # Optional path to a local yt-dlp source checkout (e.g. a cloned yt-dlp
+  # repository). When set, it is prepended to sys.path, so the pipeline uses
+  # that checkout instead of the installed yt-dlp package.
+  local_source_path: null
+  # Optional path to a yt-dlp CLI binary, used only when the Python module is
+  # not importable.
+  binary: null
+  # Passed through to yt-dlp as --extractor-args.
+  #
+  # Why the YouTube setting below is the default: educational sites (zanza.tv
+  # among them) do not host video themselves, they embed a YouTube player.
+  # Several of those videos are published as embed-only - the plain watch page
+  # answers "This video is not available", while the embedded player the site
+  # itself serves works. Selecting the embedded player client is what makes
+  # such a video readable at all; verified against zanza.tv in 2026-09.
+  #
+  # This is client selection, not a bypass: private, paid, age-gated and DRM
+  # protected videos still fail, and no credential or cookie is ever used.
+  # If a future yt-dlp release renames a client, empty this mapping ({}) and
+  # the pipeline falls back to yt-dlp's own defaults.
+  extractor_args:
+    youtube:
+      player_client: ["web_embedded", "tv", "android", "ios"]
+  # JavaScript runtimes yt-dlp may use to solve YouTube's player ("n") challenge.
+  # This is not optional for quality: without a runtime YouTube returns the one
+  # 360p pre-muxed format and nothing else, no matter what max_height says.
+  # yt-dlp enables deno by default, node has to be named explicitly. The first
+  # one pinned by Manifold-OS is used (2.0 port: nothing is searched on PATH; deno is not pinned).
+  # Requires the yt-dlp-ejs package (a dependency of this project).
+  js_runtimes: ["deno", "node"]
+  # Path to the ffmpeg binary. "auto" = none: 2.0 port (Javító 3): no MOS_FFMPEG, no PATH, no imageio-ffmpeg, no
+  # home-folder binary (~/.local/bin is forbidden); modulok/ytdlp/lanc.py hands in the pinned, sha256-verified
+  # [utak] ffmpeg (<os>/runtime/ffmpeg/ffmpeg) for every run.
+  ffmpeg_location: auto
+  # Path to the pinned node binary for the JS challenge solver. "auto" = none (never searched on PATH; without it
+  # YouTube offers only the 360p pre-muxed format). lanc.py hands in [utak] node.
+  node_location: auto
+
+integration:
+  # Hand-off to the downstream integrator - the owner's decision of 2026-09-19:
+  # "Az a lényeg, hogy a ytdlp része legyen, mert ezáltal, ezt összeköthetjük
+  # 1 db workflowra (link bemenet -> transcript & videó -> videó, transcript &
+  # metadata integrálása a kért programmal)".
+  #
+  # This pipeline still never reads or writes the vault. After staging, it runs
+  # `command` once per source folder that is still 'pending', with {folder}
+  # replaced by the folder's absolute path. The command below is the Manifold
+  # vault's own integrator: it places the files, writes the source note, links
+  # the video to the notes whose content it really carries, verifies, logs, and
+  # finally sets integration_status: integrated here. All of that happens under
+  # the vault's AI01 Workflow 2.0 protocol, not under this repository's rules.
+  #
+  # enabled: false  -> only `download.py --integrate` and `integrate.py` hand off.
+  # enabled: true   -> every download hands off, unless `--no-integrate`.
+  #
+  # Owner decision, 2026-09-20: true - one workflow. Since the receiving system
+  # decides with a local model and only asks when it is unsure (the answer comes
+  # back as integration_status: in_review), an unattended crawl no longer piles
+  # up work for the owner: what the model can decide is decided, the rest waits
+  # in the vault's own interface.
+  # The vault's own tools need numpy, mlx-whisper, mlx-vlm and pypdf; since
+  # 2026-09-23 they run from the Manifold-OS venv on the same SSD (everything on
+  # the drive, owner's request), where those versions are pinned. -B keeps
+  # __pycache__ out of the vault. {project_root} is this repository's root, so
+  # both paths are relative to the drive and survive it being mounted elsewhere
+  # (the 2026-09-19 and 2026-09-23 moves each broke an absolute path here).
+  # Value aligned with the owner decision above on 2026-09-23 (it had been left
+  # at false, contradicting the dated decision two paragraphs up).
+  # 2026-09-24 (owner decision): this repository now lives inside Manifold-OS
+  # (Manifold-OS/modulok/ytdlp), next to the vault's tools (modulok/eszkozok).
+  # The hand-off goes through `mos kor --mappa {folder}`: the same vault
+  # integrator (media.py auto --staging) runs, but wrapped in Manifold-OS's
+  # per-source snapshot, so every hand-off - from the Manifold-pult or from a
+  # terminal - can be undone (`mos undo --kor ...`), and two hand-offs never
+  # write the vault at the same time (kor lock). This repository still reads
+  # and writes nothing outside itself.
+  # Manifold-OS 2.0 port (C20a): false. The legacy hand-off ran `bin/mos kor` (the 2.0 has no `kor`); the video chain
+  # hand-off into the vault is the C20b's job (the gépi-írás `mozgat` operation). The staged source stays `pending`.
+  enabled: false
+  command: []
+  timeout_seconds: 3600

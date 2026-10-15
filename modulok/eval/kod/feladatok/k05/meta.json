@@ -1,0 +1,12 @@
+{
+ "id": "k05",
+ "cim": "Mérések egy tartományban",
+ "tema": "rendezes_kereses",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "index", "sor": 16, "eredeti": "        auto jobb = upper_bound(a.begin(), a.end(), r);", "csere": "        auto jobb = lower_bound(a.begin(), a.end(), r);", "magyarazat": "A lower_bound az r értékű elemeket nem számolja bele, pedig a zárt intervallum jobb végpontja is benne van."},
+  {"id": "h2", "fajta": "ido", "sor": 17, "eredeti": "        cout << (jobb - bal) << \"\\n\";", "csere": "        cout << count_if(a.begin(), a.end(), [&](long long x) { return l <= x && x <= r; }) << \"\\n\";", "magyarazat": "Minden kérdésnél végigszámolja a teljes tömböt, ez n·q lépés, túl lassú."},
+  {"id": "h3", "fajta": "sorrend", "sor": 11, "eredeti": "    sort(a.begin(), a.end());", "csere": "    sort(a.rbegin(), a.rend());", "magyarazat": "Csökkenő sorrendbe rendez, a bináris keresés viszont növekvő sorrendet feltételez."}
+ ]
+}

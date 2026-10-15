@@ -1,0 +1,4 @@
+fatal.cpp:1:10: fatal error: 'nincs_ilyen.h' file not found
+    1 | #include <nincs_ilyen.h>
+      |          ^~~~~~~~~~~~~~~
+1 error generated.

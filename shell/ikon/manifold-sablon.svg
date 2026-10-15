@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 100 100">
+  <title>Manifold — egyszínű sablonjel (menüsor, színezett ikonmód)</title>
+  <circle cx="42" cy="58" r="30" fill="none" stroke="#000000" stroke-width="9"></circle>
+  <rect x="-11" y="-11" width="22" height="22" rx="3" fill="#000000" transform="translate(77 23) rotate(45)"></rect>
+</svg>

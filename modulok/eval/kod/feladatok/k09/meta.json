@@ -1,0 +1,12 @@
+{
+ "id": "k09",
+ "cim": "Legkevesebb átszállás",
+ "tema": "graf",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "inicializalas", "sor": 18, "eredeti": "    tav[1] = 0;", "csere": "    tav[1] = 1;", "magyarazat": "A kiinduló megálló távolsága 0 lenne; az 1-es kezdőérték minden távolságot eggyel növel."},
+  {"id": "h2", "fajta": "ido", "sor": 23, "eredeti": "        for (int v : g[u]) {", "csere": "        for (int v = 1; v <= n; v++) if (count(g[u].begin(), g[u].end(), v)) {", "magyarazat": "A szomszédokat az összes csúcs végigpróbálásával keresi, ez n² lépés, nagy gráfon túl lassú."},
+  {"id": "h3", "fajta": "index", "sor": 30, "eredeti": "    cout << tav[n] << \"\\n\";", "csere": "    cout << tav[n - 1] << \"\\n\";", "magyarazat": "Az n - 1-es megálló távolságát írja ki az n-es helyett."}
+ ]
+}

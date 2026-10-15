@@ -1,0 +1,382 @@
+# Manifold-OS 2.0 — modelljelöltek letöltési listája (C04, 2026-09-30).
+#
+# Csak adat: a letöltést és a regiszterbe vételt a C05 (modellgazda) végzi, a felhasználó
+# jóváhagyása után (D3: név- és mérettel ellátott lista, igen, utána offline). A cél a {models}
+# (HF_HOME). Indoklás, források, kizárt jelöltek: docs/MODELL-JELOLTEK.md.
+#
+# Mezők:
+#   repo              HF-repó (a letöltés forrása)
+#   feladat           ocr_kezi | ocr_keplet | atirat | szoveg | matek | matek_ellenorzo |
+#                     beagyazas | rerank | osztalyozas | kod (C36b)
+#   minta             ha nem a teljes repó kell (allow_patterns); hiányában az egész repó
+#   meret_gb          a letöltendő fájlok összege a HF API szerint (2026-09-30), GB = 10^9 bájt
+#   csucs_gb          becsült csúcs-RAM: 1,1 × súlyok + 0,8 GB (a legacy három mérésére illesztve);
+#                     a meglévőknél a mért érték (calibration.json, 2026-09-23), ott csucs_mert = true
+#   keret             munka (≤ 5 GB) | tavol (≤ 9 GB)
+#   futtato           a betöltő könyvtár: mlx-lm | mlx-vlm | mlx-whisper | mlx-audio | transformers |
+#                     sentence-transformers | faster-whisper | mlx-embeddings | onnxruntime
+#                     (az utolsó kettő nincs a config/requirements.lock-ban)
+#   konvertalas       true: a repó nem MLX-formátumú; a letöltés után helyi konvertálás kell (C05)
+#   licenc            a modellkártya szerint
+#   kor               elso (ajánlott első kör) | opcionalis
+#   megvan            true: már a {models} alatt van (a C02 klónja), nem kell letölteni
+
+# ================================================================= meglévő modellek (0 GB)
+
+[modell.qwen35_9b]
+repo = "mlx-community/Qwen3.5-9B-MLX-4bit"
+revizio = "938d8919941c6e7efd3c7150eff7fe9d12afa631"
+feladat = ["ocr_kezi", "szoveg", "matek"]
+meret_gb = 5.98
+csucs_gb = 7.3
+csucs_mert = true
+keret = "tavol"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+megvan = true
+
+[modell.gemma4_12b]
+repo = "mlx-community/gemma-4-12B-it-4bit"
+revizio = "73bcf09092aa277861d5a191b989b666f7f32e8f"
+feladat = ["ocr_kezi", "szoveg", "matek_ellenorzo", "atirat"]
+meret_gb = 6.77
+csucs_gb = 8.5                       # K80 (2026-10-07): a 2.0 mérése (K28), a legacyé 7,5
+csucs_mert = true
+keret = "tavol"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+megvan = true
+
+[modell.qwen3_vl_4b]
+repo = "mlx-community/Qwen3-VL-4B-Instruct-4bit"
+revizio = "2fd8dacbdb8f1e54b8c005f081ec5bf79c56376b"
+feladat = ["ocr_kezi", "ocr_keplet", "szoveg"]
+meret_gb = 3.11
+csucs_gb = 4.6                       # K80 (2026-10-07): a 2.0 mérése (K28), a legacyé 4,0
+csucs_mert = true
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+megvan = true
+
+[modell.whisper_turbo_mlx]
+repo = "mlx-community/whisper-large-v3-turbo"
+revizio = "a4aaeec0636e6fef84abdcbe3544cb2bf7e9f6fb"
+feladat = ["atirat"]
+meret_gb = 1.61
+csucs_gb = 2.6
+keret = "munka"
+futtato = "mlx-whisper"
+licenc = "MIT"
+megvan = true
+
+[modell.bge_m3]
+repo = "BAAI/bge-m3"
+revizio = "5617a9f61b028005a4858fdac845db406aefb181"
+feladat = ["beagyazas", "osztalyozas"]
+minta = ["*.json", "pytorch_model.bin", "sentencepiece.bpe.model", "tokenizer*", "1_Pooling/*"]
+meret_gb = 2.3
+csucs_gb = 3.3
+keret = "munka"
+futtato = "sentence-transformers"
+licenc = "MIT"
+megvan = true
+
+# ================================================================= első kör (ajánlott)
+
+[modell.paddleocr_vl_16]
+repo = "mlx-community/PaddleOCR-VL-1.6-4bit"
+revizio = "c8987b277bdd8aaec8bd265d154f391bd03ad165"
+feladat = ["ocr_kezi", "ocr_keplet"]
+meret_gb = 0.72
+csucs_gb = 1.6
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.glm_ocr]
+repo = "mlx-community/GLM-OCR-4bit"
+revizio = "97f587506984cc92fa69b2694b4128e53db6b081"
+feladat = ["ocr_kezi", "ocr_keplet"]
+meret_gb = 1.25
+csucs_gb = 2.2
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "MIT"
+kor = "elso"
+
+[modell.chandra_ocr2]
+repo = "1qh/chandra-ocr-2-4bit-mlx"          # közösségi kvantálás (nem mlx-community)
+revizio = "f2439e222c625376876e26564aeddde1a23cf0b7"
+feladat = ["ocr_kezi", "ocr_keplet"]
+meret_gb = 3.05
+csucs_gb = 4.1
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "OpenRAIL-M (módosított: személyes használat szabad)"
+kor = "elso"
+
+[modell.parakeet_v3]
+repo = "mlx-community/parakeet-tdt-0.6b-v3"
+revizio = "ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15"
+feladat = ["atirat"]
+meret_gb = 2.51
+csucs_gb = 3.6
+keret = "munka"
+futtato = "mlx-audio"
+licenc = "CC-BY-4.0"
+kor = "elso"
+
+[modell.whisper_large_v3_hu]
+repo = "Trendency/whisper-large-v3-hu"
+revizio = "9635aaee7c4a83dc09ea2f420602eb550b44dc8e"
+feladat = ["atirat"]
+minta = ["*.safetensors", "*.json", "merges.txt", "vocab.json"]
+meret_gb = 6.18
+csucs_gb = 4.2                                # fp16 MLX-re konvertálva (~3,1 GB súly)
+keret = "munka"
+futtato = "mlx-whisper"
+konvertalas = true
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.qwen35_4b]
+repo = "mlx-community/Qwen3.5-4B-MLX-4bit"
+revizio = "32f3e8ecf65426fc3306969496342d504bfa13f3"
+feladat = ["szoveg", "matek", "ocr_kezi"]
+meret_gb = 3.06
+csucs_gb = 4.1
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.qwen35_2b]
+repo = "mlx-community/Qwen3.5-2B-MLX-4bit"
+revizio = "93760be4f1f69842a46bc13dbdc0f19e291392a3"
+feladat = ["osztalyozas", "szoveg"]
+meret_gb = 1.75
+csucs_gb = 2.7
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.qwen35_08b]
+repo = "mlx-community/Qwen3.5-0.8B-MLX-4bit"
+revizio = "5d894f8cc4ef3e6c88537bf3746ed262f549da6a"
+feladat = ["osztalyozas"]
+meret_gb = 0.65
+csucs_gb = 1.5
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.gemma4_e4b]
+repo = "mlx-community/gemma-4-e4b-it-4bit"
+revizio = "475b9088d29754a3379866cf5aeb6b41acd313c2"
+feladat = ["szoveg", "atirat", "matek_ellenorzo"]
+meret_gb = 5.18
+csucs_gb = 6.5
+keret = "tavol"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.ministral3_8b_reasoning]
+repo = "mlx-community/Ministral-3-8B-Reasoning-2512-4bit"
+revizio = "0b6f067915514745478c14fd55698fbb2d2863cc"
+feladat = ["matek_ellenorzo", "matek"]
+meret_gb = 5.63
+csucs_gb = 7.9                       # K80 (2026-10-07): a 2.0 mérése (13 200 tokenes matek_ellenorzo)
+keret = "tavol"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.qwen3_embedding_06b]
+repo = "Qwen/Qwen3-Embedding-0.6B"
+revizio = "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+feladat = ["beagyazas", "osztalyozas"]
+minta = ["model.safetensors", "*.json", "merges.txt", "vocab.json", "1_Pooling/*"]
+meret_gb = 1.21
+csucs_gb = 2.1
+keret = "munka"
+futtato = "sentence-transformers"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.qwen3_reranker_06b]
+repo = "Qwen/Qwen3-Reranker-0.6B"
+revizio = "e61197ed45024b0ed8a2d74b80b4d909f1255473"
+feladat = ["rerank"]
+meret_gb = 1.21
+csucs_gb = 2.1
+keret = "munka"
+futtato = "transformers"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.bge_reranker_v2_m3]
+repo = "BAAI/bge-reranker-v2-m3"
+revizio = "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+feladat = ["rerank"]
+minta = ["model.safetensors", "*.json", "sentencepiece.bpe.model"]
+meret_gb = 2.29
+csucs_gb = 3.3
+keret = "munka"
+futtato = "sentence-transformers"
+licenc = "Apache-2.0"
+kor = "elso"
+
+# ================================================================= opcionális
+
+[modell.dots_mocr]
+repo = "mlx-community/dots.mocr-4bit"
+revizio = "708b576de556b0cdba615ecd211db3b951ec09ef"
+feladat = ["ocr_kezi", "ocr_keplet"]
+meret_gb = 3.54
+csucs_gb = 4.7
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "MIT"
+kor = "opcionalis"
+
+[modell.nanonets_ocr2]
+repo = "mlx-community/Nanonets-OCR2-3B-4bit"
+revizio = "fe1396cbeb46cc71cba355907b5d6e11f3553f45"
+feladat = ["ocr_kezi", "ocr_keplet"]
+meret_gb = 3.09
+csucs_gb = 4.2
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "nincs megadva a kártyán (alapja Qwen2.5-VL-3B)"
+kor = "opcionalis"
+
+[modell.whisper_hu_turbo]
+repo = "sarpba/whisper-hu-large-v3-turbo-finetuned"
+revizio = "9d63092bd80b66729b86f2c6d044a964afb39f7f"
+feladat = ["atirat"]
+minta = ["model.safetensors", "*.json", "merges.txt", "vocab.json"]
+meret_gb = 3.24
+csucs_gb = 2.6                                # fp16 MLX-re konvertálva (~1,6 GB súly)
+keret = "munka"
+futtato = "mlx-whisper"
+konvertalas = true
+licenc = "MIT"
+kor = "opcionalis"
+
+[modell.whisper_large_v3]
+repo = "mlx-community/whisper-large-v3-mlx"
+revizio = "49e6aa286ad60c14352c404340ded53710378a11"
+feladat = ["atirat"]
+meret_gb = 3.08
+csucs_gb = 4.2
+keret = "munka"
+futtato = "mlx-whisper"
+licenc = "MIT"
+kor = "opcionalis"
+
+[modell.gemma4_e2b]
+repo = "mlx-community/gemma-4-e2b-it-4bit"
+revizio = "238767527555cb75a05732a84dff5d6ba0dd6809"
+feladat = ["szoveg", "osztalyozas", "atirat"]
+meret_gb = 3.58
+csucs_gb = 4.7
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "opcionalis"
+
+[modell.ministral3_3b]
+repo = "mlx-community/Ministral-3-3B-Instruct-2512-4bit"
+revizio = "a962dcb09eee4169c890e544c9eb938f1113fdee"
+feladat = ["szoveg"]
+meret_gb = 2.78
+csucs_gb = 3.8
+keret = "munka"
+futtato = "mlx-vlm"
+licenc = "Apache-2.0"
+kor = "opcionalis"
+
+[modell.qwen3_embedding_4b]
+repo = "mlx-community/Qwen3-Embedding-4B-4bit-DWQ"
+revizio = "b5d88f1fe49b50d2ac01b4692ca2d387f14f9c72"
+feladat = ["beagyazas"]
+meret_gb = 2.28
+csucs_gb = 3.3
+keret = "munka"
+futtato = "mlx-embeddings"                    # nincs a requirements.lock-ban
+licenc = "Apache-2.0"
+kor = "opcionalis"
+
+[modell.embeddinggemma_300m]
+repo = "mlx-community/embeddinggemma-300m-8bit"
+revizio = "c8316c9e35cf8830541b04d315398c67faa6e497"
+feladat = ["beagyazas"]
+meret_gb = 0.37
+csucs_gb = 1.2
+keret = "munka"
+futtato = "mlx-embeddings"                    # nincs a requirements.lock-ban
+licenc = "Gemma"
+kor = "opcionalis"
+
+# ================================================================= C36: C++ kód (feladat = "kod"; letöltve 2026-10-03, D3)
+# A revízió a helyi `refs/main` (C36b, hálózat nélkül). Részletek: docs/MODELL-JELOLTEK.md 8.
+
+[modell.qwen3_4b_thinking_2507]
+repo = "mlx-community/Qwen3-4B-Thinking-2507-4bit"
+revizio = "627b019c66f22d4de0a641d289b41497651a55c9"
+feladat = ["kod"]
+meret_gb = 2.28
+csucs_gb = 3.3
+keret = "munka"
+futtato = "mlx-lm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.nemotron3_nano_4b]
+repo = "mlx-community/NVIDIA-Nemotron-3-Nano-4B-4bit"
+revizio = "c4d79ba1901d99806ef757642a552acebb851a35"
+feladat = ["kod"]
+meret_gb = 2.25
+csucs_gb = 4.1
+keret = "munka"
+futtato = "mlx-lm"
+licenc = "NVIDIA Nemotron Open Model License"
+kor = "elso"
+
+[modell.ministral3_3b_reasoning]
+repo = "mlx-community/Ministral-3-3B-Reasoning-2512-4bit"
+revizio = "2cd2087aad40c28747f8ede17851de6035f12b16"
+feladat = ["kod"]
+meret_gb = 2.78
+csucs_gb = 3.8
+keret = "munka"
+futtato = "mlx-lm"
+licenc = "Apache-2.0"
+kor = "elso"
+
+[modell.seed_coder_8b_reasoning]
+repo = "mlx-community/Seed-Coder-8B-Reasoning-bf16-mlx-4Bit"   # közösségi 4 bites konverzió
+revizio = "30dd89e431c95db36d839b55ba82e29f423b82d5"
+feladat = ["kod"]
+meret_gb = 4.65
+csucs_gb = 5.9
+keret = "tavol"
+futtato = "mlx-lm"
+licenc = "MIT"
+kor = "elso"
+
+[modell.nemotron_nano_9b_v2]
+repo = "mlx-community/NVIDIA-Nemotron-Nano-9B-v2-4bits"
+revizio = "863ab70142ead81e0776777baf1225bfcea77816"
+feladat = ["kod"]
+meret_gb = 5.02
+csucs_gb = 6.3
+keret = "tavol"
+futtato = "mlx-lm"
+licenc = "NVIDIA Open Model License"
+kor = "elso"

@@ -1,0 +1,4 @@
+fatal.cpp:1:10: fatal error: nincs_ilyen.h: No such file or directory
+    1 | #include <nincs_ilyen.h>
+      |          ^~~~~~~~~~~~~~~
+compilation terminated.

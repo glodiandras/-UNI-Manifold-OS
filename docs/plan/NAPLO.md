@@ -1,0 +1,8 @@
+# Manifold productization — phase log (NAPLO)
+
+## F1 — Bootstrap (2026-10-15)
+
+- Copied the v2 code base into this repository (1 300 files, 14 MB) **without**: `var/`, `runtime/`, `archive/`, `Manifold.app`, `app/dist`, `app/node_modules`, the v2 `docs/` (only `ARCHITECTURE.md`, `DESIGN.md`, `PLOT-FORMATUM.md`, `LEGACY-SZERZODESEK.md` and the v2 `CLAUDE.md` as `docs/dev/DECISIONS-v2.md` were taken as developer references), `tools/mac`, `tests/kezi`, `app/tests/kezi`, `tests/legacy_szabaly.py`, `modulok/ytdlp/{staging,archive,logs,utnorm.py,klon.py,tortenelem-hatralevo.txt}`, the personal handwriting OCR fixture `tests/adat/c18_1/qwen3_vl_4b-ocr_kezi.jsonl.gz`, and the gold-set **data** of every evaluation task built from the developer's notes/photos/videos (`atirat, kereses, kifejtes, kotes, kviz, ocr_keplet, ocr_kezi, osszefoglal_kijeloles, szoveg, tema, fuzet_*, beagyazas, rerank`). Gold-set *code* (`feladat.py`, `keszit.py`) was kept everywhere; gold-set data was kept for `kod`, `kiegeszites`, `matek`, `grafikon` (licence of the math problems to be checked).
+- `config/pillanat-kivetelek-vault.json` replaced by `{}` (it held commit hashes of the developer's vault).
+- New root files: `README.md`, `CLAUDE.md`, `.gitignore`, `.gitattributes` (planning material `export-ignore`).
+- Known leftovers for F2 (from the audits): legacy bridge (`MOS_LEGACY`, doctor `LEGACY_MINTA`, `tasks` `'legacy'`), developer references in user-facing strings, `ALAP_TAGS`, `TEMAMAPPA_MINTA`, `KISERO_ELOTAG`, selftest tables with the developer's SSD name, bundle id `local.manifold-os.app`, `modulok/ytdlp/kotes_modell.json` comment, `config/vault-sema.json` (personal schema; to become a preset/import source), `config/os.toml` personal defaults.

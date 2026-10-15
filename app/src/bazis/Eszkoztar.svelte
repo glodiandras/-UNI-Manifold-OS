@@ -1,0 +1,261 @@
+<!--
+  A Bases-nézet eszköztára (C12b): nézetfülek (átnevezés, típus, sorrend, törlés a menüjükben; „+” új nézet) és a
+  panelek: Oszlopok, Szűrők és képletek, Nézet-beállítások, és a teljes YAML-forrás. A találatszám `title`-je a core és a
+  rajz idejét mutatja. Csak írható `.base`-nél jelennek meg a szerkesztő elemek.
+-->
+<script lang="ts">
+  import { tick } from 'svelte';
+  import Ikon from '../lib/ikon/Ikon.svelte';
+  import { CodeXml, Columns3, Funnel, Plus, SlidersHorizontal } from '../lib/ikon/ikonok';
+  import { lebegoMenu, type MenuElem } from '../szerkeszto/notion/menu';
+  import BeallitasPanel from './BeallitasPanel.svelte';
+  import type { BazisModell } from './modell.svelte';
+  import OszlopPanel from './OszlopPanel.svelte';
+  import Popover from './Popover.svelte';
+  import SzuroPanel from './SzuroPanel.svelte';
+  import type { NezetTipus, Valasz } from './tipusok';
+
+  interface Props {
+    modell: BazisModell;
+    v: Valasz;
+    irhato: boolean;
+    idoSzoveg: string;
+    nezetValtott?: (index: number) => void;
+    forrasGomb?: () => void;
+  }
+  let { modell, v, irhato, idoSzoveg, nezetValtott, forrasGomb }: Props = $props();
+
+  const aktiv = $derived(v.nezet?.index ?? 0);
+  const szuroDb = $derived((v.fajl?.szuro.trim() ? 1 : 0) + (v.fajl?.szuro_nezet.trim() ? 1 : 0));
+
+  function valt(i: number) {
+    modell.nezetValt(i);
+    nezetValtott?.(i);
+  }
+
+  async function muvelet(m: Parameters<BazisModell['alkalmaz']>[0], ujNezet?: number) {
+    const r = await modell.alkalmaz(m, ujNezet);
+    if (r.irva && ujNezet !== undefined) nezetValtott?.(ujNezet);
+    return r;
+  }
+
+  // ------------------------------------------------------------------ új nézet
+
+  const TIPUS_NEV: Record<NezetTipus, string> = { table: 'Táblázat', cards: 'Kártyák', kanban: 'Kanban' };
+
+  function ujNezetMenu(e: MouseEvent) {
+    const el = e.currentTarget as HTMLElement;
+    const r = el.getBoundingClientRect();
+    const elemek: MenuElem[] = (['table', 'cards', 'kanban'] as const).map((t) => ({ id: t, nev: `Új nézet: ${TIPUS_NEV[t]}` }));
+    const akciok = new Map<string, () => void>();
+    for (const t of ['table', 'cards', 'kanban'] as const)
+      akciok.set(t, () => void muvelet({ fajta: 'nezet_uj', tipus: t }, v.nezetek.length));
+    lebegoMenu({ focus: () => el.focus() }, r.left, r.bottom + 2, elemek, akciok, 'Új nézet');
+  }
+
+  // ------------------------------------------------------------------ fül menü és átnevezés
+
+  let atnevezett = $state<{ index: number; nev: string } | null>(null);
+
+  function atnevezKezd(i: number) {
+    atnevezett = { index: i, nev: v.nezetek[i].nev };
+    void tick().then(() => document.querySelector<HTMLInputElement>('input.fulatnevezo')?.select());
+  }
+
+  function atnevezKesz(ment: boolean) {
+    const a = atnevezett;
+    atnevezett = null;
+    if (!a || !ment) return;
+    const nev = a.nev.trim();
+    if (nev && nev !== v.nezetek[a.index].nev) void muvelet({ fajta: 'nezet_beallit', nezet: a.index, kulcs: 'name', ertek: nev });
+  }
+
+  function fulMenu(e: MouseEvent, i: number) {
+    if (!irhato) return;
+    e.preventDefault();
+    const el = e.currentTarget as HTMLElement;
+    const elemek: MenuElem[] = [];
+    const akciok = new Map<string, () => void>();
+    const hozzaad = (id: string, nev: string, fn: () => void, extra: Partial<MenuElem> = {}) => {
+      elemek.push({ id, nev, ...extra });
+      akciok.set(id, fn);
+    };
+    hozzaad('atnevez', 'Átnevezés…', () => atnevezKezd(i));
+    hozzaad('tipus', 'Típus', () => {}, {
+      almenu: () => (['table', 'cards', 'kanban'] as const).map((t) => ({ id: `t-${t}`, nev: TIPUS_NEV[t], kijelolt: v.nezetek[i].tipus === t })),
+    });
+    for (const t of ['table', 'cards', 'kanban'] as const)
+      akciok.set(`t-${t}`, () => void muvelet({ fajta: 'nezet_beallit', nezet: i, kulcs: 'type', ertek: t }));
+    if (i > 0) hozzaad('balra', 'Mozgatás balra', () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i - 1 }, aktiv === i ? i - 1 : undefined));
+    if (i < v.nezetek.length - 1)
+      hozzaad('jobbra', 'Mozgatás jobbra', () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i + 1 }, aktiv === i ? i + 1 : undefined));
+    if (v.nezetek.length > 1)
+      hozzaad('torol', 'Nézet törlése', () => void muvelet({ fajta: 'nezet_torol', nezet: i }, Math.min(aktiv > i ? aktiv - 1 : aktiv === i ? Math.max(0, i - 1) : aktiv, v.nezetek.length - 2)), { veszely: true });
+    lebegoMenu({ focus: () => el.focus() }, e.clientX, e.clientY, elemek, akciok, `${v.nezetek[i].nev} nézet`);
+  }
+</script>
+
+<div class="eszkoztar">
+  {#if v.ok}
+    <div class="nezetek" role="tablist" aria-label="Nézetek">
+      {#each v.nezetek as n, i (i)}
+        {#if atnevezett?.index === i}
+          <input
+            class="fulatnevezo"
+            type="text"
+            aria-label="{n.nev} új neve"
+            bind:value={atnevezett.nev}
+            onkeydown={(e) => {
+              if (e.key === 'Enter') atnevezKesz(true);
+              else if (e.key === 'Escape') atnevezKesz(false);
+              e.stopPropagation();
+            }}
+            onblur={() => atnevezKesz(true)}
+          />
+        {:else}
+          <button
+            type="button"
+            role="tab"
+            class="nezet-gomb"
+            aria-selected={aktiv === i}
+            title={irhato ? 'Dupla kattintás: átnevezés · jobb gomb: menü' : undefined}
+            onclick={() => valt(i)}
+            ondblclick={() => irhato && atnevezKezd(i)}
+            oncontextmenu={(e) => fulMenu(e, i)}>{n.nev}</button
+          >
+        {/if}
+      {/each}
+      {#if irhato}
+        <button type="button" class="nezet-gomb ikon" aria-label="Új nézet" title="Új nézet" onclick={ujNezetMenu}>
+          <Ikon ikon={Plus} meret={14} />
+        </button>
+      {/if}
+    </div>
+    <span class="talalat" title={idoSzoveg}>
+      {v.osszes} találat{v.levagva ? ' (a lista levágva)' : ''}
+    </span>
+    {#if irhato}
+      <div class="panelek">
+        <Popover felirat="Oszlopok" ikon={Columns3} cimke="Oszlopok kijelölése és sorrendje">
+          <OszlopPanel {modell} {v} />
+        </Popover>
+        <Popover felirat="Szűrők" ikon={Funnel} jelzo={szuroDb ? String(szuroDb) : null} cimke="Szűrők és képletek" szeles>
+          <SzuroPanel {modell} {v} />
+        </Popover>
+        <Popover felirat="Nézet" ikon={SlidersHorizontal} cimke="A nézet beállításai">
+          <BeallitasPanel {modell} {v} />
+        </Popover>
+      </div>
+    {/if}
+  {:else}
+    <span class="nezet-nev">A fájl nem értelmezhető</span>
+  {/if}
+  {#if irhato}
+    <button
+      type="button"
+      class="nezet-gomb forras"
+      class:bekapcsolva={modell.forrasMod}
+      aria-pressed={modell.forrasMod}
+      title="A teljes .base fájl YAML-forrása"
+      onclick={() => (modell.forrasMod = !modell.forrasMod)}
+    >
+      <Ikon ikon={CodeXml} meret={14} /> YAML
+    </button>
+  {/if}
+  {#if forrasGomb}
+    <button type="button" class="nezet-gomb forras forras-gomb" onclick={forrasGomb} title="A blokk forrásának szerkesztése">Forrás</button>
+  {/if}
+</div>
+
+<style>
+  .eszkoztar {
+    flex: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 var(--t-3);
+    min-height: var(--magassag-lista-sor);
+    padding: 2px var(--t-3);
+    border-bottom: var(--keret-vastag) solid var(--keret);
+  }
+
+  .nezetek {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--t-1);
+    min-width: 0;
+  }
+
+  .nezet-gomb {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--t-1);
+    height: var(--magassag-gomb);
+    padding: 0 var(--t-2);
+    border: 0;
+    border-radius: var(--kerekites-kicsi);
+    background: transparent;
+    color: var(--szoveg-masodlagos);
+    font: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .nezet-gomb:hover {
+    background: var(--hatter-hover);
+  }
+
+  .nezet-gomb[aria-selected='true'] {
+    background: var(--hatter-aktiv);
+    color: var(--szoveg);
+    font-weight: var(--suly-kozepes);
+  }
+
+  .nezet-gomb.ikon {
+    padding: 0 var(--t-1);
+    color: var(--szoveg-halvany);
+  }
+
+  .nezet-gomb.forras {
+    color: var(--szoveg-halvany);
+    font-size: var(--betu-kicsi);
+  }
+
+  .nezet-gomb.bekapcsolva {
+    background: var(--hatter-aktiv);
+    color: var(--szoveg);
+  }
+
+  .fulatnevezo {
+    height: var(--magassag-suru);
+    width: 140px;
+    padding: 0 var(--t-1);
+    border: 1px solid var(--akcent);
+    border-radius: var(--kerekites-kicsi);
+    background: var(--hatter);
+    color: var(--szoveg);
+    font: inherit;
+    outline: none;
+  }
+
+  .nezet-nev {
+    font-weight: var(--suly-kozepes);
+    color: var(--szoveg-masodlagos);
+  }
+
+  .talalat {
+    margin-left: auto;
+    color: var(--szoveg-halvany);
+    font-size: var(--betu-kicsi);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .panelek {
+    display: flex;
+    align-items: center;
+    gap: var(--t-1);
+  }
+</style>

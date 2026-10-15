@@ -1,0 +1,147 @@
+// A szerkesztő CodeMirror-bővítményei. A mód (Live Preview / Forrás) és az írhatóság Compartmentben vált,
+// így a váltás megtartja a kijelölést és a visszavonási előzményt.
+//
+// Szerkesztés (Obsidian-alap): a lista Enterrel folytatódik, a Backspace a jelölőt törli; Tab / ⇧Tab
+// behúz (a behúzás tabulátor, a tabulátor 4 széles); ⌘Z / ⇧⌘Z visszavon / újra; ⌘F keresés és csere;
+// sortörés és olvasható sorhossz; a macOS magyar helyesírás-ellenőrzése.
+
+import { gepelesMero } from '../lib/tracker/gepelesMero';
+import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
+import { eloTulajdonsagok } from './tulajdonsagok/elo.svelte';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
+import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown';
+import { indentUnit, syntaxHighlighting } from '@codemirror/language';
+import { languages } from '@codemirror/language-data';
+import { search, searchKeymap } from '@codemirror/search';
+import { Annotation, Compartment, EditorState, type Extension } from '@codemirror/state';
+import { dropCursor, EditorView, highlightSpecialChars, keymap } from '@codemirror/view';
+import { classHighlighter } from '@lezer/highlight';
+import { aktivBlokkok } from './elo/aktivBlokk';
+import { blokkMezo } from './elo/blokkok';
+import { calloutHajtas } from './elo/hajtas';
+import { jegyzetUtja } from './elo/jegyzet';
+import { helyiMenuBovitmeny } from './helyiMenu';
+import { javaslatBeallitas, javaslatBovitmeny, type JavaslatBeallitas } from './asszisztens/javaslat';
+import { matekMargo } from '../matek/margo';
+import { kiegeszitesBovitmeny, kiegeszitesForras, type KiegeszitesForras } from './linkek/kiegeszites';
+import { fmKiegeszites } from './tulajdonsagok/fmKiegeszites';
+import { linkBovitmeny } from './linkek/szerkeszto';
+import { linkNevForras, notionBovitmenyek } from './notion';
+import { elonezetPlugin, stilusPlugin } from './elo/sorok';
+import { OBSIDIAN_BOVITESEK } from './markdown/elemzo';
+
+export type SzerkesztoMod = 'elo' | 'forras';
+
+export const modKapcsolo = new Compartment();
+export const irhatosagKapcsolo = new Compartment();
+
+/** A dokumentum felől érkező változás jele (külső változás, ütközés-feloldás, nézetek közti szinkron): csak olvasható
+ *  állapotban is átmegy a `changeFilter`-en (T117). Egyetlen példány: a tárolt állapot is ezt ismeri. */
+export const szinkronJel = Annotation.define<boolean>();
+
+/** Írható-e a szerkesztő. A programos beszúrások (sablon, PDF-idézet, időkód, helyi menü) ezt kérdezik, mert az
+ *  `EditorState.readOnly` a `view.dispatch`-et nem tiltja (T117). */
+export function irhato(view: { state: EditorState }): boolean {
+  return !view.state.readOnly;
+}
+
+/** A CodeMirror feliratai magyarul (keresőpanel, összefésülés, összecsukás). */
+export const MAGYAR_FELIRATOK: Record<string, string> = {
+  Find: 'Keresés',
+  Replace: 'Csere',
+  next: 'következő',
+  previous: 'előző',
+  all: 'mind',
+  'match case': 'kis- és nagybetű',
+  regexp: 'reguláris kifejezés',
+  'by word': 'egész szó',
+  replace: 'csere',
+  'replace all': 'mindet cseréli',
+  close: 'bezárás',
+  'current match': 'aktuális találat',
+  'on line': 'sor',
+  'replaced $ matches': '$ találat cserélve',
+  'replaced match on line $': 'a(z) $. sor találata cserélve',
+  'Go to line': 'Ugrás a sorra',
+  go: 'ugrás',
+  'Control character': 'Vezérlőkarakter',
+  'Selection deleted': 'Kijelölés törölve',
+  'folded code': 'összecsukott rész',
+  unfold: 'kibontás',
+  to: '–',
+  'Revert this chunk': 'Ezt a szakaszt átveszem',
+  Accept: 'Elfogad',
+  Reject: 'Elvet',
+  '$ unchanged lines': '$ változatlan sor',
+};
+
+/** A Markdown-nyelv a Manifold elemzőjével (az olvasó és a képlet-szkript ugyanezt használja). */
+export function markdownNyelv(): Extension {
+  return markdown({ base: commonmarkLanguage, extensions: OBSIDIAN_BOVITESEK, codeLanguages: languages, completeHTMLTags: false });
+}
+
+export function elonezetMod(): Extension {
+  return [aktivBlokkok, calloutHajtas, blokkMezo, eloTulajdonsagok, elonezetPlugin, notionBovitmenyek(), EditorView.editorAttributes.of({ class: 'cm-elonezet' })];
+}
+
+export function forrasMod(): Extension {
+  return EditorView.editorAttributes.of({ class: 'cm-forrasmod' });
+}
+
+export interface BeallitasOpciok {
+  mod: SzerkesztoMod;
+  csakOlvashato: boolean;
+  ut: string | null;
+  cimke: string;
+  /** a jegyzet neve a blokklinkhez (`[[Név#^id]]`); a fájllistából jön (C09) */
+  linkNev?: () => string | Promise<string>;
+  /** a `[[` kiegészítés adatforrásai (a vault fájljai, a legutóbbiak); nélküle nincs kiegészítés */
+  kiegeszites?: KiegeszitesForras;
+  /** a linkjavaslat (C30b-mag) külső függőségei; nélküle a bővítmény tétlen */
+  javaslat?: JavaslatBeallitas;
+  tovabbi?: Extension[];
+}
+
+export function bovitmenyek(o: BeallitasOpciok): Extension[] {
+  return [
+    markdownNyelv(),
+    history(),
+    closeBrackets(),
+    // A [[…]] párt a wikilink-bővítmény kezeli; a CM nem párosíthatja előtte külön a [ karaktert.
+    EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '{', "'", '"', '`'] } }]),
+    highlightSpecialChars(),
+    dropCursor(),
+    EditorView.lineWrapping,
+    EditorState.allowMultipleSelections.of(true),
+    indentUnit.of('\t'),
+    EditorState.tabSize.of(4),
+    EditorState.phrases.of(MAGYAR_FELIRATOK),
+    search({ top: true }),
+    keymap.of([...closeBracketsKeymap, indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap]),
+    syntaxHighlighting(classHighlighter),
+    stilusPlugin,
+    modKapcsolo.of(o.mod === 'elo' ? elonezetMod() : forrasMod()),
+    irhatosagKapcsolo.of(EditorState.readOnly.of(o.csakOlvashato)),
+    // háló: csak olvasható állapotban a programos beszúrások sem módosítják a dokumentumot (a selection és az effektek maradnak)
+    EditorState.changeFilter.of((tr) => !tr.startState.readOnly || !!tr.annotation(szinkronJel)),
+    jegyzetUtja.of(o.ut),
+    linkNevForras.of(o.linkNev ?? (() => '')),
+    // a `[[` kiegészítés és a nyers frontmatter tulajdonság-javaslatai (ugyanazzal a fájl-forrással)
+    o.kiegeszites ? [kiegeszitesForras.of(o.kiegeszites), kiegeszitesBovitmeny(), fmKiegeszites()] : [],
+    linkBovitmeny(),
+    helyiMenuBovitmeny(),
+    o.javaslat ? javaslatBeallitas.of(o.javaslat) : [],
+    javaslatBovitmeny(), // C30b-mag: a linkeletlen említések aláhúzása, Tab/Esc (csak látható javaslatnál)
+    matekMargo(), // C24b: a levezetés-ellenőrzés margójele (Esc törli)
+    gepelesMero(), // C27: a gépelési késleltetés folyamatos, mintavétel nélküli mérése (használati mérés)
+    EditorView.contentAttributes.of({
+      spellcheck: 'true',
+      autocorrect: 'off',
+      autocapitalize: 'off',
+      lang: 'hu',
+      'aria-label': o.cimke,
+      'data-fokusz-cel': '',
+    }),
+    ...(o.tovabbi ?? []),
+  ];
+}

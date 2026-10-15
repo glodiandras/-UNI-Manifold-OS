@@ -1,0 +1,34 @@
+;; A lefordított program (egy teszt) sandbox-exec profilja (C36a). Minden út paraméter (-D), beégetett út nincs.
+;;
+;; Amit a program tehet: a saját binárisát és a rendszer-könyvtárakat olvasni, a `MUNKA` mappába írni-olvasni, a stdin-t
+;; olvasni és a stdout/stderr-re írni (az örökölt csövek nem fájl-szabályok), szálat indítani, önmagának jelet küldeni
+;; (abort, assert). Amit nem: hálózat, másik program indítása (exec), fork, jel másik folyamatnak, bármilyen fájl a
+;; `MUNKA`-n kívül (a vault, a home, a kódtár). `file-read-metadata` globális: egy fájl LÉTEZÉSE kideríthető, a
+;; tartalma és a mappák listája nem.
+;;
+;; Paraméterek: BIN (a futtatott program, literál), BIN_MAPPA (a bináris mappája, csak olvasás), MUNKA (a program saját
+;; ideiglenes mappája, olvasás-írás), SAN_LIB (a sanitizer-futtatókörnyezet mappája, csak olvasás; ha nincs rá szükség,
+;; ugyanaz, mint a MUNKA).
+(version 1)
+(deny default)
+
+(allow process-exec (literal (param "BIN")))
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (subpath "/usr/lib")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random")
+  (subpath (param "BIN_MAPPA"))
+  (subpath (param "SAN_LIB"))
+  (subpath (param "MUNKA")))
+
+(allow file-write* (subpath (param "MUNKA")))
+(allow file-write-data (literal "/dev/null"))
+
+(allow signal (target self))

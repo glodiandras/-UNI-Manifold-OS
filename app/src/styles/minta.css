@@ -1,0 +1,91 @@
+/*
+ * Közös komponens-minták (C39, DESIGN.md 24.): a design system `m-` osztályai, ugyanazzal a névvel, ugyanazokból a
+ * tokenekből. A komponens a gombot csak elrendezi (margó, hely, méret); színt, keretet, hovert, lenyomást, fókuszt és
+ * tiltott állapotot nem ír rá. A kitöltött gomb háttere csak itt állhat (a tests/tokenek.test.ts őrzi).
+ */
+
+/* ---- Gomb: kitöltött (alap), semleges, link-szerű ---- */
+.m-gomb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--t-2);
+  height: var(--magassag-gomb);
+  padding: 0 var(--t-3);
+  border: 0;
+  border-radius: var(--kerekites);
+  background: var(--akcent-kitoltes);
+  /* a mély kitöltés sötétben a felülettől alig válik el: 1 px-es belső határ (C38, K226) */
+  box-shadow: inset 0 0 0 var(--keret-vastag) var(--akcent-kitoltes-keret);
+  color: var(--akcent-eloter);
+  font: inherit;
+  font-size: var(--betu-ui);
+  font-weight: var(--suly-kozepes);
+  white-space: nowrap;
+  cursor: default;
+  transition: background-color var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.m-gomb:hover:not(:disabled) {
+  background: var(--akcent-hover);
+}
+
+.m-gomb:active:not(:disabled) {
+  background: var(--akcent-kitoltes);
+  transform: translateY(0.5px);
+}
+
+/* a semleges gomb keretes: a `--keret-mezo` határ minden felületen ≥ 3:1 (WCAG 1.4.11), a halvány kitöltés (a
+   `--hatter-hover` a `--hatter`-en ~1,1:1) nem adna látható határt; a hover tölt */
+.m-gomb.semleges {
+  background: transparent;
+  box-shadow: inset 0 0 0 var(--keret-vastag) var(--keret-mezo);
+  color: var(--szoveg);
+}
+
+.m-gomb.semleges:hover:not(:disabled) {
+  background: var(--hatter-hover);
+}
+
+.m-gomb.semleges:active:not(:disabled) {
+  background: var(--hatter-aktiv);
+}
+
+.m-gomb.link {
+  padding: 0 var(--t-2);
+  background: none;
+  box-shadow: none;
+  color: var(--akcent-szoveg);
+  text-decoration: underline;
+}
+
+.m-gomb.link:hover:not(:disabled) {
+  background: var(--hatter-hover);
+}
+
+/* sorbeli, sűrű változat (Bases-mező, a kártya és a kvíz gombsora) */
+.m-gomb.suru {
+  height: var(--magassag-suru);
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites-kicsi);
+}
+
+.m-gomb:disabled {
+  opacity: var(--tiltott-atlatszosag);
+}
+
+/* ---- Jelölő (a tulajdonság- és a cella-jelölőnégyzet kirajzolt alakja) ---- */
+.m-jelolo {
+  display: inline-grid;
+  place-items: center;
+  width: var(--t-4);
+  height: var(--t-4);
+  border: var(--keret-vastag) solid var(--keret-mezo);
+  border-radius: var(--kerekites-kicsi);
+}
+
+.m-jelolo.be {
+  border-color: var(--akcent-kitoltes-keret);
+  background: var(--akcent-kitoltes);
+  color: var(--akcent-eloter);
+}

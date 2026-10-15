@@ -1,0 +1,33 @@
+;; A fordító (clang++ és a linker) sandbox-exec profilja (C36a): a futtató profiltól KÜLÖN, mert a fordító más igényű.
+;; Minden út paraméter (-D), beégetett út nincs.
+;;
+;; A forrás a `MUNKA` mappába másolva érkezik, így a profilnak a vaultot nem kell olvasnia: egy `#include "/…/titok"`,
+;; `#embed` vagy `__has_include` a vaulton, a homeon vagy a kódtáron kívülre nem lát. Olvasni lehet az LLVM-et, az SDK-t,
+;; a pótfejlécet, a `MUNKA`-t és a rendszer-könyvtárakat; írni csak a `MUNKA`-ba (a bináris, az ideiglenes fájlok).
+;; Exec csak az LLVM `bin/` mappájából (clang++, ld64.lld), hálózat és idegen jel nincs. A driver a linkert gyermekként
+;; indítja: ehhez a `process-fork` kell (mérve a valódi fordítóval; a tiltás-próbák a profil mellett állnak).
+;;
+;; Paraméterek: LLVM (az eszközlánc gyökere), LLVM_BIN (a futtatható fájlok mappája), SDK, POT (a pótfejlécek), MUNKA.
+(version 1)
+(deny default)
+
+(allow process-exec (subpath (param "LLVM_BIN")))
+(allow process-fork)
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (subpath "/usr/lib")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random")
+  (subpath (param "LLVM"))
+  (subpath (param "SDK"))
+  (subpath (param "POT"))
+  (subpath (param "MUNKA")))
+
+(allow file-write* (subpath (param "MUNKA")))
+(allow file-write-data (literal "/dev/null"))

@@ -1,0 +1,260 @@
+/* Alap: reset, tipográfia, fókusz. Minden érték a tokens.css-ből. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+html {
+  background: var(--hatter);
+  color: var(--szoveg);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+  line-height: var(--sor-ui);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+  accent-color: var(--akcent);
+  caret-color: var(--akcent);
+}
+
+#app {
+  height: 100%;
+  /* a lecsúszott (rejtett) állapotsor és minden ablakon kívüli átfedés ne adjon görgethető túlnyúlást: különben egy
+     fókusz vagy scrollIntoView a teljes felületet felcsúsztatja (a fülsor kicsúszik az ablakból; C32) */
+  overflow: hidden;
+  overflow: clip;
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+/* Olvasható szöveg (a nézetek tartalma) kijelölhető. */
+.olvasas,
+.olvasas * {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+::selection {
+  background: var(--hatter-kijelolt);
+}
+
+/* A hibaüzenet mindig ikonnal és szóval jön, sosem csak színnel (C37, DESIGN.md 2.): az akcent a vörös családba esik, a
+   hibától csak az ikon és a szöveg különbözteti meg. Egy helyen, a role="alert" hibasorokra; a jelentést a szöveg hordozza. */
+[role='alert']:is(.hiba, .hiba-sor, .kviz-hiba, .betoltes-hiba, .uj-hiba, .olvasasi-hiba)::before {
+  content: '';
+  display: inline-block;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--t-1);
+  vertical-align: -2px;
+  background: currentColor;
+  -webkit-mask: var(--ikon-hiba) center / contain no-repeat;
+  mask: var(--ikon-hiba) center / contain no-repeat;
+}
+
+/* A MANIFOLD betűjel (C37, DESIGN.md 22.): a forrásszöveg „Manifold”, a nagybetűt és a ritkítást a stílus adja, így a
+   képernyőolvasó szót olvas. Csak a Manifold-gomb és a vezérlő lapcíme használja; máshol a felület nem ír ritkított
+   nagybetűt. */
+.manifold-jel {
+  font-size: var(--betu-jel);
+  line-height: var(--sor-jel);
+  font-weight: var(--suly-felkover);
+  letter-spacing: var(--ritkitas-jel);
+  text-transform: uppercase;
+}
+
+.manifold-jel.nagy {
+  font-size: var(--betu-jel-nagy);
+  line-height: var(--sor-jel-nagy);
+  letter-spacing: var(--ritkitas-jel-nagy);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+ul[role],
+ol[role] {
+  list-style: none;
+  padding: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  margin: 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+}
+
+kbd {
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-kicsi);
+  line-height: var(--sor-kicsi);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fókusz: csak billentyűzetről látszik, mindig ugyanaz a gyűrű. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav);
+}
+
+[tabindex='-1']:focus-visible {
+  outline: none;
+}
+
+/* Görgetés: a sávszélesség nem ugrik, a sáv a témát követi. */
+.gorgeto {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--keret-eros) transparent;
+  overscroll-behavior: contain;
+}
+
+/* Az olvasótörzs tipográfiája (a C08 szerkesztője is ezt örökli). */
+.tipo {
+  font-size: var(--betu-torzs);
+  line-height: var(--sor-torzs);
+  max-width: var(--olvasasi-szelesseg);
+  margin-inline: auto;
+  color: var(--szoveg);
+}
+
+.tipo h1 {
+  font-size: var(--betu-h1);
+  line-height: 1.25;
+  font-weight: var(--suly-cim);
+  letter-spacing: -0.015em;
+  margin: var(--t-6) 0 var(--t-3);
+}
+
+.tipo h2 {
+  font-size: var(--betu-h2);
+  line-height: 1.3;
+  font-weight: var(--suly-cim);
+  letter-spacing: -0.01em;
+  margin: var(--t-6) 0 var(--t-2);
+}
+
+.tipo h3 {
+  font-size: var(--betu-h3);
+  line-height: 1.35;
+  font-weight: var(--suly-felkover);
+  margin: var(--t-5) 0 var(--t-2);
+}
+
+.tipo h4 {
+  font-size: var(--betu-h4);
+  line-height: 1.4;
+  font-weight: var(--suly-felkover);
+  margin: var(--t-5) 0 var(--t-1);
+}
+
+.tipo h5,
+.tipo h6 {
+  font-size: var(--betu-h5);
+  line-height: 1.5;
+  font-weight: var(--suly-felkover);
+  margin: var(--t-4) 0 var(--t-1);
+}
+
+.tipo h6 {
+  color: var(--szoveg-masodlagos);
+}
+
+.tipo > :first-child {
+  margin-top: 0;
+}
+
+.tipo p {
+  margin: 0 0 var(--t-3);
+}
+
+.tipo code {
+  font-family: var(--betu-mono);
+  font-size: 0.875em;
+  padding: 0.1em 0.3em;
+  border-radius: var(--kerekites-kicsi);
+  background: var(--hatter-hover);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- Csend és elérés (C38, DESIGN.md 23.) ----
+   A `<html data-csend>` a mód; a `[data-csend-rejt]` elem csendben átlátszó, és a `[data-csend-terulet]` tartály
+   hoverjére vagy fókuszára jön elő (a helye megmarad, fókuszálható és kattintható: semmi nem csak hoverrel érhető el).
+   Gépelés közben (`data-csend-gepeles`) a `[data-csend-halvanyul]` sávok (oldalsáv, fülsor) halványulnak.
+   A hiba, a megszakadt kapcsolat és a mentetlen állapot jele soha nem kap `data-csend-rejt`-et (teszt őrzi). */
+[data-csend-rejt] {
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+html[data-csend] [data-csend-rejt] {
+  opacity: 0;
+}
+
+html[data-csend] [data-csend-terulet]:hover [data-csend-rejt],
+html[data-csend] [data-csend-terulet]:focus-within [data-csend-rejt],
+html[data-csend] [data-csend-rejt]:focus-within,
+html[data-csend] [data-csend-rejt]:focus-visible {
+  opacity: 1;
+}
+
+[data-csend-halvanyul] {
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+html[data-csend-gepeles] [data-csend-halvanyul] {
+  opacity: var(--csend-halvany);
+  transition: opacity var(--mozgas-csend) var(--mozgas-gorbe);
+}

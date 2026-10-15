@@ -1,0 +1,1550 @@
+{
+ "verzio": 1,
+ "tetelek": [
+  {
+   "szoveg": "",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [],
+    "hibak": []
+   },
+   "kanonikus": ""
+  },
+  {
+   "szoveg": "   \n\n  ",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [],
+    "hibak": []
+   },
+   "kanonikus": ""
+  },
+  {
+   "szoveg": "# csak megjegyzés",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "megjegyzes",
+      "szoveg": "csak megjegyzés"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "# csak megjegyzés"
+  },
+  {
+   "szoveg": "y = x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x"
+  },
+  {
+   "szoveg": "y = x^2 + 2",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^2 + 2",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x^2 + 2"
+  },
+  {
+   "szoveg": "  y   =   x  ^ 2  ",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x ^ 2",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x ^ 2"
+  },
+  {
+   "szoveg": "y\t=\tx",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x"
+  },
+  {
+   "szoveg": "y = sin(2*x)  # sorvégi megjegyzés",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "sin(2*x)",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = sin(2*x)"
+  },
+  {
+   "szoveg": "y = x \"a # b\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": "a # b"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x \"a # b\""
+  },
+  {
+   "szoveg": "y = x^2 \"f \\\"x\\\"\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^2",
+      "cimke": "f \"x\""
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x^2 \"f \\\"x\\\"\""
+  },
+  {
+   "szoveg": "y = x \"\\\\\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": "\\"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x \"\\\\\""
+  },
+  {
+   "szoveg": "y = x +",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x +",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x +"
+  },
+  {
+   "szoveg": "Y = x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "Y = x"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "Y = x"
+  },
+  {
+   "szoveg": "x = 3",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "x = 3"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "x = 3"
+  },
+  {
+   "szoveg": "y = x \"nincs lezárva",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x \"nincs lezárva"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "y = x \"nincs lezárva"
+  },
+  {
+   "szoveg": "pont (1, 1) \"<img src=x onerror=alert(1)>\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "pont",
+      "x": "1",
+      "y": "1",
+      "cimke": "<img src=x onerror=alert(1)>"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "pont (1, 1) \"<img src=x onerror=alert(1)>\""
+  },
+  {
+   "szoveg": "pont (1, 1) \"<a href=javascript:alert(1) style=position:fixed>x</a> & é\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "pont",
+      "x": "1",
+      "y": "1",
+      "cimke": "<a href=javascript:alert(1) style=position:fixed>x</a> & é"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "pont (1, 1) \"<a href=javascript:alert(1) style=position:fixed>x</a> & é\""
+  },
+  {
+   "szoveg": "y = x \"<b>fél\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": "<b>fél"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x \"<b>fél\""
+  },
+  {
+   "szoveg": "x in [-4, 4]",
+   "abra": {
+    "x_tartomany": [
+     "-4",
+     "4"
+    ],
+    "y_tartomany": null,
+    "elemek": [],
+    "hibak": []
+   },
+   "kanonikus": "x in [-4, 4]"
+  },
+  {
+   "szoveg": "y in [-2, 10]",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": [
+     "-2",
+     "10"
+    ],
+    "elemek": [],
+    "hibak": []
+   },
+   "kanonikus": "y in [-2, 10]"
+  },
+  {
+   "szoveg": "y in [-2, 10]\nx in [-4, 4]\ny = x",
+   "abra": {
+    "x_tartomany": [
+     "-4",
+     "4"
+    ],
+    "y_tartomany": [
+     "-2",
+     "10"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-4, 4]\ny in [-2, 10]\ny = x"
+  },
+  {
+   "szoveg": "x in [-2*pi, 2*pi]\ny = sin(x)",
+   "abra": {
+    "x_tartomany": [
+     "-2*pi",
+     "2*pi"
+    ],
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "sin(x)",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-2*pi, 2*pi]\ny = sin(x)"
+  },
+  {
+   "szoveg": "x in [-4, 4]\nx in [-1, 1]\ny = x",
+   "abra": {
+    "x_tartomany": [
+     "-4",
+     "4"
+    ],
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "x in [-1, 1]"
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     }
+    ],
+    "hibak": [
+     [
+      2,
+      "a tartomány már meg van adva"
+     ]
+    ]
+   },
+   "kanonikus": "x in [-4, 4]\nx in [-1, 1]\ny = x"
+  },
+  {
+   "szoveg": "x in [a, b]",
+   "abra": {
+    "x_tartomany": [
+     "a",
+     "b"
+    ],
+    "y_tartomany": null,
+    "elemek": [],
+    "hibak": []
+   },
+   "kanonikus": "x in [a, b]"
+  },
+  {
+   "szoveg": "x = 3*cos(t), y = 2*sin(t), t in [0, 2*pi]",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "parameteres",
+      "x": "3*cos(t)",
+      "y": "2*sin(t)",
+      "t": "t",
+      "tartomany": [
+       "0",
+       "2*pi"
+      ],
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x = 3*cos(t), y = 2*sin(t), t in [0, 2*pi]"
+  },
+  {
+   "szoveg": "x = cos(s), y = sin(s), s in [0, 2*pi] \"kör\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "parameteres",
+      "x": "cos(s)",
+      "y": "sin(s)",
+      "t": "s",
+      "tartomany": [
+       "0",
+       "2*pi"
+      ],
+      "cimke": "kör"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x = cos(s), y = sin(s), s in [0, 2*pi] \"kör\""
+  },
+  {
+   "szoveg": "x = t^2, y = t^3, t in [-1, 1]",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "parameteres",
+      "x": "t^2",
+      "y": "t^3",
+      "t": "t",
+      "tartomany": [
+       "-1",
+       "1"
+      ],
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x = t^2, y = t^3, t in [-1, 1]"
+  },
+  {
+   "szoveg": "x = t, y = t^2",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "x = t, y = t^2"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "x = t, y = t^2"
+  },
+  {
+   "szoveg": "y < x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "x",
+      "relacio": "<",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y < x"
+  },
+  {
+   "szoveg": "y <= x^2 - 1",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "x^2 - 1",
+      "relacio": "<=",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y <= x^2 - 1"
+  },
+  {
+   "szoveg": "y > 2x + 1",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "2x + 1",
+      "relacio": ">",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y > 2x + 1"
+  },
+  {
+   "szoveg": "y >= -x \"föléje\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "-x",
+      "relacio": ">=",
+      "cimke": "föléje"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y >= -x \"föléje\""
+  },
+  {
+   "szoveg": "y ≤ x^2",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "x^2",
+      "relacio": "<=",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y <= x^2"
+  },
+  {
+   "szoveg": "y ≥ 1",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "1",
+      "relacio": ">=",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y >= 1"
+  },
+  {
+   "szoveg": "y −x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "y -x"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "y -x"
+  },
+  {
+   "szoveg": "y = x − 1",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x - 1",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x - 1"
+  },
+  {
+   "szoveg": "pont (2, 1)",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "pont",
+      "x": "2",
+      "y": "1",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "pont (2, 1)"
+  },
+  {
+   "szoveg": "pont (pi/2, 1) \"csúcs\"",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "pont",
+      "x": "pi/2",
+      "y": "1",
+      "cimke": "csúcs"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "pont (pi/2, 1) \"csúcs\""
+  },
+  {
+   "szoveg": "pont (1; 2)",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "pont (1; 2)"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "pont (1; 2)"
+  },
+  {
+   "szoveg": "valami ismeretlen\ny = x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "valami ismeretlen"
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "valami ismeretlen\ny = x"
+  },
+  {
+   "szoveg": "y = x\r\ny = 2x\r\n",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "2x",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x\ny = 2x"
+  },
+  {
+   "szoveg": "y = x y = 2x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "2x",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "y = x\ny = 2x"
+  },
+  {
+   "szoveg": "# példa\ny in [-2, 10]\nx in [-4, 4]\ny = x^2 + 2  \"f \\\"x\\\"\"   # sorvégi megjegyzés\nx = 3*cos(t), y = 2*sin(t), t in [0, 2*pi]\ny >= x^2\npont (2, 1) \"min\"\nvalami ismeretlen",
+   "abra": {
+    "x_tartomany": [
+     "-4",
+     "4"
+    ],
+    "y_tartomany": [
+     "-2",
+     "10"
+    ],
+    "elemek": [
+     {
+      "fajta": "megjegyzes",
+      "szoveg": "példa"
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^2 + 2",
+      "cimke": "f \"x\""
+     },
+     {
+      "fajta": "parameteres",
+      "x": "3*cos(t)",
+      "y": "2*sin(t)",
+      "t": "t",
+      "tartomany": [
+       "0",
+       "2*pi"
+      ],
+      "cimke": null
+     },
+     {
+      "fajta": "egyenlotlenseg",
+      "kifejezes": "x^2",
+      "relacio": ">=",
+      "cimke": null
+     },
+     {
+      "fajta": "pont",
+      "x": "2",
+      "y": "1",
+      "cimke": "min"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "valami ismeretlen"
+     }
+    ],
+    "hibak": [
+     [
+      8,
+      "ismeretlen vagy hibás sor"
+     ]
+    ]
+   },
+   "kanonikus": "x in [-4, 4]\ny in [-2, 10]\n# példa\ny = x^2 + 2 \"f \\\"x\\\"\"\nx = 3*cos(t), y = 2*sin(t), t in [0, 2*pi]\ny >= x^2\npont (2, 1) \"min\"\nvalami ismeretlen"
+  },
+  {
+   "szoveg": "y = x + 0\ny = x + 1\ny = x + 2\ny = x + 3\ny = x + 4\ny = x + 5\ny = x + 6\ny = x + 7\ny = x + 8\ny = x + 9\ny = x + 10\ny = x + 11\ny = x + 12\ny = x + 13\ny = x + 14\ny = x + 15\ny = x + 16\ny = x + 17\ny = x + 18\ny = x + 19\ny = x + 20\ny = x + 21\ny = x + 22\ny = x + 23\ny = x + 24\ny = x + 25\ny = x + 26\ny = x + 27\ny = x + 28\ny = x + 29\ny = x + 30\ny = x + 31\ny = x + 32\ny = x + 33\ny = x + 34\ny = x + 35\ny = x + 36\ny = x + 37\ny = x + 38\ny = x + 39\ny = x + 40\ny = x + 41\ny = x + 42\ny = x + 43\ny = x + 44\ny = x + 45\ny = x + 46\ny = x + 47\ny = x + 48\ny = x + 49\ny = x + 50\ny = x + 51\ny = x + 52\ny = x + 53\ny = x + 54\ny = x + 55\ny = x + 56\ny = x + 57\ny = x + 58\ny = x + 59\ny = x + 60\ny = x + 61\ny = x + 62\ny = x + 63\ny = x + 64\ny = x + 65\ny = x + 66\ny = x + 67\ny = x + 68\ny = x + 69",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 0",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 1",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 2",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 3",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 4",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 5",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 6",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 7",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 8",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 9",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 10",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 11",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 12",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 13",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 14",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 15",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 16",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 17",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 18",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 19",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 20",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 21",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 22",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 23",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 24",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 25",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 26",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 27",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 28",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 29",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 30",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 31",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 32",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 33",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 34",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 35",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 36",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 37",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 38",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 39",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 40",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 41",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 42",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 43",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 44",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 45",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 46",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 47",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 48",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 49",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 50",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 51",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 52",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 53",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 54",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 55",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 56",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 57",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 58",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 59",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 60",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 61",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 62",
+      "cimke": null
+     },
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x + 63",
+      "cimke": null
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 64"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 65"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 66"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 67"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 68"
+     },
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x + 69"
+     }
+    ],
+    "hibak": [
+     [
+      65,
+      "legfeljebb 64 rajzelem"
+     ],
+     [
+      66,
+      "legfeljebb 64 rajzelem"
+     ],
+     [
+      67,
+      "legfeljebb 64 rajzelem"
+     ],
+     [
+      68,
+      "legfeljebb 64 rajzelem"
+     ],
+     [
+      69,
+      "legfeljebb 64 rajzelem"
+     ],
+     [
+      70,
+      "legfeljebb 64 rajzelem"
+     ]
+    ]
+   },
+   "kanonikus": "y = x + 0\ny = x + 1\ny = x + 2\ny = x + 3\ny = x + 4\ny = x + 5\ny = x + 6\ny = x + 7\ny = x + 8\ny = x + 9\ny = x + 10\ny = x + 11\ny = x + 12\ny = x + 13\ny = x + 14\ny = x + 15\ny = x + 16\ny = x + 17\ny = x + 18\ny = x + 19\ny = x + 20\ny = x + 21\ny = x + 22\ny = x + 23\ny = x + 24\ny = x + 25\ny = x + 26\ny = x + 27\ny = x + 28\ny = x + 29\ny = x + 30\ny = x + 31\ny = x + 32\ny = x + 33\ny = x + 34\ny = x + 35\ny = x + 36\ny = x + 37\ny = x + 38\ny = x + 39\ny = x + 40\ny = x + 41\ny = x + 42\ny = x + 43\ny = x + 44\ny = x + 45\ny = x + 46\ny = x + 47\ny = x + 48\ny = x + 49\ny = x + 50\ny = x + 51\ny = x + 52\ny = x + 53\ny = x + 54\ny = x + 55\ny = x + 56\ny = x + 57\ny = x + 58\ny = x + 59\ny = x + 60\ny = x + 61\ny = x + 62\ny = x + 63\ny = x + 64\ny = x + 65\ny = x + 66\ny = x + 67\ny = x + 68\ny = x + 69"
+  },
+  {
+   "szoveg": "y = x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x",
+   "abra": {
+    "x_tartomany": null,
+    "y_tartomany": null,
+    "elemek": [
+     {
+      "fajta": "ismeretlen",
+      "sor": "y = x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x"
+     }
+    ],
+    "hibak": [
+     [
+      1,
+      "a sor hosszabb 2000 jelnél"
+     ]
+    ]
+   },
+   "kanonikus": "y = x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-30, 5]\ny = -x^2",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-30",
+     "5"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "-x^2",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-30, 5]\ny = -x^2",
+   "forras": "arany:g01"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [0, 30]\ny = x^2 + 2",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "0",
+     "30"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^2 + 2",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [0, 30]\ny = x^2 + 2",
+   "forras": "arany:g02"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-20, 120]\ny = (x + 5)^2",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-20",
+     "120"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "(x + 5)^2",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-20, 120]\ny = (x + 5)^2",
+   "forras": "arany:g03"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-2, 12]\ny = 2*abs(x)",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-2",
+     "12"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "2*abs(x)",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-2, 12]\ny = 2*abs(x)",
+   "forras": "arany:g04"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-4, 3]\ny = abs(x) - 3",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-4",
+     "3"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "abs(x) - 3",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-4, 3]\ny = abs(x) - 3",
+   "forras": "arany:g05"
+  },
+  {
+   "szoveg": "x in [0, 5]\ny in [2, 14]\ny = 4*sqrt(x) + 3",
+   "abra": {
+    "x_tartomany": [
+     "0",
+     "5"
+    ],
+    "y_tartomany": [
+     "2",
+     "14"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "4*sqrt(x) + 3",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [0, 5]\ny in [2, 14]\ny = 4*sqrt(x) + 3",
+   "forras": "arany:g06"
+  },
+  {
+   "szoveg": "x in [-3, 5]\ny in [-2.5, 1.5]\ny = sqrt(x+3) - 2 \"f\"",
+   "abra": {
+    "x_tartomany": [
+     "-3",
+     "5"
+    ],
+    "y_tartomany": [
+     "-2.5",
+     "1.5"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "sqrt(x+3) - 2",
+      "cimke": "f"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-3, 5]\ny in [-2.5, 1.5]\ny = sqrt(x+3) - 2 \"f\"",
+   "forras": "arany:g07"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-50, 20]\ny = -2x^2 + 8",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-50",
+     "20"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "-2x^2 + 8",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-50, 20]\ny = -2x^2 + 8",
+   "forras": "arany:g08"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-15, 15]\ny = 2x + 1 \"f\"",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-15",
+     "15"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "2x + 1",
+      "cimke": "f"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-15, 15]\ny = 2x + 1 \"f\"",
+   "forras": "arany:g09"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-20, 160]\ny = 2^(2-x) + 5 \"g\"",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-20",
+     "160"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "2^(2-x) + 5",
+      "cimke": "g"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-20, 160]\ny = 2^(2-x) + 5 \"g\"",
+   "forras": "arany:g10"
+  },
+  {
+   "szoveg": "x in [0, 5]\ny in [-5, 3]\ny = log(x, 2) \"g\"",
+   "abra": {
+    "x_tartomany": [
+     "0",
+     "5"
+    ],
+    "y_tartomany": [
+     "-5",
+     "3"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "log(x, 2)",
+      "cimke": "g"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [0, 5]\ny in [-5, 3]\ny = log(x, 2) \"g\"",
+   "forras": "arany:g11"
+  },
+  {
+   "szoveg": "x in [-2*pi, 2*pi]\ny in [-1.5, 1.5]\ny = sin(2x)",
+   "abra": {
+    "x_tartomany": [
+     "-2*pi",
+     "2*pi"
+    ],
+    "y_tartomany": [
+     "-1.5",
+     "1.5"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "sin(2x)",
+      "cimke": null
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-2*pi, 2*pi]\ny in [-1.5, 1.5]\ny = sin(2x)",
+   "forras": "arany:g12"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-150, 150]\ny = x^3 - 3x \"f\"",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-150",
+     "150"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^3 - 3x",
+      "cimke": "f"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-150, 150]\ny = x^3 - 3x \"f\"",
+   "forras": "arany:g13"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [-10, 60]\ny = x^2 - 4x + 5 \"f\"",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "-10",
+     "60"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "x^2 - 4x + 5",
+      "cimke": "f"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [-10, 60]\ny = x^2 - 4x + 5 \"f\"",
+   "forras": "arany:g14"
+  },
+  {
+   "szoveg": "x in [-5, 5]\ny in [0, 10]\ny = sqrt(3x^2+1) \"h\"",
+   "abra": {
+    "x_tartomany": [
+     "-5",
+     "5"
+    ],
+    "y_tartomany": [
+     "0",
+     "10"
+    ],
+    "elemek": [
+     {
+      "fajta": "fuggveny",
+      "kifejezes": "sqrt(3x^2+1)",
+      "cimke": "h"
+     }
+    ],
+    "hibak": []
+   },
+   "kanonikus": "x in [-5, 5]\ny in [0, 10]\ny = sqrt(3x^2+1) \"h\"",
+   "forras": "arany:g15"
+  }
+ ]
+}

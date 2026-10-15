@@ -1,0 +1,34 @@
+# Manifold — product repository
+# Local state, models, indexes, snapshots, logs (never in the repo)
+var/
+# Portable runtime (Python, Node, wheels, ffmpeg, LLVM, git); a symlink in dev checkouts
+runtime
+runtime/
+# Builds
+app/dist/
+app/node_modules/
+dist/
+build/
+packaging/out/
+Manifold.app/
+*.dmg
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+# macOS
+.DS_Store
+._*
+# Editors
+.vscode/
+.idea/
+# Local developer overrides
+settings.local.toml
+.claude/home/
+.claude/worktrees/
+# Video pipeline working data (never code)
+modulok/ytdlp/staging/
+modulok/ytdlp/archive/
+modulok/ytdlp/logs/
+modulok/ytdlp/.venv*/
+# Internal planning material is kept in git but excluded from release archives (see .gitattributes)

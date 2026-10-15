@@ -1,0 +1,12 @@
+{
+ "id": "k01",
+ "cim": "Leghosszabb emelkedő szakasz",
+ "tema": "ciklus_tomb",
+ "nehezseg": 1,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "feltetel", "sor": 11, "eredeti": "        if (a[i] > a[i - 1]) cur++;", "csere": "        if (a[i] >= a[i - 1]) cur++;", "magyarazat": "Az egyenlő szomszédokat is emelkedésnek veszi, pedig szigorú növekedés kell."},
+  {"id": "h2", "fajta": "index", "sor": 10, "eredeti": "    for (int i = 1; i < n; i++) {", "csere": "    for (int i = 1; i < n - 1; i++) {", "magyarazat": "A ciklus az utolsó elemet kihagyja, így a sorozat végén álló szakasz rövidebbnek látszik."},
+  {"id": "h3", "fajta": "inicializalas", "sor": 9, "eredeti": "    int best = 1, cur = 1;", "csere": "    int best = 0, cur = 1;", "magyarazat": "A legjobb hossz 0-ról indul, ezért egyelemű bemenetre 0-t ír ki 1 helyett."}
+ ]
+}

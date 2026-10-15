@@ -1,0 +1,12 @@
+{
+ "id": "k06",
+ "cim": "Legjobb k napos időszak",
+ "tema": "ciklus_tomb",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "index", "sor": 14, "eredeti": "    for (int i = k; i < n; i++) {", "csere": "    for (int i = k; i < n - 1; i++) {", "magyarazat": "A csúszó ablak az utolsó helyzetét már nem vizsgálja, így az utolsó k nap összege kimarad."},
+  {"id": "h2", "fajta": "inicializalas", "sor": 13, "eredeti": "    long long best = ablak;", "csere": "    long long best = 0;", "magyarazat": "A legjobb összeg 0-ról indul, ezért ha minden ablak negatív, 0-t ír ki."},
+  {"id": "h3", "fajta": "sorrend", "sor": 15, "eredeti": "        ablak += a[i] - a[i - k];", "csere": "        ablak += a[i - k] - a[i];", "magyarazat": "Fordított a kivonás: a belépő elemet vonja le és a kilépőt adja hozzá, így az ablak összege elromlik."}
+ ]
+}

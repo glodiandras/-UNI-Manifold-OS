@@ -1,0 +1,243 @@
+/*
+ * A Manifold design-tokenjei (C07). Minden szín, méret és mozgás innen jön; komponens nem ír nyers értéket.
+ * Leírás és a mért kontrasztarányok: docs/DESIGN.md. A kontrasztot a tests/kontraszt.test.ts ellenőrzi.
+ *
+ * Téma: a `color-scheme` dönt, a színek `light-dark(világos, sötét)` párok. Alapból a rendszert követi;
+ * a <html data-tema="vilagos|sotet"> rögzíti. Egy színtoken = egy sor, így a téma nem csúszhat szét.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- felületek ---- */
+  --hatter: light-dark(#ffffff, #1c1c1c);
+  --hatter-oldalsav: light-dark(#f7f7f5, #202020);
+  --hatter-emelt: light-dark(#ffffff, #262626);
+  --hatter-hover: light-dark(#efeeec, #2c2c2c);
+  --hatter-aktiv: light-dark(#e6e5e2, #353535);
+  --hatter-kijelolt: light-dark(#f4e9eb, #3a1c24);
+  --hatter-fatyol: light-dark(rgb(15 15 15 / 0.18), rgb(0 0 0 / 0.45));
+
+  /* ---- szöveg ---- */
+  --szoveg: light-dark(#2f2e2b, #e8e7e4);
+  --szoveg-masodlagos: light-dark(#5c5b57, #b3b2ae);
+  --szoveg-halvany: light-dark(#64635e, #9f9e98);
+
+  /* ---- keretek ---- */
+  --keret: light-dark(#e7e6e3, #303030);
+  --keret-eros: light-dark(#d3d2ce, #3d3d3d);
+  --keret-mezo: light-dark(#82817b, #85847d);
+
+  /* ---- akcentus és fókusz ---- */
+  /* Az egyetlen akcentus a burgundi (C37, CLAUDE.md 25. döntés). Három szerep, három token:
+     --akcent = vonal és jel (célvonal, elválasztó, a futó feladat pontja, kurzor, töltősáv),
+     --akcent-kitoltes (+ --akcent-hover, --akcent-eloter) = a kitöltött gomb háttere és krém betűje,
+     --akcent-szoveg = akcentus-színű szöveg (link). Állapotot (hibát) az akcent soha nem jelöl. */
+  --akcent: light-dark(#5a1828, #d0687b);
+  --akcent-kitoltes: light-dark(#5a1828, #5c1b2b);
+  --akcent-hover: light-dark(#3d1119, #6e2234);
+  /* a kitöltött gomb 1 px-es belső határa (C38, K226): sötétben a mély kitöltés a felülettől csak 1,2–1,3:1-re
+     válik el, a határ ≥ 3:1 a hatter / oldalsav / emelt / hover síkon (WCAG 1.4.11); világosban maga a kitöltés */
+  --akcent-kitoltes-keret: light-dark(#5a1828, #b85a6c);
+  --akcent-eloter: light-dark(#f3ece3, #f3ece3);
+  --akcent-szoveg: light-dark(#7d2335, #e0909e);
+  --fokusz-gyuru: light-dark(#5a1828, #d0687b);
+  --kiemeles: light-dark(#5a1828, #eaa7b2);
+  /* a fókuszgyűrű és az akcent-jel vonala (C39): egy gyűrű mindenhol — `outline: var(--fokusz-vastag) solid
+     var(--fokusz-gyuru)`, kívül `--fokusz-tav`, sávban és listában `--fokusz-tav-befele`; ahol az outline nem látszik
+     (vászon, cella): `box-shadow: inset 0 0 0 var(--fokusz-vastag) var(--fokusz-gyuru)` */
+  --fokusz-vastag: 2px;
+  --fokusz-tav: 2px;
+  --fokusz-tav-befele: -2px;
+  /* az akcent mint jel vonala: húzás célvonala, kijelölés kerete, az aktív bélyeg (C39) */
+  --jel-vastag: 2px;
+  /* a tiltott elem (C39; a design system: 40%, a tooltip mondja meg az okát) */
+  --tiltott-atlatszosag: 0.4;
+  /* a húzott elem helye, az átméretező fogó hoverje és a grafikon akcent-oszlopa (C39) */
+  --atlatszosag-felig: 0.5;
+
+  /* ---- márka (az app-ikon színei; a munkafelület krómjában nem szerepelnek) ---- */
+  --burgundi: light-dark(#3d1119, #4a1520);
+  --krem: light-dark(#f3ece3, #f3ece3);
+  --burgundi-lap: light-dark(#c23a52, #c23a52);
+
+  /* ---- állapotszínek ---- */
+  --siker: light-dark(#1d7a4c, #5cc28e);
+  --siker-hatter: light-dark(#e8f5ee, #1d2f25);
+  --figyelmeztetes: light-dark(#8f5a00, #e2a53f);
+  --figyelmeztetes-hatter: light-dark(#fbf1df, #33291a);
+  --hiba: light-dark(#c03a2b, #f2786a);
+  --hiba-hatter: light-dark(#fcebe9, #3a2220);
+
+  /* a hibajelzés ikonja (Lucide CircleAlert, maszkként): a hiba és az akcent a vörös családba esik, csak színnel nem
+     különíthető el, ezért minden hibaüzenet ikonnal és szóval jön (alap.css, DESIGN.md 2.) */
+  --ikon-hiba: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 8v4M12 16h.01'/%3E%3C/svg%3E");
+
+  /* ---- gráfnézet (C13; C39, K228): csúcsszínek a fájltípus szerint (a színcsoport felülírja) ----
+     a jegyzet-csúcs semleges (az Obsidian alapja is szürke), a canvas és a melléklet adat-szín a callout-készletből;
+     a gráfban az akcent csak a kijelölt csúcs és a kiemelt él */
+  --graf-jegyzet: var(--szoveg-masodlagos);
+  --graf-canvas: var(--callout-cian);
+  --graf-melleklet: var(--callout-narancs);
+
+  /* ---- szerkesztő (C08): kód, kiemelés, callout ---- */
+  --hatter-kod: light-dark(#f6f5f2, #252524);
+  --kod-kulcsszo: light-dark(#8b2fa8, #d19af2);
+  --kod-szoveg: light-dark(#2b7a3d, #8fd19e);
+  --kod-szam: light-dark(#a14d00, #f0a86b);
+  --kod-megjegyzes: light-dark(#6b6a64, #9d9c96);
+  --kod-fuggveny: light-dark(#2459a8, #8cb8f7);
+  --kod-tipus: light-dark(#a3326f, #f08fbe);
+  --kod-meta: light-dark(#7a5a00, #d8b35c);
+  --jeloles-hatter: light-dark(#fbeea0, #5a4a12);
+  --callout-kek: light-dark(#2e66c7, #7fadf5);
+  --callout-kek-hatter: light-dark(#eef3fc, #1f2838);
+  --callout-cian: light-dark(#0d7480, #5ec7d2);
+  --callout-cian-hatter: light-dark(#e9f5f6, #1a2d30);
+  --callout-zold: light-dark(#1d7a4c, #5cc28e);
+  --callout-zold-hatter: light-dark(#eaf5ef, #1d2e25);
+  --callout-narancs: light-dark(#9a5200, #eba15a);
+  --callout-narancs-hatter: light-dark(#fcf2e6, #352a1d);
+  --callout-piros: light-dark(#c03a2b, #f2786a);
+  --callout-piros-hatter: light-dark(#fcedeb, #3a2321);
+  --callout-lila: light-dark(#7044c2, #b59cf5);
+  --callout-lila-hatter: light-dark(#f3effc, #2a2540);
+  --callout-szurke: light-dark(#5c5b57, #b3b2ae);
+  --callout-szurke-hatter: light-dark(#f3f2ef, #2a2a29);
+  /* a canvas preset színei (C14, T163; a JSON Canvas 1–6: piros, narancs, sárga, zöld, cián, lila): az 1, 2, 4, 5, 6 a
+     callout-tokenekre képeződik (egy érték, egy hely), a sárga (3) saját, mert a callout-készletben nincs sárga;
+     a keret, az él és a kártya fejléce a szín, a kitöltés a halvány párja */
+  --canvas-szin-1: var(--callout-piros);
+  --canvas-szin-1-hatter: var(--callout-piros-hatter);
+  --canvas-szin-2: var(--callout-narancs);
+  --canvas-szin-2-hatter: var(--callout-narancs-hatter);
+  --canvas-szin-3: light-dark(#7a6200, #dcbc4c);
+  --canvas-szin-3-hatter: light-dark(#fbf6dc, #312b16);
+  --canvas-szin-4: var(--callout-zold);
+  --canvas-szin-4-hatter: var(--callout-zold-hatter);
+  --canvas-szin-5: var(--callout-cian);
+  --canvas-szin-5-hatter: var(--callout-cian-hatter);
+  --canvas-szin-6: var(--callout-lila);
+  --canvas-szin-6-hatter: var(--callout-lila-hatter);
+  /* a PDF-olvasó és a lejátszó (C16): a lapok körüli sík, a kiemelés a lapon (a lap papírfehér mindkét témában), a
+     videó hátsó síkja (letterbox) és a képre írt felirat — a kép és a lap tartalom, ezért témától függetlenek */
+  --pdf-hatter: light-dark(#e9e8e4, #141414);
+  --pdf-lap: light-dark(#ffffff, #ffffff);
+  --pdf-kiemeles: rgb(250 210 50 / 0.4);
+  --pdf-kiemeles-aktiv: rgb(250 170 30 / 0.55);
+  --lejatszo-hatter: light-dark(#000000, #000000);
+  --lejatszo-felirat: light-dark(#ffffff, #ffffff);
+  --lejatszo-felirat-hatter: rgb(0 0 0 / 0.72);
+
+  /* ---- árnyékok ---- */
+  --arnyek-atfedes: 0 0 0 1px light-dark(rgb(15 15 15 / 0.06), rgb(255 255 255 / 0.07)),
+    0 12px 32px -8px light-dark(rgb(15 15 15 / 0.22), rgb(0 0 0 / 0.6)),
+    0 4px 12px -4px light-dark(rgb(15 15 15 / 0.12), rgb(0 0 0 / 0.4));
+  --arnyek-lap: -1px 0 0 0 var(--keret), -16px 0 40px -16px light-dark(rgb(15 15 15 / 0.18), rgb(0 0 0 / 0.55));
+  /* a balról becsúszó lap (C38: a rejtett oldalsáv átfedése) — az --arnyek-lap tükörképe */
+  --arnyek-lap-balrol: 1px 0 0 0 var(--keret), 16px 0 40px -16px light-dark(rgb(15 15 15 / 0.18), rgb(0 0 0 / 0.55));
+  --arnyek-pdf-lap: 0 0 0 1px var(--keret), 0 2px 8px -2px light-dark(rgb(15 15 15 / 0.18), rgb(0 0 0 / 0.6));
+
+  /* ---- tipográfia ---- */
+  --betu-rendszer: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Helvetica Neue', sans-serif;
+  --betu-mono: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  --betu-torzs: 16px;
+  --sor-torzs: 1.6;
+  --betu-ui: 13px;
+  --sor-ui: 20px;
+  --betu-kicsi: 12px;
+  --sor-kicsi: 16px;
+  --betu-h1: 30px;
+  --betu-h2: 24px;
+  --betu-h3: 20px;
+  --betu-h4: 17px;
+  --betu-h5: 16px;
+  --suly-normal: 400;
+  --suly-kozepes: 500;
+  --suly-felkover: 600;
+  --suly-cim: 700;
+  /* a MANIFOLD betűjel (C37): ritkított nagybetű; a forrásszöveg „Manifold”, a nagybetűt a text-transform adja */
+  --betu-jel: 12px;
+  --sor-jel: 16px;
+  --ritkitas-jel: 0.2em;
+  --betu-jel-nagy: 28px;
+  --sor-jel-nagy: 32px;
+  --ritkitas-jel-nagy: 0.24em;
+  /* a paletta és a váltó mezője (a design system `krom-mezo`-ja) és a kijelző-szám (dolgozat-oldal) — C39 */
+  --betu-mezo: 15px;
+  --sor-mezo: 20px;
+  --betu-kijelzo: 48px;
+  --olvasasi-szelesseg: 44rem;
+
+  /* ---- távolság (4/8-as skála) ---- */
+  --t-1: 4px;
+  --t-2: 8px;
+  --t-3: 12px;
+  --t-4: 16px;
+  --t-5: 24px;
+  --t-6: 32px;
+  --t-7: 48px;
+  --t-8: 64px;
+
+  /* ---- rögzített sávok ---- */
+  --keret-vastag: 1px;
+  --magassag-fulsor: 36px;
+  --magassag-fejlec: 36px;
+  --magassag-allapotsor: 24px;
+  /* a sávok tartalom-magassága; a 1 px-es keret KÍVÜL jön hozzá, így a 28/20 px-es elemek egész pixelre kerülnek középre */
+  --allapotsor-teljes: calc(var(--magassag-allapotsor) + var(--keret-vastag));
+  --fulsor-teljes: calc(var(--magassag-fulsor) + var(--keret-vastag));
+  --magassag-sor: 28px;
+  --magassag-lista-sor: 32px;
+  --magassag-gomb: 28px;
+  /* a kicsi ikongomb (állapotsor, fül bezárása, értesítés) és a sűrű sor / chip / sorbeli kis vezérlő (C39; a
+     korábbi 22 px-es elemek a 4-es rácsra) */
+  --magassag-gomb-kicsi: 20px;
+  --magassag-suru: 24px;
+  --magassag-mezo: 44px;
+  --szelesseg-ikonsav: 44px;
+  --szelesseg-lap: 420px;
+  --szelesseg-atfedes: 600px;
+  --szelesseg-atfedes-szeles: 1100px;
+
+  /* ---- lekerekítés ---- */
+  --kerekites-kicsi: 4px;
+  --kerekites: 6px;
+  --kerekites-nagy: 8px;
+  /* a jelölő (haladássáv, keresési jel, kiemelés-téglalap) és a pont (C39) */
+  --kerekites-jel: 2px;
+  --kerekites-kor: 50%;
+
+  /* ---- mozgás (prefers-reduced-motion: 0) ---- */
+  --mozgas-gyors: 120ms;
+  --mozgas-alap: 160ms;
+  --mozgas-lassu: 200ms;
+  --mozgas-gorbe: cubic-bezier(0.2, 0, 0, 1);
+  /* csend és elérés (C38): gépelés közben az oldalsáv és a fülsor ennyi idő alatt halványul ennyire */
+  --mozgas-csend: 400ms;
+  --csend-halvany: 0.12;
+
+  /* ---- rétegek ---- */
+  --reteg-lap: 20;
+  --reteg-atfedes: 30;
+  --reteg-ertesites: 40;
+  /* a lebegő link-előnézet (⌘ + rámutatás): minden réteg fölött */
+  --reteg-lebego: 60;
+}
+
+:root[data-tema='vilagos'] {
+  color-scheme: light;
+}
+
+:root[data-tema='sotet'] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mozgas-gyors: 0ms;
+    --mozgas-alap: 0ms;
+    --mozgas-lassu: 0ms;
+    --mozgas-csend: 0ms;
+  }
+}

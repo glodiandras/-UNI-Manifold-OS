@@ -1,0 +1,127 @@
+/* A beágyazott PDF-néző (C16, `media/pdf/beagyazas.ts`): a szerkesztő beágyazás-stílusának (szerkeszto.css) párja. */
+
+.beagyazas-pdf-nezo {
+  display: block;
+  border: var(--keret-vastag, 1px) solid var(--keret);
+  border-radius: var(--kerekites);
+  background: var(--hatter-oldalsav);
+  overflow: hidden;
+}
+
+.pdf-be-fej {
+  display: flex;
+  align-items: center;
+  gap: var(--t-1);
+  height: var(--magassag-gomb);
+  padding: 0 var(--t-1) 0 var(--t-3);
+  border-bottom: 1px solid var(--keret);
+}
+
+.pdf-be-fej .beagyazas-cim {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pdf-be-hely {
+  flex: 1 1 auto;
+}
+
+.pdf-be-gomb {
+  flex: none;
+  min-width: var(--magassag-suru);
+  height: var(--magassag-suru);
+  padding: 0 var(--t-2);
+  border: none;
+  border-radius: var(--kerekites-kicsi);
+  background: none;
+  color: var(--szoveg-masodlagos);
+  font: inherit;
+  font-size: var(--betu-kicsi);
+  cursor: pointer;
+}
+
+.pdf-be-gomb:hover:not(:disabled) {
+  background: var(--hatter-hover);
+  color: var(--szoveg);
+}
+
+.pdf-be-gomb:disabled {
+  opacity: var(--tiltott-atlatszosag);
+  cursor: default;
+}
+
+.pdf-be-gomb:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.pdf-be-oldal {
+  flex: none;
+  width: 3.2em;
+  height: var(--magassag-suru);
+  padding: 0 var(--t-1);
+  border: 1px solid var(--keret);
+  border-radius: var(--kerekites-kicsi);
+  background: var(--hatter);
+  color: var(--szoveg);
+  font: inherit;
+  font-size: var(--betu-kicsi);
+  text-align: right;
+}
+
+.pdf-be-oldal:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.pdf-be-osszes {
+  flex: none;
+  min-width: 2.4em;
+  color: var(--szoveg-masodlagos);
+  font-size: var(--betu-kicsi);
+}
+
+/* a lapok görgethető doboza: a vége felé a görgetés a jegyzetnek adódik át (`overscroll-behavior: auto`) */
+.pdf-be-test {
+  position: relative;
+  display: block;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+  background: var(--pdf-hatter);
+}
+
+.pdf-be-test:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.pdf-be-lapdoboz {
+  display: block;
+  margin: 0 auto var(--t-2);
+  background: var(--pdf-lap);
+}
+
+.pdf-be-lapdoboz .beagyazas-uzenet {
+  display: block;
+  padding: var(--t-3);
+}
+
+.pdf-be-test .beagyazas-uzenet {
+  position: absolute;
+  inset: var(--t-3) auto auto var(--t-3);
+}
+
+.pdf-be-lap {
+  display: block;
+  margin: 0 auto;
+  background: var(--pdf-lap);
+}
+
+.link-elonezet .beagyazas-pdf-nezo {
+  border: none;
+  border-radius: 0;
+}

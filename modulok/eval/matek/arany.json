@@ -1,0 +1,1097 @@
+{
+ "verzio": "v1",
+ "allapot": "jovahagyott",
+ "keszult": "2026-10-03",
+ "jovahagyva": "2026-10-07",
+ "ellenorzes": {
+  "datum": "2026-10-07",
+  "ki": "a koordinátor (Claude), a felhasználó megbízásából (K27: „dönts helyettem”)",
+  "modszer": "mind a 40 feladat várt eredménye SymPy-vel újraszámolva a feladat szövegéből (a venv-ben, modell nélkül; a két trigonometrikus egyenletnél, ahol a solveset hiányos halmazt adott, numerikus gyökkereséssel és kézzel is); a 10 lépéses megoldás minden sora és a 10 hibás levezetés kézzel ellenőrizve (pontosan egy beültetett hiba, a jelölt sor az első hibás sor, a többi sor a hibából helyesen következik)",
+  "eredmeny": "hibát nem találtam: 40/40 várt eredmény, 10/10 helyes lépéssor, 10/10 hibás levezetés rendben",
+  "megjegyzes": "a h03 és a h04 (hamis gyök) hibája a hiányzó ellenőrzés: a jelölt sor az utolsó, ahol a hamis gyök megoldásként áll"
+ },
+ "forras": "40 emelt szintű feladat: a vault kidolgozott feladataiból és nyilvános emelt szintű érettségi feladatsorokból (2022. május, 2023. május, 2023. október, 2024. május; saját szavakkal újrafogalmazva); a végeredmények sympy-val újraszámolva",
+ "szabaly": "egy feladat = egy részfeladat egy végeredménnyel; a lepesek a megoldásmenet sorai (gepi: az egyenlet géppel olvasható alakja, ha a sor egyetlen egyenlet); a levezetesek pontosan egy beültetett hibát tartalmaznak, a hibas_sor az első hibás sor 1-től számozva",
+ "feladatok": [
+  {
+   "id": "m01",
+   "tema": "algebra",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 1.md, a)",
+   "szoveg": "Oldd meg a valós számok halmazán: $2x^3-5x^2-3x=0$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "-1/2",
+     "0",
+     "3"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "2x^3-5x^2-3x=0",
+     "gepi": "2*x^3-5*x^2-3*x=0"
+    },
+    {
+     "latex": "x(2x^2-5x-3)=0",
+     "gepi": "x*(2*x^2-5*x-3)=0"
+    },
+    {
+     "latex": "x=0 \\text{ vagy } 2x^2-5x-3=0",
+     "gepi": null
+    },
+    {
+     "latex": "x_1=0,\\ x_2=3,\\ x_3=-\\tfrac12",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m02",
+   "tema": "algebra",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 3.md, b) (az alaphalmaz itt a valós számok halmaza)",
+   "szoveg": "Oldd meg a valós számok halmazán: $\\sqrt{2x-3}=\\sqrt{x+10}-1$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "6"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "\\sqrt{2x-3}=\\sqrt{x+10}-1",
+     "gepi": "sqrt(2*x-3)=sqrt(x+10)-1"
+    },
+    {
+     "latex": "2x-3=x+11-2\\sqrt{x+10}",
+     "gepi": "2*x-3=x+11-2*sqrt(x+10)"
+    },
+    {
+     "latex": "2\\sqrt{x+10}=14-x",
+     "gepi": "2*sqrt(x+10)=14-x"
+    },
+    {
+     "latex": "4(x+10)=(14-x)^2",
+     "gepi": "4*(x+10)=(14-x)^2"
+    },
+    {
+     "latex": "x^2-32x+156=0",
+     "gepi": "x^2-32*x+156=0"
+    },
+    {
+     "latex": "x_1=6,\\ x_2=26",
+     "gepi": null
+    },
+    {
+     "latex": "\\text{Ellenőrzés: } x=26 \\text{ hamis gyök } (\\sqrt{49}=7\\ne\\sqrt{36}-1=5),\\ \\text{így } x=6",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m03",
+   "tema": "algebra",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 3.md, a) (az alaphalmaz itt a valós számok halmaza)",
+   "szoveg": "Oldd meg a valós számok halmazán: $|5-|x||=3$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "-8",
+     "-2",
+     "2",
+     "8"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "|5-|x||=3",
+     "gepi": "Abs(5-Abs(x))=3"
+    },
+    {
+     "latex": "5-|x|=3 \\text{ vagy } 5-|x|=-3",
+     "gepi": null
+    },
+    {
+     "latex": "|x|=2 \\text{ vagy } |x|=8",
+     "gepi": null
+    },
+    {
+     "latex": "x_1=2,\\ x_2=-2,\\ x_3=8,\\ x_4=-8",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m04",
+   "tema": "algebra",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 2.md, b)",
+   "szoveg": "Oldd meg a valós számpárok halmazán az egyenletrendszert: $\\dfrac{x+2}{3}-\\dfrac{y-3}{4}=3$ és $\\dfrac{3}{x+2}-\\dfrac{1}{y-3}=0$.",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "x": "10",
+     "y": "7"
+    }
+   }
+  },
+  {
+   "id": "m05",
+   "tema": "algebra",
+   "forras": "érettségi: 2024. május, emelt, 6. b)",
+   "szoveg": "Dalma egy 5250 méter hosszú futókörön két kört futott. A második körben az átlagsebessége 3,5 km/h-val kisebb volt, mint az elsőben, a teljes (kétkörös) futás átlagsebessége pedig 12 km/h lett. Jelölje $x$ az első kör átlagsebességét km/h-ban; ekkor $\\dfrac{5{,}25}{x}+\\dfrac{5{,}25}{x-3{,}5}=\\dfrac{10{,}5}{12}$. Mekkora volt az első kör átlagsebessége (km/h-ban)?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "14",
+    "egysegek": [
+     "km/h"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "\\frac{5{,}25}{x}+\\frac{5{,}25}{x-3{,}5}=\\frac{10{,}5}{12}",
+     "gepi": "(21/4)/x+(21/4)/(x-7/2)=(21/2)/12"
+    },
+    {
+     "latex": "\\frac{1}{x}+\\frac{1}{x-3{,}5}=\\frac{1}{6}",
+     "gepi": "1/x+1/(x-7/2)=1/6"
+    },
+    {
+     "latex": "6(x-3{,}5)+6x=x(x-3{,}5)",
+     "gepi": "6*(x-7/2)+6*x=x*(x-7/2)"
+    },
+    {
+     "latex": "12x-21=x^2-3{,}5x",
+     "gepi": "12*x-21=x^2-(7/2)*x"
+    },
+    {
+     "latex": "24x-42=2x^2-7x",
+     "gepi": "24*x-42=2*x^2-7*x"
+    },
+    {
+     "latex": "2x^2-31x+42=0",
+     "gepi": "2*x^2-31*x+42=0"
+    },
+    {
+     "latex": "x_1=14,\\ x_2=1{,}5",
+     "gepi": null
+    },
+    {
+     "latex": "x>3{,}5 \\text{ (a második kör sebessége pozitív), ezért } x=14",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m06",
+   "tema": "fuggveny",
+   "forras": "érettségi: 2023. május, emelt, 8. a)",
+   "szoveg": "Legyen $f(x)=2x-1$ és $g(x)=\\sqrt{x}$, mindkét függvény az $[1;\\infty[$ halmazon értelmezve. Oldd meg az $f(g(x))=g(f(x))$ egyenletet, azaz a $2\\sqrt{x}-1=\\sqrt{2x-1}$ egyenletet az $x\\ge 1$ valós számok halmazán.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "1"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "2\\sqrt{x}-1=\\sqrt{2x-1}",
+     "gepi": "2*sqrt(x)-1=sqrt(2*x-1)"
+    },
+    {
+     "latex": "4x-4\\sqrt{x}+1=2x-1",
+     "gepi": "4*x-4*sqrt(x)+1=2*x-1"
+    },
+    {
+     "latex": "2x+2=4\\sqrt{x}",
+     "gepi": "2*x+2=4*sqrt(x)"
+    },
+    {
+     "latex": "x+1=2\\sqrt{x}",
+     "gepi": "x+1=2*sqrt(x)"
+    },
+    {
+     "latex": "x^2+2x+1=4x",
+     "gepi": "x^2+2*x+1=4*x"
+    },
+    {
+     "latex": "(x-1)^2=0",
+     "gepi": "(x-1)^2=0"
+    },
+    {
+     "latex": "x=1",
+     "gepi": "x=1"
+    }
+   ]
+  },
+  {
+   "id": "m07",
+   "tema": "fuggveny",
+   "forras": "érettségi: 2024. május, emelt, 1. b)",
+   "szoveg": "A valós számok halmazán értelmezett két függvény: $f(x)=2^{x-3}$ és $g(x)=2^x-7$. Add meg a két grafikon metszéspontjának koordinátáit.",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "x": "3",
+     "y": "1"
+    }
+   }
+  },
+  {
+   "id": "m08",
+   "tema": "fuggveny",
+   "forras": "érettségi: 2023. október, emelt, 4. b)",
+   "szoveg": "A $g(x)=px^2+qx+r$ másodfokú függvényről ($p\\ne 0$) tudjuk, hogy $g(1)=1$, $g'(1)=2$ és $g''(1)=4$. Add meg $g(x)$ képletét $x$ polinomjaként.",
+   "vart": {
+    "tipus": "kifejezes",
+    "ertek": "2*x^2-2*x+1"
+   }
+  },
+  {
+   "id": "m09",
+   "tema": "fuggveny",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 4.md, c)",
+   "szoveg": "Oldd meg a valós számok halmazán az $\\dfrac{x-4}{x-6}\\le -1$ egyenlőtlenséget. A megoldáshalmazt intervallumként add meg.",
+   "vart": {
+    "tipus": "intervallum",
+    "ertek": "[5, 6)"
+   }
+  },
+  {
+   "id": "m10",
+   "tema": "fuggveny",
+   "forras": "vault: M05 - Függvények/Elmélet/06F - A másodfokú függvény — Feladattár.md, „Példa a szélsőérték-képlet alkalmazására”",
+   "szoveg": "Mekkora a valós számok halmazán értelmezett $f(x)=-3x^2+5x+8$ függvény legnagyobb értéke? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "121/12"
+   }
+  },
+  {
+   "id": "m11",
+   "tema": "exp_log",
+   "forras": "érettségi: 2023. május, emelt, 1. a)",
+   "szoveg": "Oldd meg a valós számok halmazán: $\\log_3 x+\\log_3(x+2)=1$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "1"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "\\log_3 x+\\log_3(x+2)=1",
+     "gepi": "log(x,3)+log(x+2,3)=1"
+    },
+    {
+     "latex": "\\log_3\\big(x(x+2)\\big)=1",
+     "gepi": "log(x*(x+2),3)=1"
+    },
+    {
+     "latex": "x(x+2)=3",
+     "gepi": "x*(x+2)=3"
+    },
+    {
+     "latex": "x^2+2x-3=0",
+     "gepi": "x^2+2*x-3=0"
+    },
+    {
+     "latex": "x_1=1,\\ x_2=-3",
+     "gepi": null
+    },
+    {
+     "latex": "\\text{A kikötés } (x>0) \\text{ miatt } x=-3 \\text{ nem megoldás, így } x=1",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m12",
+   "tema": "exp_log",
+   "forras": "érettségi: 2022. május, emelt, 1. a)",
+   "szoveg": "Oldd meg a valós számok halmazán: $9^{x+1}+15\\cdot 3^x=6$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "-1"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "9^{x+1}+15\\cdot 3^x=6",
+     "gepi": "9^(x+1)+15*3^x=6"
+    },
+    {
+     "latex": "9\\cdot(3^x)^2+15\\cdot 3^x-6=0",
+     "gepi": "9*(3^x)^2+15*3^x-6=0"
+    },
+    {
+     "latex": "3\\cdot(3^x)^2+5\\cdot 3^x-2=0",
+     "gepi": "3*(3^x)^2+5*3^x-2=0"
+    },
+    {
+     "latex": "(3\\cdot 3^x-1)(3^x+2)=0",
+     "gepi": "(3*3^x-1)*(3^x+2)=0"
+    },
+    {
+     "latex": "3^x=\\tfrac13 \\quad (3^x=-2 \\text{ nem lehet, mert } 3^x>0)",
+     "gepi": "3^x=1/3"
+    },
+    {
+     "latex": "x=-1",
+     "gepi": "x=-1"
+    }
+   ]
+  },
+  {
+   "id": "m13",
+   "tema": "exp_log",
+   "forras": "érettségi: 2024. május, emelt, 1. a)",
+   "szoveg": "Oldd meg a valós számok halmazán: $3+\\log_2(x-2)=\\log_2(2x+8)$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "4"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "3+\\log_2(x-2)=\\log_2(2x+8)",
+     "gepi": "3+log(x-2,2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "\\log_2 8+\\log_2(x-2)=\\log_2(2x+8)",
+     "gepi": "log(8,2)+log(x-2,2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "\\log_2\\big(8(x-2)\\big)=\\log_2(2x+8)",
+     "gepi": "log(8*(x-2),2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "8(x-2)=2x+8",
+     "gepi": "8*(x-2)=2*x+8"
+    },
+    {
+     "latex": "8x-16=2x+8",
+     "gepi": "8*x-16=2*x+8"
+    },
+    {
+     "latex": "6x=24",
+     "gepi": "6*x=24"
+    },
+    {
+     "latex": "x=4 \\quad (\\text{megfelel az } x>2 \\text{ kikötésnek})",
+     "gepi": "x=4"
+    }
+   ]
+  },
+  {
+   "id": "m14",
+   "tema": "exp_log",
+   "forras": "érettségi: 2023. október, emelt, 1. b)",
+   "szoveg": "Oldd meg a valós számok halmazán: $3\\cdot 9^x-3^{x+3}=3^x-9$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "-1",
+     "2"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "3\\cdot 9^x-3^{x+3}=3^x-9",
+     "gepi": "3*9^x-3^(x+3)=3^x-9"
+    },
+    {
+     "latex": "3\\cdot(3^x)^2-27\\cdot 3^x=3^x-9",
+     "gepi": "3*(3^x)^2-27*3^x=3^x-9"
+    },
+    {
+     "latex": "3\\cdot(3^x)^2-28\\cdot 3^x+9=0",
+     "gepi": "3*(3^x)^2-28*3^x+9=0"
+    },
+    {
+     "latex": "(3\\cdot 3^x-1)(3^x-9)=0",
+     "gepi": "(3*3^x-1)*(3^x-9)=0"
+    },
+    {
+     "latex": "3^x=\\tfrac13 \\text{ vagy } 3^x=9",
+     "gepi": null
+    },
+    {
+     "latex": "x_1=-1,\\ x_2=2",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m15",
+   "tema": "exp_log",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 8.md, b)",
+   "szoveg": "Oldd meg a valós számok halmazán: $\\log_3(x+8)+\\log_3(x-2)-\\log_3(x+4)=1$.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "4"
+    ]
+   },
+   "lepesek": [
+    {
+     "latex": "\\log_3(x+8)+\\log_3(x-2)-\\log_3(x+4)=1",
+     "gepi": "log(x+8,3)+log(x-2,3)-log(x+4,3)=1"
+    },
+    {
+     "latex": "\\log_3\\frac{(x+8)(x-2)}{x+4}=1",
+     "gepi": "log((x+8)*(x-2)/(x+4),3)=1"
+    },
+    {
+     "latex": "\\frac{(x+8)(x-2)}{x+4}=3",
+     "gepi": "(x+8)*(x-2)/(x+4)=3"
+    },
+    {
+     "latex": "(x+8)(x-2)=3(x+4)",
+     "gepi": "(x+8)*(x-2)=3*(x+4)"
+    },
+    {
+     "latex": "x^2+3x-28=0",
+     "gepi": "x^2+3*x-28=0"
+    },
+    {
+     "latex": "x_1=4,\\ x_2=-7",
+     "gepi": null
+    },
+    {
+     "latex": "\\text{A kikötés } (x>2) \\text{ miatt } x=-7 \\text{ nem megoldás, így } x=4",
+     "gepi": null
+    }
+   ]
+  },
+  {
+   "id": "m16",
+   "tema": "exp_log",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 1.md, c)",
+   "szoveg": "Oldd meg a valós számok halmazán: $2\\cdot 8^x+7\\cdot 4^x+3\\cdot 2^x=0$. (Ha nincs megoldás, a megoldáshalmaz üres.)",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": []
+   }
+  },
+  {
+   "id": "m17",
+   "tema": "trigonometria",
+   "forras": "érettségi: 2023. május, emelt, 1. b) (az alaphalmaz itt [0; 2π])",
+   "szoveg": "Oldd meg a $[0;2\\pi]$ intervallumon: $4\\sin^2x-16\\cos^2x=-1$. A megoldásokat radiánban, $\\pi$ pontos többszöröseiként add meg.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "pi/3",
+     "2*pi/3",
+     "4*pi/3",
+     "5*pi/3"
+    ]
+   }
+  },
+  {
+   "id": "m18",
+   "tema": "trigonometria",
+   "forras": "érettségi: 2022. május, emelt, 1. b) (az alaphalmaz itt [0; π])",
+   "szoveg": "Oldd meg a $[0;\\pi]$ intervallumon: $\\dfrac14\\sin\\left(2x-\\dfrac{\\pi}{3}\\right)-\\dfrac18=0$. A megoldásokat radiánban, $\\pi$ pontos többszöröseiként add meg.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "pi/4",
+     "7*pi/12"
+    ]
+   }
+  },
+  {
+   "id": "m19",
+   "tema": "trigonometria",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 3.md, c)",
+   "szoveg": "Oldd meg a $[4;6]$ alaphalmazon: $2\\cos^2x+\\cos x-1\\le 0$. A megoldáshalmazt intervallumként, pontos végpontokkal add meg.",
+   "vart": {
+    "tipus": "intervallum",
+    "ertek": "[4, 5*pi/3]"
+   }
+  },
+  {
+   "id": "m20",
+   "tema": "trigonometria",
+   "forras": "vault: M03 - Algebra/Megoldások/Studium Generale - 1.md, b) (az alaphalmaz itt [0; 2π])",
+   "szoveg": "Oldd meg a $[0;2\\pi]$ intervallumon: $2\\cos^3x-5\\cos^2x-3\\cos x=0$. A megoldásokat radiánban, $\\pi$ pontos többszöröseiként add meg.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "pi/2",
+     "2*pi/3",
+     "4*pi/3",
+     "3*pi/2"
+    ]
+   }
+  },
+  {
+   "id": "m21",
+   "tema": "trigonometria",
+   "forras": "vault: M07 - Trigonometria/Elmélet/10F - Trigonometrikus egyenletek I — Feladattár.md, „Négyzetes szögegyenlet” példa (az alaphalmaz itt [0; 2π])",
+   "szoveg": "Oldd meg a $[0;2\\pi]$ intervallumon: $2\\sin^2x-\\sin x-1=0$. A megoldásokat radiánban, $\\pi$ pontos többszöröseiként add meg.",
+   "vart": {
+    "tipus": "halmaz",
+    "ertekek": [
+     "pi/2",
+     "7*pi/6",
+     "11*pi/6"
+    ]
+   }
+  },
+  {
+   "id": "m22",
+   "tema": "sorozat",
+   "forras": "érettségi: 2023. május, emelt, 4. a)",
+   "szoveg": "Egy számtani sorozat huszadik tagja 108, az első húsz tagjának összege 1115. Add meg a sorozat első tagját ($a_1$) és differenciáját ($d$).",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "a1": "7/2",
+     "d": "11/2"
+    }
+   }
+  },
+  {
+   "id": "m23",
+   "tema": "sorozat",
+   "forras": "érettségi: 2023. május, emelt, 4. b)",
+   "szoveg": "Egy mértani sorozat első tagja 3, hányadosa is 3. Az első $n$ tag szorzata $3^{435}$. Mennyi $n$?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "29"
+   }
+  },
+  {
+   "id": "m24",
+   "tema": "sorozat",
+   "forras": "érettségi: 2022. május, emelt, 2. a)",
+   "szoveg": "Egy számtani sorozat első tagja 5, differenciája 3. Hány tagot kell összeadni az elsőtől kezdve, hogy az összeg 4900 legyen?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "56"
+   }
+  },
+  {
+   "id": "m25",
+   "tema": "sorozat",
+   "forras": "érettségi: 2024. május, emelt, 6. a)",
+   "szoveg": "Domi 14 egymást követő napon végzett felüléseket; a második naptól kezdve minden nap 5-tel többet, mint az előző napon. A 14 nap alatt összesen 1001 felülést végzett. Hány felülést végzett az első ($a_1$) és hányat az utolsó, 14. napon ($a_{14}$)?",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "a1": "39",
+     "a14": "104"
+    }
+   }
+  },
+  {
+   "id": "m26",
+   "tema": "sorozat",
+   "forras": "vault: M08 - Sorozatok/Elmélet/11 - Kamatos kamat és hasonlóság — vegyes feladatsor.md, „Egyenletrendszer kamatszámítással”",
+   "szoveg": "Két részvényünk van. Ha az első 7%-ot, a második 12%-ot kamatozik, akkor egy év múlva összesen 296 400 Ft-unk lesz; ha fordítva (az első 12%-ot, a második 7%-ot), akkor 294 900 Ft. Hány forintunk lenne egy év múlva, ha az első 9%-ot, a második 15%-ot kamatozna?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "303300",
+    "egysegek": [
+     "Ft"
+    ]
+   }
+  },
+  {
+   "id": "m27",
+   "tema": "koordinatageometria",
+   "forras": "érettségi: 2022. május, emelt, 9. a)",
+   "szoveg": "Add meg az $x^2+2y=16$ egyenletű parabola fókuszpontjának koordinátáit.",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "x": "0",
+     "y": "15/2"
+    }
+   }
+  },
+  {
+   "id": "m28",
+   "tema": "koordinatageometria",
+   "forras": "érettségi: 2024. május, emelt, 8. a)",
+   "szoveg": "Egy kör egyenlete $x^2-4x+y^2-12y=13$. Mekkora a kör sugara? Pontos értéket adj meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "sqrt(53)"
+   }
+  },
+  {
+   "id": "m29",
+   "tema": "koordinatageometria",
+   "forras": "érettségi: 2024. május, emelt, 8. c)",
+   "szoveg": "Hány olyan pontja van az $x^2+y^2=53$ egyenletű körvonalnak, amelynek mindkét koordinátája egész szám?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "8"
+   }
+  },
+  {
+   "id": "m30",
+   "tema": "koordinatageometria",
+   "forras": "vault: M11 - Koordinátageometria/Elmélet/13 - Szakaszok és egyenesek a koordinátasíkon.md, VII. szakasz, első példa",
+   "szoveg": "Határozd meg a $2x-y=4$ és az $x+3y=9$ egyenletű egyenesek metszéspontjának koordinátáit.",
+   "vart": {
+    "tipus": "par",
+    "ertekek": {
+     "x": "3",
+     "y": "2"
+    }
+   }
+  },
+  {
+   "id": "m31",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "érettségi: 2023. május, emelt, 2. b)",
+   "szoveg": "Egy rendszám 4 betűből (a 26 betűs latin ábécéből, amelyben 5 magánhangzó és 21 mássalhangzó van) és utána 3 számjegyből áll. Az első két betű vagy mindkettő magánhangzó, vagy mindkettő mássalhangzó, de az első betűpár nem lehet CS, GY, LY, NY, SZ, TY, ZS. A harmadik és a negyedik betű tetszőleges. A három számjegy tetszőleges, de a rendszám nem végződhet 000-ra. Hány különböző rendszám készíthető?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "309973716"
+   }
+  },
+  {
+   "id": "m32",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "érettségi: 2022. május, emelt, 4. c)",
+   "szoveg": "Egy dobozban 3 piros és 7 kék golyó van. Háromszor húzunk egy-egy golyót úgy, hogy a kihúzott golyót minden húzás után visszatesszük. Mennyi annak a valószínűsége, hogy a három húzott golyó közül pontosan kettő piros, feltéve, hogy van közöttük piros? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "21/73"
+   }
+  },
+  {
+   "id": "m33",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "érettségi: 2024. május, emelt, 3. a)",
+   "szoveg": "Öt szabályos dobókockával egyszerre dobunk. Mennyi annak a valószínűsége, hogy az öt kockán öt különböző, egymást követő szám áll (azaz 1-2-3-4-5 vagy 2-3-4-5-6, tetszőleges elrendezésben)? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "5/162"
+   }
+  },
+  {
+   "id": "m34",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "érettségi: 2024. május, emelt, 9. a)",
+   "szoveg": "Egy $k$ pontú és egy $2k$ pontú teljes gráfnak együtt 697 éle van. Mennyi $k$?",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "17"
+   }
+  },
+  {
+   "id": "m35",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "vault: M15 - Valószínűségszámítás és statisztika/Elmélet/05F - A klasszikus valószínűségi modell — Feladattár.md, „Visszatevéses és visszatevés nélküli húzás” példa",
+   "szoveg": "Egy urnában 5 piros és 3 kék golyó van. Visszatevés nélkül kihúzunk 2 golyót. Mennyi a valószínűsége, hogy mindkettő piros? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "5/14"
+   }
+  },
+  {
+   "id": "m36",
+   "tema": "valoszinuseg_kombinatorika",
+   "forras": "vault: M15 - Valószínűségszámítás és statisztika/Elmélet/05F - A klasszikus valószínűségi modell — Feladattár.md, „Legalább egy feltétel — komplementer módszer” példa",
+   "szoveg": "Egy szabályos dobókockával háromszor dobunk. Mennyi a valószínűsége, hogy legalább egyszer hatost dobunk? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "91/216"
+   }
+  },
+  {
+   "id": "m37",
+   "tema": "analizis",
+   "forras": "érettségi: 2022. május, emelt, 9. c)",
+   "szoveg": "Mekkora az $x^2+2y=16$ egyenletű parabola és az $x$ tengely által közrezárt korlátos síkidom területe? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "128/3"
+   }
+  },
+  {
+   "id": "m38",
+   "tema": "analizis",
+   "forras": "vault: M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/17 - Két görbe közötti síkidom területe.md, Mintapélda",
+   "szoveg": "Mekkora az $y=x$ egyenes és az $y=x^2$ parabola által közrezárt korlátos síkidom területe? Az eredményt törtként add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "1/6"
+   }
+  },
+  {
+   "id": "m39",
+   "tema": "analizis",
+   "forras": "vault: M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/07 - Deriválási szabályok.md, Mintapélda",
+   "szoveg": "Add meg a $h(x)=(3x^2+1)^5$ függvény deriváltfüggvényét.",
+   "vart": {
+    "tipus": "kifejezes",
+    "ertek": "30*x*(3*x^2+1)^4"
+   }
+  },
+  {
+   "id": "m40",
+   "tema": "analizis",
+   "forras": "vault: M09 - Analízis (differenciál- és integrálszámítás)/Elmélet/12 - Szélsőérték-feladatok.md, Mintapélda",
+   "szoveg": "Egy 12 cm oldalú négyzet alakú lap négy sarkából egyforma, $x$ cm oldalú négyzeteket vágunk ki, majd a széleket felhajtva felül nyitott dobozt készítünk ($0<x<6$). Mekkora $x$ esetén lesz a doboz térfogata a legnagyobb? Az eredményt cm-ben add meg.",
+   "vart": {
+    "tipus": "szam",
+    "ertek": "2",
+    "egysegek": [
+     "cm"
+    ]
+   }
+  }
+ ],
+ "levezetesek": [
+  {
+   "id": "h01",
+   "alap": "m01",
+   "hiba": "nullaval_osztas",
+   "sorok": [
+    {
+     "latex": "2x^3-5x^2-3x=0",
+     "gepi": "2*x^3-5*x^2-3*x=0"
+    },
+    {
+     "latex": "2x^2-5x-3=0",
+     "gepi": "2*x^2-5*x-3=0"
+    },
+    {
+     "latex": "x_{1,2}=\\frac{5\\pm 7}{4}",
+     "gepi": null
+    },
+    {
+     "latex": "x_1=3,\\ x_2=-\\tfrac12",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 2,
+   "magyarazat": "x-szel osztott, pedig x=0 is gyök: elveszett egy megoldás."
+  },
+  {
+   "id": "h02",
+   "alap": "m14",
+   "hiba": "nullaval_osztas",
+   "sorok": [
+    {
+     "latex": "3\\cdot 9^x-3^{x+3}=3^x-9",
+     "gepi": "3*9^x-3^(x+3)=3^x-9"
+    },
+    {
+     "latex": "3\\cdot(3^x)^2-27\\cdot 3^x=3^x-9",
+     "gepi": "3*(3^x)^2-27*3^x=3^x-9"
+    },
+    {
+     "latex": "3\\cdot 3^x\\,(3^x-9)=3^x-9",
+     "gepi": "3*3^x*(3^x-9)=3^x-9"
+    },
+    {
+     "latex": "3\\cdot 3^x=1",
+     "gepi": "3*3^x=1"
+    },
+    {
+     "latex": "3^x=\\tfrac13",
+     "gepi": "3^x=1/3"
+    },
+    {
+     "latex": "x=-1",
+     "gepi": "x=-1"
+    }
+   ],
+   "hibas_sor": 4,
+   "magyarazat": "A (3^x-9) tényezővel osztott, pedig az nulla is lehet (3^x=9): elveszett az x=2 megoldás."
+  },
+  {
+   "id": "h03",
+   "alap": "m02",
+   "hiba": "hamis_gyok",
+   "sorok": [
+    {
+     "latex": "\\sqrt{2x-3}=\\sqrt{x+10}-1",
+     "gepi": "sqrt(2*x-3)=sqrt(x+10)-1"
+    },
+    {
+     "latex": "2x-3=x+11-2\\sqrt{x+10}",
+     "gepi": "2*x-3=x+11-2*sqrt(x+10)"
+    },
+    {
+     "latex": "2\\sqrt{x+10}=14-x",
+     "gepi": "2*sqrt(x+10)=14-x"
+    },
+    {
+     "latex": "4(x+10)=(14-x)^2",
+     "gepi": "4*(x+10)=(14-x)^2"
+    },
+    {
+     "latex": "x^2-32x+156=0",
+     "gepi": "x^2-32*x+156=0"
+    },
+    {
+     "latex": "x_1=6,\\ x_2=26",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 6,
+   "magyarazat": "Négyzetre emelés után nem ellenőrzött: x=26 hamis gyök (a bal oldal 7, a jobb oldal 5), csak x=6 megoldás."
+  },
+  {
+   "id": "h04",
+   "alap": "m15",
+   "hiba": "hamis_gyok",
+   "sorok": [
+    {
+     "latex": "\\log_3(x+8)+\\log_3(x-2)-\\log_3(x+4)=1",
+     "gepi": "log(x+8,3)+log(x-2,3)-log(x+4,3)=1"
+    },
+    {
+     "latex": "\\log_3\\frac{(x+8)(x-2)}{x+4}=1",
+     "gepi": "log((x+8)*(x-2)/(x+4),3)=1"
+    },
+    {
+     "latex": "\\frac{(x+8)(x-2)}{x+4}=3",
+     "gepi": "(x+8)*(x-2)/(x+4)=3"
+    },
+    {
+     "latex": "(x+8)(x-2)=3(x+4)",
+     "gepi": "(x+8)*(x-2)=3*(x+4)"
+    },
+    {
+     "latex": "x^2+3x-28=0",
+     "gepi": "x^2+3*x-28=0"
+    },
+    {
+     "latex": "x_1=4,\\ x_2=-7",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 6,
+   "magyarazat": "A logaritmusok összevonása után nem vizsgálta a kikötést (x>2): x=-7 hamis gyök, mert ott a logaritmusok nincsenek értelmezve; csak x=4 megoldás."
+  },
+  {
+   "id": "h05",
+   "alap": "m06",
+   "hiba": "elojel",
+   "sorok": [
+    {
+     "latex": "2\\sqrt{x}-1=\\sqrt{2x-1}",
+     "gepi": "2*sqrt(x)-1=sqrt(2*x-1)"
+    },
+    {
+     "latex": "4x-4\\sqrt{x}+1=2x-1",
+     "gepi": "4*x-4*sqrt(x)+1=2*x-1"
+    },
+    {
+     "latex": "2x=4\\sqrt{x}",
+     "gepi": "2*x=4*sqrt(x)"
+    },
+    {
+     "latex": "x=2\\sqrt{x}",
+     "gepi": "x=2*sqrt(x)"
+    },
+    {
+     "latex": "x^2=4x",
+     "gepi": "x^2=4*x"
+    },
+    {
+     "latex": "x(x-4)=0",
+     "gepi": "x*(x-4)=0"
+    },
+    {
+     "latex": "x\\ge 1 \\text{ miatt } x=4",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 3,
+   "magyarazat": "A +1 átvitelekor nem váltott előjelet (-1+1=0-t írt -1-1=-2 helyett); helyesen 2x+2=4√x, amiből x=1."
+  },
+  {
+   "id": "h06",
+   "alap": "m03",
+   "hiba": "elojel",
+   "sorok": [
+    {
+     "latex": "|5-|x||=3",
+     "gepi": "Abs(5-Abs(x))=3"
+    },
+    {
+     "latex": "5-|x|=3 \\text{ vagy } 5-|x|=-3",
+     "gepi": null
+    },
+    {
+     "latex": "|x|=2 \\text{ vagy } |x|=-2",
+     "gepi": null
+    },
+    {
+     "latex": "|x|=-2 \\text{ nem lehet, ezért } x_1=2,\\ x_2=-2",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 3,
+   "magyarazat": "A második esetben az 5 átvitelekor előjelhibát vétett: 5-|x|=-3-ból |x|=8 következik (nem |x|=-2), így elveszett az x=8 és az x=-8 megoldás."
+  },
+  {
+   "id": "h07",
+   "alap": "m12",
+   "hiba": "elojel",
+   "sorok": [
+    {
+     "latex": "9^{x+1}+15\\cdot 3^x=6",
+     "gepi": "9^(x+1)+15*3^x=6"
+    },
+    {
+     "latex": "9\\cdot(3^x)^2+15\\cdot 3^x-6=0",
+     "gepi": "9*(3^x)^2+15*3^x-6=0"
+    },
+    {
+     "latex": "3\\cdot(3^x)^2+5\\cdot 3^x-2=0",
+     "gepi": "3*(3^x)^2+5*3^x-2=0"
+    },
+    {
+     "latex": "(3\\cdot 3^x+1)(3^x-2)=0",
+     "gepi": "(3*3^x+1)*(3^x-2)=0"
+    },
+    {
+     "latex": "3^x=2 \\quad (3^x=-\\tfrac13 \\text{ nem lehet, mert } 3^x>0)",
+     "gepi": "3^x=2"
+    },
+    {
+     "latex": "x=\\log_3 2",
+     "gepi": "x=log(2,3)"
+    }
+   ],
+   "hibas_sor": 4,
+   "magyarazat": "A szorzattá alakításnál felcserélte az előjeleket: (3·3^x+1)(3^x-2) kibontva 3·(3^x)^2-5·3^x-2; helyesen (3·3^x-1)(3^x+2)=0, amiből x=-1."
+  },
+  {
+   "id": "h08",
+   "alap": "m13",
+   "hiba": "atrendezes",
+   "sorok": [
+    {
+     "latex": "3+\\log_2(x-2)=\\log_2(2x+8)",
+     "gepi": "3+log(x-2,2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "\\log_2 8+\\log_2(x-2)=\\log_2(2x+8)",
+     "gepi": "log(8,2)+log(x-2,2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "\\log_2\\big(8(x-2)\\big)=\\log_2(2x+8)",
+     "gepi": "log(8*(x-2),2)=log(2*x+8,2)"
+    },
+    {
+     "latex": "8(x-2)=2x+8",
+     "gepi": "8*(x-2)=2*x+8"
+    },
+    {
+     "latex": "4(x-2)=x+8",
+     "gepi": "4*(x-2)=x+8"
+    },
+    {
+     "latex": "4x-8=x+8",
+     "gepi": "4*x-8=x+8"
+    },
+    {
+     "latex": "3x=16",
+     "gepi": "3*x=16"
+    },
+    {
+     "latex": "x=\\tfrac{16}{3}",
+     "gepi": "x=16/3"
+    }
+   ],
+   "hibas_sor": 5,
+   "magyarazat": "2-vel osztáskor a jobb oldalon csak a 2x tagot osztotta, a 8-at nem; helyesen 4(x-2)=x+4, amiből x=4."
+  },
+  {
+   "id": "h09",
+   "alap": "m11",
+   "hiba": "atrendezes",
+   "sorok": [
+    {
+     "latex": "\\log_3 x+\\log_3(x+2)=1",
+     "gepi": "log(x,3)+log(x+2,3)=1"
+    },
+    {
+     "latex": "\\log_3\\big(x(x+2)\\big)=1",
+     "gepi": "log(x*(x+2),3)=1"
+    },
+    {
+     "latex": "x(x+2)=3",
+     "gepi": "x*(x+2)=3"
+    },
+    {
+     "latex": "x^2+2x=3",
+     "gepi": "x^2+2*x=3"
+    },
+    {
+     "latex": "x^2+2x+1=3",
+     "gepi": "x^2+2*x+1=3"
+    },
+    {
+     "latex": "(x+1)^2=3",
+     "gepi": "(x+1)^2=3"
+    },
+    {
+     "latex": "x+1=\\sqrt3 \\text{ vagy } x+1=-\\sqrt3",
+     "gepi": null
+    },
+    {
+     "latex": "x>0 \\text{ miatt } x=\\sqrt3-1",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 5,
+   "magyarazat": "A teljes négyzetté kiegészítéskor csak a bal oldalhoz adott 1-et; helyesen x^2+2x+1=4, amiből (x>0 miatt) x=1."
+  },
+  {
+   "id": "h10",
+   "alap": "m05",
+   "hiba": "atrendezes",
+   "sorok": [
+    {
+     "latex": "\\frac{5{,}25}{x}+\\frac{5{,}25}{x-3{,}5}=\\frac{10{,}5}{12}",
+     "gepi": "(21/4)/x+(21/4)/(x-7/2)=(21/2)/12"
+    },
+    {
+     "latex": "\\frac{1}{x}+\\frac{1}{x-3{,}5}=\\frac{1}{6}",
+     "gepi": "1/x+1/(x-7/2)=1/6"
+    },
+    {
+     "latex": "6(x-3{,}5)+6x=x(x-3{,}5)",
+     "gepi": "6*(x-7/2)+6*x=x*(x-7/2)"
+    },
+    {
+     "latex": "12x-21=x^2-3{,}5x",
+     "gepi": "12*x-21=x^2-(7/2)*x"
+    },
+    {
+     "latex": "24x-42=2x^2-3{,}5x",
+     "gepi": "24*x-42=2*x^2-(7/2)*x"
+    },
+    {
+     "latex": "2x^2-27{,}5x+42=0",
+     "gepi": "2*x^2-(55/2)*x+42=0"
+    },
+    {
+     "latex": "x_1=12,\\ x_2=1{,}75",
+     "gepi": null
+    },
+    {
+     "latex": "x>3{,}5 \\text{ miatt } x=12",
+     "gepi": null
+    }
+   ],
+   "hibas_sor": 5,
+   "magyarazat": "2-vel szorzáskor a jobb oldalon a -3,5x tagot nem szorozta meg; helyesen 24x-42=2x^2-7x, amiből x=14."
+  }
+ ]
+}

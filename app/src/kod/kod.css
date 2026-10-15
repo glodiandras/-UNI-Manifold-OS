@@ -1,0 +1,288 @@
+/*
+ * A C++ munkafelület stílusa (C36a-UI): a `.cpp` fül szerkesztője és a `![[x.cpp]]` beágyazás. Minden érték token
+ * (styles/tokens.css, 25. döntés: új szín, méret vagy idő nincs). A színezés a `szerkeszto.css` `tok-*` szabályaiból jön
+ * (a hatókör ott `.cm-kodszerkeszto` és `.kod-beagyazas-kod`).
+ */
+
+/* ---------------------------------------------------------------- a szerkesztő */
+
+.kod-ful .cm-editor {
+  height: 100%;
+  background: var(--hatter);
+  color: var(--szoveg);
+  font-family: var(--betu-mono);
+  font-size: var(--betu-ui);
+}
+
+.kod-ful .cm-editor.cm-focused {
+  outline: none;
+}
+
+.kod-ful .cm-editor .cm-scroller {
+  font-family: inherit;
+  line-height: var(--sor-ui);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--keret-eros) transparent;
+  overscroll-behavior: contain;
+}
+
+.kod-ful .cm-editor .cm-content {
+  padding: var(--t-2) 0 var(--t-7);
+  caret-color: var(--szoveg);
+}
+
+.kod-ful .cm-editor .cm-gutters {
+  background: var(--hatter);
+  border-right: var(--keret-vastag) solid var(--keret);
+  color: var(--szoveg-halvany);
+}
+
+.kod-ful .cm-editor .cm-activeLine {
+  background: var(--hatter-hover);
+}
+
+.kod-ful .cm-editor .cm-activeLineGutter {
+  background: var(--hatter-hover);
+  color: var(--szoveg-masodlagos);
+}
+
+.kod-ful .cm-editor .cm-selectionBackground,
+.kod-ful .cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--jeloles-hatter);
+}
+
+.kod-ful .cm-editor .cm-matchingBracket {
+  background: var(--jeloles-hatter);
+  color: inherit;
+  outline: var(--keret-vastag) solid var(--keret-eros);
+}
+
+.kod-ful .cm-editor .cm-nonmatchingBracket {
+  color: var(--hiba);
+}
+
+.kod-ful .cm-editor .cm-foldGutter .cm-gutterElement {
+  cursor: pointer;
+}
+
+.kod-ful .cm-editor .cm-specialChar {
+  color: var(--hiba);
+}
+
+/* a fordító aláhúzása (`@codemirror/lint`) */
+.kod-ful .cm-editor .cm-lintRange-error {
+  background-image: none;
+  text-decoration: underline wavy var(--hiba);
+  text-underline-offset: 3px;
+}
+
+.kod-ful .cm-editor .cm-lintRange-warning {
+  background-image: none;
+  text-decoration: underline wavy var(--figyelmeztetes);
+  text-underline-offset: 3px;
+}
+
+/* a margó jele: a CodeMirror beégetett színű SVG-je helyett tokenes pont */
+.kod-ful .cm-editor .cm-lint-marker-error,
+.kod-ful .cm-editor .cm-lint-marker-warning {
+  content: normal;
+  display: inline-block;
+  width: var(--t-2);
+  height: var(--t-2);
+  border-radius: var(--kerekites-kor);
+  background: var(--hiba);
+}
+
+.kod-ful .cm-editor .cm-lint-marker-warning {
+  background: var(--figyelmeztetes);
+}
+
+/* buborékok: a diagnosztika és a kódrészlet-lista */
+.kod-ful .cm-editor .cm-tooltip {
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites);
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  box-shadow: var(--arnyek-atfedes);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+}
+
+.kod-ful .cm-editor .cm-diagnostic-error {
+  border-left-color: var(--hiba);
+}
+
+.kod-ful .cm-editor .cm-diagnostic-warning {
+  border-left-color: var(--figyelmeztetes);
+}
+
+.kod-ful .cm-editor .cm-tooltip-autocomplete > ul {
+  font-family: var(--betu-mono);
+}
+
+.kod-ful .cm-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--hatter-kijelolt);
+  color: var(--szoveg);
+}
+
+.kod-ful .cm-editor .cm-completionDetail {
+  font-family: var(--betu-rendszer);
+  font-style: normal;
+  color: var(--szoveg-halvany);
+  margin-left: var(--t-2);
+}
+
+.kod-ful .cm-editor .cm-snippetField {
+  background: var(--jeloles-hatter);
+}
+
+/* keresés (⌘F) */
+.kod-ful .cm-editor .cm-panels {
+  background: var(--hatter-emelt);
+  color: var(--szoveg);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+}
+
+.kod-ful .cm-editor .cm-panels-top {
+  border-bottom: var(--keret-vastag) solid var(--keret);
+}
+
+.kod-ful .cm-editor .cm-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--t-2);
+  padding: var(--t-2) var(--t-4);
+}
+
+.kod-ful .cm-editor .cm-search br {
+  display: none;
+}
+
+.kod-ful .cm-editor .cm-textfield {
+  height: var(--magassag-gomb);
+  margin: 0;
+  padding: 0 var(--t-2);
+  border: var(--keret-vastag) solid var(--keret-mezo);
+  border-radius: var(--kerekites);
+  background: var(--hatter);
+  color: var(--szoveg);
+  font-size: var(--betu-ui);
+}
+
+.kod-ful .cm-editor .cm-button {
+  height: var(--magassag-gomb);
+  margin: 0;
+  padding: 0 var(--t-3);
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites);
+  background: var(--hatter);
+  background-image: none;
+  color: var(--szoveg);
+  font-size: var(--betu-ui);
+}
+
+.kod-ful .cm-editor .cm-search label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--t-1);
+  color: var(--szoveg-masodlagos);
+}
+
+.kod-ful .cm-editor .cm-search button[name='close'] {
+  margin-left: auto;
+  color: var(--szoveg-halvany);
+}
+
+.kod-ful .cm-editor .cm-searchMatch {
+  background: var(--jeloles-hatter);
+}
+
+.kod-ful .cm-editor .cm-searchMatch-selected {
+  outline: var(--keret-vastag) solid var(--akcent);
+}
+
+/* ---------------------------------------------------------------- a beágyazás */
+
+.beagyazas.kod-beagyazas {
+  display: block;
+}
+
+.kod-beagyazas-fej {
+  display: flex;
+  align-items: center;
+  gap: var(--t-2);
+}
+
+.kod-beagyazas-fej .beagyazas-cim {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kod-jelveny {
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-kicsi);
+  line-height: var(--sor-kicsi);
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites-kicsi);
+  color: var(--szoveg-masodlagos);
+  background: var(--hatter-hover);
+}
+
+.kod-jelveny.jo {
+  color: var(--siker);
+  background: var(--siker-hatter);
+}
+
+.kod-jelveny.rossz {
+  color: var(--hiba);
+  background: var(--hiba-hatter);
+}
+
+.kod-beagyazas-nyit {
+  margin-left: auto;
+  height: var(--magassag-gomb);
+  padding: 0 var(--t-2);
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites-kicsi);
+  background: var(--hatter);
+  color: var(--szoveg-masodlagos);
+  font: inherit;
+  font-size: var(--betu-kicsi);
+  cursor: pointer;
+}
+
+.kod-beagyazas-nyit:hover {
+  background: var(--hatter-hover);
+}
+
+.kod-beagyazas-nyit:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav);
+}
+
+.kod-beagyazas-kod {
+  margin: var(--t-1) 0 0;
+  padding: var(--t-2) var(--t-3);
+  max-height: calc(var(--sor-ui) * 24);
+  overflow: auto;
+  background: var(--hatter-kod);
+  border-radius: var(--kerekites);
+  font-family: var(--betu-mono);
+  font-size: var(--betu-kicsi);
+  line-height: var(--sor-kicsi);
+  white-space: pre;
+}
+
+.kod-beagyazas-kod.kompakt {
+  max-height: calc(var(--sor-kicsi) * 12);
+}
+
+.kod-beagyazas-kod code {
+  font: inherit;
+}

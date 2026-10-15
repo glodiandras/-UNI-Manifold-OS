@@ -1,0 +1,12 @@
+{
+ "id": "k04",
+ "cim": "Párok adott összeggel",
+ "tema": "rendezes_kereses",
+ "nehezseg": 2,
+ "idokorlat_s": 2.0,
+ "hibak": [
+  {"id": "h1", "fajta": "tulcsordulas", "sor": 11, "eredeti": "    long long parok = 0;", "csere": "    int parok = 0;", "magyarazat": "A párok száma n = 200 000-nél elérheti a 2·10^10-t, ami int-ben túlcsordul."},
+  {"id": "h2", "fajta": "feltetel", "sor": 15, "eredeti": "        if (db.count(s - x)) parok += db[s - x];", "csere": "        if (x != s - x && db.count(s - x)) parok += db[s - x];", "magyarazat": "Kizárja az egyenlő értékű párokat (x + x = s), pedig két különböző helyen álló azonos elem is pár."},
+  {"id": "h3", "fajta": "index", "sor": 12, "eredeti": "    for (int i = 0; i < n; i++) {", "csere": "    for (int i = 1; i < n; i++) {", "magyarazat": "A ciklus 1-től indul, így csak n - 1 számot olvas be, az utolsó elem kimarad."}
+ ]
+}
