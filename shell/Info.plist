@@ -2,17 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDevelopmentRegion</key><string>hu</string>
+	<key>CFBundleDevelopmentRegion</key><string>en</string>
 	<key>CFBundleName</key><string>Manifold</string>
 	<key>CFBundleDisplayName</key><string>Manifold</string>
 	<key>CFBundleExecutable</key><string>Manifold</string>
 	<key>CFBundleIconFile</key><string>AppIcon</string>
-	<key>CFBundleIdentifier</key><string>local.manifold-os.app</string>
+	<key>CFBundleIdentifier</key><string>com.manifold.app</string>
 	<key>CFBundlePackageType</key><string>APPL</string>
-	<key>CFBundleShortVersionString</key><string>0.0.1</string>
+	<key>CFBundleShortVersionString</key><string>1.0.0</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-	<key>LSMinimumSystemVersion</key><string>13.0</string>
+	<key>LSMinimumSystemVersion</key><string>26.0</string>
+	<key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
+	<key>NSHumanReadableCopyright</key><string>© Manifold</string>
 	<key>NSPrincipalClass</key><string>NSApplication</string>
 	<key>NSHighResolutionCapable</key><true/>
 	<key>NSSupportsAutomaticTermination</key><false/>
@@ -21,8 +23,8 @@
 	<key>NSAppTransportSecurity</key>
 	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>NSRemovableVolumesUsageDescription</key>
-	<string>A Manifold az SSD-n lévő Manifold-OS-t indítja, és a vaultot olvassa és írja.</string>
-	<!-- naptár és emlékeztetők (C29): az EventKit-engedély szövegei -->
+	<string>A Manifold a külső köteten lévő alkalmazásmappát indítja, és a vaultot olvassa és írja.</string>
+	<!-- naptár és emlékeztetők: az EventKit-engedély szövegei -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>A Manifold a Naptár eseményeit olvassa: a tervezett tanulást, az órarendet és a dolgozatok határidejét, hogy a Ma oldalon és a tanulási tervben látszódjanak. Naptáresemény csak a te jóváhagyásodra íródik. Az adat a gépen marad.</string>
 	<key>NSCalendarsUsageDescription</key>

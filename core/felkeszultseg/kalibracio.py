@@ -1,6 +1,6 @@
 """Önkalibráció: a felkészültségi képlet súlyainak illesztése a valódi dolgozat-eredményekre (C28b; `docs/C28-TERV.md` 7.).
 
-**Kalibrációs pont** = egy lezárt dolgozat, amelyhez (1) van egyértelmű, számszerű eredmény a „Dolgozat kiértékelő” jegyzetben
+**Kalibrációs pont** = egy lezárt dolgozat, amelyhez (1) van egyértelmű, számszerű eredmény egy kiértékelő jegyzetben (`[naplo] kiertekelo_nevek`)
 (`eredmeny.py`), és (2) a `D−N`. nap végére (alap: `D−3`) **rekonstruált** becslésben (`rekonstrukcio.py`, `Adatok(rekonstrukcio=True)`)
 van mért tudás (kártya vagy kvíz: legalább egy témára van szám). A becslés a **kilátás** (a dolgozat napjára, további tanulás
 nélkül) — az a szám, amelyet a dolgozat előtt a felhasználó látott.
@@ -216,11 +216,13 @@ def illeszt(pontok: list[Pont], b0: keplet.Beallitas, ridge: float, minimum: int
 
 # ------------------------------------------------------------------ a jelentés
 
-def _ok(allapot: str, n: int, minimum: int, lezart: int, eredmennyel: int, kihagyott: list[dict], elotte: int) -> str:
+def _ok(allapot: str, n: int, minimum: int, lezart: int, eredmennyel: int, kihagyott: list[dict], elotte: int,
+        kiertekelo_nevek: tuple = ("Dolgozat kiértékelő",)) -> str:
     if allapot == "nem_teljesitheto":
         if lezart == 0:
+            nevek = " vagy ".join(f"„{x}”" for x in kiertekelo_nevek) or "a kiértékelő"
             return ("Még nincs lezárt dolgozat a naptárban az ablakon belül, így nincs mit mérni. A kalibrációhoz legalább "
-                    f"{minimum} lezárt dolgozat kell, amelyhez van számszerű eredmény a „Dolgozat kiértékelő” jegyzetben, és a "
+                    f"{minimum} lezárt dolgozat kell, amelyhez van számszerű eredmény a(z) {nevek} jegyzetben, és a "
                     f"D−{elotte}. napon volt mért tudás (kártya vagy kvíz).")
         mert_hiany = sum(1 for k in kihagyott if k["ok"].startswith("nincs mért tudás"))
         return (f"A kalibráció még nem teljesíthető: {n} / {minimum} dolgozatra van egyszerre számszerű eredmény és mért tudás "
@@ -250,7 +252,8 @@ def jelentes(most: Adatok) -> dict:
     ill = illeszt(pontok, most.b, m.kalibracio_ridge, m.kalibracio_min)
     ki.update(ill)
     ki.update(lezart=lezart, eredmennyel=eredmennyel, kihagyott=kihagyott,
-              ok=_ok(ill["allapot"], len(pontok), m.kalibracio_min, lezart, eredmennyel, kihagyott, m.kalibracio_elotte_nap))
+              ok=_ok(ill["allapot"], len(pontok), m.kalibracio_min, lezart, eredmennyel, kihagyott, m.kalibracio_elotte_nap,
+                     tuple(m.kiertekelo_nevek)))
     ki["figyelmeztetesek"] = most.figyelmeztetesek
     return ki
 

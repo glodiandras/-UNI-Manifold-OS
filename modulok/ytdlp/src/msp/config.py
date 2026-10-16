@@ -366,7 +366,7 @@ DEFAULT_EMBED_PATTERNS = (
     r"player\.vimeo\.com/video/\d+",
     r"<video[\s>]",
 )
-DEFAULT_CRAWL_USER_AGENT = "multimedia-source-pipeline (personal study archive; honours robots.txt)"
+DEFAULT_CRAWL_USER_AGENT = "Manifold video fetcher (honours robots.txt)"
 
 
 @dataclass(frozen=True)

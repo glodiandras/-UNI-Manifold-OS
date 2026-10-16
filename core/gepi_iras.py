@@ -76,6 +76,9 @@ MAX_MUVELET = 50
 MAX_BEHOZ = 2000                         # a `behoz` műveletek egy tételben (az `.apkg` egy paklijának médiája): a szöveges írások mellett
 BEHOZ_FORRASOK = ("mos-kartya",)         # a `behoz` csak az `.apkg`-import forrásával kérhető
 ZAR_VARAKOZAS_MP = 10.0                  # ennyit vár a kör-zárra, utána 409 `foglalt`
+# a `mozgat` célmappái, ha a config nem adja meg (`[video] vault_mappa`, `[fuzet] cel_mappa`; os.toml ugyanezeket írja)
+VIDEO_MAPPA_ALAP = "ATTCHMNTS - Videos"
+FUZET_MAPPA_ALAP = "ATTCHMNTS - photos"
 # a gépi írás forrása (`Mos-Forras`, L09) mindig `mos-<lánc>` (C29.8, T135): így a `kezi`, `pult`, `pult-…` (a felhasználó munkájának
 # forrásai) és minden idegen alak kizárt, és a tracker a „gépi funkciót” egyértelműen felismeri
 _FORRAS = re.compile(r"mos-[a-z0-9-]{1,36}")
@@ -228,7 +231,7 @@ def _keres(d: dict) -> _Keres:
     """A kérés alaki ellenőrzése (400): itt még semmi nem olvas a lemezről."""
     kor = _egysoros(d, "kor", 80)
     if not frame.KOR_MINTA.fullmatch(kor) or kor.split("-", 1)[0] in _GAZDAI_ELOTAG:
-        raise Invalid(f"érvénytelen kör-azonosító: {kor} (alak: ELŐTAG-ÉÉÉÉHHNN-ÓÓPPMM, L12)")
+        raise Invalid(f"érvénytelen kör-azonosító: {kor} (alak: ELŐTAG-ÉÉÉÉHHNN-ÓÓPPMM)")
     forras = _egysoros(d, "forras", 40)
     if not _FORRAS.fullmatch(forras):
         raise Invalid(f"érvénytelen forrás (Mos-Forras): {forras} (alak: mos-<lánc>, kisbetű, szám, kötőjel, legfeljebb 40 karakter)")
@@ -242,7 +245,7 @@ def _keres(d: dict) -> _Keres:
     # D9 (C29.8, T043; a 28(g) pontosítása): a `modell` kulcs KÖTELEZŐ — AI-funkció kimenetére `{feladat, modell[, proba]}`, determinisztikus
     # írásra kifejezetten `null`. A kapu így nem a kérés önkéntes mezőjén múlik: aki nem mond semmit, az nem ír.
     if "modell" not in d:
-        raise Invalid("a `modell` kulcs kötelező: AI-funkció kimenetére {feladat, modell}, determinisztikus írásra kifejezetten null (D9)")
+        raise Invalid("a `modell` kulcs kötelező: AI-funkció kimenetére {feladat, modell}, determinisztikus írásra kifejezetten null")
     modell = d["modell"]
     if modell is not None and not (isinstance(modell, dict) and all(
             isinstance(modell.get(k), str) and modell[k].strip() for k in ("feladat", "modell"))
@@ -480,7 +483,7 @@ class GepiIras:
                 k.kor += "-proba"
             return self._klon(k.kor)._vegrehajt(k)
         if "proba" in k.kor:
-            raise Invalid(f"a `-proba` kör élesben nem írhat (L12): {k.kor}")
+            raise Invalid(f"a `-proba` kör élesben nem írhat: {k.kor}")
         self._d9(k)
         return self._vegrehajt(k)
 
@@ -492,7 +495,7 @@ class GepiIras:
         feladatok = list(self.cfg.section("router").get("feladatok", []))
         if k.modell["feladat"] not in feladatok:
             raise Invalid(f"a(z) „{k.modell['feladat']}” nem router-feladat ({', '.join(feladatok)}): a `modell.feladat` a "
-                          "`[router] feladatok` eleme lehet (D9)")
+                          "`[router] feladatok` eleme lehet")
 
     def _d9(self, k: _Keres) -> None:
         """D9: kalibrálatlan modell kimenete élesben nem írható, csak próbában. A worker `proba: true` jelzésű válasza (a modell
@@ -501,7 +504,7 @@ class GepiIras:
             return
         if k.modell.get("proba"):
             raise HttpError(400, f"a(z) {k.modell['modell']} modell próbaként futott (kifejezett kérésre, nem a router választotta): "
-                                 "a kimenete csak próbában (`proba: true`, a klónon) írható (D9)", kalibralatlan=True)
+                                 "a kimenete csak próbában (`proba: true`, a klónon) írható", kalibralatlan=True)
         t = kalibracio.megnyit(self.cfg)
         try:
             # csak az aranyhalmaz aktuális verzióján kalibrált sor (mint a routernél): az elavult verziójú nem írhat élesben
@@ -510,7 +513,7 @@ class GepiIras:
             t.close()
         if k.modell["modell"] not in kalibralt:
             raise HttpError(400, f"a(z) {k.modell['modell']} modell a(z) „{k.modell['feladat']}” feladatra nincs "
-                                 "kalibrálva: a kimenete csak próbában (`proba: true`, a klónon) írható (D9)",
+                                 "kalibrálva: a kimenete csak próbában (`proba: true`, a klónon) írható",
                             kalibralatlan=True)
 
     def _klon(self, kor: str) -> "GepiIras":
@@ -776,13 +779,13 @@ class GepiIras:
             if osztaly != e["osztaly"]:
                 raise HttpError(400, f"az új jegyzet sémaosztálya az útja szerint „{e['osztaly']}”, a kérésben "
                                      f"„{osztaly}” áll: új gépi jegyzetfajta csak bejegyzett sémaosztállyal "
-                                     "írható (config/vault-sema.json, L34)", sema=True)
+                                     "írható (a vault-séma kivételosztályai)", sema=True)
             problemak = [*e["problemak"], *self.tul.h1_problemak(rp, szoveg)]        # a H1-szabály is (L33/L34, T044)
             if problemak:
                 raise HttpError(400, f"az új jegyzet sérti a vault sémáját ({rp}): "
                                      + " ".join(x["uzenet"] for x in problemak), sema=True, problemak=problemak)
             if self.tul.sema.status_gazdai and self._status(e) is not None:
-                raise HttpError(400, "A Status mezőt csak a felhasználó tölti, gép nem (L33).", sema=True)
+                raise HttpError(400, "A Status mezőt csak a felhasználó tölti, gép nem.", sema=True)
         return _Fajl(rp, p, None, self._bajt(rp, szoveg), mappak)
 
     def _m_csere(self, m: dict) -> _Fajl | None:
@@ -806,7 +809,7 @@ class GepiIras:
                 raise HttpError(400, f"a csere sérti a vault sémáját ({rp}): " + " ".join(x["uzenet"] for x in uj_p),
                                 sema=True, problemak=uj_p)
             if self.tul.sema.status_gazdai and self._status(elotte) != self._status(utana):
-                raise HttpError(400, "A Status mezőt csak a felhasználó tölti és változtatja, gép nem (L33).", sema=True)
+                raise HttpError(400, "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.", sema=True)
         return _Fajl(rp, p, regi, b)
 
     def _m_mozgat(self, m: dict) -> _Mozgas:
@@ -815,11 +818,11 @@ class GepiIras:
         rp = m["ut"]
         video = _video_e(rp)
         if video:
-            cel_mappa = vaultio.norm_path(str(self.cfg.section("video").get("vault_mappa") or "ATTCHMNTS - Videos"))
-            hiba_hely = f"a videó helye a `{cel_mappa}` mappa (PB07 D6), nem: {rp}"
+            cel_mappa = vaultio.norm_path(str(self.cfg.section("video").get("vault_mappa") or VIDEO_MAPPA_ALAP))
+            hiba_hely = f"a videó helye a `{cel_mappa}` mappa, nem: {rp}"
         else:
-            cel_mappa = vaultio.norm_path(str(self.cfg.section("fuzet").get("cel_mappa") or "ATTCHMNTS - photos"))
-            hiba_hely = f"a füzetfotó helye a `{cel_mappa}` mappa (L36), nem: {rp}"
+            cel_mappa = vaultio.norm_path(str(self.cfg.section("fuzet").get("cel_mappa") or FUZET_MAPPA_ALAP))
+            hiba_hely = f"a füzetfotó helye a `{cel_mappa}` mappa, nem: {rp}"
         reszek = rp.split("/")
         if "/".join(reszek[:-1]) != cel_mappa:
             raise Invalid(hiba_hely)

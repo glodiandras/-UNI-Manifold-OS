@@ -58,6 +58,7 @@ enum Kuka {
         return "A macOS nem tette a Kukába: \(ok)."
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -75,6 +76,7 @@ enum Kuka {
         }
         return hibak
     }
+#endif
 
     /// → a Kukába tehető elem URL-je, vagy nil, ha az út tiltott.
     static func ellenoriz(ut: String, gyoker: String) -> URL? {

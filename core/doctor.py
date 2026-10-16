@@ -1,4 +1,4 @@
-"""Doctor: jelzi, ha bármi a rendszer-Pythonra, a ~/Applications-re, a ~/.cache-re vagy a legacy var/-ra mutat.
+"""Doctor: jelzi, ha bármi a rendszer-Pythonra, a ~/Applications-re vagy a ~/.cache-re mutat.
 
 Csak a standard könyvtárat használja, így a venv nélkül is fut. Kilépési kód: 0 zöld, 1 piros.
 """
@@ -20,13 +20,12 @@ from . import config
 
 OK, HIBA, INFO, FIGYELEM = "ok", "hiba", "info", "figyelem"
 TILTOTT_PYTHON = ("/Library/Frameworks/Python.framework", "/usr/bin/", "/opt/homebrew", "/usr/local")
-LEGACY_MINTA = re.compile(r"Manifold-OS legacy|/Volumes/[^/\s\"']+/Manifold-OS/(?!v2)")
-SAJAT_MINTA = re.compile(r"~/Applications|/Applications/Manifold|/\.cache\b|~/\.cache|Library/Caches|\$HOME/\.cache")
+SAJAT_MINTA = re.compile(r"~/Applications|/\.cache\b|~/\.cache|Library/Caches|\$HOME/\.cache")
 SZOVEG_KITERJESZTES = {"", ".toml", ".env", ".sh", ".py", ".swift", ".plist", ".json", ".txt", ".cfg", ".lock", ".md"}
 KIHAGY_MAPPAK = {"docs", "archive", "tests", "runtime", "var", "node_modules", ".git", ".claude", "__pycache__", "staging"}
 # A gyökér alatti minden rejtett mappa (`.claude/worktrees`, `.git`, `.venv`…) kimarad: a saját forrás nem ott van, és a
-# párhuzamos munkafák bejárása lassú, a bennük levő (más ágon álló) fájlok pedig hamis „legacy var/” találatot adnak.
-KIHAGY_FAJLOK = {"CLAUDE.md", "doctor.py", "utnorm.py"}      # a minták saját forrásukban nem számítanak (az utnorm a régi utak alakjait ismeri fel)
+# párhuzamos munkafák bejárása lassú, a bennük levő (más ágon álló) fájlok pedig hamis találatot adnak.
+KIHAGY_FAJLOK = {"CLAUDE.md", "doctor.py"}      # a minták saját forrásukban nem számítanak
 ENV_UTAS = ("UV_", "PIP_", "XDG_", "HF_", "TMPDIR", "MOS_", "PYTHON", "TRANSFORMERS_")
 
 
@@ -63,20 +62,18 @@ def _sajat_fajlok(root: Path):
 
 
 def _sema_ellenor(cfg) -> tuple[str, str]:
-    """A `[sema] vault` (C11b, T162): a kulcs megvan, a fájl a legacyn kívül áll, és olvasható JSON-objektum a kötelező
+    """A `[sema] vault`: a kulcs megvan, a fájl létezik, és olvasható JSON-objektum a kötelező
     `mezosorrend` listával. A doctor importmentes (a venv nélkül is fut), ezért csak a `json`-nal olvas."""
     try:
         nyers = cfg.section("sema").get("vault")
     except Exception as e:  # noqa: BLE001 — a hibás config is jelzés, nem összeomlás
         return HIBA, f"a [sema] szakasz nem olvasható: {e}"
     if not nyers:
-        return HIBA, "a config/os.toml [sema] vault kulcsa hiányzik (C11b)"
+        return HIBA, "a config/os.toml [sema] vault kulcsa hiányzik"
     try:
         ut = Path(cfg.expand(nyers))
     except Exception as e:  # noqa: BLE001
         return HIBA, f"a [sema] vault nem oldható fel: {e}"
-    if LEGACY_MINTA.search(str(ut)):
-        return HIBA, f"a [sema] vault a legacyre mutat: {ut} (a 2.0 saját másolata: config/vault-sema.json)"
     if not ut.is_file():
         return HIBA, f"nincs vault-séma: {ut}"
     try:
@@ -160,7 +157,7 @@ def _vault(cfg: config.Config, environment: dict[str, str], add) -> None:
             add(INFO, "vault", f"munkafa-mód: nincs vault a munkafa mellett ({vault}); a valódi vaultot a fő checkoutban "
                                "ellenőrizd (bin/mos doctor)")
         else:
-            add(HIBA, "vault", f"nincs vault: {vault} — csatlakoztatva az SSD?")
+            add(HIBA, "vault", f"nincs vault: {vault} — csatlakoztatva a kötet?")
         return
     if not (vault / ".obsidian").is_dir():
         add(FIGYELEM, "vault", f"{vault} létezik, de nincs .obsidian mappája: nem valódi vault (a core nem ír bele)")
@@ -174,7 +171,7 @@ def _vault(cfg: config.Config, environment: dict[str, str], add) -> None:
     add(OK, "vault", f"{vault} — {jegyzet} jegyzet")
     if (vault / ".gitattributes").exists():
         add(FIGYELEM, "vault .gitattributes", f"a vault gyökerében van .gitattributes ({vault / '.gitattributes'}): a pillanatkép-tároló "
-                                              "info/attributes-e felülírja (T099), de más git-eszköz (Obsidian Git, kézi git) látja — "
+                                              "info/attributes-e felülírja, de más git-eszköz (Obsidian Git, kézi git) látja — "
                                               "egy `filter=lfs` sor megállíthatná azokat")
     if tmp:
         add(FIGYELEM, "vault ideiglenes fájlok", f"{len(tmp)} megszakadt mentésből maradt .manifold-tmp fájl a vaultban "
@@ -205,7 +202,7 @@ def _tarolok_allapota(cfg: config.Config, add) -> None:
                          "a pillanatképbe; újragenerálás: a core indulása)")
         if _szoveges(repo.git_dir / "info" / "attributes") != snapshot.INFO_ATTRIBUTES:
             hibak.append("az info/attributes nem a zárt git-környezet (`* -filter -merge -text -ident`): a vault "
-                         ".gitattributes-e hathat a pillanatképre (a core következő indulása beírja; T099)")
+                         ".gitattributes-e hathat a pillanatképre (a core következő indulása beírja)")
         if not re.search(r"hookspath\s*=\s*/dev/null", cfgszoveg, re.IGNORECASE):
             hibak.append("a core.hooksPath nem /dev/null: egy hook megállíthatná a pillanatképet (a core következő indulása beírja)")
         if hibak:
@@ -241,7 +238,7 @@ def _tarolt_binaris(cfg: config.Config, add) -> None:
             kod = [u for u in utak if not u.startswith(("staging/", "archive/", "logs/"))]
             if kod:
                 add(INFO, "pillanatkép kód (ytdlp)", f"az ytdlp tár {len(kod)} kód-/konfigfájlt is követ (a 2.0 kódtár is); a módosításuk "
-                                                      "kézi változásként kerül az ytdlp tárba — KEZI-TEENDOK K94")
+                                                      "kézi változásként kerül az ytdlp tárba")
 
 
 def _video_ffmpeg(cfg: config.Config, home: Path, add) -> None:
@@ -360,19 +357,18 @@ def _never_index(var: Path, add) -> None:
     if (var / ".metadata_never_index").exists():
         add(OK, "Spotlight", "a var/ Spotlight-kizárt (.metadata_never_index)")
     else:
-        add(FIGYELEM, "Spotlight", "hiányzik a var/.metadata_never_index (L50): a Spotlight indexelné a modelleket és az indexeket — "
+        add(FIGYELEM, "Spotlight", "hiányzik a var/.metadata_never_index: a Spotlight indexelné a modelleket és az indexeket — "
                                    "a következő bin/mos hívás létrehozza")
 
 
-APP_AZONOSITO = "local.manifold-os.app"
-HOME_KIVETEL = "Library/Preferences/local.manifold-os.app.plist"
+APP_AZONOSITO = config.BUNDLE_ID
+HOME_KIVETEL = f"Library/Preferences/{APP_AZONOSITO}.plist"
 HOME_NEM_ENGEDETT = ("Library/Saved Application State", "Library/Caches", "Library/WebKit", "Library/HTTPStorages",
                      "Library/Application Support", "Library/Containers", "Library/Logs")
 
 
 def _home_irasok(home: Path, add) -> None:
-    """C34 (T189, K1-A2-hej-11): a héj a home alá nem ír — kivéve az AppKit/cfprefsd `~/Library/Preferences/local.manifold-os.
-    app.plist`-jét (a natív helyi menü helyesírás-panelje ablakkeret-bejegyzéseket tesz bele), és a belső lemezes mentést
+    """C34 (T189, K1-A2-hej-11): a héj a home alá nem ír — kivéve az AppKit/cfprefsd `~/Library/Preferences/<BUNDLE_ID>.plist`-jét (a natív helyi menü helyesírás-panelje ablakkeret-bejegyzéseket tesz bele), és a belső lemezes mentést
     (`~/Manifold-backup`). Az első megengedett kivétel (INFO); bármi más a héj azonosítójával (mentett ablakállapot,
     WebKit-tár, gyorsítótár) FIGYELEM. Csak olvas."""
     try:
@@ -708,7 +704,7 @@ def _cpp(cfg: config.Config, add, kivul: bool) -> None:
                 add(OK, "C++ linker", "az LLVM saját linkere (ld64.lld) megvan")
             else:
                 add(FIGYELEM, "C++ linker", f"[cpp] linker = {ertek!r}: csak az \"lld\" támogatott (a \"rendszer\" linker a fordító-profil alatt "
-                    "nem futhat, K168), a beállítás figyelmen kívül marad: a config/os.toml-ban javítandó")
+                    "nem futhat), a beállítás figyelmen kívül marad: a config/os.toml-ban javítandó")
         else:
             add(hiany, "C++ linker", "nincs ld64.lld az LLVM-csomagban: a C++ fordítás nem tud linkelni (tartalék linker nincs, a rendszer "
                 "ld-je a fordító-profil alatt nem futhat): bin/mos cpp telepit --igen --ujra" + hely)
@@ -763,7 +759,7 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
     # rendszer-Python
     sajat = str(futo).startswith(str(runtime)) or str(Path(sys.prefix if futo_python is None else futo)).startswith(str(root))
     tiltott = [t for t in TILTOTT_PYTHON if str(futo).startswith(t)]
-    rossz = [] if (sajat and not tiltott) else [f"a futó Python az SSD-n kívül van: {futo}"]
+    rossz = [] if (sajat and not tiltott) else [f"a futó Python a Manifold-mappán kívül van: {futo}"]
     cfgfile = venv / "pyvenv.cfg"
     if cfgfile.exists():
         szoveg = cfgfile.read_text(encoding="utf-8")
@@ -773,12 +769,12 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
                 rossz.append(f"pyvenv.cfg {kulcs} = {m.group(1).strip()}")
         py = venv / "bin" / "python"
         if py.is_symlink() and not str(py.resolve()).startswith(str(runtime.resolve())):
-            rossz.append(f"a venv Pythonja az SSD-n kívülre mutat: {py.resolve()}")
+            rossz.append(f"a venv Pythonja a Manifold-mappán kívülre mutat: {py.resolve()}")
         for s in sorted((venv / "bin").glob("*")) if (venv / "bin").is_dir() else []:
             t = _szoveges(s) if not s.is_symlink() else None
             if t and t.startswith("#!") and str(venv) not in "\n".join(t.split("\n")[:3]) \
                     and not t.split("\n", 1)[0][2:].startswith(("/bin/sh", "/usr/bin/env")):
-                rossz.append(f"shebang az SSD-n kívülre mutat: {s.name}")
+                rossz.append(f"shebang a Manifold-mappán kívülre mutat: {s.name}")
     else:
         rossz.append(f"nincs venv: {venv} (bin/mos runtime install)")
     # munkafa-mód (bin/mos, T002): a munkafának nincs saját venv-je, az eszköztár a fő checkoutból jön — azt ott kell
@@ -787,10 +783,10 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
     if eszkoztar_kivul:
         add(INFO, "python", "munkafa-mód: a Python és a venv a fő checkoutból jön; ott ellenőrizd (bin/mos doctor)")
     else:
-        add(HIBA if rossz else OK, "python", _fentiek(rossz) if rossz else "az SSD hordozható Pythonja fut, a venv is arra mutat")
+        add(HIBA if rossz else OK, "python", _fentiek(rossz) if rossz else "a hordozható Python fut, a venv is arra mutat")
 
-    # ~/Applications, ~/.cache és legacy var/ — saját fájlok
-    hibas_sajat, hibas_legacy = [], []
+    # ~/Applications, ~/.cache — saját fájlok
+    hibas_sajat = []
     for p in _sajat_fajlok(root):
         t = _szoveges(p)
         if not t:
@@ -799,54 +795,22 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
         rel = p.relative_to(root)
         if SAJAT_MINTA.search(t):
             hibas_sajat.append(str(rel))
-        if LEGACY_MINTA.search(t):
-            hibas_legacy.append(str(rel))
     app = root / "Manifold.app"
     if app.exists():
         plist = _szoveges(app / "Contents" / "Info.plist") or ""
         if SAJAT_MINTA.search(plist):
             hibas_sajat.append("Manifold.app/Contents/Info.plist")
-        if re.search(r"MOSGyoker</key>\s*<string>[^<]", plist):
-            hibas_legacy.append("Manifold.app: beégetett MOSGyoker")
     if app.is_symlink() and str(app.resolve()).startswith(str(home / "Applications")):
         hibas_sajat.append("Manifold.app a ~/Applications-re mutat")
-    regi = sorted(p.name for p in (home / "Applications").glob("Manifold*.app")) if (home / "Applications").is_dir() else []
     envrosszak = []
     for k, v in sorted(environment.items()):
         if k.startswith(ENV_UTAS) and v:
             if SAJAT_MINTA.search(v) or v.startswith(str(home / ".cache")) or v.startswith(str(home / "Applications")):
                 envrosszak.append(f"env {k}={v}")
-            if LEGACY_MINTA.search(v):
-                hibas_legacy.append(f"env {k}={v}")
     add(HIBA if hibas_sajat or envrosszak else OK, "~/Applications, ~/.cache",
         _fentiek(hibas_sajat + envrosszak) if hibas_sajat or envrosszak else "semmi nem használja")
 
-    if regi:
-        add(FIGYELEM, "régi appok", f"~/Applications/{', '.join(regi)}: a legacy telepítőjéé, a 2.0 nem használja; "
-            "törlésükről a felhasználó dönt")
-
-    # legacy var/ — linkek, git-konfigok, kis állapotfájlok
-    for p in (var.iterdir() if var.is_dir() else []):
-        if p.is_symlink() and LEGACY_MINTA.search(str(os.readlink(p))):
-            hibas_legacy.append(f"var/{p.name} → legacy")
-        if p.suffix == ".git" and (p / "config").exists():
-            t = _szoveges(p / "config") or ""
-            if LEGACY_MINTA.search(t):
-                hibas_legacy.append(f"var/{p.name}/config")
-            m = re.search(r"worktree\s*=\s*(.+)", t)
-            if m and not (m.group(1).strip().startswith(str(root)) or m.group(1).strip() == str(cfg.path("vault"))):
-                hibas_legacy.append(f"var/{p.name}: core.worktree = {m.group(1).strip()}")
-    for k, v in cfg.utak.items():
-        if LEGACY_MINTA.search(str(v)):
-            hibas_legacy.append(f"os.toml [{k}] = {v}")
-    st = cfg.path("state")
-    for p in (list(st.glob("*.json")) + list(st.glob("*.toml")) + list(st.glob("*.jsonl"))[:0]) if st.is_dir() else []:
-        t = _szoveges(p) or ""
-        if LEGACY_MINTA.search(t):
-            hibas_legacy.append(f"var/state/{p.name}")
-    add(HIBA if hibas_legacy else OK, "legacy var/", _fentiek(hibas_legacy) if hibas_legacy else "semmi nem mutat a legacy var/-ra")
-
-    # vault-séma (C11b, 2. audit T162): a `[sema] vault` a 2.0 saját fájlja — feloldódik, JSON, és nem a legacy kalibrációja
+    # vault-séma: a `[sema] vault` feloldódik, és olvasható JSON
     allapot, uzenet = _sema_ellenor(cfg)
     add(allapot, "vault-séma", uzenet)
 

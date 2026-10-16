@@ -1,6 +1,7 @@
 // Az összefoglaló felületi állandói (C26b). A kísérőjegyzetek mappája a core `[osszefoglalas] mappa` (os.toml) tükre: a
 // `tests/test_osszefoglalas_api.py` és az `app/tests/osszefoglalas.test.ts` őrzi az egyezést. A felület nem olvassa a konfigurációt.
 
+// mirror of config — F3 replaces with /api/workspace
 export const OSSZEFOGLALO_MAPPA = 'ATTCHMNTS - summaries';
 
 /** A vault-relatív út az összefoglaló-mappa alatti `.md`-e (a beágyazott jegyzet összefoglaló-e). */

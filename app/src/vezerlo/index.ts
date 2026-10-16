@@ -111,7 +111,7 @@ export function vezerloTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: Core
         kategoria: 'Jegyzet',
         elerheto: () => jegyzetNyitva(felulet),
         futtat: () => {
-          ertesitesek.ertesit({ szint: 'info', cim: h.nev, szoveg: `Ez a funkció a ${h.chat} chatben készül el; a parancs addig helyőrző.` });
+          ertesitesek.ertesit({ szint: 'info', cim: h.nev, szoveg: 'Ez a funkció még nem érhető el.' });
         },
       })),
     ),

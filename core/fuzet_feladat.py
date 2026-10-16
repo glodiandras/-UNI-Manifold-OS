@@ -59,9 +59,12 @@ def _lanc_terv(cfg: Config, p: dict, stop: str, automatikus: bool = False):
         argv.append(str(cfg.path("fuzet_bejovo") / csoport))
     figyelm = ["Próbamód: az írás a vault APFS-klónjára megy, a fotók a helyükön maradnak."] if p.get("proba") else []
     cim = "Füzetfotók az aktív jegyzetbe" if cel else "Füzetfotók bekötése"
-    osszeg = ("A fotók a megadott jegyzet „## Füzet” szakaszába kerülnek, alattuk a képletek (gépi írás, visszavonható)." if cel else
-              "Az új füzetfotók a választott elméleti jegyzet „## Füzet” szakaszába kerülnek, alattuk a képletek; a fotó a "
-              "„ATTCHMNTS - photos” alá költözik (gépi írás, fotónként visszavonható).")
+    fz = cfg.section("fuzet")
+    szakasz, cel_mappa = fz.get("szakasz") or "Füzet", fz.get("cel_mappa") or "ATTCHMNTS - photos"
+    osszeg = (f"A fotók a megadott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek (gépi írás, visszavonható)."
+              if cel else
+              f"Az új füzetfotók a választott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek; a fotó a "
+              f"„{cel_mappa}” alá költözik (gépi írás, fotónként visszavonható).")
     return [tasks.Step(cim, argv, str(cfg.root))], osszeg, figyelm
 
 

@@ -13,6 +13,7 @@ export const GRAFIKON_PARANCS_ID = 'grafikon.beiras';
 export function grafikonJegyzet(ut: string | null | undefined): ut is string {
   if (!ut || !ut.toLowerCase().endsWith('.md')) return false;
   const u = ut.normalize('NFC');
+  // mirror of config — F3 replaces with /api/workspace
   return !u.startsWith('ATTCHMNTS - ') && !u.split('/').some((r) => r.startsWith('.'));
 }
 

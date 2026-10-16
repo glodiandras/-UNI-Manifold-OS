@@ -188,7 +188,7 @@ def valasz_feldolgoz(valasz: str, jegyzetek: list[Jegyzet], cim: str = "Kontextu
             j = jegyzetek[int(a[1:]) - 1]
             t = elemzo.elemez(j.md)                      # az index táblái (fejezet, blokk) a core tiszta elemzőjéből
             bemenetek[a] = jegyzet_bemenet(j.md, j.ut.removesuffix(".md"), FM.cim_of(j.ut), t.fejezetek, t.blokkok,
-                                           b.darab_max_karakter, b.szakasz_min_karakter)
+                                           b.darab_max_karakter, b.szakasz_min_karakter, b.kihagyott_szakaszok)
         return bemenetek[a]
 
     lista = jeloltek(valasz)

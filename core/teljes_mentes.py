@@ -51,7 +51,7 @@ KIHAGYOTT = {
 }
 # A `[teljes_mentes] kihagy` listájának (utak-kulcsok) magyarázata a jegyzékben; ismeretlen kulcsnál általános szöveg.
 KIHAGY_MAGYARAZAT = {
-    'staging': 'a videólánc staging-ja nincs a mentésben: a bevitt videó a vaultban van (ATTCHMNTS - Videos), '
+    'staging': 'a videólánc staging-ja nincs a mentésben: a bevitt videó a vaultban van ({video_mappa}), '
                'a többi újra letölthető (bin/mos video letoltes)',
     'archive': 'az archive/ (a konvertálás előtti eredetik, a visszavont média) nincs a mentésben; a vaultbeli változat benne van',
     'ytdlp_archivum': 'a letöltési archívum (duplikátum-védelem) nincs a mentésben: a már letöltött videó újra letöltődhet',
@@ -96,7 +96,8 @@ def kihagyott_kulcsok(cfg) -> dict[str, str]:
     ki = {k: m for k, m in KIHAGYOTT.items() if k in cfg.utak}
     for k in cfg.section('teljes_mentes').get('kihagy', []) or []:
         if k in cfg.utak and k not in ki:
-            ki[k] = KIHAGY_MAGYARAZAT.get(k, f'nincs a mentésben ([teljes_mentes] kihagy: {k})')
+            ki[k] = KIHAGY_MAGYARAZAT.get(k, f'nincs a mentésben ([teljes_mentes] kihagy: {k})').replace(
+                '{video_mappa}', str(cfg.section('video').get('vault_mappa') or 'ATTCHMNTS - Videos'))
     return ki
 
 

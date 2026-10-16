@@ -10,7 +10,7 @@
     k63                      a belső lemezes mentés tartalma és ritmusa, `git bundle verify`                        (K63)
     k71 <pos.sqlite> <név>…  a klón `pos.sqlite*` fájljaiban a megadott jegyzetnevek nincsenek meg                   (K71)
 
-Csak olvas: a vaulthoz, a `vault.git`-hez, a `var/`-hoz és a `~/Manifold-backup`-hoz nem ír; az SQLite-ot egy ideiglenes
+Csak olvas: a vaulthoz, a `vault.git`-hez, a `var/`-hoz és a belső lemezes mentés mappájához (`{backup}`) nem ír; az SQLite-ot egy ideiglenes
 **másolaton** nyitja (a WAL a másolaton játszódik vissza), a git `GIT_OPTIONAL_LOCKS=0`-val fut. Egyetlen kivétel a
 `k57 elotte`: a pillanatkép JSON-ját az `--allapot` útra (alap: `{tmp}/kor2-mtime.json`, a saját `var/tmp`) írja.
 Kilépési kód: 0 = minden RENDBEN, 1 = ELTÉRÉS (a sorok megmondják, mi), 2 = használati hiba.
@@ -256,7 +256,11 @@ def main(argv: list[str]) -> int:
     elif a.parancs == "k41":
         ok = k41(cfg.path("models") / "hub", cfg.path("index") / "manifold.sqlite")
     elif a.parancs == "k55":
-        ok = k55(a.legacy or cfg.path("work") / "Manifold-OS legacy" / "Legacy")
+        legacy = a.legacy or (Path(os.environ["MOS_LEGACY"]) if os.environ.get("MOS_LEGACY") else None)
+        if legacy is None:
+            print("k55 --legacy <gyökér> (vagy MOS_LEGACY): alapértelmezett hely nincs")
+            return 2
+        ok = k55(legacy)
     elif a.parancs == "k56":
         ok = k56(cfg.path("vault_git"), pos, a.napok)
     elif a.parancs == "k57":

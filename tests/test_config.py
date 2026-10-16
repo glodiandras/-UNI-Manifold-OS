@@ -1,7 +1,8 @@
+import plistlib
 import unittest
 
 from core import config
-from tests.helpers import alg_gyoker, tmpdir
+from tests.helpers import REPO, alg_gyoker, tmpdir
 
 
 class ConfigTeszt(unittest.TestCase):
@@ -28,6 +29,15 @@ class ConfigTeszt(unittest.TestCase):
 
     def test_gyoker_a_csomag_helyebol(self):
         self.assertEqual(config.os_root(), config.Path(__file__).resolve().parent.parent)
+
+    def test_a_bundle_azonosito_egy_forrasbol_jon(self):
+        """A héj `Info.plist`-je és a core (`config.BUNDLE_ID`: doctor, FSEvents-sor) ugyanazt a reverse-DNS azonosítót használja,
+        és nem a fejlesztői `local.…` alakot."""
+        with open(REPO / "shell" / "Info.plist", "rb") as f:
+            plist = plistlib.load(f)
+        self.assertEqual(plist["CFBundleIdentifier"], config.BUNDLE_ID)
+        self.assertEqual(config.BUNDLE_ID, "com.manifold.app")
+        self.assertFalse(config.BUNDLE_ID.startswith("local."))
 
 
 class LegacyConfigTeszt(unittest.TestCase):

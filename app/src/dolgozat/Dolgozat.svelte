@@ -327,8 +327,8 @@
         <p class="ures">Nincs gyenge pont a mért adatok alapján.</p>
       {/if}
       <p>
-        <button type="button" class="m-gomb semleges gomb" disabled title="A próbakvíz a kvíz (C22) elkészülte után indítható.">Próbakvíz</button>
-        <span class="halvany">A kvíz a C22 után indítható.</span>
+        <button type="button" class="m-gomb semleges gomb" disabled title="A próbakvíz ebből a nézetből még nem indítható.">Próbakvíz</button>
+        <span class="halvany">A próbakvíz egyelőre nem indítható.</span>
       </p>
     </section>
 
@@ -340,8 +340,8 @@
         {#if r.adatok.kartya.kotetlen}{r.adatok.kartya.kotetlen} kártya egyik laphoz sem köthető.{/if}
       </p>
       <p>
-        <button type="button" class="m-gomb semleges gomb" disabled title="A kártyák ismétlése a C23b-vel érkezik.">Mai ismétlés</button>
-        <span class="halvany">A kártyaismétlés a C23b-vel érkezik.</span>
+        <button type="button" class="m-gomb semleges gomb" disabled title="A kártyák ismétlése ebből a nézetből még nem indítható.">Mai ismétlés</button>
+        <span class="halvany">A kártyaismétlés egyelőre nem indítható.</span>
       </p>
     </section>
 
@@ -421,7 +421,7 @@
           {#if kal.kihagyott.length}
             <p class="halvany">Kihagyva: {kal.kihagyott.map((k) => `${napRovid(k.nap)} ${k.cim} (${k.ok})`).join(' · ')}.</p>
           {/if}
-          <p class="halvany">A kalibrált súlyokat a <code>bin/mos felkeszultseg kalibral --rogzit</code> parancs írja az <code>os.toml</code>-ba, ha az illesztés bizonyíthatóan javít.</p>
+          <p class="halvany">A kalibrált súlyok csak akkor kerülnek a beállításokba, ha az illesztés bizonyíthatóan javít.</p>
         {/if}
       </details>
     </section>

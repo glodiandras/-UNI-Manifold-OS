@@ -29,7 +29,7 @@ function allapot(): NaptarAllapotValasz {
     utolso_szinkron: { vege: '2026-10-03T08:00:03+02:00', allapot: 'engedelyezve', utolso_sikeres: '2026-10-03T08:00:03+02:00', uzenet: null },
     naptarak: [
       { azon: 'n1', nev: 'Órarend', forras: 'iCloud', szin: '#78a6e6', kategoria: 'orarend', kategoria_forras: 'auto', eltunt: null },
-      { azon: 'n2', nev: 'Matek-felkészülés', forras: 'iCloud', szin: '#a08cf6', kategoria: 'egyeb', kategoria_forras: 'javaslat', eltunt: null },
+      { azon: 'n2', nev: 'Szakkör', forras: 'iCloud', szin: '#a08cf6', kategoria: 'egyeb', kategoria_forras: 'javaslat', eltunt: null },
       { azon: 'n3', nev: 'Régi naptár', forras: 'iCloud', szin: null, kategoria: 'egyeb', kategoria_forras: 'gazda', eltunt: '2026-10-01T10:00:00+02:00' },
     ],
     valtozasok: [
@@ -211,7 +211,7 @@ describe('a naptárak', () => {
     expect([...orarend.options].map((o) => o.textContent)).toEqual(['Tanulás', 'Órarend', 'Egyéb']);
     expect(screen.getByText(/Régi naptár \(eltűnt\)/)).toBeTruthy();
     expect(screen.getAllByText('javaslat — erősítsd meg')).toHaveLength(1);
-    expect(screen.getByRole('button', { name: 'Megerősítem: Matek-felkészülés' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Megerősítem: Szakkör' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Megerősítem: Órarend' })).toBeNull();
   });
 
@@ -221,16 +221,16 @@ describe('a naptárak', () => {
       return json({ ok: true });
     };
     await megjelenit();
-    await fireEvent.change(screen.getByRole('combobox', { name: 'Kategória: Matek-felkészülés' }), { target: { value: 'tanulas' } });
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Kategória: Szakkör' }), { target: { value: 'tanulas' } });
     await waitFor(() => expect(screen.queryByText('javaslat — erősítsd meg')).toBeNull());
     expect(kerelmek.find((k) => k.url === '/api/naptar/kategoria')?.body).toEqual({ azon: 'n2', kategoria: 'tanulas' });
-    expect((screen.getByRole('combobox', { name: 'Kategória: Matek-felkészülés' }) as HTMLSelectElement).value).toBe('tanulas');
+    expect((screen.getByRole('combobox', { name: 'Kategória: Szakkör' }) as HTMLSelectElement).value).toBe('tanulas');
   });
 
   it('a „Megerősítem” a javasolt kategóriát küldi (gazda lesz)', async () => {
     valaszok['POST /api/naptar/kategoria'] = () => json({ ok: true });
     await megjelenit();
-    await fireEvent.click(screen.getByRole('button', { name: 'Megerősítem: Matek-felkészülés' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Megerősítem: Szakkör' }));
     await waitFor(() => expect(kerelmek.find((k) => k.url === '/api/naptar/kategoria')?.body).toEqual({ azon: 'n2', kategoria: 'egyeb' }));
   });
 

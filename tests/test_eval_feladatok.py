@@ -6,7 +6,7 @@ import unittest
 from unittest import mock
 from pathlib import Path
 
-from tests.eval_segedek import EVAL, eval_cfg, feladat, rekord
+from tests.eval_segedek import EVAL, aranyt_igenyel, eval_cfg, feladat, hianyzik, rekord
 from tests.helpers import ir, tmpdir
 
 FELADATOK = ("ocr_kezi", "fuzet_fejezet", "ocr_keplet", "atirat", "szoveg", "kviz", "matek", "matek_ellenorzo", "grafikon",
@@ -23,18 +23,27 @@ class _Alap(unittest.TestCase):
         self.addCleanup(self._t.cleanup)
         self.cfg, self.root, self.vault = eval_cfg(self._t.name)
 
-    def f(self, nev):
-        return feladat(self.cfg, nev)
+    def f(self, nev, adat=True):
+        """A feladatmodul; `adat=True` mellett a hiányzó (nem szállított) aranyhalmaz `[indokolt]` kihagyás, `adat=False`
+        a prompttal és a pontozóval dolgozó, inline fixture-ös tesztekhez kell."""
+        return feladat(self.cfg, nev, adat)
 
 
 class SzerzodesTest(_Alap):
     def test_minden_feladat_betoltheto_es_a_kulcsa_egyedi(self):
         kulcsok = {}
         for nev in FELADATOK:
-            m = self.f(nev)
-            self.assertTrue(m.VERZIO.startswith(nev + "-v"), m.VERZIO)
+            m = self.f(nev, adat=False)
+            if hianyzik(m):                                                  # a nem szállított halmaz: jelölt, nem kalibrálható verzió
+                self.assertTrue(m.VERZIO.startswith(nev + "-") and m.VERZIO.endswith("-hianyzik"), m.VERZIO)
+            else:
+                self.assertTrue(m.VERZIO.startswith(nev + "-v"), m.VERZIO)
             kulcsok.setdefault(getattr(m, "ROUTER_FELADAT", nev), []).append(nev)
-            self.assertEqual(m.pontoz([])["pontszam"], 0.0, nev)            # üres futás nem dob hibát
+            try:
+                self.assertEqual(m.pontoz([])["pontszam"], 0.0, nev)        # üres futás nem dob hibát
+            except FileNotFoundError:
+                if not hianyzik(m):                                         # a nem szállított halmaz kísérő-adata (pl. füzet-katalógus) hiányozhat
+                    raise
         self.assertTrue(all(len(v) == 1 for v in kulcsok.values()), kulcsok)  # a tábla kulcsa (feladat, modell)
         router = set(self.cfg.section("router")["feladatok"])
         self.assertEqual({k for k in kulcsok if k in router}, ROUTER)
@@ -44,13 +53,12 @@ class SzerzodesTest(_Alap):
         self.assertEqual(A.verzio({"verzio": "v1", "allapot": "vazlat"}), "v1-vazlat")
         self.assertEqual(A.verzio({"verzio": "v2", "allapot": "jovahagyott"}), "v2")
 
-    def test_az_eval_fajlokban_nincs_legacy_vagy_beegetett_ut(self):
-        from core import doctor
+    def test_az_eval_fajlokban_nincs_beegetett_ut(self):
         for p in EVAL.rglob("*"):
             if p.suffix in (".py", ".json") and p.is_file():
                 s = p.read_text(encoding="utf-8")
-                self.assertIsNone(doctor.LEGACY_MINTA.search(s), p)
                 self.assertNotIn("/Volumes/", s, p)
+                self.assertNotIn("/Users/", s, p)
 
 
 class FuzetTest(_Alap):
@@ -63,6 +71,7 @@ class FuzetTest(_Alap):
             Image.new("RGB", (64, 48) if i % 2 else (48, 64), "white").save(mappa / f["foto"])
         return a
 
+    @aranyt_igenyel("ocr_kezi")
     def test_tetelek_alvaulton(self):
         a = self._fotok()
         t = list(self.f("ocr_kezi").tetelek(self.cfg))
@@ -155,7 +164,7 @@ class FuzetTest(_Alap):
         self.assertGreaterEqual(e["szam"]["jegyzet5"], 90)                    # a bíró a jó leírásból kikeresi a jegyzetet
 
     def test_keplet_talalat_az_atiratban(self):
-        m = self.f("ocr_kezi")
+        m = self.f("ocr_kezi", adat=False)
         kepletek = ["x_{1,2}=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}", "D=b^2-4ac"]
         jo = "Megoldóképlet: $x_{1,2} = \\dfrac{-b \\pm \\sqrt{b^{2}-4ac}}{2a}$ ahol $D = b^2 - 4ac$"
         self.assertEqual(m.keplet_talalat(jo, kepletek), 1.0)
@@ -173,7 +182,7 @@ class FuzetTest(_Alap):
         self.assertEqual(m.szetszed("FEJEZET: Algebra", kodok)["fejezetek"], ["M03"])            # név kód helyett
 
     def test_keplet_pontozo_elirt_kepleten_bukik(self):
-        m = self.f("ocr_keplet")
+        m = self.f("ocr_keplet", adat=False)
         v = "\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}"
         jo = m.pontoz([{"id": "a", "vart": v, "valasz": "$$\\dfrac{-b \\pm \\sqrt{b^{2}-4ac}}{2a}$$"}])
         self.assertEqual((jo["pontszam"], jo["pontos"]), (1.0, 1.0))
@@ -404,13 +413,17 @@ class KeresesTest(_Alap):
         korp = K.korpusz(self.vault, parok)
         self.assertEqual(len(korp), 3)                                           # a feladattár nem kerül a korpuszba
         self.assertNotIn("IMG_1", "".join(d for dk in korp.values() for d in dk))  # a `## Füzet` szakasz kimarad
-        b = list(self.f("beagyazas").tetelek_ebbol(self.vault, parok))
+        b = list(self.f("beagyazas", adat=False).tetelek_ebbol(self.vault, parok))
         self.assertEqual([x["vart"]["fajta"] for x in b], ["korpusz", "kerdes", "kerdes"])
-        r = list(self.f("rerank").tetelek_ebbol(self.vault, parok))
+        r = list(self.f("rerank", adat=False).tetelek_ebbol(self.vault, parok))
         self.assertEqual(len(r[0]["keres"]["documents"]), 3)
         self.assertIn("Rubicont", r[0]["keres"]["documents"][r[0]["vart"]["cel_index"]])
         with self.assertRaises(FileNotFoundError):
             K.korpusz(self.vault, [dict(parok[0], cel="T03 - Az ókori Róma/Elmélet/99 - Nincs.md")])
+
+    @aranyt_igenyel("kereses", fajl="parok.json")
+    def test_a_valodi_parok_alakja(self):
+        import korpusz as K
         self.assertEqual(len(K.parok()["parok"]), 50)
         with self.assertRaises(FileNotFoundError):                               # a valódi párok az álvaultban nincsenek meg
             list(self.f("beagyazas").tetelek(self.cfg))
@@ -441,10 +454,14 @@ class KeresesTest(_Alap):
         self.assertIsInstance(K.forras(cfg, {}), K.MappaFa)
         with self.assertRaisesRegex(FileNotFoundError, "rögzített korpusz"):
             K.GitFa(self.vault / ".git", "0" * 40)
+
+    @aranyt_igenyel("kereses", fajl="parok.json")
+    def test_a_valodi_halmaz_rogzitett(self):
+        import korpusz as K
         self.assertTrue(K.parok().get("korpusz_commit"))                        # a valódi halmaz rögzített
 
     def test_beagyazas_pontozo_felcserelt_rangsoron_bukik(self):
-        m = self.f("beagyazas")
+        m = self.f("beagyazas", adat=False)
         korp = {"id": "korpusz-000", "vart": {"fajta": "korpusz", "utak": ["a.md", "a.md", "b.md", "c.md"]},
                 "valasz": [[1, 0, 0], [0.9, 0.1, 0], [0, 1, 0], [0, 0, 1]]}
         k = lambda i, cel, v: {"id": i, "vart": {"fajta": "kerdes", "cel": cel, "tipus": "kulcsszavas"}, "valasz": [v]}
@@ -457,7 +474,7 @@ class KeresesTest(_Alap):
         self.assertEqual((hiba["pontszam"], hiba["hibas_rekord"]), (0.0, 1))
 
     def test_rerank_pontozo(self):
-        m = self.f("rerank")
+        m = self.f("rerank", adat=False)
         v = {"cel_index": 1, "tipus": "atfogalmazott", "n": 4}
         jo = m.pontoz([{"id": "a", "vart": v, "valasz": [0.1, 0.9, 0.2, 0.0]}])
         self.assertEqual((jo["mrr"], jo["recall1"]), (1.0, 1.0))
@@ -480,14 +497,14 @@ class FormatumTest(_Alap):
             "fuzet_fejezet": ("TANTÁRGY: Fizika\nFEJEZET: F02", "TANTÁRGY: Fizika"),
         }
         for nev, (jo, rossz) in esetek.items():
-            m = feladat(self.cfg, nev)
+            m = self.f(nev, adat=False)
             self.assertTrue(m.formatum_ok(jo, None), nev)
             self.assertFalse(m.formatum_ok(rossz, None), nev)
-        m = feladat(self.cfg, "szoveg")
+        m = self.f("szoveg", adat=False)
         self.assertTrue(m.formatum_ok('[{"allitas": "a", "idezet": "b"}]', {"fajta": "ossz"}))
         self.assertTrue(m.formatum_ok('[{"kerdes": "a", "valasz": "b", "forras": "c"}, {"kerdes": "d"', {"fajta": "kartya"}))
         self.assertFalse(m.formatum_ok("Íme az összefoglaló.", {"fajta": "ossz"}))
-        self.assertFalse(hasattr(feladat(self.cfg, "ocr_kezi"), "formatum_ok"))
+        self.assertFalse(hasattr(self.f("ocr_kezi", adat=False), "formatum_ok"))
 
 
 class MatekCasTest(_Alap):
@@ -561,7 +578,11 @@ class MatekCasTest(_Alap):
         self.assertEqual(p["allapotok"], {"ok": 2, "tiltott": 1})
 
 
+@aranyt_igenyel("ocr_kezi", "ocr_keplet", "atirat", "szoveg", "kviz", "tema", "kotes", "kifejtes", "osszefoglal_kijeloles")
 class ParancslistaTest(_Alap):
+    """A mérési parancslista a tételszámokat az aranyhalmazokból veszi (és a `docs/MERES-*.md` fejlesztői listákkal vet össze):
+    amíg a szállított halmazok nincsenek meg (F6), a teszt `[indokolt]` kihagyással fut."""
+
     def test_minden_sor_modellje_es_feladata_letezik(self):
         import importlib.util
         from core.modell import beallitas as B
@@ -589,7 +610,7 @@ class ParancslistaTest(_Alap):
         self.assertEqual(md.count("bin/mos eval "), 2 * len(fut))             # generálás + újrapontozás
         self.assertTrue(any("atirat" in s["feladatok"] for s in fut))           # C20b: a K29 sorai a listában
         self.assertFalse(any("atirat" in s["feladatok"] for s in fut if modellek[s["modell"]].futtato != "mlx-whisper"))
-        self.assertIn("## Újrapontozás a K27 jóváhagyása után", md)
+        self.assertIn("## Újrapontozás az aranyhalmaz jóváhagyása után", md)
         self.assertLess(md.index(fut[0]["parancs"]), md.index("## Újrapontozás"))
         self.assertLess(md.index("## Újrapontozás"), md.index(fut[0]["ujrapontozas"]))
         kesz = (EVAL.parent.parent / "docs" / "MERES-PARANCSOK.md").read_text(encoding="utf-8")
@@ -650,7 +671,7 @@ class ParancslistaTest(_Alap):
         kihagyott = {s["modell"]: s["ok"] for s in nem if "kihagyva a mérésből" in s["ok"]}
         # K231 (2026-10-14): a lassú gondolkodók és a C36b opcionális köre kikerült a regiszterből
         self.assertEqual(sorted(kihagyott), ["qwen35_2b"])
-        self.assertTrue(all("K32 előpróba" in ok for ok in kihagyott.values()))
+        self.assertTrue(all("Előpróba" in ok for ok in kihagyott.values()))
         self.assertNotIn("phi4_mini_reasoning", gondolkodo)
         # feladatonkénti kihagyás: a modell a többi feladatán marad, a származtatott fuzet_fejezet a kihagyás előtt áll
         from core.modell import beallitas as B
@@ -670,7 +691,7 @@ class ParancslistaTest(_Alap):
         self.assertIn("## Kihagyott feladatok", p.markdown_eloproba(self.cfg))
         md = p.markdown_eloproba(self.cfg)
         self.assertIn("modulok/eval/osszesito.py", md)
-        self.assertIn("K27", md)
+        self.assertIn("az aranyhalmaz jóváhagyása", md)
         kesz = (EVAL.parent.parent / "docs" / "MERES-ELOPROBA.md").read_text(encoding="utf-8")
         for s in fut:
             self.assertIn(s["parancs"], kesz)

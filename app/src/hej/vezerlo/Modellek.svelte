@@ -89,7 +89,7 @@
           <p class="halvany">Nincs mért sor{f.aktualis_verzio ? '' : ' (nincs aranyhalmaza)'}.</p>
         {/if}
         {#if f.sorok.length && !kalibraltDb(f)}
-          <p class="halvany">Nincs kalibrált modell: élesben nem fut (D9).</p>
+          <p class="halvany">Nincs kalibrált modell: élesben nem fut.</p>
         {/if}
       </li>
     {/each}

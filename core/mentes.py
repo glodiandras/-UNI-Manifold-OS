@@ -45,6 +45,7 @@ GIT_OLVAS_MP = 60.0                 # egy csak olvasó git-hívás (rev-parse, s
 GIT_BUNDLE_MP = 600.0               # a kódtár `git bundle create`-jének időkorlátja
 # Az állapotmásolatba kerülő mappák a {state} alatt (a `{state}`-hez mért név): a `fuzet`/`video_jobs` kulcs útja
 # és ezek. Kimarad belőlük a `tmp/` almappa, a média (az előnézeti képek a fotókból újra elkészülnek) és a rejtett fájl.
+# A mappanevek az állapot-kompatibilitás miatt rögzítettek (a meglévő {state} ezeken a neveken tárolja a médiaállapotot).
 ALLAPOT_MAPPA_KULCSOK = ("fuzet", "video_jobs")
 ALLAPOT_STATE_MAPPAK = ("video-bejaras", "Manifold-media/itelet", "Manifold-media/kotes")
 

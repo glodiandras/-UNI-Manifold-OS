@@ -73,7 +73,8 @@ describe('szám nélkül (a ma jellemző állapot: nincs kártya, kvíz, tracker
     await megjelenit();
     expect((screen.getByRole('button', { name: 'Próbakvíz' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Mai ismétlés' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('A kvíz a C22 után indítható.')).toBeTruthy();
+    expect(screen.getByText('A próbakvíz egyelőre nem indítható.')).toBeTruthy();
+    expect(screen.getByText('A kártyaismétlés egyelőre nem indítható.')).toBeTruthy();
   });
 
   it('a napi terv napjai a szeletekkel és a javaslat jelzésével', async () => {

@@ -1,9 +1,9 @@
-"""A videó és a tananyag-jegyzetek automatikus, tartalmi kötése (C20b) — a legacy `media_link.py` portja, viselkedésre azonosan.
+"""A videó és a tananyag-jegyzetek automatikus, tartalmi kötése (C20b).
 
 A jelöltállítás a TELJES jegyzetkorpuszon fut (témahatár nélkül); az igazolás egy kalibrált, mért pontosságú **verifikátor** (10 jegy
-logisztikus kombinációja, `kotes_modell.json`: a legacy `calibration.json → media.kotes.modell`, 1140 olvasott páron illesztve,
-videónként csoportosított keresztvalidációval p ≥ 0,90-en 0,984 pontosság). A verifikátor determinisztikus (nem nyelvi modell): a
-kimenete a D9 szerint nem „modell-kimenet”, a gépi írás `modell: null`-lal viheti — a mérése a legacyé, a 2.0 nem kalibrálta újra.
+logisztikus kombinációja, `kotes_modell.json`, videónként csoportosított keresztvalidációval mérve). A verifikátor determinisztikus (nem
+nyelvi modell): a kimenete nem „modell-kimenet”, a gépi írás `modell: null`-lal viheti. A modell egy magyar nyelvű jegyzetmintán illeszkedett;
+más gyűjteménynél a pontosságát újra kell mérni.
 
     Korpusz(idx)                     az invertált index (szótő → jegyzetek), a félkövér terminusok, a bekezdések
     ablakok(f, korp)                 a `windows` ablakai + nyers szöveg, évszámok, cue-k
@@ -30,7 +30,7 @@ FEATURES = ("B", "C", "rang_log", "res", "ritka", "cim", "felkov", "ev_plusz", "
 MODELL_UT = Path(__file__).resolve().parent / "kotes_modell.json"
 _BOLD = re.compile(r"\*\*([^*\n]{2,80})\*\*")
 
-# media.kotes (legacy calibration.json, 2026-09-19/23)
+# a kötés alapértékei (egy magyar nyelvű jegyzetmintán mérve)
 ALAP = {"kuszob": 0.90, "javaslat_kuszob": 0.75, "max_horgony": 2, "min_tavolsag_s": 60, "elo_B": 0.12, "jelolt_per_jegyzet": 3,
         "df_max_arany": 0.25, "ritka_df": 5, "kalibralt_targyak": ["T", "I", "N"], "kuszob_targy": {"N": 0.97}}
 

@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None, bemenet=input, jelszokero=getpass.getpas
         print(f"  {n}: {e}", file=sys.stderr)
     konv = [n for n in nevek if modellek[n].get("konvertalas") and eredmeny.get(n) == "kész"]
     if konv:
-        print("MLX-konvertálásra vár (a modellgazda, C05 végzi): " + ", ".join(konv))
+        print("MLX-konvertálásra vár (a modellgazda végzi): " + ", ".join(konv))
     return 1 if hibak else 0
 
 

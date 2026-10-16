@@ -18,9 +18,9 @@ from __future__ import annotations
 
 import unicodedata
 
+from ...automatika import KISERO_ELOTAG
 from ...vaultio import Invalid, NotFound
 
-KISERO_ELOTAG = "ATTCHMNTS - "
 MAX_CEL = 500
 
 
@@ -28,8 +28,9 @@ def _nfc(s: str) -> str:
     return unicodedata.normalize("NFC", s)
 
 
-def kisero(ut: str) -> bool:
-    return any(r.startswith(KISERO_ELOTAG) for r in ut.split("/"))
+def kisero(ut: str, elotag: str = KISERO_ELOTAG) -> bool:
+    """Kísérőjegyzet-e (egy útvonal-eleme az `elotag`-gal kezdődik; a core a `[vault] kisero_elotag` értékét adja)."""
+    return any(r.startswith(elotag) for r in ut.split("/"))
 
 
 def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | None]:
@@ -55,12 +56,12 @@ def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | Non
     return alap, pontok, elo, fid
 
 
-def hasonlok(index_olvaso, tar, ut: str, n: int = 10) -> dict:
+def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = KISERO_ELOTAG) -> dict:
     alap, pontok, elo, fid = _alap(index_olvaso, tar, ut)
     if pontok is None:
         return {**alap, "talalatok": []}
     ut = alap["ut"]
-    jeloltek = sorted(((u, p) for u, p in pontok.items() if u != ut and u in elo and not kisero(u)),
+    jeloltek = sorted(((u, p) for u, p in pontok.items() if u != ut and u in elo and not kisero(u, elotag)),
                       key=lambda x: (-x[1], x[0]))[:max(1, int(n))]
     with index_olvaso() as c:
         kimeno = {x[0] for x in c.execute("SELECT DISTINCT cel FROM link WHERE forras_id = ? AND cel IS NOT NULL", (fid,))}

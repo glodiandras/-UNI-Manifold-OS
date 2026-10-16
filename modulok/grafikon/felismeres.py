@@ -277,7 +277,7 @@ def _ablak(e: sp.Expr, korlat: tuple[str | None, str | None] | None) -> tuple[tu
     if (korlat and (korlat[0] or korlat[1])) and any(v is None for _, v in m[1:-1]):
         figy.append("a megadott tartományon a függvény nem mindenhol értelmezett (szakadás, aszimptota)")
     if e.has(sp.tan, sp.cot) or _pol(ys):
-        figy.append("aszimptota/pólus gyanú (a CAS-os ellenőrzés a C35b dolga)")
+        figy.append("aszimptota/pólus gyanú (a CAS-os ellenőrzés dönti el)")
     ylo, yhi = _szep_hatarok(*_y_hatar(ys))
     return xt, (_szam_szoveg(ylo), _szam_szoveg(yhi)), figy
 

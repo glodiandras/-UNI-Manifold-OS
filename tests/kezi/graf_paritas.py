@@ -25,10 +25,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO))
 from core import config  # noqa: E402
-from _kornyezet import cfg_elkulonitve, probamappa  # noqa: E402
+from _kornyezet import cfg_elkulonitve, legacy_eszkozok, legacy_graf, probamappa  # noqa: E402
 from core.index import feloldas, indexelo  # noqa: E402
 from tests import legacy_szabaly  # noqa: E402
-from tests.helpers import legacy_eszkozok, legacy_graf  # noqa: E402
 
 
 def lenyomat(vault: Path) -> str:
@@ -48,7 +47,7 @@ def main() -> int:
     vault = cfg.path("vault")
     eszk = legacy_eszkozok(cfg)
     if eszk is None:
-        print("HIBA: a legacy mfd.py nem olvasható (MOS_LEGACY)")
+        print("HIBA: a legacy mfd.py nem olvasható (a MOS_LEGACY a régi telepítés gyökerét jelöli ki)")
         return 2
     d = probamappa(cfg, "c106-paritas", szkript="graf_paritas.py")
     mert = False

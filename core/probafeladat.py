@@ -1,6 +1,6 @@
 """Próbafeladat a vezérlő kipróbálásához (C17): álfeladat, amely valódi gépi commitot ír a vaultba.
 
-**Élesben nincs ilyen feladattípus**: csak `MOS_PROBA_FELADAT=1` mellett regisztrálódik (a tesztek és a
+**Élesben nincs ilyen feladattípus**: csak Developer módban (`MOS_FEJLESZTO=1`, `core/fejleszto.py`) és `MOS_PROBA_FELADAT=1` mellett regisztrálódik (a tesztek és a
 `tests/kezi/proba_app.py` állítják; ott a vault az APFS-klón). A lépés a gépi-írás szolgáltatáson át ír
 (`core/gepi_kliens.py`, C16.5) — közvetlenül nem nyúl a vaulthoz —, így a gépi commit hordozza a `Mos-Kor` és a
 `Mos-Feladat` trailert, a felület értesít, és a vezérlő „Mit változtatott” nézete és a visszavonás végigpróbálható.
@@ -13,7 +13,7 @@ import os
 import sys
 import time
 
-from . import gepi_kliens, tasks
+from . import fejleszto, gepi_kliens, tasks
 
 TIPUS = "proba"
 MAPPA = "_Proba"
@@ -40,8 +40,8 @@ def regisztral() -> None:
 
 
 def _lepes(i: int, n: int, mp: float) -> int:
-    if os.environ.get("MOS_PROBA_FELADAT") != "1":
-        print("a próbafeladat csak MOS_PROBA_FELADAT=1 mellett fut (csak klónon)", file=sys.stderr)
+    if not fejleszto.kapcsolo("MOS_PROBA_FELADAT"):
+        print("a próbafeladat csak Developer módban, MOS_PROBA_FELADAT=1 mellett fut (csak klónon)", file=sys.stderr)
         return 2
     fid = os.environ.get("MOS_FELADAT") or "kezi"
     rel = f"{MAPPA}/Próbafeladat {fid} - {i}.md"

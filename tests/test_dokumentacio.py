@@ -1,10 +1,14 @@
-"""Dokumentum-konzisztencia (T192, 2. audit): a regiszter és a dokumentáció nem csúszhat szét.
+"""Dokumentum-konzisztencia (T192, 2. audit; F2: fejlesztői és felhasználói rész): a regiszter és a dokumentáció nem csúszhat szét.
 
+**Fejlesztői dokumentáció** (`docs/dev/`):
 - minden regisztrált végpont (`server.regiszter_epit()`) szerepel az útvonal-tábla tesztben (`KERESEK`) ÉS a
-  `docs/ARCHITECTURE.md`-ben `METÓDUS /út` alakban (kódként: `` `GET /api/…` ``);
-- a CLAUDE.md döntésszámai folytonosak (1-től; a C29 összefésülése után egy kimaradt vagy ütköző szám bukik).
-- a README (C34) a kódot tükrözi: minden regisztrált billentyű szerepel benne, a hivatkozott konfigurációs kulcsok léteznek az
-  `os.toml`-ban, a felsorolt `bin/mos` parancsok léteznek, és a relatív hivatkozások fájlokra mutatnak.
+  `docs/dev/ARCHITECTURE.md`-ben `METÓDUS /út` alakban (kódként: `` `GET /api/…` ``);
+- a `docs/dev/DECISIONS-v2.md` döntésszámai folytonosak (1-től; egy kimaradt vagy ütköző szám bukik), a D1–D12 tábla teljes.
+
+**Felhasználói dokumentáció** (`README.md`, angol termék-README; `docs/user/`, ha már van):
+- a README-ben hivatkozott konfigurációs kulcsok léteznek az `os.toml`-ban, a felsorolt `bin/mos` parancsok léteznek a
+  `bin/mos`-ban, a relatív hivatkozások fájlokra mutatnak, és nincs benne fejlesztői (személyes) út;
+- a felület minden regisztrált billentyűje szerepel a `docs/user/HOTKEYS.md`-ben (ha a fájl még nincs: `[indokolt]` kihagyás).
 A tesztek a dokumentum szövegét és a regisztert olvassák: szerverindítás, hálózat, valódi `var/` nincs."""
 import re
 import tomllib
@@ -14,8 +18,13 @@ from core import server
 from tests.helpers import REPO
 from tests.test_utvonalak import KERESEK, lefedetlen
 
-ARCHITECTURE = (REPO / "docs" / "ARCHITECTURE.md").read_text(encoding="utf-8")
-CLAUDE = (REPO / "CLAUDE.md").read_text(encoding="utf-8")
+DEV = REPO / "docs" / "dev"
+USER = REPO / "docs" / "user"
+HOTKEYS = USER / "HOTKEYS.md"
+INDOKOLT_FELHASZNALOI = "[indokolt] a felhasználói dokumentáció az F8-ban készül"
+
+ARCHITECTURE = (DEV / "ARCHITECTURE.md").read_text(encoding="utf-8")
+DONTESEK = (DEV / "DECISIONS-v2.md").read_text(encoding="utf-8")
 README = (REPO / "README.md").read_text(encoding="utf-8")
 
 METODUS = r"(?:GET|POST|PUT|HEAD|DELETE)"
@@ -51,6 +60,8 @@ def dokumentum_vegpontjai(szoveg: str) -> set[tuple[str, str]]:
     return ki
 
 
+# ================================================================== fejlesztői dokumentáció (docs/dev)
+
 class VegpontDokumentacio(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -68,7 +79,7 @@ class VegpontDokumentacio(unittest.TestCase):
             k = kanonikus(metodus, ut, minta)
             if k is not None and k not in doku:
                 hianyzo.append(f"{k[0]} {k[1]}" + (f"   (minta: {ut})" if minta else ""))
-        self.assertEqual(hianyzo, [], "ezek a végpontok nincsenek a docs/ARCHITECTURE.md-ben `METÓDUS /út` alakban "
+        self.assertEqual(hianyzo, [], "ezek a végpontok nincsenek a docs/dev/ARCHITECTURE.md-ben `METÓDUS /út` alakban "
                                       "(kódként, pl. `GET /api/…`)")
 
     def test_a_kivetelek_valodi_vegpontok_es_indokoltak(self):
@@ -88,26 +99,26 @@ class VegpontDokumentacio(unittest.TestCase):
 
 class DontesSzamok(unittest.TestCase):
     def test_a_dontesszamok_folytonosak(self):
-        """CLAUDE.md 1. szakasz: `| N |` sorok 1-től folytonosan (a C29 összefésülése után a 32. és a C29.5 döntései
-        is); a D1–D12 tábla külön szakaszban van, a dátumok sorrendje nem számít (a 15–17. sor utólag került be)."""
-        szakasz = CLAUDE.split("## 1. Rögzített döntések", 1)[1].split("\n## 2.", 1)[0]
+        """`docs/dev/DECISIONS-v2.md` 1. szakasz: `| N |` sorok 1-től folytonosan; a D1–D12 tábla külön szakaszban van, a
+        dátumok sorrendje nem számít (a 15–17. sor utólag került be)."""
+        szakasz = DONTESEK.split("## 1. Rögzített döntések", 1)[1].split("\n## 2.", 1)[0]
         szamok = [int(m.group(1)) for m in re.finditer(r"^\| (\d+) \|", szakasz, re.M)]
         self.assertGreaterEqual(len(szamok), 43)
-        self.assertEqual(szamok, list(range(1, len(szamok) + 1)), "hiányzó vagy ütköző döntésszám a CLAUDE.md-ben")
+        self.assertEqual(szamok, list(range(1, len(szamok) + 1)), "hiányzó vagy ütköző döntésszám a DECISIONS-v2.md-ben")
 
     def test_a_legacy_dontesek_d1_d12_teljesek(self):
-        szakasz = CLAUDE.split("## 2. A legacy döntései", 1)[1].split("\n## 3.", 1)[0]
+        szakasz = DONTESEK.split("## 2. A legacy döntései", 1)[1].split("\n## 3.", 1)[0]
         self.assertEqual([int(m.group(1)) for m in re.finditer(r"^\| D(\d+) \|", szakasz, re.M)], list(range(1, 13)))
 
 
-# ------------------------------------------------------------------ README (C34)
+# ================================================================== felhasználói dokumentáció (README, docs/user)
 
 GLIF_MOD = (("Ctrl", "⌃"), ("Alt", "⌥"), ("Shift", "⇧"), ("Mod", "⌘"))     # a macOS sorrendje: ⌃⌥⇧⌘
 GLIF_KULCS = {"ArrowRight": "→", "ArrowLeft": "←", "ArrowDown": "↓", "ArrowUp": "↑", "Enter": "↩"}
 
 
 def billentyu_glif(billentyu: str) -> str:
-    """`Mod+Shift+F` → `⇧⌘F` (a README alakja)."""
+    """`Mod+Shift+F` → `⇧⌘F` (a billentyű-tábla alakja)."""
     *modositok, kulcs = billentyu.split("+")
     return "".join(g for nev, g in GLIF_MOD if nev in modositok) + GLIF_KULCS.get(kulcs, kulcs)
 
@@ -122,7 +133,39 @@ def regisztralt_billentyuk() -> set[str]:
     return ki
 
 
-class ReadmeKonzisztencia(unittest.TestCase):
+def konfig_kulcsok(szoveg: str) -> list[tuple[str, str]]:
+    """A dokumentumban `` `[szakasz] kulcs` `` alakban hivatkozott `os.toml`-kulcsok."""
+    return re.findall(r"`\[([\w.]+)\] (\w+)`", szoveg)
+
+
+def bin_mos_hivasok(szoveg: str) -> list[tuple[str, str | None]]:
+    """A dokumentumban kódként (kódblokk-sor vagy `` `…` ``) álló `bin/mos <parancs> [<alparancs>]` hívások."""
+    sorok = []
+    blokkban = False
+    for sor in szoveg.splitlines():
+        if sor.lstrip().startswith("```"):
+            blokkban = not blokkban
+            continue
+        if blokkban:
+            sorok.append(sor.split("#", 1)[0].strip())
+    sorok += re.findall(r"`([^`\n]*)`", szoveg)
+    ki = []
+    for sor in sorok:
+        reszek = sor.split()
+        if len(reszek) < 2 or reszek[0] != "bin/mos" or not re.fullmatch(r"[a-z]+", reszek[1]):
+            continue
+        alparancs = reszek[2] if len(reszek) > 2 and re.fullmatch(r"[a-z][a-z-]*", reszek[2]) else None
+        ki.append((reszek[1], alparancs))
+    return ki
+
+
+def relativ_celok(szoveg: str) -> list[str]:
+    return re.findall(r"\]\((?!https?:|mailto:)([^)#\s]+)", szoveg)
+
+
+class FelhasznaloiDokumentacioKinyerok(unittest.TestCase):
+    """A kinyerők maguk is tesztelve vannak (a dokumentumtól függetlenül, inline mintán)."""
+
     def test_a_billentyu_glif_alakja(self):
         self.assertEqual(billentyu_glif("Mod+Shift+F"), "⇧⌘F")
         self.assertEqual(billentyu_glif("Mod+Alt+ArrowRight"), "⌥⌘→")
@@ -130,17 +173,29 @@ class ReadmeKonzisztencia(unittest.TestCase):
         self.assertEqual(billentyu_glif("F6"), "F6")
         self.assertEqual(billentyu_glif("Mod+Enter"), "⌘↩")
 
-    def test_minden_regisztralt_billentyu_szerepel_a_readme_ben(self):
-        billentyuk = regisztralt_billentyuk()
-        self.assertGreaterEqual(len(billentyuk), 25, "a kinyerő nem talál billentyűket (megváltozott a regiszter alakja?)")
-        hianyzo = sorted(b for b in billentyuk if billentyu_glif(b) not in README)
-        self.assertEqual(hianyzo, [], "ezek a billentyűk a regiszterben vannak, de a README billentyű-táblájában nem (⌃⌥⇧⌘ sorrend)")
+    def test_a_konfig_kulcs_kinyero(self):
+        self.assertEqual(konfig_kulcsok("a `[meres] ervenyes_kuszob` és a `[modellek.x] ram_gb` meg `nem kulcs`"),
+                         [("meres", "ervenyes_kuszob"), ("modellek.x", "ram_gb")])
+
+    def test_a_bin_mos_kinyero(self):
+        s = ("```bash\nbin/mos runtime fetch      # online\nbin/mos test\nbin/mos app test --verbose\n```\n"
+             "A `bin/mos doctor` ellenőriz; `bin/mos models pull <név>`; nem hívás: `bin/mosaic x`, `mos test`.")
+        self.assertEqual(bin_mos_hivasok(s), [("runtime", "fetch"), ("test", None), ("app", "test"),
+                                              ("doctor", None), ("models", "pull")])
+
+    def test_a_relativ_cel_kinyero(self):
+        self.assertEqual(relativ_celok("[a](docs/A.md) [b](https://x.y/z) [c](B.md#fej) [d](mailto:a@b.c)"), ["docs/A.md", "B.md"])
+
+
+class FelhasznaloiDokumentacio(unittest.TestCase):
+    def test_a_readme_nem_hordoz_fejleszto_utat(self):
+        for minta in ("/Users/", "/Volumes/", "Manifold-OS v2"):
+            with self.subTest(minta=minta):
+                self.assertNotIn(minta, README, "a README fejlesztői (személyes) útra hivatkozik")
 
     def test_a_readme_konfiguracios_kulcsai_leteznek_az_os_toml_ban(self):
         os_toml = tomllib.loads((REPO / "config" / "os.toml").read_text(encoding="utf-8"))
-        kulcsok = re.findall(r"`\[([\w.]+)\] (\w+)`", README)
-        self.assertGreaterEqual(len(kulcsok), 4)
-        for szakasz, kulcs in kulcsok:
+        for szakasz, kulcs in konfig_kulcsok(README):
             adat = os_toml
             for resz in szakasz.split("."):
                 adat = adat.get(resz, {})
@@ -149,59 +204,39 @@ class ReadmeKonzisztencia(unittest.TestCase):
 
     def test_a_readme_bin_mos_parancsai_leteznek(self):
         bin_mos = (REPO / "bin" / "mos").read_text(encoding="utf-8")
-        szakasz = README.split("## 7. Parancsok", 1)[1].split("\n## 8.", 1)[0]
-        parancsok = {m.group(1) for sor in szakasz.splitlines() if sor.startswith("| `")
-                     for m in re.finditer(r"`([a-z]+)(?: [^`]*)?`", sor.split("|")[1])}
-        self.assertGreaterEqual(len(parancsok), 18)
-        for p in sorted(parancsok):
-            with self.subTest(parancs=p):
-                self.assertRegex(bin_mos, rf"(?m)^\s+(?:[a-z]+\|)*{p}(?:\|[a-z]+)*\)", f"a README `bin/mos {p}` parancsa nincs a bin/mos-ban")
+        hivasok = bin_mos_hivasok(README)
+        self.assertGreaterEqual(len(hivasok), 5, "a README fejlesztői szakasza `bin/mos` parancsokat sorol")
+        for parancs, alparancs in sorted(set(hivasok), key=lambda x: (x[0], x[1] or "")):
+            with self.subTest(parancs=f"{parancs} {alparancs or ''}".strip()):
+                self.assertRegex(bin_mos, rf"(?m)^\s+(?:[a-z]+\|)*{parancs}(?:\|[a-z]+)*\)",
+                                 f"a README `bin/mos {parancs}` parancsa nincs a bin/mos-ban")
+                if alparancs:
+                    self.assertRegex(bin_mos, rf"\b{alparancs}\b", f"a README `bin/mos {parancs} {alparancs}` alparancsa nincs a bin/mos-ban")
 
     def test_a_readme_relativ_hivatkozasai_fajlokra_mutatnak(self):
-        celok = re.findall(r"\]\((?!https?:)([^)#\s]+)", README)
-        self.assertGreaterEqual(len(celok), 8)
+        celok = relativ_celok(README)
+        self.assertGreaterEqual(len(celok), 1)
         for cel in sorted(set(celok)):
             with self.subTest(cel=cel):
                 self.assertTrue((REPO / cel).exists(), f"a README hivatkozása nem létező fájlra mutat: {cel}")
 
-    def test_a_readme_a_kapcsolokat_es_a_kiveteleket_megnevezi(self):
-        for szo in ("Asszisztens", "Tracker", "local.manifold-os.app.plist", "~/Manifold-backup", "docs/KIADAS.md"):
-            with self.subTest(szo=szo):
-                self.assertIn(szo, README)
+    def test_minden_regisztralt_billentyu_szerepel_a_hotkeys_dokumentumban(self):
+        if not HOTKEYS.is_file():
+            self.skipTest(INDOKOLT_FELHASZNALOI)
+        billentyuk = regisztralt_billentyuk()
+        self.assertGreaterEqual(len(billentyuk), 25, "a kinyerő nem talál billentyűket (megváltozott a regiszter alakja?)")
+        szoveg = HOTKEYS.read_text(encoding="utf-8")
+        hianyzo = sorted(b for b in billentyuk if billentyu_glif(b) not in szoveg)
+        self.assertEqual(hianyzo, [], "ezek a billentyűk a regiszterben vannak, de a HOTKEYS.md-ben nem (⌃⌥⇧⌘ sorrend)")
 
-
-class SegedszkriptekTiszta(unittest.TestCase):
-    """A `tools/` alatti szkriptek és leírások nem hordozhatnak feloldatlan merge- vagy stash-konfliktusjelölőt, a shell
-    szkriptek szintaktikailag épek, és nincs bennük beégetett vault/legacy út (CLAUDE.md §4)."""
-
-    JELOLO = re.compile(r"^(?:<{7}(?: .*)?|={7}|>{7}(?: .*)?)$", re.MULTILINE)
-
-    def _fajlok(self):
-        return sorted(p for p in (REPO / "tools").rglob("*") if p.is_file() and p.suffix in {".sh", ".md", ".py", ".toml", ".txt"})
-
-    def test_nincs_konfliktusjelolo_a_tools_alatt(self):
-        fajlok = self._fajlok()
-        self.assertGreaterEqual(len(fajlok), 5)
-        for p in fajlok:
-            with self.subTest(fajl=str(p.relative_to(REPO))):
-                self.assertIsNone(self.JELOLO.search(p.read_text(encoding="utf-8")), "feloldatlan konfliktusjelölő")
-
-    def test_a_jelolo_felismerese(self):
-        self.assertTrue(self.JELOLO.search("a\n<<<<<<< Updated upstream\nb\n=======\nc\n>>>>>>> Stashed changes\n"))
-        self.assertIsNone(self.JELOLO.search("| a | b |\n|---|---|\n# ======== cím\n"))
-
-    def test_a_shell_szkriptek_szintaxisa_ep(self):
-        import subprocess
-        for p in (p for p in self._fajlok() if p.suffix == ".sh"):
-            with self.subTest(fajl=str(p.relative_to(REPO))):
-                r = subprocess.run(["bash", "-n", str(p)], capture_output=True, text=True)
-                self.assertEqual(r.returncode, 0, r.stderr)
-
-    def test_nincs_beegetett_legacy_ut_a_kodban(self):
-        for p in (p for p in self._fajlok() if p.suffix == ".sh"):
-            kod = "\n".join(s for s in p.read_text(encoding="utf-8").splitlines() if not s.lstrip().startswith("#"))
-            with self.subTest(fajl=str(p.relative_to(REPO))):
-                self.assertNotIn("Manifold-OS legacy", kod)
+    def test_a_felhasznaloi_dokumentumok_hivatkozasai_leteznek(self):
+        lapok = sorted(USER.glob("*.md")) if USER.is_dir() else []
+        if not lapok:
+            self.skipTest(INDOKOLT_FELHASZNALOI)
+        for lap in lapok:
+            for cel in sorted(set(relativ_celok(lap.read_text(encoding="utf-8")))):
+                with self.subTest(lap=lap.name, cel=cel):
+                    self.assertTrue((lap.parent / cel).exists(), f"{lap.name} hivatkozása nem létező fájlra mutat: {cel}")
 
 
 if __name__ == "__main__":

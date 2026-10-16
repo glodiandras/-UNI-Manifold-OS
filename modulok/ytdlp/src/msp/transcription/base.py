@@ -17,7 +17,7 @@ def modell_betoltes_tiltva(motor: str) -> None:
 
     raise TranscriptionError(
         f"{motor}: loading an ASR model is forbidden in the Manifold-OS port - only the model host (modellgazda) may load a model.",
-        hint="The transcript is produced by the worker's audio path (C20b); the transcript stays 'pending'.",
+        hint="The transcript is produced by the worker's audio path; the transcript stays 'pending'.",
     )
 
 

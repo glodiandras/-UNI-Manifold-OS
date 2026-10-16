@@ -262,7 +262,7 @@ class KvizTest(Alap):
         a = self.adatok()
         a.tema_jel(T1, NAP, MOST)
         self.assertFalse(a.adatok["kviz"]["van"])
-        self.assertIn("C22", a.adatok["kviz"]["ok"])
+        self.assertIn("nincs kvíz-adatforrás", a.adatok["kviz"]["ok"])
 
     def test_hibas_forras_figyelmeztetes(self):
         forrasok.regisztral_kviz_forras("rossz", lambda cfg, tol, ig: 1 / 0)

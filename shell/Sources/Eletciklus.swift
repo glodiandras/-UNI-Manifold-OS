@@ -175,6 +175,7 @@ enum Eletciklus {
 
     // MARK: a --selftest táblázata
 
+#if MOS_DEVELOPER
     /// → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -247,4 +248,5 @@ enum Eletciklus {
         egyez("WebContent harmadik halál 60 s után", webContentHalal(korabbi: d2.halalok, most: t0.addingTimeInterval(75)).lepes, .ujratolt)
         return hibak
     }
+#endif
 }

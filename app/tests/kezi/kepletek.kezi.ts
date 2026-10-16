@@ -1,7 +1,7 @@
 // A vault összes képlete a szerkesztő elemzőjével és KaTeX-beállításával (C08 kész-feltétele).
 // Futtatás: tests/kezi/kepletek.py (az a vault útját és a riport helyét a configból adja át).
 //
-// A vaultot csak olvassa. Minden `.md` a legacy bejárása szerint (a `.obsidian`, `.trash`, `.git`,
+// A vaultot csak olvassa. Minden `.md` a core `bejaras()`-a szerint (a `.obsidian`, `.trash`, `.git`,
 // `node_modules` és a ponttal kezdődő fájlok nélkül), a core `szoveg()`-e szerint dekódolva
 // (UTF-8 cserekarakterrel, `\r\n` és `\r` → `\n`). Kimenet: JSON-riport fájlonkénti darabszámmal,
 // a hibákkal és a szigorúsági figyelmeztetésekkel kategóriánként.

@@ -286,7 +286,7 @@
     const kod = media?.error?.code;
     hiba =
       kod === 4
-        ? 'A WebKit ezt a formátumot nem tudja lejátszani (a formátum-átalakítás a beolvasás feladata, C20).'
+        ? 'A WebKit ezt a formátumot nem tudja lejátszani (a formátum-átalakítás a beolvasás feladata).'
         : `A média nem tölthető be${media?.error?.message ? `: ${media.error.message}` : ''}.`;
   }
 

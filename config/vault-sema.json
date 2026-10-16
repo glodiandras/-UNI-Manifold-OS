@@ -1,5 +1,4 @@
 {
-  "_leiras": "A vault frontmatter-sémája (LEGACY-SZERZODESEK L33, L34): a tulajdonság-szerkesztő (C11b) és minden gépi író ezt tartja. Az értékek a legacy kalibrációból átmásolva (2026-10-02), a 2.0 innentől ezt a fájlt olvassa. Új kivételosztály csak a gazda döntésére kerül ide. A `h1` szakasz a legacy kalibráció H1-szabálya (C29.8, T044; 2026-10-04).",
   "mezosorrend": ["Tags", "Source", "Status", "NN", "Canvas"],
   "extra_kulcsok": ["version"],
   "_extra_kulcsok": "Ezek a kulcsok a sorrend-összevetésből kimaradnak (bárhol állhatnak): a sablonok `version` mezője.",
@@ -32,23 +31,24 @@
     },
     {
       "nev": "konyv-jegyzet",
-      "utvonal_elotag": ["X03 - Books/"],
+      "utvonal_elotag": ["Books/"],
       "mezosorrend": ["Szerző", "Műfaj", "Rate", "Status"],
       "tartalmi": true,
       "h1": false
     }
   ],
   "h1": {
-    "_leiras": "A H1-szabály (legacy `vault.h1_szabaly`, `h1_kivetel_utvonalak`, `schema_kivetel_osztalyok`): a jegyzet első 1. szintű fejezete (H1) a fájlnév a `NN[F] - ` sorszám-előtag levágása után (NFC). A `kivetel_utvonalak` csak az egyezés-ellenőrzést hagyják el (a H1 hiánya továbbra is sértés); a `kivetel_osztalyok`: `nincs_egyezes` (a H1 nem a fájlnév: megoldás-sorszámos, érettségi-témakör), `h1_nelkul_is_jo` (a sablon-váznak nincs H1-e). A `kviz` és a `konyv-jegyzet` H1-szabálya a fenti `kivetel_osztalyok` `h1_minta`/`h1` mezőjében áll. A két inaktív legacy osztály (`naplo-heti`, `naplo-sablon`) nincs átvéve.",
+    "_leiras": "A H1-szabály: a jegyzet első 1. szintű fejezete (H1) a fájlnév a `NN[F] - ` sorszám-előtag levágása után (NFC). A `kivetel_utvonalak` csak az egyezés-ellenőrzést hagyják el (a H1 hiánya továbbra is sértés); a `kivetel_osztalyok`: `nincs_egyezes` (a H1 nem a fájlnév: megoldás-sorszámos, témakör-címes), `h1_nelkul_is_jo` (a sablon-váznak nincs H1-e). A `kviz` és a `konyv-jegyzet` H1-szabálya a fenti `kivetel_osztalyok` `h1_minta`/`h1` mezőjében áll.",
     "szabaly": "fajlnev",
     "sorszam_elotag": "^\\d+[A-Z]? - ",
-    "kivetel_utvonalak": ["AI01 - Workflow System/2.0/", "AI02 - Log/", "AI03 - Memória/", "Prjct01 - Obsidian/", "X01 - Napló & To-Do/", "_Template/"],
+    "kivetel_utvonalak": ["X01 - Napló & To-Do/", "_Template/"],
     "kivetel_osztalyok": [
       {"nev": "megoldas-sorszamos", "mod": "nincs_egyezes", "mappa_nev": "Megoldások", "fajlnev_minta": "(?:\\s\\d+|\\d+\\.?\\s*feladat|\\d+-(?:es|as|ös|os)\\s+feladat)$"},
-      {"nev": "erettsegi-temakor-cim", "mod": "nincs_egyezes", "source_tartalmaz": "emelt matematika témakörök.pdf"},
+      {"nev": "temakor-cim", "mod": "nincs_egyezes", "source_tartalmaz": "témakörök.pdf"},
       {"nev": "sablon-vaz", "mod": "h1_nelkul_is_jo", "utvonal_elotag": ["_Template/"]}
     ]
   },
-  "sema_nelkuli_utak": ["AI01 - Workflow System/CLAUDE.md", "AI01 - Workflow System/MEMORY.md"],
-  "_sema_nelkuli_utak": "Ügynök-hordozó fájlok: nem vault-jegyzetek, a séma nem vonatkozik rájuk."
+  "sema_nelkuli_utak": [],
+  "sema_nelkuli_nevek": ["CLAUDE.md", "AGENTS.md", "MEMORY.md"],
+  "_sema_nelkuli_nevek": "Ügynök-hordozó fájlok: nem vault-jegyzetek, a séma nem vonatkozik rájuk, és gép nem ír beléjük. A fájlnév számít, bármely mélységben, kis-nagybetűtől függetlenül (a kód saját állandója ugyanezt a három nevet mindig tartja); a `sema_nelkuli_utak` egyedi, pontos útvonalakkal bővíthető."
 }

@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-KISERO_ELOTAG = "ATTCHMNTS - "
+KISERO_ELOTAG = "ATTCHMNTS - "        # a kísérőjegyzet-mappák névelőtagja, ha a `[vault] kisero_elotag` hiányzik
 _MONDAT_HATAR = re.compile(r"(?<=[.!?])\s+|\n+")
 UTEM_MP = 60.0
 
@@ -113,10 +113,16 @@ def forras_ujjlenyomat(md: str | frozenset[str]) -> str:
     return hashlib.sha1("\n".join(sorted(m)).encode("utf-8")).hexdigest()
 
 
-def tartalmi_ut(ut: str) -> bool:
-    """Tartalmi `.md`: nem kísérőjegyzet (egyetlen útvonal-elem sem `ATTCHMNTS - …`), nem rejtett mappa."""
+def kisero_elotag(cfg) -> str:
+    """A kísérőjegyzet-mappák névelőtagja: `[vault] kisero_elotag` (hiányában `KISERO_ELOTAG`)."""
+    v = cfg.section("vault").get("kisero_elotag") if cfg is not None else None
+    return v if isinstance(v, str) and v else KISERO_ELOTAG
+
+
+def tartalmi_ut(ut: str, elotag: str = KISERO_ELOTAG) -> bool:
+    """Tartalmi `.md`: nem kísérőjegyzet (egyetlen útvonal-elem sem kezdődik az `elotag`-gal), nem rejtett mappa."""
     reszek = ut.replace("\\", "/").split("/")
-    return ut.lower().endswith(".md") and not any(r.startswith(KISERO_ELOTAG) or r.startswith(".") for r in reszek)
+    return ut.lower().endswith(".md") and not any(r.startswith(elotag) or r.startswith(".") for r in reszek)
 
 
 def hossz(m: frozenset[str]) -> int:
@@ -380,11 +386,12 @@ class Jelolt:
 
 
 def dont(f: Fogyaszto, ut_: str, hash_: str, mtime: float, most: float, sor: dict | None,
-         olvas: Callable[[str], str]) -> tuple[str, Jelolt | None]:
+         olvas: Callable[[str], str], elotag: str = KISERO_ELOTAG) -> tuple[str, Jelolt | None]:
     """Egy út egy fogyasztónak: (állapot, jelölt). Állapot: `szuro`, `elbiralt` (ez a változat már eldőlt), `tiltva`,
     `csend` (még változik), `nem_eleg` / `rovid` / `mar_kesz` (elbírálva, nem kell), `jelolt`. Az `olvas(ut)` csak akkor
-    hívódik, ha a mérték kell (a `kuszob > 0` fogyasztónál, a változott és csendes jegyzetre)."""
-    if not f.szuro(ut_):
+    hívódik, ha a mérték kell (a `kuszob > 0` fogyasztónál, a változott és csendes jegyzetre). Az `elotag` a beépített
+    `tartalmi_ut` szűrő kísérőmappa-előtagja (`kisero_elotag(cfg)`)."""
+    if not (tartalmi_ut(ut_, elotag) if f.szuro is tartalmi_ut else f.szuro(ut_)):
         return "szuro", None
     sor = sor or {}
     if sor.get("tiltva"):
@@ -541,7 +548,7 @@ class Utemezo:
             elbiralt: dict[str, str] = {}
             for u in sorted(nezendo):
                 h, mtime_ns = allapot[u][0], allapot[u][1]
-                st, j = dont(f, u, h, mtime_ns / 1e9, most, sorok.get(u), olvas)
+                st, j = dont(f, u, h, mtime_ns / 1e9, most, sorok.get(u), olvas, kisero_elotag(self.cfg))
                 szam[st] = szam.get(st, 0) + 1
                 if st == "csend":
                     varakozo.add(u)

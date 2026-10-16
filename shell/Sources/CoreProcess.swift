@@ -131,6 +131,7 @@ final class CoreProcess {
         return mount == "" ? true : (g == mount || g.hasPrefix(mount + "/"))
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -153,11 +154,11 @@ final class CoreProcess {
             if mai != vart { hibak.append("kézfogás \(sor.debugDescription): \(mai) (várt: \(vart))") }
         }
         let lecsatolas: [(String?, String, Bool)] = [
-            ("/Volumes/Work", "/Volumes/Work/Manifold-OS v2", true), ("/Volumes/Work/", "/Volumes/Work/Manifold-OS v2", true),
-            ("/Volumes/Work/Manifold-OS v2", "/Volumes/Work/Manifold-OS v2", true),
-            ("/Volumes/Other", "/Volumes/Work/Manifold-OS v2", false), ("/Volumes/Wor", "/Volumes/Work/Manifold-OS v2", false),
-            ("/Volumes/Work/Manifold-OS v2/x", "/Volumes/Work/Manifold-OS v2", false), (nil, "/Volumes/Work/x", false),
-            ("", "/Volumes/Work/x", false),
+            ("/Volumes/Disk", "/Volumes/Disk/Manifold", true), ("/Volumes/Disk/", "/Volumes/Disk/Manifold", true),
+            ("/Volumes/Disk/Manifold", "/Volumes/Disk/Manifold", true),
+            ("/Volumes/Other", "/Volumes/Disk/Manifold", false), ("/Volumes/Dis", "/Volumes/Disk/Manifold", false),
+            ("/Volumes/Disk/Manifold/x", "/Volumes/Disk/Manifold", false), (nil, "/Volumes/Disk/x", false),
+            ("", "/Volumes/Disk/x", false),
         ]
         for (dev, gyoker, vart) in lecsatolas {
             let mai = gyokertErint(devicePath: dev, gyoker: gyoker)
@@ -165,6 +166,7 @@ final class CoreProcess {
         }
         return hibak
     }
+#endif
 
     /// Leállítás a folyamatban lévő feladat végén: a stdin lezárása.
     func requestStop() {

@@ -1,8 +1,4 @@
 {
- "leiras": "A videó–jegyzet kötés verifikátora (modulok/ytdlp/kotes.py): logisztikus regresszió 10 standardizált jegyen. Átvéve a legacy calibration.json → media.kotes.modell kulcsából változatlanul (C20b, 2026-10-08); a 2.0 nem tanította újra.",
- "forras": "legacy modulok/eszkozok/calibration.json, media.kotes.modell (2026-09-19)",
- "gold": "1140 olvasott pár (530 pozitív, 610 negatív), 106 videó, mind T tárgy; l2 = 3,0",
- "keresztvalidalt_gorbe": {"0.75": "pontosság 0,939 / fedés 0,654", "0.80": "0,963 / 0,611", "0.85": "0,973 / 0,547", "0.90": "0,984 / 0,480", "0.95": "0,997 / 0,372"},
- "targyak": "T: a gold és az 54 elemű rétegzett minta (saját téma 20/20); I: 25/25 olvasva (2026-09-19); N: 141 olvasott saját témájú jelölt, p ≥ 0,97 → 39/39 (külön küszöb)",
+ "_leiras": "A videó–jegyzet kötés verifikátora (modulok/ytdlp/kotes.py): logisztikus regresszió 10 standardizált jegyen (b0: tengelymetszet, w: súlyok, mu/sd: a jegyek átlaga és szórása). A kód csak a `modell` kulcsot olvassa. A súlyok egy magyar nyelvű jegyzetmintán illeszkedtek; más nyelvű vagy más szerkezetű gyűjteménynél a kötés pontosságát újra kell mérni.",
  "modell": {"b0": 0.0521, "w": {"B": -0.347, "C": 0.1385, "rang_log": -0.6209, "res": 1.0838, "ritka": 0.8218, "cim": 0.466, "felkov": 0.4969, "ev_plusz": 0.4901, "ev_minusz": -0.3466, "passz": 0.3246}, "mu": {"B": 0.2675, "C": 0.1174, "rang_log": 1.3708, "res": -0.0547, "ritka": 0.7693, "cim": 0.277, "felkov": 0.0687, "ev_plusz": 0.6325, "ev_minusz": 1.1737, "passz": 0.3375}, "sd": {"B": 0.0831, "C": 0.0675, "rang_log": 1.2052, "res": 0.1336, "ritka": 1.4199, "cim": 0.3457, "felkov": 0.0819, "ev_plusz": 0.7986, "ev_minusz": 1.3532, "passz": 0.1751}}
 }

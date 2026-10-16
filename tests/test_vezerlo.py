@@ -86,7 +86,7 @@ class VezerloApiTest(_Szerver):
     """A core a szálon; a próbafeladat a klónként szolgáló álvaulton ír (`MOS_PROBA_FELADAT=1`)."""
 
     def elokeszit(self):
-        for k, v in {"MOS_PROBA_FELADAT": "1", "PYTHONPATH": str(REPO)}.items():
+        for k, v in {"MOS_FEJLESZTO": "1", "MOS_PROBA_FELADAT": "1", "PYTHONPATH": str(REPO)}.items():
             vissza = os.environ.get(k)
             os.environ[k] = v
             self.addCleanup(lambda k=k, vissza=vissza: os.environ.pop(k, None) if vissza is None

@@ -117,11 +117,12 @@ def _darabolas(egysegek: list[tuple[int, Bekezdes]], szakaszok: list[KF.Szakasz]
 
 
 def jegyzet_bemenet(md: str, cel: str, cim: str | None = None, fejezetek: list[dict] | None = None,
-                    blokkok: list[dict] | None = None, max_karakter: int = 2200, min_karakter: int = 20) -> Bemenet:
+                    blokkok: list[dict] | None = None, max_karakter: int = 2200, min_karakter: int = 20,
+                    kihagy: tuple[str, ...] | None = None) -> Bemenet:
     """A jegyzet → `Bemenet`. `cel`: a vault-relatív út `.md` nélkül (a horgonyok célja); `fejezetek`, `blokkok`: az index
     táblái (nem kötelezők: nélkülük a horgony a kapu előkészítésének fejezetcíme, blokkazonosító nélkül)."""
     md = unicodedata.normalize("NFC", md).replace("\r\n", "\n").replace("\r", "\n")
-    szakaszok = KF.elokeszit(md, min_karakter=min_karakter)
+    szakaszok = KF.elokeszit(md, min_karakter=min_karakter, kihagy=kihagy)
     fs = KF.ForrasSzoveg(szakaszok, cim)
     blokk_sz = _blokk_szovegek(md, blokkok or [])
     egysegek: list[tuple[int, Bekezdes]] = []

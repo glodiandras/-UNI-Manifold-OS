@@ -14,6 +14,10 @@ from pathlib import Path
 _HELYORZO = re.compile(r"\{(\w+)\}")
 _MAX_MELYSEG = 12
 
+# Az app egyetlen azonosítója (reverse-DNS; a `shell/Info.plist` CFBundleIdentifier-e). Ebből képződik a doctor
+# home-kivétele (`~/Library/Preferences/<id>.plist`) és a fájlfigyelő dispatch-sorának neve.
+BUNDLE_ID = "com.manifold.app"
+
 
 class ConfigError(ValueError):
     """Hibás vagy feloldhatatlan konfiguráció."""

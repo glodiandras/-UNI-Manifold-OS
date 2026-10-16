@@ -266,7 +266,8 @@ def utvonalak(r) -> None:
     def hasonlo(k):
         from .index.hibrid import hasonlo as H
         sz = szolgalat(k.app)
-        return H.hasonlok(k.app.index.olvaso, sz.tar(), k.q.get("ut"), k.egesz("n", 10, 1, 50))
+        from .automatika import kisero_elotag
+        return H.hasonlok(k.app.index.olvaso, sz.tar(), k.q.get("ut"), k.egesz("n", 10, 1, 50), kisero_elotag(k.app.cfg))
 
     def hasonlosag(k):
         from .index.hibrid import hasonlo as H

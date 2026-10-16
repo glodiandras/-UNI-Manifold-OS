@@ -253,13 +253,13 @@ describe('formázás (⌘B, ⌘I, ⌘⇧H)', () => {
     expect(s.state.doc.toString()).toBe('a~~~~b');
   });
 
-  it('a ==kiemelés== beszúrása figyelmeztet (AI01, 43. döntés), a levétele nem', () => {
+  it('a ==kiemelés== beszúrása figyelmeztet (a munkaterület jegyzetszabálya), a levétele nem', () => {
     ertesitesek.lista.splice(0);
     const v = mdNezet('egy szó', 4);
     v.dispatch({ selection: EditorSelection.range(4, 7) });
     korbefog(v, '==');
     expect(v.state.doc.toString()).toBe('egy ==szó==');
-    expect(ertesitesek.lista.at(-1)?.cim).toContain('tiltott');
+    expect(ertesitesek.lista.at(-1)?.cim).toContain('==kiemelés==');
     ertesitesek.lista.splice(0);
     korbefog(v, '==');
     expect(v.state.doc.toString()).toBe('egy szó');

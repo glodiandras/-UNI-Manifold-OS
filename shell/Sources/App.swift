@@ -10,8 +10,9 @@ struct ManifoldApp {
             exit(Naptar.futtat(Array(CommandLine.arguments.dropFirst(2))))
         }
         let app = NSApplication.shared
-        // `--selftest` (alap ellenőrzés) vagy `--selftest=<forgatókönyv>` (C29.7b: kilepes, core-halal, core-ujraindul, kezfogas-ido;
-        // C33: szerkesztes — megnyitás, beágyazás, gépelés, mentés, link a valódi WebKitben —, lecsatolas — a kötet lecsatolása)
+#if MOS_DEVELOPER
+        // Csak a fejlesztői buildben (`MOS_DEVELOPER_BUILD=1 bash shell/build.sh`): `--selftest` (alap ellenőrzés) vagy
+        // `--selftest=<forgatókönyv>` (kilepes, core-halal, core-ujraindul, kezfogas-ido, szerkesztes, lecsatolas)
         let selftestArg = CommandLine.arguments.first { $0 == "--selftest" || $0.hasPrefix("--selftest=") }
         let selftest = selftestArg != nil
         let forgatokonyv = selftestArg.flatMap { $0.hasPrefix("--selftest=") ? String($0.dropFirst("--selftest=".count)) : nil }
@@ -22,6 +23,11 @@ struct ManifoldApp {
         let controller = AppController(selftest: selftest, forgatokonyv: forgatokonyv)
         app.delegate = controller
         app.setActivationPolicy(selftest ? .accessory : .regular)
+#else
+        let controller = AppController()
+        app.delegate = controller
+        app.setActivationPolicy(.regular)
+#endif
         withExtendedLifetime(controller) { app.run() }
     }
 }

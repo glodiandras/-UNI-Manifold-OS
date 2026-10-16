@@ -256,7 +256,7 @@ class App:
         if hiba:
             self.indulasi_uzenetek.append(
                 f"Az előző belső lemezes mentés nem sikerült ({hiba.get('ido', '?')}): {mentes.hiba_szoveg(hiba)}. "
-                "A szöveg ettől még az SSD-n megvan, de a belső lemezen a legutóbbi mentés régebbi a HEAD-nél; a következő "
+                "A szöveg ettől még a vault kötetén megvan, de a belső lemezen a legutóbbi mentés régebbi a HEAD-nél; a következő "
                 "sikeres mentés (kilépéskor, vagy tétlenségben 30 percenként) törli ezt az üzenetet.")
         for u in self.indulasi_uzenetek:
             print(f"[indulás] {u}", file=sys.stderr, flush=True)
@@ -479,9 +479,10 @@ class App:
 
     def _hasonlo_jegyzetek(self, ut: str, n: int) -> dict:
         """A C25c hasonló jegyzetei a vektortárból (modell nélkül) — az Asszisztens kártyájának tartalmi forrása (J3)."""
+        from .automatika import kisero_elotag
         from .index.hibrid import hasonlo as H
         from .kereses_api import szolgalat
-        return H.hasonlok(self.index.olvaso, szolgalat(self).tar(), ut, n)
+        return H.hasonlok(self.index.olvaso, szolgalat(self).tar(), ut, n, kisero_elotag(self.cfg))
 
     def _worker_megszakit(self, fid: str) -> None:
         """Egy leállított feladat folyó generálása szakadjon meg a workerben (C17). Workert nem indít: ha nem fut,

@@ -1,14 +1,15 @@
-"""A videó vault-oldali mellékletei (C20b) — a legacy `media_staging.py` (`cues`, `vtt`, `info_json`) és `media.py` (`write_note`,
-`transcribe` VTT-kimenete, `_segs_minoseg`, `asr_coverage`) **tiszta függvényként**: bemenet a beolvasott staging-mappa (`staging.olvas`)
-vagy a worker átirata, kimenet a fájl szövege. Nem ír, nem olvas a vaultból: a vaultba a lánc a gépi-írás szolgáltatáson át ír
-(`uj` a szöveges mellékletekre, `mozgat` a videóra; 28., 68(b) döntés).
+"""A videó vault-oldali mellékletei (C20b): a felirat (`cues`, `vtt`), a `.info.json`, a forrásleíró jegyzet és a felismerés minőségjelei
+(`_segs_minoseg`, `asr_coverage`) **tiszta függvényként**: bemenet a beolvasott staging-mappa (`staging.olvas`) vagy a worker átirata,
+kimenet a fájl szövege. Nem ír, nem olvas a vaultból: a vaultba a lánc a gépi-írás szolgáltatáson át ír (`uj` a szöveges mellékletekre,
+`mozgat` a videóra).
 
-A kimenet a legacy formátuma **bájtra** (a vaultban 236 forrásjegyzet áll a sentinel-lel, a `.hu.vtt`-k a `NOTE manifold-asr`
-fejléccel): a próbakör a legacyvel azonos vault-változást vár (C20b „Kész, ha”). Ahol a 2.0 eltér, a függvény leírása kimondja.
+A kimenet **szerkezete** stabil (a kulcsok, a forrásjegyzetek a sentinel-lel, a `.hu.vtt`-k a `NOTE manifold-asr` fejléccel): a lánc a már
+beírt mellékletet nem írja újra (az `uj` nem ír felül), ezért a szövegek (pl. az `indok`) módosítása a meglévő vaultot nem érinti.
+Ahol a leírás eltér ettől, a függvény leírása kimondja.
 
-    vtt_stagingbol(src, nyelv, hossz)   a msp `transcript.md`-jéből (újra-ASR nélkül, K2 konvenció)
+    vtt_stagingbol(src, nyelv, hossz)   a letöltő `transcript.md`-jéből (újra-ASR nélkül)
     vtt_atiratbol(atirat, …)            a worker `atirat` válaszából (mlx-whisper szegmensek)
-    info_json(src)                      a vault `.info.json`-alakja a msp `metadata.json`-jából + `_staging`
+    info_json(src)                      a vault `.info.json`-alakja a letöltő `metadata.json`-jából + `_staging`
     forrasjegyzet(…)                    a forrásleíró jegyzet (a PDF-tankönyv analogonja) a `SENTINEL`-lel
     minoseg(szegmensek, hossz)          (hangfedettség, ismétlés-arány): a felismerő degenerációjának két jele
 """
@@ -22,11 +23,11 @@ import re
 
 from core import atirat as A
 
-SENTINEL = "<!-- manifold-media-source-note -->"     # a legacy `media.SENTINEL`: e nélkül a lánc nem ír felül létező jegyzetet
+SENTINEL = "<!-- manifold-media-source-note -->"     # e nélkül a lánc nem ír felül létező jegyzetet
 ASR_JEL = A.GEPI_JEL                                  # „NOTE manifold-asr”: a gépi átirat jele (`vaultlib.ASR_JEL`)
 _TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\]\s*$", re.M)
-_INDOK = ("A forras a multimedia-source-pipeline (msp) staging repojabol jott, nem a media.py fetch-bol. "
-          "Ez a kulcs a staging teljes provenienciajat megorzi, hogy semmi ne vesszen el az atalakitasban (I3, I12).")
+_INDOK = ("A forras a letolto staging-mappajabol jott. "
+          "Ez a kulcs a staging teljes provenienciajat megorzi, hogy semmi ne vesszen el az atalakitasban.")
 
 
 class VaultoldalHiba(ValueError):
@@ -100,9 +101,9 @@ def vtt_stagingbol(src: dict, nyelv: str, hossz: float | None = None) -> str:
              f"motor: {str(a.get('transcript_engine') or 'ismeretlen').split(':')[0]}",
              f"modell: {a.get('transcript_model') or 'ismeretlen'}",
              f"nyelv: {nyelv}",
-             "nyelv_forras: pipeline-beallitas (msp config transcript.language)",
+             "nyelv_forras: pipeline-beallitas (config transcript.language)",
              f"keszult: {str(a.get('transcript_generated_at') or '')[:10]}",
-             "futas: multimedia-source-pipeline (msp), staging",
+             "futas: letolto, staging",
              "figyelem: GEPI atirat, nem a kiado felirata. Az idobelyeg szakasz-szintu.",
              "cue_vege: a KOVETKEZO cue kezdete, az utolsoe a forras hossza — KONVENCIO, nem meres.",
              "cue_kezdet: MERT ertek, de egesz masodpercre kerekitve (a staging transcript.md granularitasa).",
@@ -206,7 +207,7 @@ def info_json(src: dict) -> dict:
     out["_staging"] = {
         "indok": _INDOK, "staging_mappa": os.path.basename(src["mappa"]),
         "source_id": src["integration"].get("source_id") or src["source"].get("source_id"),
-        "zanza_lap": src["lap"], "letoltve": le,
+        "forras_lap": src["lap"], "letoltve": le,
         "format_selector": pl.get("format_selector"), "ffmpeg_used": pl.get("ffmpeg_used"),
         "yt_dlp_version": pl.get("yt_dlp_version"),
         "subtitles_available": m.get("subtitles_available"),
@@ -292,8 +293,8 @@ def forrasjegyzet(video_nev: str, *, cimke: str | None, info: dict | None, hossz
                       f"**{egyezes if egyezes is not None else '—'}**, hangfedettség: "
                       f"**{fedettseg_ if fedettseg_ is not None else '—'}**."]
     else:
-        L.append("**Nincs szövegréteg.** A forrásból nem volt letölthető felirat, ezért a `#t=` horgony gépileg NEM verifikálható "
-                 "(`I20`, `I21`) — a `mfd.py media` ezt találatként jelzi, és ez a jelzés helyes.")
+        L.append("**Nincs szövegréteg.** A forrásból nem volt letölthető felirat, ezért a `#t=` horgony gépileg nem verifikálható; "
+                 "egy ellenőrző eszköz ezt joggal jelezheti.")
     L += ["", SENTINEL, ""]
     return "\n".join(L)
 

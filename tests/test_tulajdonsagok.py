@@ -9,7 +9,13 @@ from core.index import elemzo
 from core.index.indexelo import NemKesz
 from core.index.maszk import FM_RE
 from core.utvonalak import HttpError
-from tests.helpers import alg_core, tmpdir
+from tests.helpers import alg_core, tmpdir, vault_sema
+
+SEMA = vault_sema()
+SEMA_NELKULI = "CLAUDE.md"                                                # ügynök-hordozó fájl: a séma nem vonatkozik rá
+TARTALMI = next(o for o in SEMA["kivetel_osztalyok"] if o.get("tartalmi"))                   # pl. a könyv-jegyzet: saját mezősorrend
+TEMAKOR = next(o for o in SEMA["h1"]["kivetel_osztalyok"] if o.get("source_tartalmaz"))      # a H1 nem a fájlnév, ha a Source ilyen
+H1_KIVETELEK = SEMA["h1"]["kivetel_utvonalak"]
 
 NORMAL = """---
 Tags:
@@ -315,12 +321,19 @@ class Sema(Alap):
         self.assertEqual(self.kodok(r), ["mezosorrend"])
 
     def test_sema_nelkuli_fajl_nincs_ellenorzes(self):
-        r = self.mod("---\nfoo: 1\n---\n", kulcs="bar", ertek="x", ut="AI01 - Workflow System/CLAUDE.md")
+        r = self.mod("---\nfoo: 1\n---\n", kulcs="bar", ertek="x", ut=SEMA_NELKULI)
         self.assertTrue(r["ok"], r)
+
+    def test_sema_nelkuli_nev_barmely_melysegben(self):
+        for ut in ("Sub/CLAUDE.md", "a/b/agents.MD", "Memory.md", "T01/x/MEMORY.md"):
+            with self.subTest(ut):
+                self.assertTrue(self.t.sema.osztaly(ut)["sema_nelkul"])
+        self.assertFalse(self.t.sema.osztaly("T01/CLAUDE.md.bak")["sema_nelkul"])      # csak a teljes fájlnév számít
+        self.assertFalse(self.t.sema.osztaly("T01/Memory-notes.md")["sema_nelkul"])
 
     def test_konyv_jegyzet_osztaly(self):
         fm = "---\nSzerző: x\nMűfaj: y\nRate: 5\nStatus: Olvasva\n---\n"
-        r = self.mod(fm, kulcs="Rate", ertek=4, ut="X03 - Books/The Silo.md")
+        r = self.mod(fm, kulcs="Rate", ertek=4, ut=TARTALMI["utvonal_elotag"][0] + "The Silo.md")
         self.assertTrue(r["ok"], r)           # a könyv-osztálynál a Status értékkészlet nem érvényes
 
     def test_elemez_a_nyitott_szovegrol(self):
@@ -434,22 +447,22 @@ class AuditKapuk(Alap):
         self.assertEqual(h1("T01/Öröklés.md", unicodedata.normalize("NFD", "# Öröklés\n")), [])        # NFD H1 == NFC fájlnév
         self.assertEqual(h1("T01/Jegyzet.md", "Jegyzet\n=======\n"), [])                 # setext H1
         self.assertEqual(h1("T01/Jegyzet.md", "# Elsőként\n\n# Jegyzet\n"), ["h1"])    # az ELSŐ H1 számít
-        for ut in ("AI02 - Log/2026-10-03.md", "X01 - Napló & To-Do/2026-10/Napló/a.md", "AI01 - Workflow System/2.0/A.md",
-                   "Prjct01 - Obsidian/B.md", "AI03 - Memória/C.md", "_Template/Sablon.md"):
-            self.assertEqual(h1(ut, "# Teljesen más\n"), [], ut)                       # kivétel-útvonalak
+        self.assertGreaterEqual(len(H1_KIVETELEK), 1)
+        for ut in [f"{mappa}2026-10-03.md" for mappa in H1_KIVETELEK] + ["_Template/Sablon.md"]:
+            self.assertEqual(h1(ut, "# Teljesen más\n"), [], ut)                       # kivétel-útvonalak (a séma `h1.kivetel_utvonalak`-ja)
         self.assertEqual(h1("_Template/Sablon.md", "---\nTags:\n---\n"), [])           # sablon-váz: H1 nélkül is jó
         self.assertEqual(h1("M03 - Matek/Megoldások/Feladatsor - 18.md", "# Másról szól\n"), [])    # megoldás-sorszámos
         self.assertEqual(h1("M03 - Matek/Megoldások/Szorzattá Alakítás - Megoldások.md", "# Más\n"), ["h1"])
-        self.assertEqual(h1("M03 - Matek/Téma.md", '---\nSource:\n  - "[[emelt matematika témakörök.pdf#page=3]]"\n---\n'
-                                                     "# Hosszú követelmény-szöveg\n"), [])           # érettségi-témakör
+        self.assertEqual(h1("M03 - Matek/Téma.md", '---\nSource:\n  - "[[' + TEMAKOR["source_tartalmaz"] + '#page=3]]"\n---\n'
+                                                     "# Hosszú követelmény-szöveg\n"), [])           # témakör-címes jegyzet
         self.assertEqual(h1("M03 - Matek/Téma.md", "# Hosszú követelmény-szöveg\n"), ["h1"])
         kv = "ATTCHMNTS - quizes/Alma — Kvíz 2026-10-03 1015"
         self.assertEqual(h1(kv + ".md", f"# {kv.split('/')[1]}\n"), [])                      # kvíz: minta és fájlnév-egyezés
         self.assertEqual(h1(kv + " (2).md", f"# {kv.split('/')[1]} (2)\n"), [])
         self.assertEqual(h1(kv + ".md", "# Alma\n"), ["h1"])                                 # nem a minta
         self.assertEqual(h1(kv + ".md", "# Béla — Kvíz 2026-10-03 1015\n"), ["h1"])         # minta igen, a fájlnév nem
-        self.assertEqual(h1("X03 - Books/The Silo.md", "# Part 1: Holston\n"), [])           # könyv: H1-ellenőrzés kikapcsolva
-        self.assertEqual(h1("AI01 - Workflow System/CLAUDE.md", "nincs H1\n"), [])            # séma nélküli fájl
+        self.assertEqual(h1(TARTALMI["utvonal_elotag"][0] + "The Silo.md", "# Part 1: Holston\n"), [])    # tartalmi osztály: H1-ellenőrzés kikapcsolva
+        self.assertEqual(h1(SEMA_NELKULI, "nincs H1\n"), [])                                  # séma nélküli fájl
         self.assertEqual(h1("T01/kep.canvas", "# bármi\n"), [])                              # nem jegyzet
 
 
@@ -616,7 +629,7 @@ class Javaslatok(unittest.TestCase):
     def test_kulcsok_kivetelosztalyban_es_sema_nelkul(self):
         nevek = [k["kulcs"] for k in self.t.kulcs_javaslatok("ATTCHMNTS - quizes/K.md")["kulcsok"] if k["sema"]]
         self.assertEqual(nevek[:4], ["Source", "Kviz", "Modell", "Keszult"])
-        r = self.t.kulcs_javaslatok("AI01 - Workflow System/CLAUDE.md")
+        r = self.t.kulcs_javaslatok(SEMA_NELKULI)
         self.assertFalse(any(k["sema"] for k in r["kulcsok"]))
 
     def test_cimkek_az_ertekkeszlet_elol_a_tobbi_jelolve(self):

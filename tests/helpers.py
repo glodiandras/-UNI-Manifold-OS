@@ -1,4 +1,5 @@
 """Közös segédek: ideiglenes álgyökér (álvault, ál-var/), a valódi vault és var/ nélkül."""
+import json
 import os
 import shutil
 import stat
@@ -33,6 +34,12 @@ def core_indito_szkript() -> str:
     return f"#!/bin/sh\nPYTHONPATH='{REPO}' exec '{sys.executable}' -B -m core \"$@\"\n"
 
 
+def vault_sema() -> dict:
+    """A szállított `config/vault-sema.json` (a séma-motor alap-beállítása): a tesztek a kivételútvonalakat, a sémán kívüli
+    fájlokat és a kivételosztályokat innen veszik, nem beégetett mappanevekből."""
+    return json.loads((REPO / "config" / "vault-sema.json").read_text(encoding="utf-8"))
+
+
 def tmpdir():
     return tempfile.TemporaryDirectory(prefix="mos-teszt-")
 
@@ -46,6 +53,7 @@ def env(*, home: bool = True, **extra):
     állapotfájlok másolata (`mos-allapot-*`) és a bundle-ök a `{backup}`-ra kerülnek, és egy `--selftest`-ben indított core
     a valódi `~/Manifold-backup` rotációját és tartalmát nem érintheti."""
     e = {k: v for k, v in os.environ.items() if not k.startswith(("MOS_", "UV_", "PIP_", "XDG_", "MANIFOLD_"))}
+    e["MOS_FEJLESZTO"] = "1"          # a tesztek Developer módban futnak (a teszt-horgok csak így élnek: core/fejleszto.py)
     gyoker = extra.get("MOS_ROOT")
     if home and "HOME" not in extra:   # a kifejezett HOME= nyer: ál-HOME-ot sem hoz létre (a fő checkoutban a
         # `MOS_ROOT` két szülője a `/Volumes`, oda nem írhat)
@@ -78,37 +86,3 @@ def ir(vault: Path, rp: str, t, mod: str = "w") -> Path:
     else:
         f.write_text(t, encoding="utf-8")
     return f
-
-
-def legacy_eszkozok(cfg=None) -> Path | None:
-    """A legacy `modulok/eszkozok` mappája — csak olvasható referencia, kizárólag a C06 gráf-paritásának
-    (a `mfd.obsidian_graf` futtatása `-B`-vel, bytecode-írás nélkül). A `{work}` alól számolva, a
-    `MOS_LEGACY` (a legacy gyökere) felülírja. A config és a core nem hivatkozhat a legacyre (doctor)."""
-    if os.environ.get("MOS_LEGACY"):
-        gyoker = Path(os.environ["MOS_LEGACY"])
-    else:
-        from core import config
-        gyoker = (cfg or config.load()).path("work") / "Manifold-OS legacy" / "Legacy"
-    p = gyoker / "modulok" / "eszkozok"
-    return p if (p / "mfd.py").is_file() else None
-
-
-LEGACY_GRAF = """
-import sys
-sys.dont_write_bytecode = True
-sys.path.insert(0, sys.argv[1])
-sys.path.insert(0, sys.argv[2])
-import mfd
-from core.index.feloldas import graf_kanonikus
-sys.stdout.buffer.write(graf_kanonikus(mfd.obsidian_graf(sys.argv[3])))
-"""
-
-
-def legacy_graf(eszkozok: Path, vault: Path) -> bytes:
-    """A legacy `obsidian_graf` a `vault`-on, alfolyamatban (`-B`), a 2.0 kanonikus alakjában."""
-    import subprocess
-    p = subprocess.run([sys.executable, "-B", "-c", LEGACY_GRAF, str(eszkozok), str(REPO), str(vault)],
-                       capture_output=True, env={**env(), "PYTHONDONTWRITEBYTECODE": "1"}, timeout=300)
-    if p.returncode != 0:
-        raise RuntimeError(p.stderr.decode("utf-8", "replace")[-2000:])
-    return p.stdout

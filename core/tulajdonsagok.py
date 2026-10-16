@@ -66,6 +66,11 @@ def _datumido_ervenyes(s: str) -> bool:
 
 # ---------------------------------------------------------------- séma
 
+# Ügynök-hordozó fájlok neve (kis-nagybetű nélkül, bármely mélységben): nem vault-jegyzetek, a séma nem vonatkozik rájuk, és gép
+# nem ír beléjük (`gepi_iras._sema_tiltas`). Kód-állandó: a konfig (`sema_nelkuli_nevek`) csak bővítheti, nem szűkítheti.
+UGYNOK_FAJLNEVEK = frozenset({"claude.md", "agents.md", "memory.md"})
+
+
 class Sema:
     """A vault-séma (L33/L34) a konfigból; `osztaly(ut)` adja az útra érvényes szabályt."""
 
@@ -77,6 +82,7 @@ class Sema:
         self.status_gazdai: bool = bool(adat.get("status_gazdai", True))
         self.osztalyok: list[dict] = list(adat.get("kivetel_osztalyok", []))
         self.sema_nelkul: set[str] = {nfc(u) for u in adat.get("sema_nelkuli_utak", [])}
+        self.sema_nelkuli_nevek: frozenset[str] = UGYNOK_FAJLNEVEK | {nfc(n).casefold() for n in adat.get("sema_nelkuli_nevek", [])}
         self.h1: dict = dict(adat.get("h1") or {})            # a H1-szabály (legacy kalibráció, C29.8 T044)
 
     @classmethod
@@ -89,7 +95,7 @@ class Sema:
     def osztaly(self, ut: str) -> dict:
         """`{nev, mezosorrend, ertekek, sema_nelkul}`: a normál jegyzet, egy kivételosztály vagy a séma nélküli fájl."""
         ut = nfc(ut or "")
-        if ut in self.sema_nelkul:
+        if ut in self.sema_nelkul or ut.rsplit("/", 1)[-1].casefold() in self.sema_nelkuli_nevek:
             return {"nev": "sema-nelkuli", "mezosorrend": [], "ertekek": False, "sema_nelkul": True, "h1": False,
                     "h1_minta": None, "h1_egyezzen_fajlnevvel": False}
         for o in self.osztalyok:

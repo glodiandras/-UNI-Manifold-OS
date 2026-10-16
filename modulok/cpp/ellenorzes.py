@@ -146,7 +146,7 @@ class Ellenorzes:
                   "diagnosztika": d["diagnosztika"], "hiba_db": d["hiba_db"], "figyelmeztetes_db": d["figyelmeztetes_db"],
                   "levagva": d["levagva"], "uzenet": c["uzenet"], "kivonat": ""}
         if e.linker_figyelmeztetes():
-            fordit["linker_figyelmeztetes"] = e.linker_figyelmeztetes()      # a régi `rendszer` beállítás (K168) nem marad csendben
+            fordit["linker_figyelmeztetes"] = e.linker_figyelmeztetes()      # a régi `rendszer` beállítás nem marad csendben
         if not fordit_ok:
             fordit["kivonat"] = _kivonat(szoveg, [str(futas)]) if not d["diagnosztika"] or c["allapot"] != "hiba" else ""
             if "unknown target" in szoveg or "could not load TAPI" in szoveg:

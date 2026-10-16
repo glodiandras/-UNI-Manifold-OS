@@ -1,4 +1,4 @@
-"""`bin/mos kartya …` — a kártyamag parancssora (C23a; a felület és a végpontok a C23b-ben).
+"""`bin/mos kartya …` — a kártyamag parancssora.
 
 - `ellenoriz`: a kártyamappa elemzése (a vaulthoz csak olvasva): kártyák, hibák; a DB-hez nem nyúl.
 - `szinkron`: a kártyamappa → `tanulas.sqlite` (a vaultba nem ír).
@@ -44,7 +44,7 @@ def szinkronizal(cfg, _a) -> int:
 
 
 def _media(cfg, kartyak: list[dict]) -> tuple[dict[str, Path], list[str]]:
-    """A kártyák képei a vaultból, a core link-feloldójával (L42) → ({fájlnév: út}, feloldatlanok)."""
+    """A kártyák képei a vaultból, a core link-feloldójával → ({fájlnév: út}, feloldatlanok)."""
     vault = cfg.path("vault")
     fel = feloldas.Feloldo(nfc for nfc, _nyers in feloldas.bejaras(vault))
     nyers = {nfc: n for nfc, n in feloldas.bejaras(vault)}
@@ -75,7 +75,7 @@ def exportal(cfg, a) -> int:
 
 def importal(cfg, a) -> int:
     if not a.proba:
-        print("HIBA: az éles import a C23b-ben jön (előbb a kísérőjegyzet gépi írása); most csak --proba", file=sys.stderr)
+        print("HIBA: az éles import még nem érhető el (előbb a kísérőjegyzet gépi írása kell); most csak --proba", file=sys.stderr)
         return 2
     p = apkg.beolvas(Path(a.fajl), _lepesszam(cfg))
     sajat = sum(1 for k in p["kartyak"] if k["azon"])
@@ -91,7 +91,7 @@ def importal(cfg, a) -> int:
 
 
 def general(cfg, a) -> int:
-    """A feladat-lépés (C23b): kártyák a megadott jegyzetekből, jegyzetenként egy gépi tétel (egy kör). Az automatikus módban a
+    """A feladat-lépés: kártyák a megadott jegyzetekből, jegyzetenként egy gépi tétel (egy kör). Az automatikus módban a
     jegyzet hibája a többit nem állítja meg; a kézi (egy jegyzet) hibája 5-ös kilépés érthető üzenettel."""
     import os
 
@@ -127,13 +127,13 @@ def general(cfg, a) -> int:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="mos kartya", description="Kártyák és FSRS (C23a, C23b)")
+    ap = argparse.ArgumentParser(prog="mos kartya", description="Kártyák és FSRS")
     al = ap.add_subparsers(dest="parancs", required=True)
     g = al.add_parser("general", help="kártyák jegyzetekből a modellel (feladat-lépés: a core-on át ír)")
     g.add_argument("--ut", action="append", required=True)
     g.add_argument("--automatikus", action="store_true")
-    g.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára (D9)")
-    g.add_argument("--modell", help="kifejezett modell (csak próba, D9)")
+    g.add_argument("--proba", action="store_true", help="az írás a vault másolatára (a vault nem változik)")
+    g.add_argument("--modell", help="kifejezett modell (csak próbában)")
     g.add_argument("--stop-fajl")
     g.add_argument("--kijeloles", help="a „Kártyák ebből” kijelölt szövege (csak egy jegyzetnél)")
     al.add_parser("ellenoriz", help="a kártyamappa elemzése (csak olvas)")

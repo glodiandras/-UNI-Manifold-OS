@@ -36,7 +36,7 @@ class DoctorTeszt(unittest.TestCase):
         r = futtat(self.root, self.home)
         self.assertEqual(r["python"].allapot, doctor.OK, r["python"].uzenet)
         self.assertEqual(r["~/Applications, ~/.cache"].allapot, doctor.OK)
-        self.assertEqual(r["legacy var/"].allapot, doctor.OK)
+        self.assertNotIn("legacy var/", r)                                  # a legacy-ellenőrzés kikerült a termékből
         self.assertEqual(r["offline"].allapot, doctor.OK)
 
     def test_rendszer_python_piros(self):
@@ -62,52 +62,30 @@ class DoctorTeszt(unittest.TestCase):
 
     def test_rejtett_mappa_es_a_claude_munkafak_kimaradnak(self):
         """A gyökér alatti rejtett mappa (`.claude/worktrees/…`) nem saját forrás: a doctor nem járja be, és a bennük álló
-        legacy-utas fájl nem ad hamis „legacy var/” hibát."""
+        `~/Applications`-utas fájl nem ad hamis hibát."""
         for rejtett in (".claude/worktrees/x/config", ".rejtett"):
             mappa = self.root / rejtett
             mappa.mkdir(parents=True)
-            (mappa / "y.toml").write_text('ut = "/Volumes/Work/Manifold-OS legacy/Legacy/var"\n~/Applications\n')
+            (mappa / "y.toml").write_text('ut = "~/Applications/x"\n~/.cache\n')
         r = futtat(self.root, self.home)
-        self.assertEqual(r["legacy var/"].allapot, doctor.OK, r["legacy var/"].uzenet)
         self.assertEqual(r["~/Applications, ~/.cache"].allapot, doctor.OK)
         self.assertEqual([p for p in doctor._sajat_fajlok(self.root) if {".claude", ".rejtett"} & set(p.relative_to(self.root).parts)], [])
-        (self.root / "config" / "z.toml").write_text('ut = "/Volumes/Work/Manifold-OS legacy/Legacy/var"\n')
-        self.assertEqual(futtat(self.root, self.home)["legacy var/"].allapot, doctor.HIBA)
-
-    def test_legacy_git_config_piros(self):
-        g = self.root / "var" / "ytdlp.git"
-        g.mkdir()
-        (g / "config").write_text("[core]\n\tworktree = /Volumes/Work/Manifold-OS legacy/Legacy/modulok/ytdlp\n")
-        self.assertEqual(futtat(self.root, self.home)["legacy var/"].allapot, doctor.HIBA)
-
-    def test_regi_worktree_piros(self):
-        g = self.root / "var" / "allapot.git"
-        g.mkdir()
-        (g / "config").write_text("[core]\n\tworktree = /Volumes/Work/Manifold-OS/var/state\n")
-        self.assertEqual(futtat(self.root, self.home)["legacy var/"].allapot, doctor.HIBA)
-
-    def test_legacy_symlink_piros(self):
-        os.symlink("/Volumes/Work/Manifold-OS legacy/Legacy/var/models", self.root / "var" / "models")
-        self.assertEqual(futtat(self.root, self.home)["legacy var/"].allapot, doctor.HIBA)
-
-    def test_legacy_env_piros(self):
-        r = futtat(self.root, self.home, env={"MOS_VAR": "/Volumes/Work/Manifold-OS legacy/Legacy/var"})
-        self.assertEqual(r["legacy var/"].allapot, doctor.HIBA)
+        (self.root / "config" / "z.toml").write_text('ut = "~/.cache/x"\n')                  # a gyökér saját fájlja viszont számít
+        self.assertEqual(futtat(self.root, self.home)["~/Applications, ~/.cache"].allapot, doctor.HIBA)
 
     def test_vault_sema_zold_a_sajat_masolattal(self):
         """T162 (2. audit, C11b): a `[sema] vault` a 2.0 saját `config/vault-sema.json`-jára mutat, és betölthető."""
         r = futtat(self.root, self.home)["vault-séma"]
         self.assertEqual(r.allapot, doctor.OK, r.uzenet)
 
-    def test_vault_sema_a_legacyre_mutat_piros(self):
-        """T162: a legacy kalibrációjára mutató `[sema] vault` HIBA (a 2.0 nem olvashat a legacyből)."""
+    def test_vault_sema_nem_letezo_utra_mutat_piros(self):
+        """T162: a `[sema] vault` nem létező fájlra mutat → HIBA, az út szerepel az üzenetben."""
         toml = self.root / "config" / "os.toml"
         toml.write_text(toml.read_text(encoding="utf-8").replace(
-            'vault = "{os}/config/vault-sema.json"',
-            'vault = "/Volumes/Work/Manifold-OS legacy/Legacy/config/vault-sema.json"'), encoding="utf-8")
+            'vault = "{os}/config/vault-sema.json"', 'vault = "{os}/config/nincs-ilyen-sema.json"'), encoding="utf-8")
         r = futtat(self.root, self.home)["vault-séma"]
         self.assertEqual(r.allapot, doctor.HIBA)
-        self.assertIn("legacy", r.uzenet)
+        self.assertIn("nincs-ilyen-sema.json", r.uzenet)
 
     def test_vault_sema_hianyzo_vagy_hibas_fajl_piros(self):
         sema = self.root / "config" / "vault-sema.json"
@@ -237,10 +215,12 @@ class DoctorTeszt(unittest.TestCase):
                                                  self.root / "runtime" / "python" / "bin" / "python3")}["index"]
         self.assertNotIn("nem olvasható", r.uzenet)
 
-    def test_regi_app_csak_figyelmeztet(self):
+    def test_a_telepitett_app_nem_hamis_riasztas(self):
+        """A `~/Applications` vagy `/Applications` alatti `Manifold.app` a rendes (DMG-s) telepítés: a doctor nem jelzi „régi
+        appként”, és a `~/Applications`-hivatkozás-ellenőrzés sem ad hibát egy önálló app-mappára."""
         (self.home / "Applications" / "Manifold.app").mkdir()
         r = futtat(self.root, self.home)
-        self.assertEqual(r["régi appok"].allapot, doctor.FIGYELEM)
+        self.assertNotIn("régi appok", r)
         self.assertEqual(r["~/Applications, ~/.cache"].allapot, doctor.OK)
 
     def test_git_hianya_piros(self):
@@ -254,22 +234,22 @@ class DoctorTeszt(unittest.TestCase):
         return config.load({"MOS_ROOT": str(self.root), "HOME": str(self.home)})
 
     def _vault(self, obsidian: bool = True) -> Path:
-        v = self.root.parent / "Manifold"
+        v = self._cfg().path("vault")
         if obsidian:
             (v / ".obsidian").mkdir(exist_ok=True)
         return v
 
     def test_nincs_vault_hiba(self):
         """T105: a doctor eddig semmit nem jelzett, ha a beállított vault nem létezik (az SSD nincs csatlakoztatva)."""
-        shutil.rmtree(self.root.parent / "Manifold")
+        shutil.rmtree(self._cfg().path("vault"))
         r = futtat(self.root, self.home)["vault"]
         self.assertEqual(r.allapot, doctor.HIBA)
         self.assertIn("nincs vault", r.uzenet)
-        self.assertIn(str(self.root.parent / "Manifold"), r.uzenet)
-        self.assertIn("csatlakoztatva az SSD", r.uzenet)
+        self.assertIn(str(self._cfg().path("vault")), r.uzenet)
+        self.assertIn("csatlakoztatva a kötet", r.uzenet)
 
     def test_nincs_vault_munkafa_modban_info(self):
-        shutil.rmtree(self.root.parent / "Manifold")
+        shutil.rmtree(self._cfg().path("vault"))
         r = futtat(self.root, self.home, env={"MOS_MUNKAFA": "1"})["vault"]
         self.assertEqual(r.allapot, doctor.INFO)
         self.assertIn("munkafa", r.uzenet)
@@ -312,7 +292,7 @@ class DoctorTeszt(unittest.TestCase):
 
     def test_eltero_core_worktree_hiba(self):
         repo = self._tar()
-        repo.git("config", "core.worktree", "/Volumes/Mas/Manifold")
+        repo.git("config", "core.worktree", "/mas/hely/vault")
         r = futtat(self.root, self.home)["pillanatkép (vault)"]
         self.assertEqual(r.allapot, doctor.HIBA)
         self.assertIn("core.worktree", r.uzenet)
@@ -471,7 +451,7 @@ class CppDoctorTeszt(unittest.TestCase):
                                                     self.root / "runtime" / "python" / "bin" / "python3")}
         self.assertEqual(r["C++ linker"].allapot, doctor.FIGYELEM)
         self.assertIn("rendszer", r["C++ linker"].uzenet)
-        self.assertIn("K168", r["C++ linker"].uzenet)
+        self.assertIn("lld", r["C++ linker"].uzenet)
 
     def test_a_doctor_nem_hasznalja_a_rendszer_fordítóját(self):
         """A doctor a `runtime/llvm`-et nézi, a PATH-on talált fordítót nem (és programot csak az LLVM-ből futtat)."""
@@ -593,22 +573,22 @@ class KiadasDoctorTeszt(unittest.TestCase):
     def test_preferences_plist_megengedett_kivetel_info(self):
         pref = self.home / "Library" / "Preferences"
         pref.mkdir(parents=True)
-        (pref / "local.manifold-os.app.plist").write_bytes(b"bplist00")
+        (pref / f"{config.BUNDLE_ID}.plist").write_bytes(b"bplist00")
         r = self.r()["home írások"]
         self.assertEqual(r.allapot, doctor.INFO)
         self.assertIn("megengedett kivétel", r.uzenet)
         self.assertIn("Preferences", r.uzenet)
 
     def test_nem_engedett_home_iras_figyelmeztet(self):
-        mentett = self.home / "Library" / "Saved Application State" / "local.manifold-os.app.savedState"
+        mentett = self.home / "Library" / "Saved Application State" / f"{config.BUNDLE_ID}.savedState"
         mentett.mkdir(parents=True)
-        web = self.home / "Library" / "WebKit" / "local.manifold-os.app"
+        web = self.home / "Library" / "WebKit" / config.BUNDLE_ID
         web.mkdir(parents=True)
         (self.home / "Library" / "Caches" / "mas.app").mkdir(parents=True)             # idegen app: nem a miénk
         r = self.r()["home írások"]
         self.assertEqual(r.allapot, doctor.FIGYELEM)
-        self.assertIn("Saved Application State/local.manifold-os.app.savedState", r.uzenet)
-        self.assertIn("WebKit/local.manifold-os.app", r.uzenet)
+        self.assertIn(f"Saved Application State/{config.BUNDLE_ID}.savedState", r.uzenet)
+        self.assertIn(f"WebKit/{config.BUNDLE_ID}", r.uzenet)
         self.assertNotIn("mas.app", r.uzenet)
 
     def test_tiszta_home_nincs_tetel(self):
@@ -616,10 +596,10 @@ class KiadasDoctorTeszt(unittest.TestCase):
 
     # --- az aláírás fajtája
     def test_alairas_tipus(self):
-        adhoc = "Executable=/x/Manifold\nIdentifier=local.manifold-os.app\nSignature=adhoc\nTeamIdentifier=not set\n"
-        stabil = "Executable=/x/Manifold\nAuthority=Manifold Helyi Alairas\nSignature size=1520\nTeamIdentifier=not set\n"
+        adhoc = f"Executable=/x/Manifold\nIdentifier={config.BUNDLE_ID}\nSignature=adhoc\nTeamIdentifier=not set\n"
+        stabil = "Executable=/x/Manifold\nAuthority=Developer ID Application: Example (TEAM123456)\nSignature size=1520\nTeamIdentifier=TEAM123456\n"
         self.assertEqual(doctor.alairas_tipus(adhoc), ("adhoc", ""))
-        self.assertEqual(doctor.alairas_tipus(stabil), ("identitas", "Manifold Helyi Alairas"))
+        self.assertEqual(doctor.alairas_tipus(stabil), ("identitas", "Developer ID Application: Example (TEAM123456)"))
         self.assertEqual(doctor.alairas_tipus("code object is not signed at all"), ("ismeretlen", ""))
 
     # --- a rendszer-gittől való függés kimondva
@@ -627,7 +607,6 @@ class KiadasDoctorTeszt(unittest.TestCase):
         r = self.r()["git függőség"]
         self.assertEqual(r.allapot, doctor.INFO)
         self.assertIn("rendszer-git", r.uzenet)
-        self.assertIn("docs/KIADAS.md", r.uzenet)
 
     def test_fuggoseg_hordozhato_git_rendben(self):
         van = shutil.which("git")

@@ -64,7 +64,7 @@ TURES_GB = 0.2                 # a mért csúcs és a regiszterbeli `csucs_gb` k
 def feladat_modul(cfg: config.Config, feladat: str):
     ut = cfg.path("modulok") / "eval" / feladat / "feladat.py"
     if not ut.is_file():
-        raise FileNotFoundError(f"nincs ilyen aranyhalmaz-feladat: {ut} (a C18 készíti)")
+        raise FileNotFoundError(f"nincs ilyen aranyhalmaz-feladat: {ut} (a feladat mappája: modulok/eval/<feladat>/)")
     spec = importlib.util.spec_from_file_location(f"mos_eval_{feladat}", ut)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -277,19 +277,19 @@ def rogzit(cfg: config.Config, ert: dict, kalibralt: bool | None, megjegyzes: st
     `kalibralt`: `True` felveszi, `False` kifejezetten leveszi, `None` nem változtat a jelen (`Tabla.rogzit`)."""
     ervenyes = bool(ert.get("ervenyes"))
     if not ert.get("teljes"):
-        raise ValueError(f"csak a teljes halmaz értékelése rögzíthető (C19, T050): {ert.get('n')}/"
+        raise ValueError(f"csak a teljes halmaz értékelése rögzíthető: {ert.get('n')}/"
                          f"{ert.get('tetelszam', '?')} tétel — `--limit` és `--tetel` nélkül értékeld")
     if kalibralt and vazlat(str(ert.get("aranyhalmaz_verzio") or "")):
-        raise ValueError(f"vázlat-aranyhalmazon ({ert.get('aranyhalmaz_verzio')}) nem adható kalibrált jel (C19, T050)")
+        raise ValueError(f"vázlat-aranyhalmazon ({ert.get('aranyhalmaz_verzio')}) nem adható kalibrált jel")
     if kalibralt and not ervenyes:
-        raise ValueError("érvénytelen értékelés nem kaphat kalibrált jelet (C18.1): "
+        raise ValueError("érvénytelen értékelés nem kaphat kalibrált jelet: "
                          + (ervenyesseg.osszegzes(ert["ervenyesseg"]) if ert.get("ervenyesseg") else "nincs kapu"))
     alap = megjegyzes or f"mos eval, n={ert['n']}"
     fig = csucs_figyelmeztetes(cfg, ert)
     if fig:
         alap += f"; FIGYELEM: {fig}"
     if not ervenyes:
-        alap = "érvénytelen (C18.1): " + (ervenyesseg.osszegzes(ert["ervenyesseg"]) if ert.get("ervenyesseg")
+        alap = "érvénytelen: " + (ervenyesseg.osszegzes(ert["ervenyesseg"]) if ert.get("ervenyesseg")
                                           else "nincs érvényességi kapu") + f"; {alap}"
     t = kalibracio.megnyit(cfg)
     try:
@@ -322,7 +322,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="auto (alap): aktív használatkor szünetel; interaktiv: nem vár")
     ap.add_argument("--rogzit", action="store_true", help="a pontszám a kalibrációs táblába (var/router.sqlite)")
     jel = ap.add_mutually_exclusive_group()
-    jel.add_argument("--kalibralt", action="store_true", help="a rögzített sor „kalibrált” jelet kap (D9)")
+    jel.add_argument("--kalibralt", action="store_true", help="a rögzített sor „kalibrált” jelet kap")
     jel.add_argument("--kalibralt-le", action="store_true",
                      help="a rögzített sor kalibrált jelét kifejezetten leveszi; e nélkül (és --kalibralt nélkül) a jel "
                           "változatlan marad, ha a sor ugyanarra az aranyhalmaz-verzióra már kalibrált")
@@ -332,13 +332,12 @@ def main(argv: list[str] | None = None) -> int:
                     help="próbához a kérés-beállítás felülírása (pl. repetition_penalty=1.1); --rogzit nélkül")
     ap.add_argument("--tetel", action="append", metavar="ID", help="csak ezek a tételek (ismételhető)")
     ap.add_argument("--csak-ertekel", action="store_true",
-                    help="nem indít workert és nem generál: a meglévő sorokat értékeli (K27 utáni újrapontozás; a hiányzó tétel érvénytelen)")
+                    help="nem indít workert és nem generál: a meglévő sorokat értékeli (újrapontozás; a hiányzó tétel érvénytelen)")
     a = ap.parse_args(argv)
     if (a.kalibralt or a.kalibralt_le) and not a.rogzit:
         ap.error("a --kalibralt és a --kalibralt-le csak a --rogzit mellett értelmes")
     if a.rogzit and (a.kimenet or a.beallit or a.tetel or a.limit):
-        ap.error("a --rogzit csak az éles kimenettel, a teljes halmazon (--limit, --tetel és --beallit nélkül) megy "
-                 "(C18.1, C19)")
+        ap.error("a --rogzit csak az éles kimenettel, a teljes halmazon (--limit, --tetel és --beallit nélkül) megy")
     cfg = config.load()
     kimenet = Path(cfg.expand(a.kimenet)) if a.kimenet else None
     try:

@@ -1,21 +1,21 @@
-"""A grafikon-modul parancssora (C35a): `bin/mos grafikon <parancs>`. Csak olvas; a vaultba nem ír, modellt nem tölt.
+"""A grafikon-modul parancssora: `bin/mos grafikon <parancs>`. Csak olvas; a vaultba nem ír, modellt nem tölt.
 
     felismer "<LaTeX képlet>"                   a képlet → plot-blokk javaslat (JSON)
     jegyzet <fájl.md> [--mindet]                a jegyzet képletei → javaslatok sorral (JSON)
     elemez "<kifejezés>" <alsó> <felső>         zérushely, szélsőérték, aszimptota az ablakon (JSON)
     elemez-json                                 stdin: {"fuggvenyek": ["…"], "ablak": [a, b]} → stdout: {"fuggvenyek": [...]}
                                                 (a core `POST /api/grafikon/elemzes` ezt hívja alfolyamatként)
-    arany [--json]                              a C18 `grafikon` aranyhalmaza + a szintetikus halmaz mérése a homokozón át
+    arany [--json]                              a `grafikon` aranyhalmaza + a szintetikus halmaz mérése a homokozón át
     vektorok [--ir]                             a Python ↔ TypeScript közös vektorok ellenőrzése (--ir: előállítása)
-    terv <fájl.md>                              C35b-mag: a jegyzetbe beírható blokkok terve (csak olvas; JSON)
+    terv <fájl.md>                              a jegyzetbe beírható blokkok terve (csak olvas; JSON)
     beiras <vault-út>  [--proba]                a jegyzet blokkjainak beírása a gépi-írás szolgáltatáson át (MOS_CORE_URL kell);
-                                                alapból csak terv, `--proba`: az írás a vault APFS-klónjára megy (D9)
+                                                alapból csak terv, `--proba`: az írás a vault másolatára megy
     automatikus [--szaraz] [--proba] [--max N] [--ut JEGYZET…] [--modell-ag] [--modell M]
                                                 az automatikus mód egy futása; alapból csak döntések (szárazon), `--proba`: klónra
                                                 ír; az éles írás (`--eles`) csak a feladatsor lépéseként (MOS_FELADAT) indul;
                                                 `--ut`: a közös ütemező kijelölte jegyzetek (nélküle a vault bejárása és a közös döntés)
     modell-meres --modell M [--keret munka|tavol] [--ki F.json] [--limit N]
-                                                a modell-ág mérése a C18 képleteken (workerrel; a vaultba nem ír)
+                                                a modell-ág mérése az aranyhalmaz képletein (workerrel; a vaultba nem ír)
     tiltolista                                  a tiltott képletek listája (csak olvas; a levétel a vezérlő API-ján át)
     modell-ellenorzes "<képlet>" <blokk.txt>    egy (modell által adott) blokk-törzs négy kapuja a felismerő képletével (csak olvas)
 
@@ -232,7 +232,7 @@ def main(argv=None, hk=None, stdin=None) -> int:
     q.add_argument("fajl")
     q = s.add_parser("beiras")
     q.add_argument("ut")
-    q.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára megy (D9)")
+    q.add_argument("--proba", action="store_true", help="az írás a vault másolatára megy (a vault nem változik)")
     q = s.add_parser("automatikus")
     q.add_argument("--szaraz", action="store_true", help="csak a döntések (alap, ha sem --proba, sem --eles)")
     q.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára megy")
@@ -240,7 +240,7 @@ def main(argv=None, hk=None, stdin=None) -> int:
     q.add_argument("--max", type=int, default=None, help="egy futásban legfeljebb ennyi jegyzet")
     q.add_argument("--stop-fajl", default=None)
     q.add_argument("--ut", action="append", default=None, help="a feldolgozandó jegyzet (ismételhető; a közös ütemező adja)")
-    q.add_argument("--modell-ag", action="store_true", help="a modell-ág is fut (kézi/próba módban a kimenete próba, D9)")
+    q.add_argument("--modell-ag", action="store_true", help="a modell-ág is fut (kézi/próba módban a kimenete próba)")
     q.add_argument("--modell", default=None, help="kifejezett modell a modell-ághoz (nem kalibrált: próba)")
     s.add_parser("tiltolista")
     q = s.add_parser("modell-ellenorzes")

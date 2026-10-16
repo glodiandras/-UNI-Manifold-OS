@@ -43,8 +43,10 @@ def _terv(cfg: Config, p: dict, stop: str):
         raise tasks.Invalid("A `modell_ag` kézzel csak `proba` mellett kérhető (az éles modell-ág a beállítás kapcsolója).")
     utak = p.get("utak")
     if utak is not None:
-        from .automatika import tartalmi_ut
-        if (not isinstance(utak, list) or not 1 <= len(utak) <= MAX_UT or not all(_rel_md(u) and tartalmi_ut(u) for u in utak)):
+        from .automatika import kisero_elotag, tartalmi_ut
+        elotag = kisero_elotag(cfg)
+        if (not isinstance(utak, list) or not 1 <= len(utak) <= MAX_UT
+                or not all(_rel_md(u) and tartalmi_ut(u, elotag) for u in utak)):
             raise tasks.Invalid(f"Az `utak` 1–{MAX_UT} tartalmi jegyzet relatív útja legyen.")
     argv = [sys.executable, "-B", str(cfg.path("modulok") / "grafikon" / "__main__.py"), "automatikus", "--eles",
             "--stop-fajl", stop]

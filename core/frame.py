@@ -255,7 +255,7 @@ def snapshot_frame(cfg: Config, message: str, item: str, source: str = "pult", l
         yield result
         if not isinstance(result.get("utak"), (list, tuple)):
             raise ValueError("a snapshot_frame törzsének meg kell adnia a gépi commit útlistáját (`e[\"utak\"] = [...]`): "
-                             "útlista nélkül gépi commit nem készül (L13)")
+                             "útlista nélkül gépi commit nem készül")
         azon = kor or new_id("LEPES")
         tr = {snapshot.TRAILER_RUN: azon, snapshot.TRAILER_ITEM: item, "Mos-Forras": source}
         if os.environ.get("MOS_FELADAT"):       # a feladatsor lépése: a vezérlő ebből listázza a feladat változásait (C17)

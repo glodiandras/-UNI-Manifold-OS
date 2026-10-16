@@ -5,7 +5,7 @@ szakasz `hiba` mezejét tölti, a többi szakasz él):
 
 - `napi`        a napi jegyzet útja, léte és rövid kivonata (a létrehozás a `naplo.py`-é);
 - `dolgozatok`  a naptár „határidő” kategóriájának következő eseményei (az első a nagy kártya) és a hozzájuk
-                kötött felkészülési jegyzet (L59: `<hónap>/Dolgozatok/ÉÉÉÉ-HH-NN - Tantárgy.md`);
+                kötött felkészülési jegyzet (a `[naplo] dolgozat_mappa` alatt: `<hónap>/<dolgozat_mappa>/ÉÉÉÉ-HH-NN - Tantárgy.md`);
 - `naptar`      a mai események (a „kizárt” kategória — ünnepnap, születésnap — kimarad) és az adat kora;
 - `feladatok`   a mai és a lejárt nyitott feladatok az index feladat-tábláiból;
 - `naptar_allapot` a szinkron állapota (C29): segéd, engedély, utolsó kör, hiba;

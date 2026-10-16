@@ -292,26 +292,20 @@ class SorTest(Alap):
         with self.assertRaises(tasks.Invalid):
             q.stop("F-nincs")
 
-    def test_legacy_elozmeny_egyszer(self):
+    def test_regi_pult_naplo_nincs_importalva(self):
+        """A feladatsor csak a saját tartós állapotát tölti be: egy régi pult-napló (`{runs}/pult/feladatok.jsonl`) nem
+        kerül be a listába, nincs `legacy` forrású feladat (a legacy-híd a termékből kikerült)."""
         pult = self.cfg.path("runs") / "pult"
         pult.mkdir(parents=True)
-        sor = {"id": "F-20260924-083756-1", "tipus": "video_staging", "cim": "Letöltött videók integrálása",
-               "osszegzes": "Zanza", "parameterek": {"proba": False}, "figyelmeztetes": [], "lepesek": [],
-               "allapot": "fut", "letrehozva": "2026-09-24T08:37:56", "szazalek": 10.0, "lepes_i": 0,
-               "vault_ir": True, "kulturalt_stop": True}
-        kesz = dict(sor, id="F-20260924-084008-1", allapot="kesz", szazalek=100.0)
-        (pult / "feladatok.jsonl").write_text("\n".join(json.dumps(x, ensure_ascii=False) for x in
-                                                        (sor, dict(sor, allapot="kesz"), kesz)) + "\nnem json\n",
-                                              encoding="utf-8")
-        (pult / "F-20260924-084008-1.log").write_text("régi sor\n", encoding="utf-8")
+        sor = {"id": "F-20260924-083756-1", "tipus": "video_staging", "cim": "Régi feladat", "osszegzes": "x",
+               "parameterek": {}, "figyelmeztetes": [], "lepesek": [], "allapot": "kesz", "letrehozva": "2026-09-24T08:37:56",
+               "szazalek": 100.0, "lepes_i": 0, "vault_ir": True, "kulturalt_stop": True}
+        (pult / "feladatok.jsonl").write_text(json.dumps(sor, ensure_ascii=False) + "\nnem json\n", encoding="utf-8")
+        (pult / "F-20260924-083756-1.log").write_text("régi sor\n", encoding="utf-8")
         q = self.sor()
-        l = {d["id"]: d for d in q.list()}
-        self.assertEqual(l["F-20260924-083756-1"]["allapot"], "kesz")    # az utolsó sor a végállapot
-        self.assertEqual(l["F-20260924-084008-1"]["forras"], "legacy")
-        self.assertTrue(l["F-20260924-084008-1"]["vault_ir"])
-        self.assertEqual(q.detail("F-20260924-084008-1")["sorok"], ["régi sor"])
+        self.assertEqual(q.list(), [])
         q.shutdown(timeout=5)
-        self.assertEqual(len(self.sor().list()), 2)                      # másodszor nem importál
+        self.assertEqual(self.sor().list(), [])                          # újraindítás után sem
 
 
 _ARVA_KOD = """

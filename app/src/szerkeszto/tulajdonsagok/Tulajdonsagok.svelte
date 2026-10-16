@@ -259,7 +259,7 @@
     <span class="figy-ikon"><Ikon ikon={TriangleAlert} meret={14} /></span>
     <div class="figy-szoveg">
       {#each fuggo.problemak as p, i (i)}<p>{p.uzenet}</p>{/each}
-      <p class="figy-info">A vault sémája szerint ez eltérés; a legacy séma-próba találatot ad rá.</p>
+      <p class="figy-info">A vault sémája szerint ez eltérés; a vault-ellenőrző találatot ad rá.</p>
       <div class="figy-gombok">
         <button type="button" class="m-gomb semleges gomb" onclick={() => void m.megerosit()}>Mégis beírom</button>
         <button type="button" class="m-gomb semleges gomb halvany" onclick={() => m.elvet()}>Mégse</button>

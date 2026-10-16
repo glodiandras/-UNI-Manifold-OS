@@ -379,6 +379,19 @@ describe('a feladatlista és a részlet', () => {
     expect(screen.getByText('Még nincs naplósor.')).toBeTruthy();
   });
 
+  it('a más eredetű (importált) feladat semleges magyarázatot kap a hiányzó változásról és naplóról', async () => {
+    const regi = feladat('F-9', { allapot: 'kesz', cim: 'Régi', forras: 'import' });
+    feladatsor.lista = [regi];
+    valaszok['GET /api/feladatok/F-9'] = () => valasz({ ...regi, sorok: [], tol: 0, osszes_sor: 0 });
+    valaszok['GET /api/feladatok/F-9/valtozasok'] = () => valasz({ feladat: 'F-9', korok: [], nincs_tar: false });
+    const { context } = kornyezet();
+    render(ManifoldLap, { context });
+    await fireEvent.click(screen.getByRole('button', { name: /Régi/ }));
+    await screen.findByText('Ehhez a feladathoz nem érhető el változás-előzmény.');
+    expect(screen.getByText('Ehhez a feladathoz nincs elérhető napló.')).toBeTruthy();
+    expect(screen.queryByText('Nem írt a vaultba.')).toBeNull();
+  });
+
   it('a rendszer tartalma nem veszi el a fókuszt és az Esc nem zár be fület', async () => {
     const { context, felulet } = kornyezet();
     felulet.munkaterulet.megnyitNezet('manifold');

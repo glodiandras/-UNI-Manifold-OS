@@ -14,6 +14,7 @@ from modulok.osszefoglalas import ellenorzes as EL
 from modulok.osszefoglalas import formatum as FM
 from modulok.osszefoglalas import futtat as F
 from modulok.osszefoglalas import lanc as L
+from tests.eval_segedek import aranyt_igenyel
 from tests.helpers import alg_core, ir, tmpdir
 from tests.test_osszefoglalas_lanc import A1, A2, A3, CEL, JEGYZET, Q2, RP, valasz
 
@@ -378,6 +379,7 @@ class FeladatTest(unittest.TestCase):
 
 
 
+@aranyt_igenyel("szoveg")
 class MeresTest(unittest.TestCase):
     def test_mer_jegyzet_alakja(self):
         """A mérés az éles láncot futtatja a fagyasztott arany-jegyzeten: az álmodell jelöltjei (idézetük nincs a jegyzetben) a kapuk

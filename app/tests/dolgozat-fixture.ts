@@ -54,7 +54,7 @@ export function reszlet(felul: Partial<Reszlet> = {}): Reszlet {
     naptar: { utolso_szinkron: '2026-10-03T06:00:00+02:00', regi: false },
     adatok: {
       kartya: { van: false, ok: 'még nincs kártya: a tanulas.sqlite nem létezik' },
-      kviz: { van: false, ok: 'nincs kvíz-adatforrás (a kvíz a C22-vel érkezik)' },
+      kviz: { van: false, ok: 'nincs kvíz-adatforrás' },
       tracker: { van: false, ok: 'még nincs tracker-adat' },
     },
     figyelmeztetesek: [],

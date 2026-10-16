@@ -50,6 +50,7 @@ enum HelyiMenu {
         ervenyesId(id) ? "window.manifold?.parancs?.(\"\(id)\")" : nil
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata: → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -77,6 +78,7 @@ enum HelyiMenu {
         egyez("parancs JS hibás", parancsJs("a\")"), nil)
         return hibak
     }
+#endif
 }
 
 /// A `WKWebView`, amely a natív helyi menü végére fűzi a felület által küldött Manifold-parancsokat.

@@ -1,11 +1,11 @@
 """Tartós feladatsor: SQLite, prioritás, erőforrás-szabály, alfolyamatos worker, haladás WS-en.
 
-A legacy pult futtatójának (`feladatok.Futtato`) utódja, három bővítéssel: a sor tartós (SQLite, a
+Egy feladatfuttató, három tulajdonsággal: a sor tartós (SQLite, a
 core újraindítása után is megvan), prioritásos, és egyszerre több feladat futhat — de **egyszerre
 egy modelligényes** (`modell`) és **egy vault-író** (`vault`) feladat, összesen `max_parhuzamos`.
 
-Minden lépés külön alfolyamat (a core maga modellt soha nem tölt be, L22). A folyamat-protokoll a
-legacyé (L54): a `[manifold-progress] <szám>%` sor a haladás, a `Riport: <…riport.json>` sor a riport,
+Minden lépés külön alfolyamat (a core maga modellt soha nem tölt be, L22). A folyamat-protokoll:
+a `[manifold-progress] <szám>%` sor a haladás, a `Riport: <…riport.json>` sor a riport,
 a stop-fájl megjelenésekor a lánc a folyamatban lévő tétel UTÁN áll meg. Az azonnali leállítás
 SIGTERM a folyamatcsoportnak, 10 s után SIGKILL.
 
@@ -232,7 +232,6 @@ class Queue:
         self._arva_szal: threading.Thread | None = None
         self._migrate()
         self._recover()
-        self._import_legacy()
         if self._db.execute("SELECT 1 FROM feladat WHERE allapot='sorban' LIMIT 1").fetchone():
             self._timer = threading.Timer(self.start_delay, self._ensure_thread)
             self._timer.daemon = True
@@ -306,42 +305,6 @@ class Queue:
         except Exception:  # noqa: BLE001 — a worker elérhetetlensége nem akaszthatja a leállítást
             pass
 
-    def _import_legacy(self) -> None:
-        """A legacy pult feladatnaplója (L53) előzményként, egyszer. Soronként a `Feladat` publikus alakja;
-        egy feladat több sort is írhatott — az utolsó a végállapot."""
-        f = self.cfg.path("runs") / "pult" / "feladatok.jsonl"
-        with self._lock:
-            if self._db.execute("SELECT 1 FROM meta WHERE kulcs='legacy_import'").fetchone() or not f.exists():
-                return
-            utolso: dict[str, dict] = {}
-            for ln in f.read_text(encoding="utf-8", errors="replace").splitlines():
-                try:
-                    d = json.loads(ln)
-                except ValueError:
-                    continue
-                if isinstance(d, dict) and d.get("id") and d.get("tipus"):
-                    utolso[d["id"]] = d
-            self._db.execute("BEGIN")
-            for d in utolso.values():
-                allapot = d.get("allapot") if d.get("allapot") in ALLAPOTOK else "megszakadt"
-                hiba = d.get("hiba")
-                if allapot in ("sorban", "fut"):
-                    allapot, hiba = "megszakadt", "a pult leállt, mielőtt a feladat véget ért"
-                self._db.execute(
-                    "INSERT OR IGNORE INTO feladat (id, tipus, cim, osszegzes, parameterek, figyelmeztetes, lepesek, "
-                    "eroforras, kulturalt_stop, allapot, letrehozva, indult, vegzett, szazalek, lepes_i, kilepes, hiba, "
-                    "riport, leallitas_kerve, forras) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'legacy')",
-                    (d["id"], d["tipus"], d.get("cim") or d["tipus"], d.get("osszegzes") or "",
-                     json.dumps(d.get("parameterek") or {}, ensure_ascii=False),
-                     json.dumps(d.get("figyelmeztetes") or [], ensure_ascii=False),
-                     json.dumps(d.get("lepesek") or [], ensure_ascii=False),
-                     json.dumps(["vault"] if d.get("vault_ir") else []), int(bool(d.get("kulturalt_stop"))),
-                     allapot, d.get("letrehozva") or "", d.get("indult"), d.get("vegzett"),
-                     float(d.get("szazalek") or 0), int(d.get("lepes_i") or 0), d.get("kilepes"), hiba,
-                     d.get("riport"), int(bool(d.get("leallitas_kerve")))))
-            self._db.execute("INSERT INTO meta VALUES ('legacy_import', ?)", (f"{_most()} · {len(utolso)} feladat",))
-            self._db.execute("COMMIT")
-
     # -------------------------------------------------------- olvasás
 
     def _row(self, fid: str) -> dict | None:
@@ -387,8 +350,7 @@ class Queue:
             return [self._row(i) for i in ids]
 
     def _logfile(self, d: dict) -> Path:
-        base = self.cfg.path("runs") / "pult" if d.get("forras") == "legacy" else self.logdir
-        return base / f"{d['id']}.log"
+        return self.logdir / f"{d['id']}.log"
 
     def detail(self, fid: str, since: int = 0) -> dict | None:
         """A feladat a naplósoraival (`since`-től). A haladásjelző sorok nincsenek a naplóban."""

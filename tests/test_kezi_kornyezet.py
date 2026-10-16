@@ -17,7 +17,7 @@ from unittest import mock
 
 from core import config, frame, snapshot
 from core.modell import beallitas as B
-from tests.helpers import REPO, alg_core, env as tiszta_env, tmpdir
+from tests.helpers import REPO, alg_core, alg_gyoker, env as tiszta_env, tmpdir
 
 KEZI = REPO / "tests" / "kezi"
 sys.path.insert(0, str(KEZI))
@@ -50,6 +50,40 @@ def _szkriptek() -> list[Path]:
 
 def _utak_kulcsai() -> set[str]:
     return set(config.load({"MOS_ROOT": str(REPO)}).data["utak"])
+
+
+class MunkafaEsLegacy(unittest.TestCase):
+    """A fejlesztői kézi kapuk (F2): a munkafa-mód a fő checkout SAJÁT konfigjából veszi a vaultot (nincs beégetett mappanév), és a
+    régi telepítés referenciája kizárólag a `MOS_LEGACY`-ból jön (nincs alapértelmezett hely)."""
+
+    def test_munkafa_forras_a_fo_checkout_konfigjabol_veszi_a_vaultot(self):
+        with tmpdir() as t:
+            fo = alg_gyoker(t)                                           # a „fő checkout”
+            munkafa = Path(t) / "munkafa"
+            munkafa.mkdir()
+            (munkafa / ".git").write_text(f"gitdir: {fo}/.git/worktrees/x\n")
+            kimenet = mock.Mock(returncode=0, stdout=f"{fo}/.git\n")
+            with mock.patch.object(K, "REPO", munkafa), mock.patch.object(K.subprocess, "run", return_value=kimenet):
+                ki = K.munkafa_forras({"A": "b"})
+            vault = config.load({"MOS_ROOT": str(fo)}).path("vault")
+            self.assertEqual(ki["MOS_VAULT"], str(vault))
+            self.assertEqual(ki["MOS_VAULT_GIT"], str(fo / "var" / "vault.git"))
+            self.assertEqual(ki["A"], "b")
+            self.assertNotIn("MOS_LEGACY", ki)                           # a régi telepítést sosem találgatja
+            with mock.patch.object(K, "REPO", munkafa), mock.patch.object(K.subprocess, "run", return_value=kimenet):
+                self.assertEqual(K.munkafa_forras({"MOS_VAULT": "/mas"})["MOS_VAULT"], "/mas")   # a hívó kulcsa marad
+
+    def test_a_legacy_referencia_csak_a_mos_legacy_bol_jon(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("MOS_LEGACY", None)
+            self.assertIsNone(K.legacy_eszkozok())
+        with tmpdir() as t:
+            esz = Path(t) / "modulok" / "eszkozok"
+            esz.mkdir(parents=True)
+            with mock.patch.dict(os.environ, {"MOS_LEGACY": t}):
+                self.assertIsNone(K.legacy_eszkozok())                   # nincs benne mfd.py
+                (esz / "mfd.py").write_text("")
+                self.assertEqual(K.legacy_eszkozok(), esz)
 
 
 class AstOr(unittest.TestCase):

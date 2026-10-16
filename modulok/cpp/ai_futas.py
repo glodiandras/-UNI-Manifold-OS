@@ -132,7 +132,7 @@ class AIFutas:
                 elif e.get("tipus") == "vege":
                     nev = e.get("modell") or nev
                     if e.get("proba"):
-                        raise Hiba("nincs_kalibralt", "a worker próbaként futtatta a modellt: élesben csak kalibrált modell (D9)")
+                        raise Hiba("nincs_kalibralt", "a worker próbaként futtatta a modellt: élesben csak kalibrált modell fut")
                 elif e.get("tipus") == "hiba":
                     raise Hiba("modell_hiba", str(e.get("hiba") or "a generálás hibával állt meg"))
         except kliens.KliensHiba as exc:

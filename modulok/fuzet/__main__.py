@@ -1,4 +1,4 @@
-"""A füzetlánc parancssora (C21): `bin/mos fuzet <parancs>`.
+"""A füzetlánc parancssora: `bin/mos fuzet <parancs>`.
 
     lanc [ÚT…] [--proba] [--cel <jegyzet.md>] [--olvaso M] [--valaszto M] [--atirat M] [--max N] [--stop-fajl F]
         a figyelt mappák (vagy a megadott mappák/fájlok) új fotóinak köre; `--cel`: „Beszúrás az aktív jegyzetbe” (nincs választás)
@@ -38,7 +38,7 @@ KERES_HIBA = 64
 def _lanc(cfg, a) -> Lanc:
     kif = {"fuzet_fejezet": a.olvaso, "fuzet_valaszto": getattr(a, "valaszto", None), "ocr_kezi": getattr(a, "atirat", None)}
     if any(kif.values()) and not a.proba:
-        raise SystemExit("kifejezett modell csak próbában (--proba) futhat (D9)")
+        raise SystemExit("kifejezett modell csak próbában (--proba) futhat")
     if not a.proba and not os.environ.get("MOS_FELADAT"):
         raise SystemExit("az éles írás csak a feladatsor lépéseként indul (a vezérlőből); kézzel: --proba")
     return Lanc(cfg, proba=a.proba, kifejezett=kif, cel=getattr(a, "cel", None), stop=Stop(a.stop_fajl),
@@ -76,7 +76,7 @@ def cmd_kivag(cfg, a) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="mos fuzet", description="füzetfotók bekötése a vault elméleti jegyzeteibe (C21)")
+    ap = argparse.ArgumentParser(prog="mos fuzet", description="füzetfotók bekötése a vault elméleti jegyzeteibe")
     sp = ap.add_subparsers(dest="cmd", required=True)
     for nev in ("lanc", "ellenoriz"):
         s = sp.add_parser(nev)

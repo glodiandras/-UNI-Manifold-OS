@@ -55,6 +55,11 @@ mkdir -p "$MOS_HOME/var/tmp" "$MOS_HOME/var/cache" 2>/dev/null || true
 
 hiba() { echo "HIBA: $*" >&2; exit 1; }
 
+# Developer mód (core/fejleszto.py): a fejlesztői parancsok (test, perf, kapu kezi, video selftest|test) és a teszt-horgok csak itt élnek.
+# Forrás-checkoutban (van tests/) a bin/mos maga kapcsolja be; MOS_FEJLESZTO=0 kikapcsolja, a kiadott csomagban (nincs tests/) alapból ki van.
+if [ -z "${MOS_FEJLESZTO:-}" ] && [ -d "$MOS_HOME/tests" ]; then export MOS_FEJLESZTO=1; fi
+fejleszto() { [ "${MOS_FEJLESZTO:-0}" = "1" ] || hiba "a(z) '$1' fejlesztői parancs: Developer módban (MOS_FEJLESZTO=1) érhető el"; }
+
 python_kereses() {
   local cand
   for cand in "${MOS_PYTHON:-}" "$MOS_HOME/var/venv/bin/python" "${MUNKAFA_FO:+$MUNKAFA_FO/var/venv/bin/python}" "$RT/python/bin/python3"; do
@@ -248,7 +253,8 @@ case "$cmd" in
              watch)   exec npm run --silent watch ;;
              *)       hiba "használat: mos app install [--online]|build|test|watch" ;;
            esac ;;
-  test)    # `bin/mos test` = az egész készlet (discover); `bin/mos test test_x [tests.test_y tests/test_z.py] [-v -k …]` = csak
+  test)    fejleszto test
+           # `bin/mos test` = az egész készlet (discover); `bin/mos test test_x [tests.test_y tests/test_z.py] [-v -k …]` = csak
            # a megnevezett modulok (T082): a discover a pozicionális argumentumot kezdőmappának vette, így a `test_x`
            # ImportError volt, a `tests.test_x` pedig mind a ~1000 tesztet futtatta
            nevek=()
@@ -261,7 +267,8 @@ case "$cmd" in
              exec "$(python_kereses)" -B -m unittest "${nevek[@]}" "$@"
            fi
            exec "$(python_kereses)" -B -m unittest discover -s "$MOS_HOME/tests" -t "$MOS_HOME" "$@" ;;
-  perf)    # a falióra-alapú teljesítménykapuk külön parancsban, TÉTLEN gépen (T008): Python `tests/perf_*.py` (Bases, index-
+  perf)    fejleszto perf
+           # a falióra-alapú teljesítménykapuk külön parancsban, TÉTLEN gépen (T008): Python `tests/perf_*.py` (Bases, index-
            # késleltetés) és vitest `app/tests/perf/*.perf.ts` (fuzzy, gráf-fizika), egymás után; az alap készletben
            # (`bin/mos test`, `bin/mos app test`) abszolút ms-kapu nincs, csak arány. Futó modell/mérés mellett nem értelmezhető.
            export MOS_TELJESITMENY=1
@@ -272,7 +279,7 @@ case "$cmd" in
              cd "$MOS_HOME/app" && exec npx vitest run ) || rc=$?
            exit "$rc" ;;
   kartya)  exec "$(python_kereses)" -B -m modulok.kartya "$@" ;;   # C23a: ellenoriz | szinkron | export | import --proba
-  video)   # a videólánc (C20a): felmeres | staging-klon | utnorm | leltar | eszkoz-ellenorzes | letoltes <url> | selftest | test
+  video)   # a videólánc (C20a): felmeres | leltar | eszkoz-ellenorzes | letoltes <url> | selftest | test
            export PATH="$RT/node/bin:$PATH"
            exec "$(python_kereses)" -B -m modulok.ytdlp "$@" ;;
   kviz)    exec "$(python_kereses)" -B -m modulok.kviz "$@" ;;     # C22a: ellenoriz | proba (a vaultba nem ír, modellt nem hív)
@@ -281,11 +288,11 @@ case "$cmd" in
            # `mos kapu kezi [nev…]`) a klónos kézi próbák futtatója, összesítéssel a {runs}/kapu-<idő>.json-ba
            case "${1:-}" in
              meres|minta|ellenoriz) exec "$(python_kereses)" -B -m modulok.kapuk "$@" ;;
-             kezi) shift; exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
-             *) exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
+             kezi) fejleszto "kapu kezi"; shift; exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
+             *) fejleszto "kapu (kézi próbák)"; exec "$(python_kereses)" -B "$MOS_HOME/tests/kezi/kapu.py" "$@" ;;
            esac ;;
   cpp)     exec "$(python_kereses)" -B -m modulok.cpp "$@" ;;   # C36a: allapot | telepit | ellenoriz | formaz | homokozo-proba
   felkeszultseg) exec "$(python_kereses)" -B -m core.felkeszultseg "$@" ;;   # C28b: eredmeny (csak olvas) | kalibral [--rogzit] (az index ideiglenes mappába épül)
   exec)    export PATH="$RT/node/bin:$PATH"; exec "$@" ;;   # csak a felület buildjéhez (Node)
-  *)       hiba "használat: mos <doctor | visszaallit <bundle> [--tar vault] [--igen] | core start | runtime fetch [ffmpeg]|install | models pull|list | bench | eval | router tabla|valaszt | worker | app install [--online]|build|test|watch | kartya ellenoriz|szinkron|export|import | cpp allapot|telepit|ellenoriz|formaz|homokozo-proba | felkeszultseg eredmeny|kalibral | matek levezetes|egyseg|arany|homokozo-proba | kviz ellenoriz|proba | osszefoglalas ellenoriz|proba|kontextus|general|meres | kapu [kezi] [próba…] | kapu meres|minta|ellenoriz | grafikon felismer|jegyzet|elemez|elemez-json|arany|vektorok|terv|beiras|automatikus|tiltolista|modell-ellenorzes|modell-meres | fuzet lanc|ellenoriz|allapot|kivag | higienia | kereses hibrid|allapot|forrasok|meres | video felmeres|staging-klon|utnorm|leltar|eszkoz-ellenorzes|letoltes|selftest|test | test [modul…] | perf | exec ...>" ;;
+  *)       hiba "használat: mos <doctor | visszaallit <bundle> [--tar vault] [--igen] | core start | runtime fetch [ffmpeg]|install | models pull|list | bench | eval | router tabla|valaszt | worker | app install [--online]|build|test|watch | kartya ellenoriz|szinkron|export|import | cpp allapot|telepit|ellenoriz|formaz|homokozo-proba | felkeszultseg eredmeny|kalibral | matek levezetes|egyseg|arany|homokozo-proba | kviz ellenoriz|proba | osszefoglalas ellenoriz|proba|kontextus|general|meres | kapu [kezi] [próba…] | kapu meres|minta|ellenoriz | grafikon felismer|jegyzet|elemez|elemez-json|arany|vektorok|terv|beiras|automatikus|tiltolista|modell-ellenorzes|modell-meres | fuzet lanc|ellenoriz|allapot|kivag | higienia | kereses hibrid|allapot|forrasok|meres | video felmeres|leltar|eszkoz-ellenorzes|letoltes|selftest|test | test [modul…] | perf | exec ...>" ;;
 esac

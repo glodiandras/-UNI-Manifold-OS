@@ -38,12 +38,12 @@ def _modellnev(cfg: Config, nev) -> str:
 
 
 def _terv(cfg: Config, p: dict, stop: str):
-    from .automatika import tartalmi_ut
+    from .automatika import kisero_elotag, tartalmi_ut
     if not isinstance(p, dict):
         raise tasks.Invalid("A paraméterek JSON-objektum kellenek.")
     if not _ut_ok(p.get("ut")):
         raise tasks.Invalid("Az `ut` a vault egy Markdown-jegyzetének relatív útja legyen.")
-    if not tartalmi_ut(p["ut"]):
+    if not tartalmi_ut(p["ut"], kisero_elotag(cfg)):
         raise tasks.Invalid("Kvíz csak tartalmi jegyzetből készül (kísérőjegyzetből és rejtett mappából nem).")
     if not isinstance(p.get("proba", False), bool):
         raise tasks.Invalid("A `proba` igaz vagy hamis lehet.")
@@ -62,7 +62,7 @@ def _terv(cfg: Config, p: dict, stop: str):
         proba = True
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód (D9): a kvíz a vault APFS-klónjára kerül, a vaultba nem.")
+        figy.append("Próbamód: a kvíz a vault APFS-klónjára kerül, a vaultba nem.")
     return ([tasks.Step("Kvíz a jegyzetből (modell + kapuk)", argv, str(cfg.root))],
             "A modell kérdéseket javasol a jegyzetből; a kapukon átment kérdések a kvízjegyzetbe kerülnek, a forrás "
             "`## Gyakorlás` szakaszába a beágyazó sor (gépi írás, visszavonható). Ha a kvíz modellje csak a távol-keretbe fér, "

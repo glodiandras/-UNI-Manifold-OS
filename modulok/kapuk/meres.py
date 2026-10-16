@@ -377,11 +377,11 @@ def riport(h: Halmaz, merdek: list[tuple[Eset, H.Meres]], p: H.Profil, mutatok: 
     ered = kiertekel(merdek, p)
     hossz = fragmens_hosszak(h.arany)
     sor = [
-        "# A közös forráshűség-kapu mérése (C22a)", "",
+        "# A közös forráshűség-kapu mérése", "",
         f"Generálva: `{parancs}` · {datum} · determinisztikus (mag 1), modell nélkül.", "",
-        f"**Adat**: a C18 `szoveg` aranyhalmaz (`{h.arany.get('verzio')}`, állapot: `{h.arany.get('allapot')}`, "
+        f"**Adat**: a `szoveg` aranyhalmaz (`{h.arany.get('verzio')}`, állapot: `{h.arany.get('allapot')}`, "
         f"sha256 `{h.arany_sha256[:16]}…`), {len(h.arany['jegyzetek'])} fagyasztott jegyzet, {len(h.esetek)} minta. "
-        "A halmaz jóváhagyása (K27) után a mérést újra kell futtatni; a küszöbök a `config/os.toml` `[kapuk]` szakaszában élnek.", "",
+        "A halmaz jóváhagyása után a mérést újra kell futtatni; a küszöbök a `config/os.toml` `[kapuk]` szakaszában élnek.", "",
         "## Eredmény", "",
         "A kiválasztott beállítás (`config/os.toml`):", "", "```toml", "[kapuk]", profil_szoveg(p), "```", "",
         f"- **pozitív minták** (a kapunak el kell fogadnia): a legkisebb osztály {_szazalek(mutatok['poz_min'])}, az átlag "
@@ -416,7 +416,7 @@ def riport(h: Halmaz, merdek: list[tuple[Eset, H.Meres]], p: H.Profil, mutatok: 
             "- az idézet-nélküli átfogalmazás elfogadása: az átfogalmazott állítás mint „idézet” "
             f"{_szazalek(ered.get('leiro_parafrazis', {}).get('arany'))}-ban átmegy (ott, ahol a `teny` közel szó szerinti).", "",
             "Ezt a hézagot a láncok modell-alapú „vak ellenőrzése” (a modell a kérdésre a forrásmondatból, a válasz nélkül felel) és "
-            "a rétegzett emberi minta (C19) fedi; a kapu a **gyors, olcsó, modell nélküli** első szűrő.", "",
+            "a rétegzett emberi minta fedi; a kapu a **gyors, olcsó, modell nélküli** első szűrő.", "",
             "## Az idézetek hossza", "",
             f"Az arany {hossz['n']} szó szerinti forrásrésze: legrövidebb {hossz['min']}, medián {hossz['median']}, leghosszabb "
             f"{hossz['max']} szó; 3 szónál rövidebb {hossz['alatt_3']}, 4-nél rövidebb {hossz['alatt_4']}, 45-nél hosszabb "
@@ -424,19 +424,19 @@ def riport(h: Halmaz, merdek: list[tuple[Eset, H.Meres]], p: H.Profil, mutatok: 
             "szűkítik a mért pozitívokat. A mért halmaz a tény egy klauzáját idézi; a modell hosszabb mondatokat is idézhet.", "",
             "## Korlátok", "",
             "- A pozitív minták **optimisták**: az arany tények a forrásmondathoz közeli, az emberi vázlatban készült állítások, a modell "
-            "átfogalmazottabb. A kártya (C23b), a kvíz és az összefoglaló (C22b/C26) elfogadási aránya a saját aranyhalmazán újramérendő.",
+            "átfogalmazottabb. A kártya, a kvíz és az összefoglaló elfogadási aránya a saját aranyhalmazán újramérendő.",
             "- A negatív minták szintetikusak (szám, tagadás, név, mondat, idézet rontása); a valódi modellhiba eloszlása más lehet.",
-            "- Az `arany.json` állapota `vazlat` (K27). A kulcsrész-megnevezések (`poz_kulcsresz`) összefoglaló címkék, ezért ez az osztály "
+            "- Az `arany.json` állapota `vazlat`. A kulcsrész-megnevezések (`poz_kulcsresz`) összefoglaló címkék, ezért ez az osztály "
             "a legalacsonyabb.",
-            "- A küszöbök egy 20 jegyzetes halmazra állnak; a jóváhagyás után a mérés megismétlendő, a K101 emberi mintával együtt.", "",
+            "- A küszöbök egy 20 jegyzetes halmazra állnak; a jóváhagyás után a mérés megismétlendő, egy emberi mintával együtt.", "",
             "## Reprodukálás", "", "```bash", parancs, "```", ""]
     return "\n".join(sor)
 
 
 def minta_lap(merdek: list[tuple[Eset, H.Meres]], p: H.Profil, h: Halmaz, darab: int = 10) -> str:
-    """A K101 átnézési lapja: a döntés két oldaláról `darab`-nyi eset, üres „jó-e a döntés” mezővel."""
+    """A forráshűség-kapu átnézési lapja: a döntés két oldaláról `darab`-nyi eset, üres „jó-e a döntés” mezővel."""
     m = minta(merdek, p, darab)
-    sor = ["# A forráshűség-kapu mintapárjai (K101)", "",
+    sor = ["# A forráshűség-kapu mintapárjai", "",
            "Minden pár a küszöbhöz legközelebb eső esetek közül való. Írd a „Jó a döntés?” mezőbe: **igen** (a kapu jól döntött) vagy "
            "**nem**; a „nem” esetekből látszik, melyik szabályt kell lazítani vagy szigorítani.", ""]
     for cim, kulcs in (("Elfogadott párok", "elfogadott"), ("Elutasított párok", "elutasitott")):

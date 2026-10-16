@@ -28,6 +28,7 @@ sys.path.insert(0, str(REPO))
 from core import config, frame  # noqa: E402
 from core.index.maszk import FM_RE  # noqa: E402
 from _kornyezet import TITOK, elkulonit, probamappa  # noqa: E402
+from _kornyezet import legacy_eszkozok as _legacy_eszkozok  # noqa: E402
 
 KANON = ["Tags", "Source", "Status", "NN", "Canvas"]
 STATUSOK = ["Completed", "In progress", "Review"]
@@ -52,10 +53,9 @@ class Core:
 
 
 def legacy_eszkozok(cfg) -> Path:
-    gyoker = Path(os.environ["MOS_LEGACY"]) if os.environ.get("MOS_LEGACY") else cfg.path("work") / "Manifold-OS legacy" / "Legacy"
-    p = gyoker / "modulok" / "eszkozok"
-    if not (p / "mfd.py").is_file():
-        raise SystemExit(f"nincs legacy mfd.py: {p}")
+    p = _legacy_eszkozok(cfg)
+    if p is None:
+        raise SystemExit("nincs legacy mfd.py: a MOS_LEGACY a régi telepítés gyökerét jelöli ki (nincs alapértelmezett hely)")
     return p
 
 

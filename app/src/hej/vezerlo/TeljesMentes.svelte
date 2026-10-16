@@ -40,12 +40,11 @@
       {adat.csatlakoztatva ? 'A mentési lemez csatlakoztatva.' : 'A mentési lemez most nem érhető el; az ellenőrzés a lemez nélkül nem ismételhető.'}</p>
   {:else}<p>Még nincs ellenőrzött mentés külső lemezen. A belső szövegmentés nem tartalmazza a médiát.</p>{/if}
   <p>Minden futás új, ellenőrzőösszeggel ellenőrzött változat; a változatlan fájlt az előzőből hard linkkel veszi át.
-    A modellek, a <code>var/venv</code> és a <code>runtime/</code> nincs benne: visszaállítás után
-    <code>bin/mos runtime fetch</code>, <code>runtime install</code> és <code>models pull</code> tölti vissza.</p>
+    A modellek és a futtatókörnyezet nincs benne: visszaállítás után újra le kell tölteni őket.</p>
   {#if adat?.figyelo_be && adat.figyelo_cel}
     <p>Lemezfigyelés bekapcsolva: ha a(z) {adat.figyelo_cel} elérhető, és az utolsó mentés régi, a mentés magától sorba áll.</p>
   {/if}
-  <label>Célmappa a külső lemezen <input bind:value={cel} placeholder="/Volumes/Mentés/Manifold" /></label>
+  <label>Célmappa a külső lemezen <input bind:value={cel} placeholder="/Volumes/<külső lemez>/Manifold" /></label>
   <button class="m-gomb semleges" disabled={fut || !cel.trim()} onclick={indit}>Teljes mentés indítása</button>
   {#if hiba}<p role="alert">{hiba}</p>{/if}
 </section>

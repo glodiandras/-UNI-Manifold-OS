@@ -27,7 +27,7 @@ ROUTER_FELADAT = "kifejtes"
 ARANY = K.betolt(ITT)
 VERZIO = K.verzio(ROUTER_FELADAT, ARANY, prompt_lenyomat(MOD))
 KORLAT = ("12 kijelölés; lexikai pontozó: a szinonimával mondott ellentmondást, a pontatlan, de a jegyzettel nem ellentétes "
-          "állítást és a stílust nem látja — a jóváhagyáskor (K430) a válaszokat kézzel is át kell nézni.")
+          "állítást és a stílust nem látja — a jóváhagyáskor a válaszokat kézzel is át kell nézni.")
 
 
 def tetelek(cfg):

@@ -1,10 +1,10 @@
-"""`bin/mos kviz …` — a kvíz parancssora (C22a; a `general` a C22b feladat-lépése).
+"""`bin/mos kviz …` — a kvíz parancssora (a `general` a feladat-lépés).
 
 - `ellenoriz JEGYZET`: egy kvízjegyzet elemzése a vaultban (csak olvas): kérdések, hibák, és hogy a kérdések idézete még ott
   áll-e a forrásjegyzetben (a sodródás: a jegyzet azóta megváltozott → új kvíz kell).
 - `proba FORRÁS --forgatokonyv F.json [--n N]`: a lánc álmodellel (a forgatókönyv: `{"generalo": "<a modell válasza>",
   "tudas": {"<kérdés>": "<a helyesnek tartott válasz szövege>"}}`); a kvízjegyzetet kiírja, a vaultba nem ír.
-- `general --ut JEGYZET [--modell M] [--proba]`: a feladat-lépés (C22b, a `kviz_general` feladattípus indítja): a modell a workeren
+- `general --ut JEGYZET [--modell M] [--proba]`: a feladat-lépés (a `kviz_general` feladattípus indítja): a modell a workeren
   át, az írás a core gépi-írás szolgáltatásán át (egy tétel, `Mos-Forras: mos-kviz`).
 - `statisztika`: a „hibás a kérdés” jelölések modellenként (`tar.modell_statisztika`; csak olvas).
 """
@@ -83,7 +83,7 @@ def proba(cfg, a) -> int:
 
 
 def general(cfg, a) -> int:
-    """A feladat-lépés (C22b): egy kvíz a jegyzetből; hiba esetén 5-ös kilépés érthető üzenettel."""
+    """A feladat-lépés: egy kvíz a jegyzetből; hiba esetén 5-ös kilépés érthető üzenettel."""
     import os
 
     from core import gepi_kliens
@@ -121,7 +121,7 @@ def statisztika(cfg, _a) -> int:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="mos kviz", description="Kvíz egy jegyzetből (C22a, C22b)")
+    ap = argparse.ArgumentParser(prog="mos kviz", description="Kvíz egy jegyzetből")
     al = ap.add_subparsers(dest="parancs", required=True)
     e = al.add_parser("ellenoriz", help="egy kvízjegyzet elemzése és sodródás-vizsgálata (csak olvas)")
     e.add_argument("jegyzet", help="a kvízjegyzet vault-relatív útja")
@@ -133,8 +133,8 @@ def main(argv: list[str]) -> int:
                    help="felülírja a [kviz] karakter_per_kerdes-t (rövid próbajegyzethez: kisebb szám, több jelölt)")
     g = al.add_parser("general", help="kvíz egy jegyzetből a modellel (feladat-lépés: a core-on át ír)")
     g.add_argument("--ut", required=True)
-    g.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára (D9)")
-    g.add_argument("--modell", help="kifejezett modell (csak próba, D9)")
+    g.add_argument("--proba", action="store_true", help="az írás a vault másolatára (a vault nem változik)")
+    g.add_argument("--modell", help="kifejezett modell (csak próbában)")
     g.add_argument("--n", type=int, help="a kérdések száma (alap: [kviz] kerdes_alap)")
     g.add_argument("--stop-fajl")
     al.add_parser("statisztika", help="a „hibás a kérdés” jelölések modellenként (csak olvas)")

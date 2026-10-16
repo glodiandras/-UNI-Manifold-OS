@@ -23,7 +23,18 @@ from modulok.eval.kozos import idezet as _idezet
 
 from . import tokenek
 
-KIHAGYOTT_SZAKASZOK = ("Füzet", "Gyakorlás", "Kitöltések")      # gép írta vagy nem tartalmi szakaszok (L36, L47, TERV 5.2)
+KIHAGYOTT_SZAKASZOK = ("Füzet", "Gyakorlás", "Kitöltések")      # gép írta vagy nem tartalmi szakaszok; alap, ha a `[kapuk] kihagyott_szakaszok` hiányzik
+
+
+def kihagyott_szakaszok(cfg=None) -> tuple[str, ...]:
+    """A kihagyott (gép írta, nem tartalmi) szakaszok fejezetcímei: a `[kapuk] kihagyott_szakaszok` lista, hiányában az alap
+    (`KIHAGYOTT_SZAKASZOK`). Az üres lista: semmi nem marad ki."""
+    if cfg is None:
+        return KIHAGYOTT_SZAKASZOK
+    ertek = cfg.section("kapuk").get("kihagyott_szakaszok")
+    lista = tuple(str(x) for x in ertek) if isinstance(ertek, (list, tuple)) else KIHAGYOTT_SZAKASZOK
+    fuzet = str(cfg.section("fuzet").get("szakasz") or "")           # a füzetlánc gép írta szakasza sosem kerülhet vissza forrásként a kapuba
+    return lista if not fuzet or nfc(fuzet) in {nfc(x) for x in lista} else (*lista, fuzet)
 
 _FEJ = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$")
 _BEAGY = re.compile(r"!\[\[[^\]]*\]\]|!\[[^\]]*\]\([^)]*\)")
@@ -76,17 +87,18 @@ def _sor_tisztit(s: str) -> str:
     return s.rstrip()
 
 
-def elokeszit(md: str, min_karakter: int = 0, kihagy: tuple[str, ...] = KIHAGYOTT_SZAKASZOK) -> list[Szakasz]:
+def elokeszit(md: str, min_karakter: int = 0, kihagy: tuple[str, ...] | None = None) -> list[Szakasz]:
     """A jegyzet szakaszai a tisztított törzzsel. Kiesik a frontmatter, a `%%megjegyzés%%`, a HTML-megjegyzés, a
     beágyazás és a `kihagy` nevű fejezetek (az alfejezeteikkel); a kódblokk szövege megmarad, de nem fejezet. A
-    legalább `min_karakter` nem szóköz karakteres szakaszok maradnak (0: minden nem üres)."""
+    legalább `min_karakter` nem szóköz karakteres szakaszok maradnak (0: minden nem üres). `kihagy` hiányában az alap
+    (`KIHAGYOTT_SZAKASZOK`); a konfigurációból a `kihagyott_szakaszok(cfg)` adja."""
     md = nfc(md).replace("\r\n", "\n").replace("\r", "\n")
     fm = FM_RE.match(md)
     torzs = md[fm.end():] if fm else md
     maszk = mask_code(torzs, frontmatter=False)
     torzs, maszk = _kiurit(torzs, maszk, _MEGJEGYZES)
     torzs, maszk = _kiurit(torzs, maszk, _HTML_MEGJEGYZES)
-    kihagy = {nfc(k) for k in kihagy}
+    kihagy = {nfc(k) for k in (KIHAGYOTT_SZAKASZOK if kihagy is None else kihagy)}
 
     ki: list[Szakasz] = []
     verem: list[tuple[int, str]] = []

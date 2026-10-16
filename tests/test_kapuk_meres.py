@@ -8,6 +8,7 @@ from modulok.kapuk import forras as F
 from modulok.kapuk import huseg as H
 from modulok.kapuk import meres as M
 from modulok.kapuk import tokenek as T
+from tests.eval_segedek import aranyt_igenyel
 
 JEGYZET = "# Róma\n\n## Triumvirátus\n\nCaesar kibékítette Crassust és Pompeiust, majd szövetséget kötött velük a senatus ellen (Kr. e. 60). A szenátus tagjai Rómában ültek.\n"
 
@@ -51,6 +52,7 @@ class RontasTest(unittest.TestCase):
         self.assertGreaterEqual(sum(1 for x, y in zip(k, i.split()) if x != y), 2)
 
 
+@aranyt_igenyel("szoveg")
 class HalmazTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

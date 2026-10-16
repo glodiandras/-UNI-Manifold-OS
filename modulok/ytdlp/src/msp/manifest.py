@@ -1,12 +1,12 @@
 """integration.json - the machine-readable hand-off to the integration step.
 
-The manifest is what a later, vault-aware Claude instance reads first. Two
-fields encode the open questions of CLAUDE.md instead of hiding them:
+The manifest is what the integration step reads first. Two fields encode
+open questions instead of hiding them:
 
 ``nn_anchorable``
     ``null`` until the vault owner decides whether video-derived content may
-    become an NN-anchorable source at all (AI01 #9). No integration step may
-    treat ``null`` as "yes".
+    become an anchorable source at all. No integration step may treat ``null``
+    as "yes".
 
 ``anchor_format``
     The timestamp anchor shape a video claim would use, mirroring the vault's

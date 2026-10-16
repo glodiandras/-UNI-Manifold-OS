@@ -130,7 +130,7 @@
 
     <h4 class="alcim">Napló</h4>
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <pre class="naplo gorgeto" bind:this={naploEl} tabindex="0" aria-label="A feladat naplója">{sorok.length ? (naplo.levagva ? `… (a korábbi ${naplo.levagva} sor nem látszik)\n` : '') + sorok.join('\n') : feladat.forras === 'legacy' && !sorok.length ? 'A legacy napló nem érhető el.' : 'Még nincs naplósor.'}</pre>
+    <pre class="naplo gorgeto" bind:this={naploEl} tabindex="0" aria-label="A feladat naplója">{sorok.length ? (naplo.levagva ? `… (a korábbi ${naplo.levagva} sor nem látszik)\n` : '') + sorok.join('\n') : feladat.forras !== '2.0' ? 'Ehhez a feladathoz nincs elérhető napló.' : 'Még nincs naplósor.'}</pre>
   {/if}
 </div>
 

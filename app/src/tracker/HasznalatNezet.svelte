@@ -91,7 +91,7 @@
           </tbody>
         </table>
       {:else}
-        <p class="ures">Még nem írt gép a vaultba (a funkciók a C20–C26-ban érkeznek).</p>
+        <p class="ures">Még nem írt gép a vaultba.</p>
       {/if}
     </section>
 

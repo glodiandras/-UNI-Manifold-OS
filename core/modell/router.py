@@ -58,8 +58,8 @@ class Router:
         sorok = self.kalibralt_sorok(feladat)
         if not sorok and self.tabla.kalibralt_sorrend(feladat):
             raise RoutingHiba(f"a(z) {feladat} kalibrált sorai nem az aranyhalmaz aktuális verzióján "
-                              f"({self.verziok(feladat) if self.verziok else '?'}) mértek — újrapontozás kell "
-                              "(mos eval … --csak-ertekel --rogzit --kalibralt)")
+                              f"({self.verziok(feladat) if self.verziok else '?'}) mértek — újra kell mérni; "
+                              "Beállítások › AI › Kalibráció")
         jeloltek = []
         for sor in sorok:
             try:
@@ -72,8 +72,7 @@ class Router:
                 raise NincsMasikCsalad(f"a(z) {feladat} feladatra nincs a(z) {kizart_csalad} családon kívüli kalibrált modell "
                                        "(nincs második vélemény)")
         if not jeloltek:
-            raise RoutingHiba(f"a(z) {feladat} feladatra nincs kalibrált modell — élesben csak kalibrált modell "
-                              "futhat (D9); a kalibrációt a C19 mérése adja (mos eval --rogzit --kalibralt)")
+            raise RoutingHiba(f"nincs kalibrált modell ehhez a feladathoz ({feladat}); Beállítások › AI › Kalibráció")
         tavol_gb = self.b.keret_gb("tavol") if self.b.keret_felulirva is None else keret_gb
         var = self.b.feladat_szabaly(feladat).get("tavolra_var", False)
         for i, m in enumerate(jeloltek):

@@ -1,7 +1,7 @@
 """„Nem a vaultba” őr a parancssori kiírásokhoz (A3-27).
 
 A `Path.is_relative_to` szöveges összevetés, ezért kis-nagybetű-érzéketlen fájlrendszeren (APFS) a `/Volumes/work/manifold/…`
-átmegy a `/Volumes/Work/Manifold` őrön. Itt a vault és a cél **azonosságát** nézzük (`os.path.samefile`: inode, nem szöveg):
+átmegy a vault-úton alapuló őrön. Itt a vault és a cél **azonosságát** nézzük (`os.path.samefile`: inode, nem szöveg):
 a cél legközelebbi létező őse között van-e a vault.
 
 **Zárva hibázik** (K179): ha a vault-út nem oldható fel (nem létezik, eltűnt, nem olvasható), vagy az azonosság-összevetés

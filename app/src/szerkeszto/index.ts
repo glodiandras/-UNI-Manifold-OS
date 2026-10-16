@@ -288,7 +288,7 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
           szint: 'hiba',
           cim: 'A vault nem érhető el',
           szoveg:
-            'Az SSD vagy a kötet eltűnt. A szerkesztőben lévő szöveg megvan, de nem menthető, amíg a kötet vissza nem jön — ne zárd be az appot, és ne húzd ki újra.',
+            'A kötet eltűnt (kihúzták vagy leválasztották). A szerkesztőben lévő szöveg megvan, de nem menthető, amíg a kötet vissza nem jön — ne zárd be az appot, és ne húzd ki újra.',
           idotartam: 0,
         });
       } else if (vaultErtesites !== null) {

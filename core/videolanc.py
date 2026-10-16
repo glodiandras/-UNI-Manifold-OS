@@ -204,7 +204,9 @@ _atadva: set[str] = set()
 
 # 86. döntés (javasolt): a kényszerített célmappa (téma). A minta a `modulok/ytdlp/egyezes.TEMA_MINTA` szűkítése (a téma-mappák
 # felismerése: a `Média/` réteg duplikátum-szűrése így az új mappát is látja); a tiltott karakterek a `vaultio._TILTOTT_NEV`-éi.
-TEMAMAPPA_MINTA = re.compile(r"^([A-Z]{1,3})(\d{2}) - \S.*$")
+# A minta a `[video] tema_minta` kulcsból jön (két csoport: a tárgy-betű és a kétjegyű sorszám); hiányában ez az alap.
+TEMA_MINTA_ALAP = r"^([A-Z]{1,3})(\d{2}) - \S.*$"
+TEMAMAPPA_MINTA = re.compile(TEMA_MINTA_ALAP)
 _TEMAMAPPA_TILTOTT = re.compile(r'[\\/:*?"<>|#^\[\]\x00-\x1f]')
 
 
@@ -212,12 +214,27 @@ class TemamappaHiba(ValueError):
     """A megadott célmappa (téma) nem használható; az üzenet magyar, a felhasználónak szól."""
 
 
-def temamappa_ellenoriz(vault, nev, cimkek: dict) -> str:
+def tema_minta(cfg: Config) -> re.Pattern:
+    """A téma-mappa mintája a `[video] tema_minta` kulcsból (alap: `TEMA_MINTA_ALAP`). Legalább két csoport kell: a tárgy-betű
+    (a `[pdf.tags]` kulcsa) és a kétjegyű sorszám (a `00` a tárgy vizuális mappája, nem téma)."""
+    nyers = cfg.section("video").get("tema_minta") or TEMA_MINTA_ALAP
+    if nyers == TEMA_MINTA_ALAP:
+        return TEMAMAPPA_MINTA
+    try:
+        m = re.compile(str(nyers))
+    except re.error as e:
+        raise TemamappaHiba(f"A [video] tema_minta nem érvényes reguláris kifejezés: {e}") from None
+    if m.groups < 2:
+        raise TemamappaHiba("A [video] tema_minta két csoportot kell tartalmazzon (tárgy-betű, kétjegyű sorszám).")
+    return m
+
+
+def temamappa_ellenoriz(vault, nev, cimkek: dict, minta: re.Pattern | None = None) -> str:
     """A `--tema-mappa` és a Bevitel „Célmappa (téma)” mezőjének egyetlen ellenőrzése (a core feladat-terve és a lánc is ezt hívja).
 
     → az NFC-alakú mappanév. Szabály: egyetlen, a vault gyökerében álló mappanév (perjel nincs), a vault téma-mintája
-    (`<Betű><két szám> - <cím>`, pl. „D13 - CS50”; a `…00 - ` vizuális mappa nem), a betű a `[pdf.tags]` egyik tárgya (így a
-    forrásleíró jegyzet `Tags`-e sémaérvényes: D → Informatics), tiltott karakter (`\\ / : * ? " < > | # ^ [ ]`, vezérlőjel) nélkül,
+    (`minta`, alap: `<Betű><két szám> - <cím>`; a `…00 - ` vizuális mappa nem), a betű a `[pdf.tags]` egyik tárgya (így a
+    forrásleíró jegyzet `Tags`-e sémaérvényes), tiltott karakter (`\\ / : * ? " < > | # ^ [ ]`, vezérlőjel) nélkül,
     legfeljebb 200 bájt. Ha már létezik, mappa kell legyen (nem fájl, nem symlink), és nem állhat mellette ugyanez a név más
     kis-nagybetűvel (az APFS kis-nagybetű-független). Ha nem létezik, a gépi írás az első `uj` művelettel hozza létre, ugyanabban a
     tételben (a meglévő út: `GepiIras._m_uj`, felülírás nélkül)."""
@@ -225,12 +242,14 @@ def temamappa_ellenoriz(vault, nev, cimkek: dict) -> str:
         raise TemamappaHiba("A célmappa neve szöveg kell legyen.")
     n = unicodedata.normalize("NFC", nev.strip())
     if not n:
-        raise TemamappaHiba("Add meg a célmappa nevét (pl. „D13 - CS50”).")
+        raise TemamappaHiba("Add meg a célmappa nevét.")
     if "/" in n or n.startswith(".") or _TEMAMAPPA_TILTOTT.search(n) or len(n.encode("utf-8")) > 200:
         raise TemamappaHiba(f"A célmappa a vault gyökerében álló egyetlen mappanév lehet, tiltott karakter nélkül: {n[:80]}")
-    m = TEMAMAPPA_MINTA.match(n)
+    minta = minta or TEMAMAPPA_MINTA
+    m = minta.match(n)
     if not m:
-        raise TemamappaHiba(f"A célmappa neve a vault téma-mintája szerint „<Betű><két szám> - <cím>” (pl. „D13 - CS50”): {n[:80]}")
+        alak = "„<Betű><két szám> - <cím>”" if minta.pattern == TEMA_MINTA_ALAP else f"`{minta.pattern}`"
+        raise TemamappaHiba(f"A célmappa neve a vault téma-mintája ({alak}) szerint legyen: {n[:80]}")
     if m.group(2) == "00":
         raise TemamappaHiba(f"A „…00 - ” mappa a tárgy vizuális mappája, nem téma: {n[:80]}")
     if m.group(1) not in (cimkek or {}):
@@ -250,7 +269,7 @@ def temamappa_ellenoriz(vault, nev, cimkek: dict) -> str:
     return n
 
 
-def temamappak(vault) -> list[str]:
+def temamappak(vault, minta: re.Pattern | None = None) -> list[str]:
     """A vault gyökerének téma-mappái (a „Célmappa (téma)” mező javaslatai): a minta szerinti, nem vizuális, nem symlink mappák."""
     try:
         nevek = os.listdir(vault)
@@ -259,7 +278,7 @@ def temamappak(vault) -> list[str]:
     ki = []
     for x in nevek:
         n = unicodedata.normalize("NFC", x)
-        m = TEMAMAPPA_MINTA.match(n)
+        m = (minta or TEMAMAPPA_MINTA).match(n)
         p = os.path.join(vault, x)
         if m and m.group(2) != "00" and os.path.isdir(p) and not os.path.islink(p):
             ki.append(n)
@@ -299,7 +318,7 @@ def _integralas_terv(cfg: Config, p: dict, stop: str):
         if not (mappak or csoport):
             raise tasks.Invalid("Célmappával csak kijelölt staging-forrás vihető be (`mappak` vagy `csoport`), nem az összes várakozó.")
         try:
-            tm = temamappa_ellenoriz(cfg.path("vault"), tm, dict(cfg.section("pdf").get("tags") or {}))
+            tm = temamappa_ellenoriz(cfg.path("vault"), tm, dict(cfg.section("pdf").get("tags") or {}), tema_minta(cfg))
         except TemamappaHiba as e:
             raise tasks.Invalid(str(e)) from None
         argv += ["--tema-mappa", tm]
@@ -307,12 +326,14 @@ def _integralas_terv(cfg: Config, p: dict, stop: str):
     if p.get("proba"):
         argv.append("--proba")
         figyelm.append("Próbamód: az írás a vault APFS-klónjára megy, a staging nem változik.")
-    osszeg = ("A staging várakozó videói a vaultba kerülnek: a videó az „ATTCHMNTS - Videos” alá (APFS-klón), a felirat, a "
-              "proveniencia és a forrásleíró jegyzet a téma „Média” rétegébe, a kötések `#t=` horgonya a jegyzetek Source mezőjébe "
+    video_mappa = cfg.section("video").get("vault_mappa") or "ATTCHMNTS - Videos"
+    reteg = cfg.section("media").get("reteg_mappa") or "Média"
+    osszeg = (f"A staging várakozó videói a vaultba kerülnek: a videó az „{video_mappa}” alá (APFS-klón), a felirat, a "
+              f"proveniencia és a forrásleíró jegyzet a téma „{reteg}” rétegébe, a kötések `#t=` horgonya a jegyzetek Source mezőjébe "
               "(videónként egy gépi írás, visszavonható).")
     if tm is not None:
-        osszeg = (f"A kijelölt staging-videók a(z) „{tm}” mappába kerülnek (a téma-modell nem fut): a videó az „ATTCHMNTS - Videos” "
-                  f"alá, a felirat, a proveniencia és a forrásleíró jegyzet a „{tm}/Média” rétegbe (a hiányzó mappát a gépi írás hozza "
+        osszeg = (f"A kijelölt staging-videók a(z) „{tm}” mappába kerülnek (a téma-modell nem fut): a videó az „{video_mappa}” "
+                  f"alá, a felirat, a proveniencia és a forrásleíró jegyzet a „{tm}/{reteg}” rétegbe (a hiányzó mappát a gépi írás hozza "
                   "létre), kötés csak a mappa saját jegyzeteihez (videónként egy gépi írás, visszavonható).")
     return [tasks.Step("Videók bevitele a vaultba", argv, str(cfg.root))], osszeg, figyelm
 

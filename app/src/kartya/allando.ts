@@ -1,6 +1,7 @@
 // A kártyák felületi állandói (C23b). A kísérőjegyzetek mappája a core `[kartya] mappa` (os.toml) tükre: a
 // `tests/test_kartya_api.py` és az `app/tests/kartya.test.ts` őrzi az egyezést. A felület nem olvassa a konfigurációt.
 
+// mirror of config — F3 replaces with /api/workspace
 export const KARTYA_MAPPA = 'ATTCHMNTS - cards';
 
 /** A vault-relatív út a kártyamappa alatti `.md`-e (a beágyazott jegyzet kártyapakli-e). */

@@ -116,7 +116,7 @@ class Gazda:
         modell = None
         if body.get("model"):
             if not body.get("proba"):
-                raise KeresHiba("élesben csak kalibrált modell fut (D9): adj meg feladatot, vagy próbához proba=true-t")
+                raise KeresHiba("élesben csak kalibrált modell fut: adj meg feladatot, vagy próbához proba=true-t")
             modell = self.b.modell(str(body["model"]))
         feladat = body.get("feladat") or alap_feladat
         if modell is None and not feladat:

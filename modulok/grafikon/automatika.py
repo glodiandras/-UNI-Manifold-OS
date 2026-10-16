@@ -96,18 +96,18 @@ def fogyaszto(cfg, b: Beallitas | None = None):
 
 # ------------------------------------------------------------------ a futás (olvas; az írás a Beiro-n át)
 
-KIZART_MAPPA = (".", "ATTCHMNTS - ")
-
-
-def jegyzetek(vault: Path):
-    """A vault tartalmi `.md` jegyzetei `(vault-relatív út, fájl)` — rejtett és `ATTCHMNTS - …` mappák nélkül; csak olvas."""
+def jegyzetek(vault: Path, elotag: str | None = None):
+    """A vault tartalmi `.md` jegyzetei `(vault-relatív út, fájl)` — rejtett és kísérő-mappák (`[vault] kisero_elotag`) nélkül; csak
+    olvas. `elotag` hiányában a core alapja (`core.automatika.KISERO_ELOTAG`)."""
     OA = _kozos()
+    elotag = OA.KISERO_ELOTAG if elotag is None else elotag
+    kizart = (".", elotag) if elotag else (".",)
     for d, mappak, fajlok in os.walk(vault):
-        mappak[:] = sorted(m for m in mappak if not m.startswith(KIZART_MAPPA))
+        mappak[:] = sorted(m for m in mappak if not m.startswith(kizart))
         for f in sorted(fajlok):
             p = Path(d) / f
             rp = p.relative_to(vault).as_posix()
-            if f.lower().endswith(".md") and OA.tartalmi_ut(rp):
+            if f.lower().endswith(".md") and OA.tartalmi_ut(rp, elotag):
                 yield rp, p
 
 
@@ -120,15 +120,15 @@ def jeloltek(cfg, tar, ido=time.time, kapcsolo_be: bool = True, beall: Beallitas
         ered["szamlalo"]["kapcsolo_ki"] = 1
         return ered
     f, vault, most, sorok = fogyaszto(cfg, beall), Path(cfg.path("vault")), ido(), tar.sorok(FOGYASZTO)
-    lista = []
-    for rp, p in jegyzetek(vault):
+    elotag, lista = OA.kisero_elotag(cfg), []
+    for rp, p in jegyzetek(vault, elotag):
         try:
             mt = p.stat().st_mtime
             hash_ = hashlib.sha1(p.read_bytes()).hexdigest()
         except OSError:
             ered["szamlalo"]["nem_olvashato"] = ered["szamlalo"].get("nem_olvashato", 0) + 1
             continue
-        st, j = OA.dont(f, rp, hash_, mt, most, sorok.get(rp), lambda u: (vault / u).read_bytes().decode("utf-8"))
+        st, j = OA.dont(f, rp, hash_, mt, most, sorok.get(rp), lambda u: (vault / u).read_bytes().decode("utf-8"), elotag)
         ered["szamlalo"][st] = ered["szamlalo"].get(st, 0) + 1
         if j is not None:
             lista.append((mt, rp, j.ok))

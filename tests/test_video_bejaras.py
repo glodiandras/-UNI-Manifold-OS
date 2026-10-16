@@ -353,7 +353,7 @@ class ParancssorTeszt(_Gyoker):
 
     def test_a_lepes_a_ki_fajlba_ir(self):
         ki_fajl = Path(self._t.name) / "ki" / "e.json"
-        with mock.patch.object(bejaras, "felfedez", return_value=self.r), mock.patch.dict(os.environ, {"MOS_VIDEO_HELYI_ENGEDELY": "1"}), \
+        with mock.patch.object(bejaras, "felfedez", return_value=self.r), mock.patch.dict(os.environ, {"MOS_FEJLESZTO": "1", "MOS_VIDEO_HELYI_ENGEDELY": "1"}), \
                 redirect_stdout(io.StringIO()) as ki:
             rc = cli.lepes_bejaras(self.cfg, SimpleNamespace(url=[START], ki=str(ki_fajl)))
         self.assertEqual(rc, 0)

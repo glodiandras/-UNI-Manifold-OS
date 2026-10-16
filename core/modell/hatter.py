@@ -306,7 +306,7 @@ class MlxWhisper(Hatter):
 
 HATTEREK: dict[str, type[Hatter]] = {"mlx-vlm": MlxVlm, "mlx-lm": MlxLm, "sentence-transformers": SentenceTransformers,
                                      "mlx-whisper": MlxWhisper}
-KESOBB = {"mlx-audio": "C20b2 (átirat, csak mért igény mellett)", "transformers": "C25 (keresés)"}
+KESOBB = {"mlx-audio": "átirat, csak mért igény mellett", "transformers": "keresés"}
 
 
 def gyar(modell: Modell) -> Hatter:
@@ -316,7 +316,7 @@ def gyar(modell: Modell) -> Hatter:
     if modell.futtato in HATTEREK:
         return HATTEREK[modell.futtato]()
     if modell.futtato in KESOBB:
-        raise BetoltesHiba(f"{modell.nev}: a(z) {modell.futtato} hátterét a {KESOBB[modell.futtato]} adja hozzá")
+        raise BetoltesHiba(f"{modell.nev}: a(z) {modell.futtato} háttere még nincs meg (később: {KESOBB[modell.futtato]})")
     raise BetoltesHiba(f"{modell.nev}: a(z) {modell.futtato} futtató nincs a config/requirements.lock-ban")
 
 

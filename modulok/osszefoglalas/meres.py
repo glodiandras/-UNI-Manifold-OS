@@ -51,7 +51,8 @@ def mer_jegyzet(jid: str, hivo, gb: L.Beallitas, p) -> dict:
     md = SZ.forras_szoveg(jid)
     t = elemzo.elemez(md)
     from . import szakaszolas
-    bem = szakaszolas.jegyzet_bemenet(md, jid, jid, t.fejezetek, t.blokkok, gb.darab_max_karakter, gb.szakasz_min_karakter)
+    bem = szakaszolas.jegyzet_bemenet(md, jid, jid, t.fejezetek, t.blokkok, gb.darab_max_karakter, gb.szakasz_min_karakter,
+                                  gb.kihagyott_szakaszok)
     valaszok: list[str] = []
 
     def rogzito(prompt: str, max_tokens: int) -> str:

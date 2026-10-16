@@ -241,7 +241,7 @@ def riport_szoveg(r: dict) -> str:
     f, j, k, c, a = r["felismeres"], r["jellemzok"], r["kontextus"], r["kiegeszito"], r["azonossag"]
     n = r["osszes"]
     sorok = [
-        f"C35a mérés — a C18 `grafikon` aranyhalmaza ({r['verzio']}, {n} képlet), a CAS-homokozón át",
+        f"Grafikon-mérés — a `grafikon` aranyhalmaza ({r['verzio']}, {n} képlet), a CAS-homokozón át",
         f"felismerés (a `keplet`-ből): biztos és helyes {f['biztos_helyes']}/{n}, biztosan rossz {f['biztos_rossz']}, "
         f"bizonytalan {f['bizonytalan']}, nincs {f['nincs']}; a javasolt ablak lefedi a várt pontokat {f['lefedes']}/{n}",
         f"CAS-jellemzők (a modell pontozója): zérushely {j['zerushelyek']}/{n}, szélsőérték {j['szelsoertekek']}/{n}, "

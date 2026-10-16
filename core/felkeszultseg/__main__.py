@@ -127,7 +127,7 @@ def kalibral_parancs(cfg, args) -> int:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="mos felkeszultseg", description="A felkészültség-becslés kiértékelője (C28b).")
+    ap = argparse.ArgumentParser(prog="mos felkeszultseg", description="A felkészültség-becslés kiértékelője.")
     sub = ap.add_subparsers(dest="parancs", required=True)
     e = sub.add_parser("eredmeny", help="a kiértékelő jegyzetek eredményei (csak olvas)")
     e.add_argument("--json", action="store_true")

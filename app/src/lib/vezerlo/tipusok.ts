@@ -22,7 +22,7 @@ export interface Feladat {
   kilepes: number | null;
   hiba: string | null;
   leallitas_kerve: boolean;
-  /** `2.0` vagy `legacy` (a legacy pult előzménye: napló és változás nincs vagy más helyen van) */
+  /** a feladat eredete: `2.0` (a Manifold saját sora) vagy más (egy korábbi importból: napló és változás-előzmény nincs vagy máshol van) */
   forras: string;
   vault_ir: boolean;
   modell: boolean;

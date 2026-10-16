@@ -114,7 +114,7 @@ def modell_valasztas(worker, modell: str | None) -> tuple[str, bool]:
         dont = worker.valaszt()
     except Exception as exc:  # noqa: BLE001 — a worker hibája üzenetként
         if getattr(exc, "kod", None) == 409:
-            raise L.Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell (D9): élesen nem készül összefoglaló. Próbához adj meg "
+            raise L.Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell: élesen nem készül összefoglaló. Próbához adj meg "
                            f"modellt (a kimenet a vault klónjára kerül). ({exc})") from None
         raise
     if not dont.get("modell"):
@@ -203,7 +203,8 @@ def futtat_jegyzet(cfg, ut: str, *, gepi, worker, automatikus: bool = False, pro
     ut, md, alap_hash = FM.nfc(d["ut"]), d["tartalom"], d["hash"]
     cim, cel = FM.cim_of(ut), ut.removesuffix(".md")
     t = elemzo.elemez(md)
-    bem = SZ.jegyzet_bemenet(md, cel, cim, t.fejezetek, t.blokkok, b.darab_max_karakter, b.szakasz_min_karakter)
+    bem = SZ.jegyzet_bemenet(md, cel, cim, t.fejezetek, t.blokkok, b.darab_max_karakter, b.szakasz_min_karakter,
+                          b.kihagyott_szakaszok)
     if not bem.darabok:
         raise L.Megall("A jegyzetnek nincs olyan szöveges része, amelyből összefoglalni lehet.")
     m, kifejezett = modell_valasztas(worker, modell)
@@ -315,7 +316,7 @@ def futtat_mappa(cfg, mappa_ut: str, *, gepi, worker, kiegeszit: bool = True, pr
         md = gepi.olvas(ut)["tartalom"]
         t = elemzo.elemez(md)
         bemenetek.append(SZ.jegyzet_bemenet(md, ut.removesuffix(".md"), FM.cim_of(ut), t.fejezetek, t.blokkok,
-                                            b.darab_max_karakter, b.szakasz_min_karakter))
+                                            b.darab_max_karakter, b.szakasz_min_karakter, b.kihagyott_szakaszok))
         anyag.append(o)
     if len(anyag) < 2:
         raise L.Megall(f"A mappa-összefoglalóhoz legalább két jegyzet-összefoglaló kell (most {len(anyag)}"

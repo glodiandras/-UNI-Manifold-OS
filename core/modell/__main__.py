@@ -45,7 +45,7 @@ def lista(argv: list[str]) -> int:
         print(f"{m.nev:<24} {m.futtato:<22} {cs:>6}  {keret:<6} {jel:<8} {' '.join(kal.get(m.nev, [])) or '—'}")
     for nev in sorted(set(kal) - set(b.modellek)):                      # a regiszterből kivett modell sorai
         print(f"{nev:<24} {'[nincs a regiszterben]':<22} {'':>6}  {'—':<6} {'—':<8} {' '.join(kal[nev])}")
-    print("* mért csúcs (legacy); a többi becslés (C04). ✓ kalibrált (D9). [vázlat]: jóvá nem hagyott aranyhalmazon mért, "
+    print("* mért csúcs; a többi becslés. ✓ kalibrált. [vázlat]: jóvá nem hagyott aranyhalmazon mért, "
           "[érvénytelen]: a mérés érvényességi kapuja nem engedte át — az ilyen pont nem valódi mérés, a router nem használja.")
     return 0
 
@@ -67,7 +67,7 @@ def router(argv: list[str]) -> int:
     try:
         if a.cmd == "tabla":
             sorok = t.tabla()
-            print(json.dumps(sorok, ensure_ascii=False, indent=1) if sorok else "A kalibrációs tábla üres (a C19 tölti).")
+            print(json.dumps(sorok, ensure_ascii=False, indent=1) if sorok else "A kalibrációs tábla üres (a kalibráció tölti).")
             return 0
         try:
             from .halmaz import Verziok

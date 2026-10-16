@@ -30,9 +30,12 @@ class FormatumTest(unittest.TestCase):
     def test_ut_cimke_vaz(self):
         self.assertEqual(pk.fajl_ut(PDF), MD)
         self.assertEqual(pk.fajl_ut("Gyökér.PDF"), "Gyökér – kiemelések.md")
-        self.assertEqual(pk.cimke(None, PDF), "Mathematics")
-        self.assertEqual(pk.cimke(None, "Xn - Forrás/a.pdf"), None)
-        self.assertEqual(pk.cimke(None, "a.pdf"), None)
+        with tmpdir() as t:
+            cfg, _, _ = alg_core(t)
+        self.assertEqual(pk.cimke(cfg, PDF), "Mathematics")                 # a `[pdf.tags]` térképből (config/os.toml)
+        self.assertEqual(pk.cimke(cfg, "Xn - Forrás/a.pdf"), None)
+        self.assertEqual(pk.cimke(cfg, "a.pdf"), None)
+        self.assertIsNone(pk.cimke(None, PDF))                              # konfig nélkül nincs beépített térkép
         self.assertEqual(pk.h1(PDF), "Matematika – kiemelések")       # a sorszám-előtag nélkül (L46)
         self.assertTrue(pk.vaz(PDF, None).startswith("---\nTags:\nSource:\nStatus:\nNN:\nCanvas:\n---\n"))
 

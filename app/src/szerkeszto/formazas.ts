@@ -2,7 +2,7 @@
 // kijelölés már körbe van fogva, a jelölő lekerül (váltó); üres kijelölésnél a két jelölő közé áll a kurzor.
 //
 // Üres kijelölésnél, ha a pár kódkerítést (`~~~~`) vagy vízszintes vonalat (`****`) nyitna, a jelölők közé a kijelölt
-// `szöveg` helyőrző kerül (az első leütés lecseréli; C32). A `==` beszúrása figyelmeztet: az AI01 protokoll tiltja (43.).
+// `szöveg` helyőrző kerül (az első leütés lecseréli; C32). A `==` beszúrása figyelmeztet, ha a munkaterület jegyzetszabályai nem ajánlják.
 //
 // Üres kijelölésnél, ha a sor különben üres, és alatta a `====` setext-aláhúzás lenne (a fölötte álló
 // bekezdéssort fejléccé tenné; C10.7, F4), a jelölők új bekezdésbe kerülnek: előbb egy üres sor (a tároló
@@ -91,14 +91,14 @@ function blokkotNyitna(s: EditorState, r: SelectionRange, jel: string): boolean 
 /** A helyőrző szó a blokkot nyitó üres jelölőpár helyett (kijelölve: az első leütés lecseréli). */
 export const FORMAZAS_HELYORZO = 'szöveg';
 
-/** Az AI01 Workflow 2.0 vault-protokoll tiltja a `==kiemelés==` jelölést: a beszúrás figyelmeztet, de nem tagad meg
- *  (CLAUDE.md 43. döntés). A megjelenítés marad. */
+/** A munkaterület jegyzetszabályai nem ajánlják a `==kiemelés==` jelölést: a beszúrás figyelmeztet, de nem tagad meg.
+ *  A megjelenítés marad. */
 function kiemelesFigyelmeztet(): void {
   ertesitesek.ertesit({
     szint: 'figyelmeztetes',
-    kulcs: 'formazas-kiemeles-ai01',
-    cim: 'A ==kiemelés== a vaultban tiltott jelölés',
-    szoveg: 'Az AI01 Workflow 2.0 protokoll nem engedi a == jelölést; a vault-ellenőrző jelezni fogja. Helyette félkövér (⌘B).',
+    kulcs: 'formazas-kiemeles',
+    cim: 'A ==kiemelés== nem ajánlott jelölés',
+    szoveg: 'A munkaterület jegyzetszabályai nem ajánlják a == kiemelést; a vault-ellenőrző jelezni fogja. Helyette félkövér (⌘B).',
   });
 }
 

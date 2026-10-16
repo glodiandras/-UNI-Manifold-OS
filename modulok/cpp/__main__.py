@@ -1,4 +1,4 @@
-"""`bin/mos cpp …` — a C++ munkafelület parancssora (C36a). A vaultba nem ír.
+"""`bin/mos cpp …` — a C++ munkafelület parancssora. A vaultba nem ír.
 
     allapot [--json]                  az eszköztár állapota (megvan-e, verziók, linker, SDK-régiség)
     telepit [--lista | --igen | --sdk | --tbd-igazit] [--ujra]
@@ -12,7 +12,7 @@
     formaz [FÁJL | -]                 clang-format (stdin → stdout), a fájlt nem írja
     homokozo-proba                    a program-homokozó biztonsági próbái ezen a gépen (RENDBEN / HIBA)
     ai <mod> <megoldas.cpp> [--jegyzet FÁJL] [--megerosit] [--json-sorok]
-                                      C36b: AI-segítség (hiba | tipp | megoldas | teszt | stressz) a router kalibrált `kod`
+                                      AI-segítség (hiba | tipp | megoldas | teszt | stressz) a router kalibrált `kod`
                                       modelljével (a worker: `MOS_WORKER_URL`); a modell kódja csak a homokozóban fut, a motor
                                       nem ír semmit (a javaslatot a felület mutatja)
 """
@@ -258,7 +258,7 @@ def main(argv=None, *, cfg=None, telepito=None) -> int:
     al = p.add_subparsers(dest="parancs", required=True)
     s = al.add_parser("allapot", help="az eszköztár állapota")
     s.add_argument("--json", action="store_true")
-    t = al.add_parser("telepit", help="az LLVM letöltése és az SDK másolata (D3: kifejezett igen)")
+    t = al.add_parser("telepit", help="az LLVM letöltése és az SDK másolata (csak kifejezett igen után)")
     t.add_argument("--lista", action="store_true", help="csak a letöltési lista (alap)")
     t.add_argument("--igen", action="store_true", help="kifejezett igen: az LLVM letöltése, majd az SDK másolata")
     t.add_argument("--sdk", action="store_true", help="csak az SDK másolata (nincs hálózat)")
@@ -273,7 +273,7 @@ def main(argv=None, *, cfg=None, telepito=None) -> int:
     f = al.add_parser("formaz", help="clang-format: stdin → stdout")
     f.add_argument("fajl", nargs="?", default="-")
     al.add_parser("homokozo-proba", help="a program-homokozó biztonsági próbái")
-    ai_p = al.add_parser("ai", help="AI-segítség (C36b): hiba | tipp | megoldas | teszt | stressz; csak kalibrált modellel")
+    ai_p = al.add_parser("ai", help="AI-segítség: hiba | tipp | megoldas | teszt | stressz; csak kalibrált modellel")
     ai_p.add_argument("mod", choices=("hiba", "tipp", "megoldas", "teszt", "stressz"))
     ai_p.add_argument("cpp", help="a megoldás (.cpp)")
     ai_p.add_argument("--jegyzet", help="a feladat-jegyzet (.md: leírás és teszt-blokkok)")
@@ -295,7 +295,7 @@ def main(argv=None, *, cfg=None, telepito=None) -> int:
 
 
 def cmd_ai(a, cfg) -> int:
-    """C36b: egy AI-kérés (a modell a workeren át, `MOS_WORKER_URL`; a kódja csak a program-homokozóban fut). A vaultba és a
+    """Egy AI-kérés (a modell a workeren át, `MOS_WORKER_URL`; a kódja csak a program-homokozóban fut). A vaultba és a
     `.cpp`-be nem ír. Kilépési kód: 0 kész · 2 hiba vagy megszakítva."""
     from . import ai_futas
     megszakit = threading.Event()

@@ -29,6 +29,8 @@ from .naptar_seged import Seged
 FORRAS = "naptar"
 
 # ------------------------------------------------------------------ kategóriák
+# A kulcsszavas szótárak (a kategóriák `szavak`-ja, a dolgozat- és határidő-szavak, a tantárgyak és gyűjtőneveik) a
+# `[naptar.szotar]` szakaszból jönnek (`szotar(cfg)`); az alábbi beépített értékek csak a hiányzó kulcsot pótolják.
 
 KATEGORIAK = [
     {"id": "szabadido", "nev": "Me-time és programok", "szin": "#e68aa8",
@@ -52,14 +54,14 @@ KATEGORIA_ID = {k["id"] for k in KATEGORIAK}
 TERV_KATEGORIAK = ("tanulas",)       # a tr_naptar_blokk-ba kerülő kategóriák (a tervezett tanulási idő)
 
 # az esemény címe alapján (bármely naptárban): dolgozat vagy határidő
-DOLGOZAT_SZAVAK = ["dolgozat", "dolgozatot", "dolgozatir", "temazaro", "tz", "ropdolgozat", "ropi", "zh", "vizsga", "exam", "test", "teszt",
+DOLGOZAT_SZAVAK = ["dolgozat", "dolgozatot", "dolgozatir", "temazaro", "tz", "zh", "vizsga", "exam", "test", "teszt",
                    "felmeres", "szamonkeres", "kisdolgozat", "felelés", "feleles", "quiz"]
 HATARIDO_SZAVAK = ["hatarido", "deadline", "beadando", "beadas", "leadas", "leadni", "beadni", "due"]
 # ezekben a naptárakban az esemény idő (tanulás, edzés, program) — a „dolgozat” szó itt készülést jelent, nem számonkérést
 NEM_SZAMONKERES = ("tanulas", "edzes", "szabadido", "kizart")
 
 # tantárgyak: a kanonikus név (ahogy a dolgozat-jegyzetek fájlneve írja) → rokon szavak (ékezet nélkül, kisbetűvel).
-# Az os.toml [naptar.targyak] szakasza kiegészítheti (név = ["szó", …]).
+# Forrás: `[naptar.szotar.targyak]`; az os.toml [naptar.targyak] szakasza kiegészítheti (név = ["szó", …]).
 TARGYAK = {
     "Matematika": ["matematika", "matek", "mat", "math", "maths"],
     "Fizika": ["fizika", "fizik", "fiz", "physics"],
@@ -92,12 +94,45 @@ def _szo_benne(szoveg: str, szo: str) -> bool:
     return re.search(r"(?<![a-z0-9])" + re.escape(szo) + (r"(?![a-z0-9])" if len(szo) <= 4 else ""), szoveg) is not None
 
 
-def javasol(nev: str, tipus: str = "") -> tuple[str, bool]:
-    """(kategória, biztos) a naptár neve és típusa alapján. Biztos, ha pontosan egy kategória szavai illenek."""
+class Targyak(dict):
+    """A tantárgy-térkép (kanonikus név → rokon szavak) a gyűjtőnevekkel (`csoportok`) együtt."""
+
+    def __init__(self, targyak: dict, csoportok: dict | None = None):
+        super().__init__(targyak)
+        self.csoportok = dict(CSOPORTOK if csoportok is None else csoportok)
+
+
+def _szolista(v, alap: list[str]) -> list[str]:
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else list(alap)
+
+
+def _szoterkep(v, alap: dict) -> dict[str, list[str]]:
+    if not isinstance(v, dict):
+        return {k: list(x) for k, x in alap.items()}
+    return {str(k): [x for x in s if isinstance(x, str)] for k, s in v.items() if isinstance(s, list)}
+
+
+def szotar(cfg) -> dict:
+    """A naptár kulcsszavas szótára a `[naptar.szotar]` szakaszból: `kategoriak` (kategória-azonosító → szavak), `dolgozat`,
+    `hatarido` (szólisták), `targyak` (kanonikus név → szavak), `csoportok` (gyűjtőnév → kanonikus nevek). A hiányzó vagy
+    hibás típusú kulcs a beépített alapot adja; a kategóriák azonosítója, neve és színe a kódé."""
+    s = (cfg.section("naptar", "szotar") if cfg is not None else {}) or {}
+    kat = s.get("kategoriak") if isinstance(s.get("kategoriak"), dict) else {}
+    return {"kategoriak": {k["id"]: _szolista(kat.get(k["id"]), k["szavak"]) for k in KATEGORIAK},
+            "dolgozat": _szolista(s.get("dolgozat"), DOLGOZAT_SZAVAK),
+            "hatarido": _szolista(s.get("hatarido"), HATARIDO_SZAVAK),
+            "targyak": _szoterkep(s.get("targyak"), TARGYAK),
+            "csoportok": _szoterkep(s.get("csoportok"), CSOPORTOK)}
+
+
+def javasol(nev: str, tipus: str = "", kategoriak: dict[str, list[str]] | None = None) -> tuple[str, bool]:
+    """(kategória, biztos) a naptár neve és típusa alapján. Biztos, ha pontosan egy kategória szavai illenek.
+    `kategoriak`: kategória-azonosító → szavak (`szotar(cfg)["kategoriak"]`; alap: a beépített)."""
     if tipus in ("szuletesnap",):
         return "kizart", True
     n = norm(nev)
-    talalt = [k["id"] for k in KATEGORIAK if any(_szo_benne(n, norm(s)) for s in k["szavak"])]
+    szavak = kategoriak if kategoriak is not None else {k["id"]: k["szavak"] for k in KATEGORIAK}
+    talalt = [kid for kid, sz in szavak.items() if any(_szo_benne(n, norm(s)) for s in sz)]
     if len(talalt) == 1:
         return talalt[0], True
     if len(talalt) > 1:
@@ -105,13 +140,16 @@ def javasol(nev: str, tipus: str = "") -> tuple[str, bool]:
     return "egyeb", False
 
 
-def targyak_cfg(cfg) -> dict[str, list[str]]:
-    t = {k: list(v) for k, v in TARGYAK.items()}
+def targyak_cfg(cfg) -> Targyak:
+    """A tantárgy-térkép: a `[naptar.szotar.targyak]` (alap: `TARGYAK`), a `[naptar.targyak]` kiegészítéseivel, és a
+    `[naptar.szotar.csoportok]` gyűjtőnevei."""
+    sz = szotar(cfg)
+    t = {k: list(v) for k, v in sz["targyak"].items()}
     for k, v in ((cfg.section("naptar", "targyak") if cfg else {}) or {}).items():
         if isinstance(v, list):
             t.setdefault(k, [])
             t[k] += [norm(x) for x in v if isinstance(x, str)]
-    return t
+    return Targyak(t, sz["csoportok"])
 
 
 def targy(szoveg: str, targyak: dict[str, list[str]] | None = None) -> list[str]:
@@ -123,20 +161,22 @@ def targy(szoveg: str, targyak: dict[str, list[str]] | None = None) -> list[str]
         if any(_szo_benne(n, s) for s in [kanon] + szavak):
             out.append(kanon)
     if not out:
-        for gyujto, tagok in CSOPORTOK.items():
+        for gyujto, tagok in getattr(targyak, "csoportok", CSOPORTOK).items():
             if _szo_benne(n, gyujto):
                 out.extend(tagok)
     return out
 
 
-def esemeny_fajta(cim: str, kategoria: str, targyak: dict[str, list[str]] | None = None) -> str | None:
+def esemeny_fajta(cim: str, kategoria: str, targyak: dict[str, list[str]] | None = None,
+                  szotar_: dict | None = None) -> str | None:
     """„dolgozat”, „hatarido” vagy None. A határidő-naptárban minden esemény vagy dolgozat, vagy határidő: ha a
-    címben tantárgy áll, és nincs határidő-szó, dolgozat. A tanulás-, edzés- és programnaptár eseménye egyik sem."""
+    címben tantárgy áll, és nincs határidő-szó, dolgozat. A tanulás-, edzés- és programnaptár eseménye egyik sem.
+    `szotar_`: a `szotar(cfg)` (a `dolgozat` és a `hatarido` szólista; alap: a beépített)."""
     if kategoria in NEM_SZAMONKERES:
         return None
     n = norm(cim)
-    hat = any(_szo_benne(n, s) for s in HATARIDO_SZAVAK)
-    dol = any(_szo_benne(n, s) for s in DOLGOZAT_SZAVAK) or any(x in n for x in ("dolgozat", "temazaro", "vizsga"))  # összetett szóban is
+    hat = any(_szo_benne(n, s) for s in (szotar_ or {}).get("hatarido", HATARIDO_SZAVAK))
+    dol = any(_szo_benne(n, s) for s in (szotar_ or {}).get("dolgozat", DOLGOZAT_SZAVAK)) or any(x in n for x in ("dolgozat", "temazaro", "vizsga"))  # összetett szóban is
     if dol and not hat:
         return "dolgozat"
     if kategoria == "hatarido":
@@ -168,7 +208,7 @@ def ablak(cfg, most: dt.datetime | None = None) -> tuple[dt.datetime, dt.datetim
     return most - dt.timedelta(days=sec["mult_nap"]), most + dt.timedelta(days=sec["jovo_nap"])
 
 
-def _naptarak_frissit(c, bejott: list[dict], most: str) -> list[dict]:
+def _naptarak_frissit(c, bejott: list[dict], most: str, kategoriak: dict[str, list[str]] | None = None) -> list[dict]:
     """A naptárlista összevetése az ismerttel: új, átnevezett, eltűnt, újra összekötött naptárak. A változások a
     `naptar_valtozas` táblába kerülnek, és a függvény vissza is adja őket."""
     ismert = {r["azon"]: dict(r) for r in c.execute("SELECT * FROM naptar")}
@@ -207,7 +247,7 @@ def _naptarak_frissit(c, bejott: list[dict], most: str) -> list[dict]:
             c.execute("UPDATE naptar SET utod=? WHERE azon=?", (a, elod["azon"]))
             naplo(a, "osszekotve", elod["azon"], nev)
         else:
-            kat, biztos = javasol(nev, n.get("tipus") or "")
+            kat, biztos = javasol(nev, n.get("tipus") or "", kategoriak)
             kforras = "auto" if biztos else "javaslat"
             naplo(a, "uj", None, nev)
         c.execute("INSERT INTO naptar (azon, nev, forras, forras_tipus, tipus, szin, kategoria, kategoria_forras, elso_latva, utoljara_latva) "
@@ -254,7 +294,7 @@ def szinkron(cfg, seged: Seged | None = None, most: dt.datetime | None = None, t
         return {"allapot": allapot, "uj": 0, "valtozott": 0, "torolt": 0, "osszes": 0, "valtozasok": [], "blokkok": None}
     with szemelyes_db.iro(cfg) as c:
         fid = c.execute("INSERT INTO import_futas (forras, kezdes, allapot) VALUES (?,?,?)", (FORRAS, kezdes, allapot)).lastrowid
-        valtozasok = _naptarak_frissit(c, adat.get("naptarak") or [], kezdes)
+        valtozasok = _naptarak_frissit(c, adat.get("naptarak") or [], kezdes, szotar(cfg)["kategoriak"])
         regi = {r["forras_id"]: (r["hash"], r["torolve"]) for r in c.execute(
             "SELECT forras_id, hash, torolve FROM forras_rekord WHERE forras=?", (FORRAS,))}
         uj = valtozott = 0
@@ -332,6 +372,7 @@ def esemenyek(c, tol: dt.datetime, ig: dt.datetime, cfg=None) -> list[dict]:
     A kizárt naptárak és a lemondott események nélkül."""
     kat = {r["azon"]: r for r in c.execute("SELECT azon, nev, kategoria, szin FROM naptar")}
     t = targyak_cfg(cfg)
+    sz = szotar(cfg)
     out = []
     a0 = (tol - dt.timedelta(days=1)).isoformat(timespec="seconds")
     a1 = (ig + dt.timedelta(days=1)).isoformat(timespec="seconds")
@@ -346,7 +387,7 @@ def esemenyek(c, tol: dt.datetime, ig: dt.datetime, cfg=None) -> list[dict]:
         if k == "kizart" or e.get("allapot") == 3:             # EKEventStatus.canceled
             continue
         e.update(kategoria=k, naptar_nev=n["nev"] if n else "?", naptar_szin=n["szin"] if n else None,
-                 fajta=esemeny_fajta(e.get("cim", ""), k, t), targyak=targy(e.get("cim", ""), t), targy_forras="cim",
+                 fajta=esemeny_fajta(e.get("cim", ""), k, t, sz), targyak=targy(e.get("cim", ""), t), targy_forras="cim",
                  _k0=k0, _k1=k1)
         out.append(e)
     # a dolgozat órája: az órarend vele átfedő órája; tantárgy nélküli dolgozatnál a tantárgyat is ez adja
@@ -362,7 +403,7 @@ def esemenyek(c, tol: dt.datetime, ig: dt.datetime, cfg=None) -> list[dict]:
             if not e["targyak"] and ora[0]["targyak"]:
                 e["targyak"], e["targy_forras"] = list(ora[0]["targyak"]), "orarend"
                 if e["kategoria"] == "hatarido" and e["fajta"] == "hatarido" and not any(
-                        _szo_benne(norm(e.get("cim", "")), s) for s in HATARIDO_SZAVAK):
+                        _szo_benne(norm(e.get("cim", "")), s) for s in sz["hatarido"]):
                     e["fajta"] = "dolgozat"                   # órán, határidő-szó nélkül: számonkérés
     for e in out:
         e.pop("_k0", None)

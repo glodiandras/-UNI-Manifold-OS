@@ -15,6 +15,7 @@ import { osszefoglalasApi } from './api';
 import { kulsoAi } from './kulsoAllapot.svelte';
 
 const uzenet = (e: unknown) => (e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e));
+// mirror of config — F3 replaces with /api/workspace
 const KISERO_ELOTAG = 'ATTCHMNTS - ';
 
 /** Tartalmi jegyzet-e (a core `automatika.tartalmi_ut` tükre): nem gépi kísérőjegyzet, nem rejtett mappa. */

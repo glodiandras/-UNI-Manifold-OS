@@ -1,10 +1,9 @@
-"""A médiaforrás és a tananyag-jegyzetek lexikai párosítása (C20b) — a legacy `media_match.py` portja, viselkedésre azonosan.
+"""A médiaforrás és a tananyag-jegyzetek lexikai párosítása (C20b).
 
-A legacy fájlútról dolgozott (a felirat a melléklet-mappában, a hossz ffprobe-bal); a 2.0 a még el nem helyezett forrással is dolgozik,
-ezért a bemenet egy `Forras` (a médiafájl NEVE, a szövegréteg cue-i és a mért hossza). A vaultot a `NoteIndex` egyszer olvassa
-végig, csak olvasva.
+A bemenet egy `Forras` (a médiafájl NEVE, a szövegréteg cue-i és a mért hossza); a még el nem helyezett forrással is dolgozik. A vaultot
+a `NoteIndex` egyszer olvassa végig, csak olvasva.
 
-    temak(vault)                 a témamappák (`^[A-Z]{1,3}\\d{2} - `, a `*00 - ` és a rendszermappák nélkül)
+    temak(vault)                 a témamappák (alap: `^[A-Z]{1,3}\\d{2} - `, a `*00 - ` és a kizárt mappák nélkül; `[video] tema_minta`, `kizart_mappak`)
     NoteIndex(vault)             az `<Téma>/Elmélet/` jegyzetek szótő-indexe (jegyzetenkénti és témánkénti gyakoriság, évszámok)
     windows(f, idx)              a jelöltállás 60 s-os ablakai 10 s lépéssel (a 25 hosszú szónál szegényebb ablak kimarad)
     rank_text / rank_topics      a lift (a véletlen feletti többlet) témánként
@@ -12,7 +11,7 @@ végig, csak olvasva.
     classify(f, idx, csak_targy) a lexikai besorolás és a négy jel (margó, erős jelölt, kronológia, cím)
     candidates(f, temak, idx)    jegyzet × időpont jelöltek egy témakészleten (sávok: a távoli kontroll p99/p95)
 
-A küszöbök a legacy `calibration.json` mért értékei (`tema_besorolas`, `jeloltallitas`); a 2.0 nem kalibrálta újra őket.
+A küszöbök egy magyar nyelvű jegyzetgyűjteményen mért értékek (`tema_besorolas`, `jeloltallitas`); más gyűjteménynél újra kell mérni őket.
 """
 from __future__ import annotations
 
@@ -21,6 +20,7 @@ import math
 import os
 import re
 import statistics
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -34,9 +34,27 @@ LEPES_S, MIN_NEVEZO = 10, 25
 EROS_B, KOZEPES_B = 0.193, 0.150
 MASODIK_ABLAK_S, MAX_HORGONY_JEGYZETENKENT = 60, 2
 
-TEMA_MINTA = re.compile(r"^[A-Z]{1,3}\d{2} - .+")
-KIZART_MAPPAK = ("AI01", "AI02", "AI03", "_Template", "X01", "Prjct01", "Napló", "ATTCHMNTS - quizes")   # nn.kizart_mappak
+# A téma-mappa felismerése és a kizárt mappák: a `[video] tema_minta` / `kizart_mappak` (os.toml) adja; ezek az alapértékek, ha a kulcs hiányzik.
+# A minta alapja egyezik az os.toml-éval (és a `core/videolanc.TEMA_MINTA_ALAP`-éval); a kizárt mappák alapja semleges: csak a sablonmappa.
+TEMA_MINTA = re.compile(r"^[A-Z]{1,3}\d{2} - \S.*$")
+KIZART_MAPPAK = ("_Template",)
+ELMELET_MAPPA = "Elmélet"                   # `[fuzet] elmelet_mappa`: a téma-mappa tananyag-jegyzeteinek almappája
 SKIP_DIRS = {".obsidian", ".trash", ".git", "node_modules"}
+
+
+def index_beallitas(cfg) -> dict:
+    """A `NoteIndex` és a `temak` konfigurációból jövő kulcsszavai (`tema_minta`, `kizart_mappak`, `elmelet_mappa`); hiányzó kulcs: az alap."""
+    v = cfg.section("video")
+    minta = v.get("tema_minta")
+    kizart = v.get("kizart_mappak")
+    try:
+        minta_re = re.compile(str(minta)) if minta else TEMA_MINTA
+    except re.error as e:                       # hibás `[video] tema_minta`: az alapminta (a Bevitel `videolanc.tema_minta` úgyis jelzi a hibát)
+        print(f"[egyezés] FIGYELEM: a [video] tema_minta nem érvényes reguláris kifejezés ({e}); az alapminta marad", file=sys.stderr, flush=True)
+        minta_re = TEMA_MINTA
+    return {"tema_minta": minta_re,
+            "kizart_mappak": tuple(str(k) for k in kizart) if isinstance(kizart, (list, tuple)) else KIZART_MAPPAK,
+            "elmelet_mappa": str(cfg.section("fuzet").get("elmelet_mappa") or ELMELET_MAPPA)}
 
 
 @dataclass
@@ -59,13 +77,15 @@ class Forras:
         return ablak_szoveg(self.cuek, t)
 
 
-def temak(vault: str | Path) -> list[str]:
+def temak(vault: str | Path, tema_minta=None, kizart_mappak=None) -> list[str]:
+    tema_minta = tema_minta or TEMA_MINTA
+    kizart_mappak = tuple(KIZART_MAPPAK if kizart_mappak is None else kizart_mappak)
     out = []
     for d in sorted(os.listdir(vault)):
         if not os.path.isdir(os.path.join(vault, d)) or d.startswith("."):
             continue
         n = nfc(d)
-        if not TEMA_MINTA.match(n) or re.match(r"^[A-Z]{1,3}00 - ", n) or n.startswith(KIZART_MAPPAK):
+        if not tema_minta.match(n) or re.match(r"^[A-Z]{1,3}00 - ", n) or n.startswith(kizart_mappak):
             continue
         out.append(n)
     return out
@@ -182,10 +202,12 @@ def kron_jel(ys, lift_rangsor, topics, topic_years) -> dict:
 class NoteIndex:
     """Az `<Téma>/Elmélet/` jegyzetek szótő-indexe (egyszer épül, a futás idejére; a vaultot csak olvassa)."""
 
-    def __init__(self, vault: str | Path, jegyzetek: dict[str, str] | None = None):
-        """`jegyzetek`: `{vault-relatív út: szöveg}` a lemez helyett (tesztek)."""
+    def __init__(self, vault: str | Path, jegyzetek: dict[str, str] | None = None, *, tema_minta=None, kizart_mappak=None,
+                 elmelet_mappa: str = ELMELET_MAPPA):
+        """`jegyzetek`: `{vault-relatív út: szöveg}` a lemez helyett (tesztek). `tema_minta`, `kizart_mappak`, `elmelet_mappa`:
+        a konfigurációból (`index_beallitas`); hiányzó érték: az alap."""
         self.vault = Path(vault)
-        tset = set(temak(vault)) if jegyzetek is None else {nfc(r).split("/")[0] for r in jegyzetek}
+        tset = set(temak(vault, tema_minta, kizart_mappak)) if jegyzetek is None else {nfc(r).split("/")[0] for r in jegyzetek}
         self.notes: dict[str, dict] = {}
         self.by_topic: dict[str, list[str]] = collections.defaultdict(list)
         self.topic_tf: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
@@ -195,7 +217,7 @@ class NoteIndex:
             forras = ((nfc(r), None) for r in sorted(jegyzetek))
         for rp, p in forras:
             parts = rp.split("/")
-            if len(parts) < 3 or parts[1] != "Elmélet" or parts[0] not in tset:
+            if len(parts) < 3 or parts[1] != elmelet_mappa or parts[0] not in tset:
                 continue
             try:
                 txt = Path(p).read_text(encoding="utf-8") if p else jegyzetek[rp]
@@ -373,7 +395,7 @@ def classify(f: Forras, idx: NoteIndex, nyelv: str | None, wins=None, csak_targy
     if not jel2:
         okok.append("az erős jelöltek nem a top1 témában a legtöbbek")
     if not kj["merheto"]:
-        okok.append(f"a kronológia nem mérhető ({kj['evszam']} évszám) — második jel nélkül nincs automatikus döntés (I7)")
+        okok.append(f"a kronológia nem mérhető ({kj['evszam']} évszám) — második jel nélkül nincs automatikus döntés")
     elif not jel3:
         okok.append("a top1 nincs a kronológiai top-3-ban (" + ", ".join(x["tema"][:3] for x in kj["top3"]) + ")")
     cj = cim_tema(f.torzs, idx.topics, targy(top3[0][0]))

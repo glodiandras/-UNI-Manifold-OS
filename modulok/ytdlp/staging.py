@@ -1,10 +1,9 @@
-"""A staging forrásmappa olvasása, leltára és visszajelzése (C20a) — a legacy `media_staging.py` modell- és vault-író nélküli része.
+"""A staging forrásmappa olvasása, leltára és visszajelzése (C20a).
 
 A staging a letöltő (`msp`) igazsága: `<szolgáltató>/<tárgy>/<cím>/{video.*, source.md, transcript.md, metadata.json,
-integration.json}`. Ez a modul **olvas**, és egyetlen mezőt ír vissza (`integration.json` `integration_status`, atomi csere), pontosan
-mint a legacy. A vault sidecar-jainak előállítása (`.info.json`, `.vtt` az átiratból) és a forrásleíró jegyzet a C20b `vaultoldal.py`-ja,
-a vaultba kerülés az `integralas.py` (a legacy `letoltes_helyett`/`szovegreteg_helyett` munkamappás másolása helyett a gépi írás
-`mozgat` + `uj` művelete).
+integration.json}`. Ez a modul **olvas**, és egyetlen mezőt ír vissza (`integration.json` `integration_status`, atomi csere). A vault
+sidecar-jainak előállítása (`.info.json`, `.vtt` az átiratból) és a forrásleíró jegyzet a `vaultoldal.py`-é, a vaultba kerülés az
+`integralas.py` (a gépi írás `mozgat` + `uj` művelete).
 """
 from __future__ import annotations
 
@@ -14,7 +13,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-SEMA = 1        # a msp staging-sémájának verziója (`schema_version`), amelyre ez a modul épül
+SEMA = 1        # a letöltő staging-sémájának verziója (`schema_version`), amelyre ez a modul épül
 INTEGRATION_ALLAPOTOK = ("pending", "in_review", "integrated", "rejected")
 _FM = re.compile(r"\A---\n(.*?)\n---\n", re.S)
 
@@ -60,7 +59,7 @@ def olvas(mappa: str | Path) -> dict:
     src, _ = frontmatter(p("source.md"))
     meta = json.loads(Path(p("metadata.json")).read_text(encoding="utf-8"))
     if src.get("pipeline_status") != "downloaded":
-        raise StagingHiba(f"a msp szerint nincs letöltve (pipeline_status: {src.get('pipeline_status')})")
+        raise StagingHiba(f"a letöltő szerint nincs letöltve (pipeline_status: {src.get('pipeline_status')})")
     media = p(integ.get("media") or src.get("media_file") or "video.mp4")
     if not os.path.isfile(media) or os.path.getsize(media) == 0:
         raise StagingHiba(f"a médiafájl hiányzik vagy üres: {media}")

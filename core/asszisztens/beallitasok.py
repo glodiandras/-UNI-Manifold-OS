@@ -1,10 +1,14 @@
 """Az `[asszisztens]` beállítások (a `config/os.toml`-ból, alapértékekkel): a hiányzó vagy hibás típusú kulcs az alapot adja."""
 from __future__ import annotations
 
+# A kizárt útelőtagok kód-alapja semleges (sablonmappa + a gépi kísérőmappák); a vault saját mappáit (napló, log) az os.toml `[asszisztens]`
+# listái adják — a v2-konvenció a `config/presets/v2-kompat.toml`-ban.
+_KIZART_ALAP = ["_Template/", "ATTCHMNTS - "]
+
 ALAP: dict = {
     # --- jegyzethigiénia
     "higienia_arva_canvas": True,         # a canvas-ból érkező link „bejövő linknek” számít-e (K176: igen — a tantárgyi canvas szerkezeti kapcsolat)
-    "higienia_arva_kizart": ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "],     # útelőtagok
+    "higienia_arva_kizart": _KIZART_ALAP,     # útelőtagok
     "higienia_arva_tulajdonsag_kizart": ["Canvas", "Source"],     # ezek a frontmatter-linkek nem kapcsolatok
     "higienia_min_koz_mp": 60.0,          # két teljes számítás között legalább ennyi idő
     "higienia_tick_mp": 10.0,             # a háttérszál ellenőrzési üteme
@@ -15,7 +19,7 @@ ALAP: dict = {
     "emlites_cim_alak": True,             # K177: a szótár a címrészt is tartalmazza (az `NN - ` előtag és a ` — Feladattár` nélkül)
     "emlites_cim_min_szo": 2,             # a címrész-egyezés bárhol ennyi szótól; az egyszavas csak ugyanabban a tantárgy-mappában
     "emlites_cim_egyszavas_max_db": 10,   # …és csak ha a szót legfeljebb ennyi jegyzet tartalmazza (ritka a vaultban)
-    "emlites_kizart": ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "],     # ezekre a jegyzetekre nem javasol linket
+    "emlites_kizart": _KIZART_ALAP,     # ezekre a jegyzetekre nem javasol linket
     "emlites_szotar_frissites_mp": 2.0,   # a névszótár legfeljebb ennyi időnként épül újra
     "emlites_hasonlosag_kuszob": 0.55,    # C30b: a jegyzet és a javasolt cél hasonlósága (C25c) ennél kisebb → nincs javaslat (mérés: tests/kezi/hasonlosag_meres.py)
     # --- szokásminta
@@ -41,7 +45,7 @@ ALAP: dict = {
     "kartya_muvelet_min_db": 3,           # egy művelet (címke, sablon, link) ennyi ismétlés után lesz tanult minta
     "kartya_tartalom_kuszob": 0.75,       # a kapcsolódó jegyzet hasonlósága (C25c vektortár) legalább ennyi
     "kartya_elutasitott_nap": 30,         # az elutasított javaslat ennyi napig nem tér vissza
-    "kartya_kizart": ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "],     # ezekben nincs kártya
+    "kartya_kizart": _KIZART_ALAP,     # ezekben nincs kártya
     "tantargy_nevek": {"History": "történelem", "Literature": "irodalom", "Mathematics": "matematika",
                        "Physics": "fizika", "Informatics": "informatika", "Grammar": "nyelvtan", "English": "angol"},
 }

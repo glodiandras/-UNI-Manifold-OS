@@ -11,17 +11,27 @@ import WebKit
 /// táblázatosan tesztelve; ez az osztály csak az ablakokra és a folyamatokra köti rájuk.
 @MainActor
 final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate, WKScriptMessageHandler {
-    /// Az ablak címsora (C34): a kézi próbakörnyezet (`tests/kezi/proba_app.py`) a `MOS_PROBA_JELZES` változót állítja, és a címsor
-    /// „PRÓBA — Manifold (klón)” lesz, hogy a klónon futó és a valódi példány ne legyen összekeverhető (a próba a valódi
-    /// vaultot nem érinti, de a gépelt szöveg a klónba megy). A változó nélkül a címsor „Manifold”.
+    /// Az ablak címsora. Csak a fejlesztői buildben (`-D MOS_DEVELOPER`): a kézi próbakörnyezet (`tests/kezi/proba_app.py`) a
+    /// `MOS_PROBA_JELZES` változót állítja, és a címsor „PRÓBA — Manifold (klón)” lesz, hogy a klónon futó és a valódi példány ne
+    /// legyen összekeverhető. A kiadott appban a címsor mindig „Manifold”.
     static let ablakCim: String = {
+#if MOS_DEVELOPER
         let jel = ProcessInfo.processInfo.environment["MOS_PROBA_JELZES"] ?? ""
         return jel.isEmpty ? "Manifold" : "PRÓBA — Manifold (\(jel))"
+#else
+        return "Manifold"
+#endif
     }()
+#if MOS_DEVELOPER
     private let selftest: Bool
     /// `--selftest=<név>`: egy forgatókönyv (`kilepes`, `core-halal`, `core-ujraindul`, `kezfogas-ido`, `szerkesztes`, `lecsatolas`);
     /// nil: az alap önellenőrzés.
     private let forgatokonyv: String?
+#else
+    // A kiadott buildben nincs selftest: a konstans hamis, így a `selftest`-ágak kiesnek a binárisból.
+    private var selftest: Bool { false }
+    private var forgatokonyv: String? { nil }
+#endif
     /// A folyamat indulása (C33: a „héj 2 s alatt kész” cél mérése — a selftest kiírja a `kesz` jelig eltelt időt).
     private let indulas = Date()
     private var window: NSWindow?
@@ -53,21 +63,27 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// A következő `kesz` után a felületen megjelenő üzenet (újratöltés, új porton újraindult core).
     private var kesobbiUzenet: (szint: String, cim: String, szoveg: String)?
 
+#if MOS_DEVELOPER
     init(selftest: Bool, forgatokonyv: String? = nil) {
         self.selftest = selftest
         self.forgatokonyv = forgatokonyv
     }
+#else
+    override init() { super.init() }
+#endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Az ablak-visszaállítás kikapcsolva: az OS ne írjon mentett ablakállapotot (Saved Application State). A héj a home alá
-        // MÉGIS ír egyet: az AppKit/cfprefsd a ~/Library/Preferences/local.manifold-os.app.plist-be teszi a natív panelek (pl. a
+        // MÉGIS ír egyet: az AppKit/cfprefsd a ~/Library/Preferences/<Bundle.main.bundleIdentifier>.plist-be teszi a natív panelek (pl. a
         // helyesírás-panel) ablakkereteit — ez a megengedett kivétel a belső lemezes mentés (~/Manifold-backup) mellett;
         // a `bin/mos doctor` „home írások” tétele megnevezi, bármi mást jelez (C34, T189).
         UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows": false])
+#if MOS_DEVELOPER
         if selftest {                                    // a biztonsági és életciklus-döntések táblázata (C11a, C29.7b)
             let hibak = Biztonsag.ellenorzes() + NaptarLogika.ellenorzes() + CoreProcess.ellenorzes() + Eletciklus.ellenorzes() + HelyiMenu.ellenorzes() + ErtesitesLogika.ellenorzes() + Kuka.ellenorzes()
             if !hibak.isEmpty { return finishSelftest(ok: false, note: "biztonsági próba: " + hibak.joined(separator: "; ")) }
         }
+#endif
         if !selftest { _ = ertesitesKozpont }               // a kattintás-kezelő már indításkor él (E10)
         buildMenu()
         let config = WKWebViewConfiguration()
@@ -89,18 +105,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         if !selftest { buildWindow() }
 
         guard let root = RootLocator.locate(environment: ProcessInfo.processInfo.environment, bundle: Bundle.main.bundleURL) else {
-            return fail("A Manifold-OS gyökere nem található. A Manifold.app-nak a Manifold-OS mappájában kell lennie (bin/mos és config/os.toml mellett). Az SSD nincs csatlakoztatva?")
+            return fail("A Manifold alkalmazásmappája nem található. A Manifold.app-nak az alkalmazásmappájában kell lennie (bin/mos és config/os.toml mellett). A külső kötet nincs csatlakoztatva?")
         }
         self.gyoker = root
         indit(CoreProcess(root: root))
         // C29.6 (M5): a kötet lecsatolása (Finder-kiadás, diskutil) előtt mentünk és leállunk
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(kotetLecsatol(_:)),
                                                           name: NSWorkspace.willUnmountNotification, object: nil)
+#if MOS_DEVELOPER
         if selftest {
             // a szkriptelt szerkesztés (C33) lépésenként saját határidővel fut: a teljes keret ehhez nagyobb
             let keret: Double = forgatokonyv == "szerkesztes" ? 90 : 40
             DispatchQueue.main.asyncAfter(deadline: .now() + keret) { [weak self] in self?.finishSelftest(ok: false, note: "időtúllépés") }
         }
+#endif
     }
 
     /// A core indítása és a kézfogás (időkorláttal, T123). Az első indulás és az újraindítás ugyanezt használja.
@@ -348,7 +366,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         let viewItem = NSMenuItem(); main.addItem(viewItem)
         let view = NSMenu(title: "Nézet"); viewItem.submenu = view
         for (cim, id) in [("Parancspaletta", "hej.paletta"), ("Fájl megnyitása", "hej.valto"),
-                          ("Manifold-OS vezérlő", "manifold.vezerlo"), ("-", ""),
+                          ("Manifold áttekintő", "manifold.vezerlo"), ("-", ""),
                           ("Oldalsáv", "hej.oldalsav"), ("Jobb panel", "hej.jobb-panel"),
                           ("Állapotsor", "hej.allapotsor"), ("Csend mód be/ki", "hej.csend"), ("-", ""),
                           ("Téma: a rendszer szerint", "tema.rendszer"), ("Téma: világos", "tema.vilagos"),
@@ -671,14 +689,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { false }
 
     func applicationWillTerminate(_ notification: Notification) {
+#if MOS_DEVELOPER
         if selftest, forgatokonyv == "kilepes" || forgatokonyv == "lecsatolas", !selftestDone {
             selftestDone = true
             print(forgatokonyv == "lecsatolas" ? "SELFTEST OK: a kötet lecsatolásának értesítésére a mentés után, rendezetten állt le"
                                                : "SELFTEST OK: a kilépés a mentés után, rendezetten ért véget")
         }
+#endif
     }
 
-    // MARK: --selftest: fejetlen ellenőrzés (kilépési kód 0/1)
+#if !MOS_DEVELOPER
+    // A kiadott buildben a selftest nincs: a hívóhelyek (`if selftest { … }`) konstans hamis ágak, ezek az üres törzsek tartják őket fordíthatóvá.
+    private func finishSelftest(ok: Bool, note: String, kill: Bool = false) {}
+    private func selftestKesz(_ megjegyzes: String, ures: Bool = false) {}
+#else
+    // MARK: --selftest: fejetlen ellenőrzés (kilépési kód 0/1) — csak a fejlesztői buildben
 
     private var selftestDone = false
 
@@ -772,6 +797,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         core.onExit = { exit(ok ? 0 : 1) }
         if kill { core.terminateNow() } else { core.requestStop() }
     }
+#endif
 }
 
 /// A töltésjelző (T123): az ablak azonnal megjelenik, amíg a core indul és a felület betöltődik — nem üres, fehér lap.

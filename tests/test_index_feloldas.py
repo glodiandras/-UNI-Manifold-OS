@@ -1,15 +1,14 @@
-"""A link-feloldás és a gráf (C06, L42; C10.6): az Obsidian-sorrend, a legacy selftest 14–15 esetei, a
-kis-nagybetűtől független menet és a szegmenshatár (13. döntés), a maszk, és a legacy-paritás új alakja: a
-gráf a legacytől **pontosan a dokumentált eltérésekben** tér el (`tests/legacy_szabaly.py`).
-
-A legacy csak olvasva fut: alfolyamatban, `-B`-vel, bytecode-írás nélkül, az álvaulton.
+"""A link-feloldás és a gráf (C06, L42; C10.6): az Obsidian-sorrend, a régi selftest 14–15 esete, a
+kis-nagybetűtől független menet és a szegmenshatár (13. döntés), a maszk, és a paritás új alakja: a
+gráf a régi szabálytól **pontosan a dokumentált eltérésekben** tér el (`tests/legacy_szabaly.py`: a régi szabály
+befagyasztott másolata). A másolat hűségét a régi eszköztárral a kézi kapu őrzi (`tests/kezi/graf_paritas.py`, `MOS_LEGACY`).
 """
 import unittest
 
 from core.index import feloldas
 from core.index.feloldas import Feloldo, graf, graf_kanonikus, jegyzet_celok, mask_code
 from tests import legacy_szabaly
-from tests.helpers import legacy_eszkozok, legacy_graf, tmpdir
+from tests.helpers import tmpdir
 from tests.index_segedek import ELTERES, NFD, alvault, index_indit
 
 
@@ -265,38 +264,6 @@ class ElteresTest(unittest.TestCase):
             self.assertNotIn(cel, uj["unresolved"])
         self.assertIn("Köztes", uj["unresolved"])
         self.assertNotIn("Köztes", regi["unresolved"])
-
-
-@unittest.skipUnless(legacy_eszkozok(), "a legacy mfd.py nem olvasható (MOS_LEGACY)")
-class LegacyParitasTest(unittest.TestCase):
-    """A referencia-modell (`legacy_szabaly.regi_graf`) bájtra azonos a legacy `mfd.obsidian_graf`-fal: ez őrzi,
-    hogy az `ElteresTest` valóban a legacyhez mér (L42; a 2.0 gráfja már szándékosan eltér, 13. döntés)."""
-
-    def setUp(self):
-        self._t = tmpdir()
-        self.addCleanup(self._t.cleanup)
-        self.eszk = legacy_eszkozok()
-
-    def regi(self, v):
-        return graf_kanonikus(legacy_szabaly.regi_graf(v))
-
-    def test_a_referencia_modell_bajtra_a_legacy(self):
-        for i, fajlok in enumerate((None, ELTERES)):
-            with self.subTest(i):
-                _, v = alvault(f"{self._t.name}/{i}", fajlok)
-                self.assertEqual(legacy_graf(self.eszk, v), self.regi(v))
-
-    def test_valtozas_utan_is_azonos(self):
-        _, v = alvault(self._t.name, ELTERES)
-        (v / "C" / "Jegyzet.md").write_text("[[Jegyzet]] [[2026-09-12]] [[jegyzet]]")
-        (v / "A" / "Jegyzet.md").unlink()
-        self.assertEqual(legacy_graf(self.eszk, v), self.regi(v))
-
-    def test_a_legacy_fa_erintetlen(self):
-        _, v = alvault(self._t.name)
-        elotte = sorted(p for p in self.eszk.rglob("*"))
-        legacy_graf(self.eszk, v)
-        self.assertEqual(sorted(p for p in self.eszk.rglob("*")), elotte)          # nincs __pycache__
 
 
 if __name__ == "__main__":

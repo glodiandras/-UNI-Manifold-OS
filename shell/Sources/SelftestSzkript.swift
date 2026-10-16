@@ -1,3 +1,5 @@
+// Csak a fejlesztői buildben (`MOS_DEVELOPER_BUILD=1 bash shell/build.sh` → `-D MOS_DEVELOPER`): a kiadott appban nincs szkriptelt selftest.
+#if MOS_DEVELOPER
 /// A `--selftest` szkriptelt forgatókönyveinek lap-oldali része (C33, 3. pont): `callAsyncJavaScript` törzsként fut a valódi
 /// WebKitben (a `jel` és a `titok` argumentumként jön). Nyers Swift-szöveg (`#"""`), hogy a JS-ben ne kelljen escape-elni.
 /// A szerkesztő nézetét a CodeMirror `cmTile`/`cmView` jelén át éri el (mint a `kilepes` forgatókönyv). Az eredmény egy JSON
@@ -70,3 +72,4 @@ enum SelftestSzkript {
     return JSON.stringify(ki);
     """#
 }
+#endif

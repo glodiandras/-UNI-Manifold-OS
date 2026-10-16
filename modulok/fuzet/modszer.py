@@ -65,8 +65,13 @@ def atirat_prompt(n: int) -> str:
     return _eval_modul("ocr_kezi").PROMPT.format(n=n)
 
 
+ALAP_ATIRAT_MAX_TOKEN = 1500       # az átirat válaszkerete, ha a mérés aranyhalmaza (amelyből a kalibrált érték jön) nincs a telepítésben
+
+
 def atirat_max_token() -> int:
-    return int(_eval_modul("ocr_kezi").ARANY["max_token"])
+    """Az átirat válaszkerete: a kalibrált (mért) érték az `ocr_kezi` aranyhalmazból; ha az nincs, az alap — az éles lánc nem függhet a
+    mérőhalmaz meglététől."""
+    return int(_eval_modul("ocr_kezi").ARANY.get("max_token") or ALAP_ATIRAT_MAX_TOKEN)
 
 
 def nfc(s: str) -> str:
@@ -102,18 +107,23 @@ def olvasat(valasz, kat) -> dict:
 
 # ---------------------------------------------------------------- 2. lépés
 
-def targy_betu(tantargy: str) -> str | None:
+def targy_betu(tantargy: str, cimkek: dict | None = None) -> str | None:
+    """A tantárgy betűje a modell válaszából. A `cimkek` (`[pdf.tags]`: betű → címke) címkéi előbb számítanak; ami nem illik rájuk, azt az
+    alap-lista (`TANTARGYAK`) nevei döntik el — így a konfigurálatlan és a hiányos táblázat mellett is a meglévő nevek érvényesek."""
     t = nfc(tantargy).lower()
+    for b, nev in (cimkek or {}).items():
+        if isinstance(nev, str) and nev.strip() and nev.strip().lower() in t:
+            return str(b)
     for b, nev in TANTARGYAK.items():
         if nev.lower() in t:
             return b
     return None
 
 
-def jeloltek(olv: dict, kat) -> list[str]:
+def jeloltek(olv: dict, kat, cimkek: dict | None = None) -> list[str]:
     """A legacy `jeloltek()`-je: a választott fejezetek jegyzetei; ha nincs fejezet, a tantárgy két szóalapú legjobb fejezete;
     utána a tantárgy(ak)on belüli szóalapú rangsor első `BM25_KIEGESZITES` még nem szereplő jegyzete."""
-    betuk = {k[0] for k in olv["fejezetek"]} | ({targy_betu(olv["tantargy"])} - {None})
+    betuk = {k[0] for k in olv["fejezetek"]} | ({targy_betu(olv["tantargy"], cimkek)} - {None})
     lekerdezes = f"{olv['cimek']} {olv['tartalom']}"
     kodok = [k for k in olv["fejezetek"] if k in kat.fej]
     if not kodok and betuk:
@@ -172,7 +182,7 @@ def dontes(valasz, olv: dict, jl: list[str], kat) -> tuple[str | None, bool]:
     return None, True
 
 
-def ismert_targy(olv: dict) -> bool:
+def ismert_targy(olv: dict, cimkek: dict | None = None) -> bool:
     """80(h): az 1. lépés tantárgya a zárt listában van-e (a tantárgy neve vagy legalább egy érvényes fejezetkód). Ismeretlen tantárgyú
     (pl. a listán nem szereplő) fotó nem kerül a szóalapú rangsor szerinti, bármelyik tantárgyba eső jelöltekhez."""
-    return bool(olv.get("fejezetek")) or targy_betu(olv.get("tantargy") or "") is not None
+    return bool(olv.get("fejezetek")) or targy_betu(olv.get("tantargy") or "", cimkek) is not None

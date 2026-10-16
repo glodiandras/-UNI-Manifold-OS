@@ -30,7 +30,7 @@ ROUTER_FELADAT = "osszefoglal_kijeloles"
 ARANY = K.betolt(ITT)
 VERZIO = K.verzio(ROUTER_FELADAT, ARANY, prompt_lenyomat(MOD))
 KORLAT = ("12 kijelölés; lexikai pontozó: az átfogalmazott hamis állítást és a mondaton belüli felcserélést nem látja, a "
-          "kulcsszó-lefedettség a tartalom közelítése — a jóváhagyáskor (K430) a válaszokat kézzel is át kell nézni.")
+          "kulcsszó-lefedettség a tartalom közelítése — a jóváhagyáskor a válaszokat kézzel is át kell nézni.")
 
 _profil = {"p": K.profil(None)}
 

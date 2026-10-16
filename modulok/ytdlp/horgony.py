@@ -40,11 +40,11 @@ def beir(szoveg: str, horgonyok: list[tuple[str, int]]) -> tuple[str, list[tuple
         raise HorgonyHiba(f"a Source: mező {len(src)}× áll a frontmatterben")
     k = src[0]
     if lines[k].rstrip() != "Source:":
-        raise HorgonyHiba("a Source: nem lista-alakú (inline érték) — a formátum nem replikálható (I27)")
+        raise HorgonyHiba("a Source: nem lista-alakú (inline érték) — a formátum nem replikálható")
     e = k + 1
     while e < len(lines) and lines[e].startswith("  - "):
         if not re.match(r'^  - "\[\[[^\]]+\]\]"$', lines[e]):
-            raise HorgonyHiba(f"a Source: lista egy eleme szokatlan alakú: {lines[e]!r} (I27)")
+            raise HorgonyHiba(f"a Source: lista egy eleme szokatlan alakú: {lines[e]!r}")
         e += 1
     if e < len(lines) and not re.match(r"^[A-Za-z_][\w -]*:", lines[e]):
         raise HorgonyHiba(f"a Source: lista után váratlan sor: {lines[e]!r}")
@@ -54,5 +54,5 @@ def beir(szoveg: str, horgonyok: list[tuple[str, int]]) -> tuple[str, list[tuple
     d2, _ = parse_fm(fm2)
     if (body2 != split_note(szoveg)[1] or not set(add) <= set(media_anchors(d2.get("Source", "")))
             or {x: y for x, y in d2.items() if x != "Source"} != {x: y for x, y in d.items() if x != "Source"}):
-        raise HorgonyHiba("az utóellenőrzés bukott — a jegyzetet kézzel kell megnézni (I9)")
+        raise HorgonyHiba("az utóellenőrzés bukott — a jegyzetet kézzel kell megnézni")
     return uj, out

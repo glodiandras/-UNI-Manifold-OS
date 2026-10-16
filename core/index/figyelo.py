@@ -16,6 +16,8 @@ import os
 import threading
 import unicodedata
 
+from ..config import BUNDLE_ID
+
 # FSEventStreamCreateFlags
 _NO_DEFER, _WATCH_ROOT, _FILE_EVENTS = 0x02, 0x04, 0x10
 # FSEventStreamEventFlags
@@ -120,7 +122,7 @@ class FSEvents:
             cf.CFRelease(s)
             if not stream:
                 raise FigyeloHiba("az FSEventStreamCreate nem adott folyamot")
-            q = self._sys.dispatch_queue_create(b"hu.manifold.index.fsevents", None)
+            q = self._sys.dispatch_queue_create(f"{BUNDLE_ID}.index.fsevents".encode(), None)
             cs.FSEventStreamSetDispatchQueue(stream, q)
             if not cs.FSEventStreamStart(stream):
                 cs.FSEventStreamInvalidate(stream)

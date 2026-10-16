@@ -362,7 +362,7 @@ class Adatok:
             for h in hibak:
                 self.figyelmeztet(h)
             self.adatok["kviz"] = {"van": bool(self._kviz), "ok": None if self._kviz else (
-                "még nincs kvízeredmény" if forrasok.van_forras() else "nincs kvíz-adatforrás (a kvíz a C22-vel érkezik)")}
+                "még nincs kvízeredmény" if forrasok.van_forras() else "nincs kvíz-adatforrás")}
         return self._kviz
 
     def forrasok_betolt(self) -> None:

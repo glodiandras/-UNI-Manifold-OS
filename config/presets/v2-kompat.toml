@@ -1,0 +1,12 @@
+# v2-kompat preset: a Manifold-OS 2.0 fejlesztői saját konvenciói, amelyeket a termék már NEM szállít alapértékként.
+#
+# Alak: egy `workspace.toml`-töredék (a `config/os.toml` kulcsait írja felül). Ez a v2-import eszköz (PLAN [H]) adatforrása; amíg a rétegzett
+# konfig nincs meg (F3), kézzel illeszthető egy saját konfigba (`MOS_CONFIG`). A fájl `export-ignore`: kiadási csomagba nem kerül.
+
+[fuzet]
+# a v2-ben figyelt további fotómappák (vaulton kívül)
+mappak = ["{work}/Notebooks - digitalized", "{work}/Rendezetlen"]
+
+[naptar.szotar]
+# a számonkérés felismerő szavai a v2-ben (a termék alapértéke ezek nélkül áll: `ropdolgozat`, `ropi` iskolai szleng)
+dolgozat = ["dolgozat", "dolgozatot", "dolgozatir", "temazaro", "tz", "ropdolgozat", "ropi", "zh", "vizsga", "exam", "test", "teszt", "felmeres", "szamonkeres", "kisdolgozat", "felelés", "feleles", "quiz"]

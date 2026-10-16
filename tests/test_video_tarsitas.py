@@ -20,6 +20,7 @@ from unittest import mock
 from modulok.ytdlp import egyezes as X
 from modulok.ytdlp import horgony, itelet, kotes as KT, vaultoldal as VO
 from modulok.ytdlp import szovegreteg as SZ
+from tests.eval_segedek import aranyt_igenyel
 
 
 def _vtt(*cuek) -> str:
@@ -279,7 +280,7 @@ class VaultoldalTest(unittest.TestCase):
 
     def test_24_info_json(self):
         i = VO.info_json(staging_src())
-        self.assertEqual((i["id"], i["width"], i["height"], i["epoch"], i["_staging"]["zanza_lap"]),
+        self.assertEqual((i["id"], i["width"], i["height"], i["epoch"], i["_staging"]["forras_lap"]),
                          ("vid24", 1440, 1080, 1789774336, "https://zanza.tv/irodalom/x/a-cim"))
         self.assertFalse(VO.info_json_szoveg(staging_src()).endswith("\n"))
 
@@ -332,14 +333,17 @@ class EvalTest(unittest.TestCase):
         self._t = tmpdir()
         self.addCleanup(self._t.cleanup)
         self.cfg, _, _ = eval_cfg(self._t.name)
-        self.tema, self.kotes = feladat(self.cfg, "tema"), feladat(self.cfg, "kotes")
+        # a pontozó adat nélkül is betöltődik (inline fixture-ös teszt); a szállított halmazt igénylők külön jelöltek
+        self.tema, self.kotes = feladat(self.cfg, "tema", adat=False), feladat(self.cfg, "kotes", adat=False)
 
+    @aranyt_igenyel("tema", "kotes")
     def test_halmazok(self):
         self.assertEqual(len(self.tema.ARANY["videok"]), 118)
         self.assertEqual(sum(v["tema"] is None for v in self.tema.ARANY["videok"]), 3)                # 3 témátlan (bibliai)
         self.assertEqual(itelet.lista_hash(self.tema.ARANY["temak"]["I"]), "0623a5ee67")              # a legacy mérés listája
         self.assertEqual((len(self.kotes.ARANY["parok"]), sum(p["y"] for p in self.kotes.ARANY["parok"])), (141, 118))
 
+    @aranyt_igenyel("tema", "kotes")
     def test_kotes_tetelek_es_pontozo(self):
         from tests.eval_segedek import rekord
         t = list(self.kotes.tetelek(self.cfg))

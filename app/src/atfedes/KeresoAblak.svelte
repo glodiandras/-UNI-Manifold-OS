@@ -267,7 +267,7 @@
           {/if}
         {/if}
       </span>
-      <label class="jelentes" title="Szó szerinti és jelentés szerinti (vektoros) találatok együtt, rerankerrel (C25b)">
+      <label class="jelentes" title="Szó szerinti és jelentés szerinti (vektoros) találatok együtt, rerankerrel">
         <input type="checkbox" checked={allapot.jelentes} onchange={(e) => allapot.jelentesValt(e.currentTarget.checked)} />
         Jelentés szerint
       </label>

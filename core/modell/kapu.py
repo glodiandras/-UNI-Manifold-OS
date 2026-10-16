@@ -38,7 +38,7 @@ class Kapu:
         """Miért nem indulhat a munka (üres: indulhat)."""
         if automatikus:
             if self.ido() - self.indult < self.indulasi_szunet:
-                return "az app nemrég indult (D8)"
+                return "az app nemrég indult"
             if self.jelek is not None and self.jelek.elavult():
                 # fail-closed: mérés nélkül nem indul automatikus munka; a mérés hibája az indoklásban látszik (F6)
                 hiba = getattr(self.jelek, "hiba", None)

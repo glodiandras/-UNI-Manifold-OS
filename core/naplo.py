@@ -1,8 +1,8 @@
 """A napi jegyzet (C15): megnyitás vagy létrehozás a vault konvenciója szerint.
 
-A konvenció (a vault `X01 - Napló & To-Do` mappájából): `X01 - Napló & To-Do/ÉÉÉÉ-HH/Napló/ÉÉÉÉ-HH-NN.md`,
+A konvenció: a napi jegyzet a `[naplo] ut` formátum-kulcs szerinti útra kerül (alap, ha a kulcs hiányzik: `Daily/ÉÉÉÉ-HH-NN.md`),
 frontmatter `Tags: [Napló]`, üres `Source`, `Status`, `NN`, a `Canvas` a havi canvasra mutat, H1 = `# Napló`.
-Az útvonal egyetlen formátum-kulcsból jön (`[naplo] ut`, a sablonmotor formázójával), így kódban nincs beégetett út.
+Az útvonal egyetlen formátum-kulcsból jön (a sablonmotor formázójával), így kódban nincs beégetett vault-mappanév.
 
 A `Status` mezőt a felhasználó tölti (L33): az alapváz üresen hagyja, a core soha nem tölti ki. A `Canvas` mező
 csak akkor mutat a havi canvasra, ha az az indexben létezik (nincs törött link).
@@ -22,7 +22,7 @@ from . import sablon
 from .utvonalak import HttpError
 from .vaultio import Invalid, NotFound, norm_path
 
-ALAP_UT = "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+ALAP_UT = "Daily/YYYY-MM-DD"            # semleges alap; a vault saját konvencióját az os.toml `[naplo] ut` kulcsa adja
 ALAP_CANVAS = "YYYY-MM"
 ALAP_SABLON = "Napi jegyzet"
 _DATUM = re.compile(r"^\d{4}-\d{2}-\d{2}$")

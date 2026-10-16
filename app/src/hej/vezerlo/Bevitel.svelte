@@ -371,7 +371,7 @@
     bind:value={celmappa}
     spellcheck="false"
     autocomplete="off"
-    placeholder="pl. D13 - CS50"
+    placeholder="pl. A01 - Téma neve"
   />
   <datalist id="video-temamappak">
     {#each temamappak as t (t)}<option value={t}></option>{/each}
@@ -398,7 +398,7 @@
     {/if}
     <p class="halvany leiras">
       A kijelölt videók a(z) „{cel}” mappába kerülnek (a hiányzó mappa létrejön): a felirat és a forrásleíró jegyzet a
-      „{cel}/Média” rétegbe, kötés csak a mappa saját jegyzeteihez. A téma-modell nem fut.
+      mappa média-almappájába, kötés csak a mappa saját jegyzeteihez. A téma-modell nem fut.
     </p>
   {/if}
   <div class="sor">
@@ -413,7 +413,7 @@
     <label class="halvany kapcsolo"><input type="checkbox" bind:checked={proba} /> Próba (a vault klónján)</label>
   </div>
   <p class="halvany leiras">
-    A videó az „ATTCHMNTS - Videos” alá, a felirat és a forrásleíró jegyzet a téma „Média” rétegébe, a kötések a jegyzetek Source
+    A videó a vault videómappája alá, a felirat és a forrásleíró jegyzet a téma média-almappájába, a kötések a jegyzetek Source
     mezőjébe kerülnek. Videónként egy gépi írás: a feladat „Mit változtatott” nézetéből visszavonható.
   </p>
 </div>

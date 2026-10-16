@@ -70,12 +70,42 @@ def munkafa_forras(env: dict[str, str]) -> dict[str, str]:
     fo = Path(p.stdout.strip()).parent
     if fo == REPO:
         return ki
-    ki.setdefault("MOS_VAULT", str((fo / ".." / "Manifold").resolve()))
+    try:                                    # a fő checkout vaultja a SAJÁT rétegzett konfigjából (nincs beégetett mappanév)
+        ki.setdefault("MOS_VAULT", str(config.load({"MOS_ROOT": str(fo)}).path("vault")))
+    except Exception:                       # noqa: BLE001 — nincs olvasható konfig: a megadott/alap vault marad
+        pass
     ki.setdefault("MOS_VAULT_GIT", str(fo / "var" / "vault.git"))
-    legacy = (fo / ".." / "Manifold-OS legacy" / "Legacy").resolve()
-    if legacy.is_dir():
-        ki.setdefault("MOS_LEGACY", str(legacy))
     return ki
+
+
+def legacy_eszkozok(cfg=None) -> Path | None:
+    """Egy régebbi telepítés `modulok/eszkozok` mappája (csak olvasható referencia az átállás-kapukhoz): kizárólag a
+    `MOS_LEGACY` (annak a telepítésnek a gyökere) jelöli ki, alapértelmezett hely nincs. Nélküle vagy hibásan `None`."""
+    gyoker = os.environ.get("MOS_LEGACY")
+    if not gyoker:
+        return None
+    p = Path(gyoker) / "modulok" / "eszkozok"
+    return p if (p / "mfd.py").is_file() else None
+
+
+LEGACY_GRAF = """
+import sys
+sys.dont_write_bytecode = True
+sys.path.insert(0, sys.argv[1])
+sys.path.insert(0, sys.argv[2])
+import mfd
+from core.index.feloldas import graf_kanonikus
+sys.stdout.buffer.write(graf_kanonikus(mfd.obsidian_graf(sys.argv[3])))
+"""
+
+
+def legacy_graf(eszkozok: Path, vault: Path) -> bytes:
+    """A régebbi `obsidian_graf` a `vault`-on, alfolyamatban (`-B`), a 2.0 kanonikus alakjában."""
+    p = subprocess.run([sys.executable, "-B", "-c", LEGACY_GRAF, str(eszkozok), str(REPO), str(vault)],
+                       capture_output=True, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}, timeout=300)
+    if p.returncode != 0:
+        raise RuntimeError(p.stderr.decode("utf-8", "replace")[-2000:])
+    return p.stdout
 
 
 def probamappa(cfg, elotag: str, *, megtart: bool = False, szkript: str | None = None) -> Path:

@@ -4,7 +4,7 @@ Transcription is deliberately decoupled from downloading (spec section 10):
 a download only ever creates a ``transcript_status: pending`` placeholder, and
 a separate run fills it in with whichever backend is available.
 
-Fidelity rule (AI01 #14): the text is written exactly as the engine produced
+Fidelity rule: the text is written exactly as the engine produced
 it. No punctuation repair, no paraphrasing, no "tidying up" - a beautified
 transcript cannot serve as a character-exact quote source later. Any deviation
 must be recorded in ``transcript_postprocessed``.

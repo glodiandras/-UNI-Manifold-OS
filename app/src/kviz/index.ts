@@ -10,6 +10,7 @@ import { kvizUt } from './allando';
 import { kvizGeneral } from './api';
 import { kvizRenderelo } from './beagyazas';
 
+// mirror of config — F3 replaces with /api/workspace
 const KISERO_ELOTAG = 'ATTCHMNTS - ';
 
 function hibaSzoveg(e: unknown): string {

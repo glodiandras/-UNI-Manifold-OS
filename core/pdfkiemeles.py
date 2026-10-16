@@ -29,8 +29,6 @@ from .utvonalak import HttpError
 from .vaultio import _H1_ELOTAG, Conflict, Invalid, NotFound, nfc, norm_path
 
 UTOTAG = " – kiemelések"
-ALAP_TAGS = {"M": "Mathematics", "F": "Physics", "T": "History", "I": "Literature", "D": "Informatics",
-             "N": "Grammar", "E": "English"}
 MAX_SZOVEG = 5000
 MAX_TEGLALAP = 400
 MAX_OLDAL = 100_000
@@ -52,10 +50,8 @@ def fajl_ut(pdf: str) -> str:
 
 
 def cimke(cfg, pdf: str) -> str | None:
-    """A tárgy-címke a PDF legfelső mappájának első betűjéből (`[pdf] tags`), vagy None."""
-    terkep = dict(ALAP_TAGS)
-    if cfg is not None:
-        terkep.update({str(k): str(v) for k, v in (cfg.section("pdf").get("tags") or {}).items()})
+    """A tárgy-címke a PDF legfelső mappájának első betűjéből (`[pdf.tags]`, az egyetlen forrás), vagy None."""
+    terkep = {str(k): str(v) for k, v in (cfg.section("pdf").get("tags") or {}).items()} if cfg is not None else {}
     elso = pdf.split("/", 1)[0] if "/" in pdf else ""
     return terkep.get(elso[:1].upper()) if elso else None
 

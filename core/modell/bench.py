@@ -1,14 +1,14 @@
-"""`mos bench` — sebesség és memóriaterhelés a jelölt modelleken (D5: a mérés dönt; a legacy portja).
+"""`mos bench` — sebesség és memóriaterhelés a jelölt modelleken (D5: a mérés dönt).
 
 Minden modell KÜLÖN gyermekfolyamatban fut (`python -m core.modell.bench --gyermek <név>`), a betöltőn
 át (zár, keret, őr: a mérés sem kerülheti meg, CLAUDE.md 4.), így a mérések nem szennyezik egymást. A
 szülő közben félmásodpercenként mintavételezi a rendszert (szabad memória %, swap). Futás előtt a futó
 workert kiüríti (`/unload`), különben a közös zárra várna.
 
-Feladatok a legacy alakjában: (1) kötés-ítélet a `{state}/Manifold-media/itelet/n_kotes_minta.json` első
-párjával; (2) ötmondatos összefoglaló (generálási sebesség); (3) egy füzetfotó átirata — a vaultból
-CSAK olvasva, a `{tmp}` alá kicsinyítve, a mérés után törölve. A legacy `csucs_gb` feltételei:
-`--cache-limit-gb 1`, 1400 px, a könyvtár alapértelmezett beolvasási lépése (`--prefill-lepes 0`).
+Feladatok: (1) kötés-ítélet egy minta-páron (`--minta <json>` első párja, címke: `--cimkek <json>`; nélküle a
+beépített semleges pár); (2) ötmondatos összefoglaló (generálási sebesség); (3) egy fotó átirata (`--foto <kép vagy
+mappa>`; nélküle kimarad) — CSAK olvasva, a `{tmp}` alá kicsinyítve, a mérés után törölve. A `csucs_gb` mérési
+feltételei: `--cache-limit-gb 1`, 1400 px, a könyvtár alapértelmezett beolvasási lépése (`--prefill-lepes 0`).
 """
 from __future__ import annotations
 
@@ -31,6 +31,16 @@ KOTES_PROMPT = (
     "Válaszolj egyetlen szóval: igen vagy nem.\n\n"
     "VIDEÓRÉSZLET:\n{ablak}\n\nJEGYZET ({cim}):\n{reszlet}\n\nVálasz:"
 )
+# A beépített minta-pár (`--minta` nélkül): semleges tankönyvi szöveg, a várt ítélet „igen”.
+ALAP_PAR = {
+    "ablak_szoveg": "A fotoszintézis során a növények a fény energiáját hasznosítják: a levelekben lévő klorofill "
+                    "elnyeli a fényt, és a szén-dioxidból meg a vízből szőlőcukor és oxigén keletkezik.",
+    "jegyzet_cim": "Fotoszintézis",
+    "jegyzet_reszlet": "A fotoszintézis a zöld növények anyagcsere-folyamata: fényenergia segítségével szén-dioxidból "
+                       "és vízből szerves anyag (glükóz) és oxigén képződik. A folyamat a zöld színtestekben zajlik.",
+    "y": 1,
+}
+KEP_KITERJESZTES = {".jpg", ".jpeg", ".png"}
 KEP_PROMPT = ("Írd át pontosan a képen látható kézírásos magyar szöveget. "
               "Ahol nem olvasható, írd: [?]. Csak az átiratot add vissza.")
 
@@ -106,9 +116,14 @@ def gyermek(nev: str, par: dict, kep: str | None, max_tokens: int, keret: str | 
 
 # ------------------------------------------------------------------ szülő
 
-def kep_elokeszit(cfg: config.Config, px: int = 1400) -> str | None:
-    """Egy füzetfotó a füzetlánc méretére kicsinyítve a `{tmp}` alá (a vaultban semmi nem változik)."""
-    fotok = sorted((cfg.path("vault") / "ATTCHMNTS - photos").glob("IMG_*.JPG"))
+def kep_elokeszit(cfg: config.Config, px: int = 1400, foto: Path | str | None = None) -> str | None:
+    """A `foto` (egy kép, vagy egy mappa középső képe) a füzetlánc méretére kicsinyítve a `{tmp}` alá (a forrásban
+    semmi nem változik). `foto` nélkül, vagy ha nincs benne kép: `None` (a képes lépés kimarad)."""
+    if not foto:
+        return None
+    foto = Path(foto)
+    fotok = sorted(p for p in foto.iterdir() if p.suffix.lower() in KEP_KITERJESZTES) if foto.is_dir() else (
+        [foto] if foto.is_file() else [])
     if not fotok:
         return None
     from PIL import Image, ImageOps
@@ -122,13 +137,19 @@ def kep_elokeszit(cfg: config.Config, px: int = 1400) -> str | None:
     return str(dst)
 
 
-def minta_par(cfg: config.Config, i: int = 0) -> dict:
-    d = cfg.path("state") / "Manifold-media" / "itelet"
-    par = dict(json.loads((d / "n_kotes_minta.json").read_text(encoding="utf-8"))[i])
-    try:
-        par["y"] = json.loads((d / "n_cimkek.json").read_text(encoding="utf-8"))["cimkek"][i]
-    except (OSError, KeyError, IndexError, ValueError):
-        pass
+def minta_par(cfg: config.Config, i: int = 0, minta: Path | str | None = None,
+              cimkek: Path | str | None = None) -> dict:
+    """A kötés-ítélet minta-párja: a `minta` JSON-lista `i`-edik eleme (`ablak_szoveg`, `jegyzet_cim`,
+    `jegyzet_reszlet`, opcionális `y`), a várt címke a `cimkek` JSON `{"cimkek": [...]}` listájából; `minta` nélkül
+    a beépített `ALAP_PAR`."""
+    if not minta:
+        return dict(ALAP_PAR)
+    par = dict(json.loads(Path(minta).read_text(encoding="utf-8"))[i])
+    if cimkek:
+        try:
+            par["y"] = json.loads(Path(cimkek).read_text(encoding="utf-8"))["cimkek"][i]
+        except (OSError, KeyError, IndexError, ValueError):
+            pass
     return par
 
 
@@ -150,14 +171,15 @@ def render(r: dict) -> str:
 
 
 def futtat(cfg: config.Config, nevek: list[str], max_tokens: int = 200, keret: str | None = None,
-           cache_gb: float | None = None, prefill: int | None = None, px: int = 1400, log=print) -> Path:
+           cache_gb: float | None = None, prefill: int | None = None, px: int = 1400, log=print,
+           minta: Path | str | None = None, cimkek: Path | str | None = None, foto: Path | str | None = None) -> Path:
     b = B.betolt(cfg)
     for n in nevek:
         b.modell(n)
     if kliens.unload_ha_fut(cfg):
         log("[bench] a futó modell-worker kiürítve (közös zár)")
-    kep = kep_elokeszit(cfg, px)
-    par = minta_par(cfg)
+    kep = kep_elokeszit(cfg, px, foto)
+    par = minta_par(cfg, minta=minta, cimkek=cimkek)
     eredmenyek = []
     try:
         for n in nevek:
@@ -197,9 +219,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("nevek", nargs="*", help="modellnevek a config/os.toml [modellek] alól")
     ap.add_argument("--keret", help="munka | tavol | GB (alap: munka)")
     ap.add_argument("--cache-limit-gb", type=float, help="MLX-cache-korlát (alap: [modellgazda].cache_gb)")
-    ap.add_argument("--prefill-lepes", type=int, help="beolvasási lépés; 0 = a könyvtár alapja (a legacy mérése)")
+    ap.add_argument("--prefill-lepes", type=int, help="beolvasási lépés; 0 = a könyvtár alapja")
     ap.add_argument("--max-tokens", type=int, default=200)
     ap.add_argument("--px", type=int, default=1400)
+    ap.add_argument("--minta", help="a kötés-ítélet minta-párjai (JSON-lista; alap: a beépített semleges pár)")
+    ap.add_argument("--cimkek", help="a minta-párok várt címkéi (JSON: {\"cimkek\": [0|1, …]})")
+    ap.add_argument("--foto", help="kép vagy képmappa az átirat-méréshez (nélküle a képes lépés kimarad)")
     ap.add_argument("--gyermek", help=argparse.SUPPRESS)
     ap.add_argument("--kep", help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
@@ -211,8 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     if not a.nevek:
         ap.error("adj meg legalább egy modellt")
     try:
-        out = futtat(config.load(), a.nevek, a.max_tokens, a.keret, a.cache_limit_gb, a.prefill_lepes, a.px)
-    except (B.RegiszterHiba, config.ConfigError, OSError) as exc:
+        out = futtat(config.load(), a.nevek, a.max_tokens, a.keret, a.cache_limit_gb, a.prefill_lepes, a.px,
+                     minta=a.minta, cimkek=a.cimkek, foto=a.foto)
+    except (B.RegiszterHiba, config.ConfigError, OSError, ValueError, IndexError, KeyError) as exc:
         print(f"HIBA: {exc}", file=sys.stderr)
         return 2
     print(f"Eredmény: {out}")

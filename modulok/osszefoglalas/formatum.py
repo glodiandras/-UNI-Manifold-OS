@@ -41,6 +41,7 @@ from modulok.kartya.formatum import kiseronev as _kiseronev
 SZINTEK = ("jegyzet", "mappa", "video", "kontextus")
 AZON_RE = re.compile(r"^OSSZ-\d{8}-\d{6}(?:-[0-9a-z]{1,12})*$")
 UTOTAG = " — összefoglaló"
+ALAP_MAPPA = "ATTCHMNTS - summaries"    # a kísérőjegyzetek mappája, ha az `[osszefoglalas] mappa` hiányzik
 CIM_UTOTAG = " — Összefoglaló"
 ALLITASOK_CIM = "## Állítások"
 FELIRAT = "forrás"
@@ -138,7 +139,7 @@ def kisero_nev(forras_ut: str, vault_utak, sajat: str | None = None, utotag: str
     return _kiseronev(forras_ut, vault_utak, sajat, utotag)
 
 
-def kisero_ut(forras_ut: str, vault_utak, mappa: str = "ATTCHMNTS - summaries", sajat: str | None = None,
+def kisero_ut(forras_ut: str, vault_utak, mappa: str = ALAP_MAPPA, sajat: str | None = None,
               utotag: str = UTOTAG) -> str:
     """A kísérőjegyzet vault-relatív útja: `<mappa>/<név>.md`."""
     return f"{mappa.strip('/')}/{kisero_nev(forras_ut, vault_utak, sajat, utotag)}.md"

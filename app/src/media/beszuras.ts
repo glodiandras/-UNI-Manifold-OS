@@ -46,7 +46,7 @@ export function idoSzoveg(mp: number): string {
   return h ? `${h}:${String(p).padStart(2, '0')}:${m}` : `${p}:${m}`;
 }
 
-/** Az időkód-link: a horgony másodpercben (AI01 PB07), az alias olvasható időként. */
+/** Az időkód-link: a horgony másodpercben, az alias olvasható időként. */
 export function idokodLink(cel: string, mp: number): string {
   const s = Math.max(0, Math.floor(mp));
   return `[[${cel}#t=${s}|${idoSzoveg(s)}]]`;

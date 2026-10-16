@@ -65,7 +65,7 @@ def _terv(cfg: Config, p: dict, stop: str):
         argv.append("--nincs-masodik")
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód (D9): a megoldás a vault APFS-klónjára kerül, a jegyzetbe nem.")
+        figy.append("Próbamód: a megoldás a vault APFS-klónjára kerül, a jegyzetbe nem.")
     return ([tasks.Step("Megoldás modellel és CAS-ellenőrzéssel", argv, str(cfg.root))],
             "A modell megoldja a kijelölt feladatot; a kódja a CAS-homokozóban fut, és a megoldás `[!solution]` calloutként "
             "a feladat alá kerül (gépi írás, visszavonható).", figy)

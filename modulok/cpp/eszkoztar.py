@@ -44,7 +44,7 @@ ALAP: dict = {
     "sablon": "C++ feladat",
 }
 MODOK = ("gyors", "hibakereso")
-LINKER = "lld"                       # az egyetlen támogatott linker (K168: a „rendszer” a fordító-profil alatt halott ág volt)
+LINKER = "lld"                       # az egyetlen támogatott linker (a „rendszer” a fordító-profil alatt halott ág volt)
 CONSTEXPR_LEPES = 5_000_000          # a clang alapja 1 048 576; a feladatoknak ennél több ritkán kell, a végtelen nem fér bele
 SABLON_MELYSEG = 512
 _SANITIZER_KORNYEZET = {
@@ -62,14 +62,14 @@ def beallitas(cfg) -> dict:
 
 
 def linker_figyelmeztetes(b: dict) -> str | None:
-    """A `[cpp] linker` beállítás ellenőrzése (K168). Egyetlen érték él: `lld` (az LLVM saját `ld64.lld`-je). A régi `rendszer`
+    """A `[cpp] linker` beállítás ellenőrzése. Egyetlen érték él: `lld` (az LLVM saját `ld64.lld`-je). A régi `rendszer`
     (a `/usr/bin/ld`) a fordító-profil alatt nem futhat (az exec csak az LLVM `bin/`-jéből engedett: `posix_spawn failed`),
     ezért kikerült: bármi más érték figyelmen kívül marad, és ez az üzenet jelzi. Rendben lévő beállításnál `None`."""
     ertek = b.get("linker", LINKER)
     if ertek == LINKER:
         return None
     return (f"a [cpp] linker = {ertek!r} beállítás nem támogatott: csak a {LINKER!r} (az LLVM ld64.lld-je) él, a \"rendszer\" "
-            f"linker a fordító-profil alatt nem futhat (K168); a beállítás figyelmen kívül marad, a config/os.toml-ban javítandó")
+            f"linker a fordító-profil alatt nem futhat; a beállítás figyelmen kívül marad, a config/os.toml-ban javítandó")
 
 
 def fordit_parancs(llvm: Path, sdk: Path, pot: Path, b: dict, forras: str, kimenet: str, mod: str) -> list[str]:
@@ -133,7 +133,7 @@ class Eszkoztar:
         return _futtathato(self.bin("ld64.lld"))
 
     def linker(self) -> str:
-        """A használt linker: mindig `lld` (K168; az `ld64.lld` hiányát a `hianyzo()` jelzi, nincs tartalék linker)."""
+        """A használt linker: mindig `lld` (az `ld64.lld` hiányát a `hianyzo()` jelzi, nincs tartalék linker)."""
         return LINKER
 
     def linker_figyelmeztetes(self) -> str | None:

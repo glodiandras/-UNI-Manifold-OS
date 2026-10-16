@@ -30,6 +30,7 @@ from core.index.elemzo import _BLOKK
 from core.index.maszk import FM_RE, mask_code
 
 UTOTAG = " — kártyák"
+ALAP_MAPPA = "ATTCHMNTS - cards"        # a kísérőjegyzetek mappája, ha a `[kartya] mappa` hiányzik
 AZON_RE = re.compile(r"c-[A-Za-z0-9]{4,16}")
 _FEJ = re.compile(r">[ \t]?\[!card\]([+-]?)[ \t]*(.*?)[ \t]*$", re.I)
 _FORRAS = re.compile(r"—[ \t]+\[\[([^\]\n]+)\]\][ \t]*$")

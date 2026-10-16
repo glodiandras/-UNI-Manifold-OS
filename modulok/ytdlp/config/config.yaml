@@ -8,7 +8,7 @@
 # or with the environment variable:   MSP_CONFIG=path/to/other.yaml
 # =============================================================================
 
-# Root of the staging tree. This is NOT the production Obsidian vault.
+# Root of the staging tree. This is NOT the user's vault.
 output_root: "./staging"
 
 video:
@@ -21,7 +21,7 @@ video:
   # ~360p practically every platform serves video and audio as separate DASH
   # streams, and a pre-muxed (progressive) file simply does not exist there.
   #
-  # Requires FFmpeg: in Manifold-OS 2.0 the pinned static build under runtime/ffmpeg/ (bin/mos runtime fetch ffmpeg).
+  # Requires FFmpeg: the pinned static build under runtime/ffmpeg/ (bin/mos runtime fetch ffmpeg).
   # 'download.py --check' shows which one is used.
   #
   # Set to false to go back to single-file downloads without FFmpeg; expect
@@ -51,8 +51,8 @@ transcript:
   # true => every download is transcribed right away. A failure here is a
   # warning, never a failed download: the media and the notes are already on
   # disk and transcribe.py --pending can retry later.
-  # Manifold-OS 2.0 port (C20a): false - the transcript (mlx-whisper background in the model worker) is the C20b's job;
-  # a staged source stays `pending`. Do not turn this on in the port: the ASR engines here load models on their own.
+  # false: the transcript is made by the app's model worker (mlx-whisper, background job); a staged source stays
+  # `pending` until then. Do not turn this on here: the ASR engines in this package load models on their own.
   enabled: false
   status: pending
   # auto | subtitles | mlx_whisper | faster_whisper | whisper_cpp
@@ -63,7 +63,7 @@ transcript:
   # for another language, and a wrong guess ruins the whole transcript.
   # null => let the engine detect it.
   language: "hu"
-  # Fidelity requirement (AI01 #14): never "beautify" a transcript by default.
+  # Fidelity requirement: never "beautify" a transcript by default.
   # If you enable any post-processing, transcript_postprocessed is set to true
   # in the transcript frontmatter so that a later integration step knows the
   # text is no longer character-exact.
@@ -117,18 +117,14 @@ organization:
     cs50.harvard.edu: "CS50"
 
 subjects:
-  # IMPORTANT (open decision #3 in CLAUDE.md): these names should match the
-  # Manifold vault's own subject taxonomy character for character (accents,
-  # capitalisation). They are NOT verified against the vault - the build phase
-  # has no vault access. Correct this list before the first integration run.
+  # These names are the folder names a note collection uses for its subjects. Match them to your own
+  # collection character for character (accents, capitalisation); the list is not verified against it.
   #
-  # The first eight entries are zanza.tv's own subject sections, verified
-  # against the live site in September 2026. The rest are the usual school
-  # subjects, kept so that sources from other providers land somewhere sane.
+  # The first eight entries are zanza.tv's own subject sections (verified against the live site in September 2026).
+  # The rest are common school subjects, kept so that sources from other providers land somewhere sane.
   #
-  # If the vault names a subject differently (say "Nyelvtan" where zanza.tv
-  # says "Magyar nyelv"), change the alias target below - the alias table is
-  # the single place where that mapping lives.
+  # If your collection names a subject differently (say "Nyelvtan" where zanza.tv says "Magyar nyelv"), change the
+  # alias target below - the alias table is the single place where that mapping lives.
   taxonomy:
     - "Történelem"
     - "Irodalom"
@@ -424,7 +420,7 @@ crawl:
     - 'player\.vimeo\.com/video/\d+'
     - '<video[\s>]'
   # How the crawler names itself. Keep it honest.
-  user_agent: "multimedia-source-pipeline (personal study archive; honours robots.txt)"
+  user_agent: "Manifold video fetcher (honours robots.txt)"
 
 download:
   retries: 5
@@ -450,7 +446,7 @@ ytdlp:
   # Several of those videos are published as embed-only - the plain watch page
   # answers "This video is not available", while the embedded player the site
   # itself serves works. Selecting the embedded player client is what makes
-  # such a video readable at all; verified against zanza.tv in 2026-09.
+  # such a video readable at all.
   #
   # This is client selection, not a bypass: private, paid, age-gated and DRM
   # protected videos still fail, and no credential or cookie is ever used.
@@ -463,10 +459,10 @@ ytdlp:
   # This is not optional for quality: without a runtime YouTube returns the one
   # 360p pre-muxed format and nothing else, no matter what max_height says.
   # yt-dlp enables deno by default, node has to be named explicitly. The first
-  # one pinned by Manifold-OS is used (2.0 port: nothing is searched on PATH; deno is not pinned).
+  # one pinned by the app is used (nothing is searched on PATH; deno is not pinned).
   # Requires the yt-dlp-ejs package (a dependency of this project).
   js_runtimes: ["deno", "node"]
-  # Path to the ffmpeg binary. "auto" = none: 2.0 port (Javító 3): no MOS_FFMPEG, no PATH, no imageio-ffmpeg, no
+  # Path to the ffmpeg binary. "auto" = none: no MOS_FFMPEG, no PATH, no imageio-ffmpeg, no
   # home-folder binary (~/.local/bin is forbidden); modulok/ytdlp/lanc.py hands in the pinned, sha256-verified
   # [utak] ffmpeg (<os>/runtime/ffmpeg/ffmpeg) for every run.
   ffmpeg_location: auto
@@ -475,45 +471,17 @@ ytdlp:
   node_location: auto
 
 integration:
-  # Hand-off to the downstream integrator - the owner's decision of 2026-09-19:
-  # "Az a lényeg, hogy a ytdlp része legyen, mert ezáltal, ezt összeköthetjük
-  # 1 db workflowra (link bemenet -> transcript & videó -> videó, transcript &
-  # metadata integrálása a kért programmal)".
-  #
-  # This pipeline still never reads or writes the vault. After staging, it runs
-  # `command` once per source folder that is still 'pending', with {folder}
-  # replaced by the folder's absolute path. The command below is the Manifold
-  # vault's own integrator: it places the files, writes the source note, links
-  # the video to the notes whose content it really carries, verifies, logs, and
-  # finally sets integration_status: integrated here. All of that happens under
-  # the vault's AI01 Workflow 2.0 protocol, not under this repository's rules.
+  # Hand-off to a downstream integrator (optional; off by default). After staging, the pipeline runs `command` once
+  # per source folder that is still 'pending', with {folder} replaced by the folder's absolute path. The integrator
+  # places the files, writes the source note, links the video to the notes whose content it really carries, and
+  # finally sets integration_status: integrated (or in_review when it is unsure) here. This package itself never
+  # reads or writes the vault.
   #
   # enabled: false  -> only `download.py --integrate` and `integrate.py` hand off.
   # enabled: true   -> every download hands off, unless `--no-integrate`.
   #
-  # Owner decision, 2026-09-20: true - one workflow. Since the receiving system
-  # decides with a local model and only asks when it is unsure (the answer comes
-  # back as integration_status: in_review), an unattended crawl no longer piles
-  # up work for the owner: what the model can decide is decided, the rest waits
-  # in the vault's own interface.
-  # The vault's own tools need numpy, mlx-whisper, mlx-vlm and pypdf; since
-  # 2026-09-23 they run from the Manifold-OS venv on the same SSD (everything on
-  # the drive, owner's request), where those versions are pinned. -B keeps
-  # __pycache__ out of the vault. {project_root} is this repository's root, so
-  # both paths are relative to the drive and survive it being mounted elsewhere
-  # (the 2026-09-19 and 2026-09-23 moves each broke an absolute path here).
-  # Value aligned with the owner decision above on 2026-09-23 (it had been left
-  # at false, contradicting the dated decision two paragraphs up).
-  # 2026-09-24 (owner decision): this repository now lives inside Manifold-OS
-  # (Manifold-OS/modulok/ytdlp), next to the vault's tools (modulok/eszkozok).
-  # The hand-off goes through `mos kor --mappa {folder}`: the same vault
-  # integrator (media.py auto --staging) runs, but wrapped in Manifold-OS's
-  # per-source snapshot, so every hand-off - from the Manifold-pult or from a
-  # terminal - can be undone (`mos undo --kor ...`), and two hand-offs never
-  # write the vault at the same time (kor lock). This repository still reads
-  # and writes nothing outside itself.
-  # Manifold-OS 2.0 port (C20a): false. The legacy hand-off ran `bin/mos kor` (the 2.0 has no `kor`); the video chain
-  # hand-off into the vault is the C20b's job (the gépi-írás `mozgat` operation). The staged source stays `pending`.
+  # The app does not use this hand-off: it integrates staged sources itself (the video import job; the machine-write
+  # service moves the files, so every import is undoable). The staged source stays `pending` until then.
   enabled: false
   command: []
   timeout_seconds: 3600

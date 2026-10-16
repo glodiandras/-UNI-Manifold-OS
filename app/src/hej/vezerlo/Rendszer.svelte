@@ -83,7 +83,7 @@
         nincs <small>a worker nem fut</small>
       {/if}
     </dd>
-    <dt>SSD</dt>
+    <dt>Kötet</dt>
     <dd>
       {#if r.ssd.elerheto}{r.ssd.kotet} · {gb(r.ssd.szabad_gb)} szabad / {gb(r.ssd.osszes_gb)}{:else}nem érhető el{/if}
     </dd>

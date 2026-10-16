@@ -61,6 +61,7 @@ AZON_RE = re.compile(r"^KVIZ-\d{8}-\d{6}(?:-[0-9a-z]{1,12})*$")
 KITOLTES_CIM = "## Kitöltések"
 KITOLTES_MEGJ = "%% A Manifold írja minden kitöltés után — kézi szerkesztés ebben a szakaszban felülíródik. %%"
 UTOTAG = " — Kvíz "
+ALAP_MAPPA = "ATTCHMNTS - quizes"       # a kvízjegyzetek mappája, ha a `[kviz] mappa` hiányzik
 
 _CALLOUT = re.compile(r">[ \t]?\[!(question|success)\]([+-]?)[ \t]*(.*?)[ \t]*$", re.I)
 _SORELO = re.compile(r"^>[ \t]?")

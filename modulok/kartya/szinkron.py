@@ -37,7 +37,7 @@ def beallitas(cfg) -> dict:
 
 
 def mappa(cfg) -> str:
-    return beallitas(cfg).get("mappa", "ATTCHMNTS - cards")
+    return beallitas(cfg).get("mappa", formatum.ALAP_MAPPA)
 
 
 def olvas_mappa(cfg) -> dict[str, formatum.Elemzes]:

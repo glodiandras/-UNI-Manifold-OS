@@ -62,7 +62,7 @@ def resz_fuzet(cfg, ki: Path) -> str:
                     f"{'<br><span class=kis>+' + str(len(f['helyes']) - 1 + len(f.get('elfogadhato_utolag', []))) + ' további elfogadott</span>' if len(f['helyes']) > 1 or f.get('elfogadhato_utolag') else ''}</td></tr>"
                     for f in a["fotok"])
     return (f'<h2 id="fuzet">1. Füzetfotók: kötési arany (97 fotó)</h2>{_allapot(a)}'
-            '<p class="le">A legacy kézzel olvasott halmaza változatlanul. Két feladat használja: <b>ocr_kezi</b> '
+            '<p class="le">A kézzel olvasott halmaz. Két feladat használja: <b>ocr_kezi</b> '
             '(átirat → lexikai bíró) és <b>fuzet_fejezet</b> (zárt fejezetlista). A bíró plafonja a kézi leírásokon: '
             f'<b>{plafon["szam"]["jegyzet5"]}/97</b> a helyes jegyzet az első ötben, {plafon["szam"]["fejezet1"]}/97 az első '
             'találat fejezete.</p>'
@@ -137,7 +137,7 @@ def resz_grafikon(cfg, ki: Path) -> str:
         f'<td>{e("; ".join(f"({s["x"]}; {s["y"]}) {s["tipus"]}" for s in k["vart"]["szelsoertekek"]) or "–")}</td>'
         f'<td>{e(", ".join(k["vart"]["aszimptotak"]) or "–")}</td><td class="kis">{e(k["forras"])}</td></tr>'
         for k in a["kepletek"])
-    return (f'<h2 id="grafikon">4. Grafikon: 15 képlet (C35)</h2>{_allapot(a)}'
+    return (f'<h2 id="grafikon">4. Grafikon: 15 képlet</h2>{_allapot(a)}'
             '<p class="le">A nevezetes pontok az ablakon belül értendők; szélsőértéknek a belső pont és a töréspont számít.</p>'
             '<div class="t"><table><tr><th>Az.</th><th>Képlet</th><th>Kifejezés</th><th>Ablak</th><th>Zérushelyek</th>'
             f'<th>Szélsőértékek</th><th>Aszimptoták</th><th>Forrás</th></tr>{sorok}</table></div>')
@@ -161,7 +161,7 @@ def resz_szoveg(cfg, ki: Path) -> str:
 
 def resz_kviz(cfg, ki: Path) -> str:
     a = A.betolt(ITT / "kviz")
-    ki_html = [f'<h2 id="kviz">8. Kvíz: 20 jegyzet, jegyzetenként egy 5 kérdéses darab (C22m)</h2>{_allapot(a)}'
+    ki_html = [f'<h2 id="kviz">8. Kvíz: 20 jegyzet, jegyzetenként egy 5 kérdéses darab</h2>{_allapot(a)}'
                '<p class="le">A halmaz a Szöveg-rész jegyzeteire épül: jegyzetenként az a darab, amelyben a legtöbb kártyázható '
                'tény forrásmondata áll; a pontozó a kérdések átmenő arányát (0,6) és e tények lefedettségét (0,4) méri. '
                'Azt nézd: a darabba eső tények értelmes kérdésekre adnak-e alapot, és nem marad-e ki fontos rész. A '
@@ -192,7 +192,7 @@ def resz_atirat(cfg, ki: Path) -> str:
     ki_html = [f'<h2 id="atirat">7. Átirat: 2 videó (kb. 10 perc)</h2>{_allapot(a)}'
                '<p class="le">Az elvárt szöveg a vault „— Átirat” jegyzetéből képződik (a kiadó szövege, a kiejtési betoldások '
                'nélkül). A gépi felirattal összevetve a legtöbb eltérés a gép hibája; az alábbi helyeket viszont csak a '
-               'hang dönti el: ezeket kérlek, hallgasd meg. A mérés a C20 (Whisper-háttér) után futtatható.</p>']
+               'hang dönti el: ezeket kérlek, hallgasd meg. A mérés a Whisper-háttér megléte után futtatható.</p>']
     for v in a["videok"]:
         ki_html.append(f'<div class="kartya"><b>{e(v["id"])}</b> · {e(v["cim"])} <span class="kis">({v["szavak"]} szó)</span>'
                        '<br><b>Meghallgatandó</b><ol>'
@@ -228,8 +228,8 @@ def epit(cfg) -> Path:
     torzs = "".join(f(cfg, ki) for _, _, f in RESZEK)
     nav = "".join(f'<a href="#{a}">{e(n)}</a>' for a, n, _ in RESZEK)
     oldal = (f'<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,'
-             f'initial-scale=1"><title>C18 aranyhalmazok</title><link rel="stylesheet" href="katex.min.css"><style>{CSS}</style>'
-             f'</head><body><nav>{nav}</nav><main><h1>C18 — aranyhalmazok, jóváhagyásra</h1>'
+             f'initial-scale=1"><title>Aranyhalmazok</title><link rel="stylesheet" href="katex.min.css"><style>{CSS}</style>'
+             f'</head><body><nav>{nav}</nav><main><h1>Aranyhalmazok, jóváhagyásra</h1>'
              '<p class="le">Nyolc halmaz vázlata. Ami rendben van, arra elég egy „jóváhagyom”; a javítandót a tétel '
              f'azonosítójával jelezd a chatben.</p>{torzs}</main><script src="katex.min.js"></script>'
              f'<script src="auto-render.min.js"></script><script>{SZKRIPT}</script></body></html>')

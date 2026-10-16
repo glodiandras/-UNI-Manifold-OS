@@ -3,8 +3,8 @@
 A katalógus alakja az `ocr_kezi/katalogus.json`-é (`{"fejezetek": [{kod, nev, targy}], "jegyzetek": [{ut, cim, cimsorok, szavak}]}`),
 és ugyanaz az építője (`modulok/eval/ocr_kezi/epit_katalogus.py`): a mérés a fagyasztott, a lánc az élő vaultból épített példányt
 használja, ugyanazzal a szóalapú rangsorolóval (BM25, cím ×4, címsorok ×2 — a legacy `fuzet.index` mezősúlyai, az `ocr_kezi`
-bírója). Cél csak a tárgyi fejezetmappa `Elmélet/` alatti, `^\\d+ - ` nevű jegyzete; a `## Füzet` szakasz a szavak közé nem kerül
-(a régi kötések nem befolyásolhatják az új döntést).
+bírója). Cél csak a tárgyi fejezetmappa elmélet-almappájának (alap: `Elmélet/`, `[fuzet] elmelet_mappa`), `^\\d+ - ` nevű jegyzete;
+a füzet-szakasz (alap: `## Füzet`, `[fuzet] szakasz`) a szavak közé nem kerül (a korábbi kötések nem befolyásolhatják az új döntést).
 """
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from . import kep  # noqa: E402
 
 CIM_SULY, CIMSOR_SULY = 4, 2
 FAGYASZTOTT = MODULOK / "eval" / "ocr_kezi" / "katalogus.json"
+ALAP_ELMELET_MAPPA = "Elmélet"          # a `[fuzet] elmelet_mappa` alapja: a tárgyi fejezetmappa tananyag-almappája
 TANTARGYAK = {"M": "Matematika", "F": "Fizika", "T": "Történelem", "I": "Irodalom", "N": "Magyar nyelvtan",
               "D": "Digitális kultúra", "E": "Angol nyelv"}
 _epito = None
@@ -55,8 +56,16 @@ class Katalogus:
         return cls(json.loads(FAGYASZTOTT.read_text(encoding="utf-8")))
 
     @classmethod
-    def vaultbol(cls, vault: str | Path) -> "Katalogus":
-        return cls(_epit_modul().epit(Path(vault)))
+    def vaultbol(cls, vault: str | Path, elmelet_mappa: str | None = None, szakasz: str | None = None,
+                 cimkek: dict | None = None) -> "Katalogus":
+        """Az élő vaultból; `cimkek` (`[pdf.tags]`): a betűk, amelyek az alap tantárgy-listán kívül is fejezetet adnak."""
+        em = _epit_modul()
+        targyak = dict(em.TANTARGYAK)
+        for b, c in (cimkek or {}).items():
+            if isinstance(c, str) and c.strip() and len(str(b)) == 1 and str(b) not in targyak:
+                targyak[str(b)] = c.strip()
+        return cls(em.epit(Path(vault), elmelet_mappa=elmelet_mappa or ALAP_ELMELET_MAPPA, szakasz=szakasz or "Füzet",
+                           targyak=targyak))
 
     def biro(self) -> bm25.Bm25:
         if self._biro is None:

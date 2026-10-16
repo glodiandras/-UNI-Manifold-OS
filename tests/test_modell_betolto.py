@@ -113,8 +113,8 @@ class KeretTest(Alap):
         self.assertFalse(bt.zar.tartja)
 
     def test_hattertelen_es_konvertalando_modell(self):
-        for nev, szoveg in (("whisper_large_v3_hu", "konvertálni"), ("parakeet_v3", "C20"),
-                            ("qwen3_reranker_06b", "C25")):
+        for nev, szoveg in (("whisper_large_v3_hu", "konvertálni"), ("parakeet_v3", "átirat"),
+                            ("qwen3_reranker_06b", "keresés")):
             with self.assertRaisesRegex(BetoltesHiba, szoveg):
                 gyar(self.b.modell(nev))
 

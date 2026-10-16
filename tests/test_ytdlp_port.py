@@ -150,11 +150,6 @@ class ForraskodTeszt(unittest.TestCase):
                 self.assertNotIn(".local/bin", sz, f"{fajl}: home-beli út")
                 self.assertNotRegex(sz, r"bin/mos[\"', ]+kor", f"{fajl}: a legacy `bin/mos kor` hívása nem élhet a 2.0-ban")
 
-    def test_a_port_md_felsorolja_a_modositott_fajlokat(self):
-        port = (MODUL / "PORT.md").read_text(encoding="utf-8")
-        for fajl in ("src/msp/downloader.py", "src/msp/config.py", "src/msp/transcription/base.py", "config/config.yaml"):
-            self.assertIn(fajl, port)
-
     def test_a_staging_es_az_allapot_nem_kerul_a_kodtarba(self):
         gi = (REPO / ".gitignore").read_text(encoding="utf-8")
         for minta in ("modulok/ytdlp/staging/", "modulok/ytdlp/archive/", "modulok/ytdlp/logs/"):

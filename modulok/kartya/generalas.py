@@ -75,9 +75,10 @@ class Beallitas:
     vak_max_token: int = 60
     duplikat_jaccard: float = 0.8        # karakter-3gram Jaccard a kérdésekre
     kerulendo_max: int = 12
+    kihagyott_szakaszok: tuple[str, ...] | None = field(default=None, compare=False)   # nem a `[kartya.generalas]` kulcsa: a `[kapuk] kihagyott_szakaszok` (None: az alap)
 
 
-_MEZOK = {f.name for f in fields(Beallitas)}
+_MEZOK = {f.name for f in fields(Beallitas)} - {"kihagyott_szakaszok"}
 
 
 def beallitas(cfg) -> Beallitas:
@@ -85,7 +86,7 @@ def beallitas(cfg) -> Beallitas:
     ismeretlen = sorted(set(adat) - _MEZOK)
     if ismeretlen:
         raise ValueError(f"[kartya.generalas]: ismeretlen kulcs: {', '.join(ismeretlen)}")
-    return Beallitas(**adat)
+    return Beallitas(**adat, kihagyott_szakaszok=KF.kihagyott_szakaszok(cfg))
 
 
 def profil(cfg=None) -> KH.Profil:
@@ -106,10 +107,10 @@ def tenyes(mondat: str) -> bool:
     return any(not kezdo and len(w) >= 3 for w, kezdo in tokenek.nagybetus(mondat))
 
 
-def mondatai(md: str) -> list[str]:
+def mondatai(md: str, kihagy: tuple[str, ...] | None = None) -> list[str]:
     """A jegyzet tisztított mondatai (a forráshűség-kapu előkészítésével: kód, frontmatter, gép írta szakaszok nélkül)."""
     ki = []
-    for sz in KF.elokeszit(md):
+    for sz in KF.elokeszit(md, kihagy=kihagy):
         ki += [m.strip() for m in _MONDAT.split(sz.szoveg) if len(m.strip()) >= 3]
     return ki
 
@@ -118,7 +119,7 @@ def mennyiseg(md: str, b: Beallitas, automatikus: bool = False, csak: set[str] |
     """Hány kártya kell: a tényes mondatok × `suruseg`, legfeljebb `max_kartya` (automatikus módban `auto_max_kartya`).
     `csak`: a módosult jegyzet új mondatai (normalizált, kisbetűs alak, a `core.automatika.mondatok` szerint) — csak ezek számítanak."""
     db = 0
-    for m in mondatai(md):
+    for m in mondatai(md, b.kihagyott_szakaszok):
         if csak is not None and re.sub(r"\s+", " ", nfc(m)).strip().casefold() not in csak:
             continue
         db += tenyes(m)
@@ -254,8 +255,8 @@ def general(md: str, cim: str, generalo: ModellHivas, ellenorzo: ModellHivas, n:
     if n <= 0:
         return Eredmeny([], {"kert": 0, "hivas": 0, "jelolt": 0, "elfogadott": 0, "elvetve": {}, "mp": 0.0,
                              "prompt_verzio": PROMPT_VERZIO})
-    fs = KF.ForrasSzoveg.jegyzetbol(md, cim=cim)
-    szak = KF.elokeszit(md, min_karakter=b.szakasz_min_karakter)
+    fs = KF.ForrasSzoveg.jegyzetbol(md, cim=cim, kihagy=b.kihagyott_szakaszok)
+    szak = KF.elokeszit(md, min_karakter=b.szakasz_min_karakter, kihagy=b.kihagyott_szakaszok)
     if not szak:
         raise Megall("a jegyzetnek nincs olyan szöveges része, amelyből kártya készülhet")
     darab = darabok(szak, b.darab_max_karakter)

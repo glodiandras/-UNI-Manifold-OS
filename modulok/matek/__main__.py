@@ -1,9 +1,9 @@
-"""A matek-motor parancssora (C24a, C24b): `bin/mos matek <parancs>`. A vaultba közvetlenül nem ír (a `megoldas` a gépi-írás
+"""A matek-motor parancssora: `bin/mos matek <parancs>`. A vaultba közvetlenül nem ír (a `megoldas` a gépi-írás
 szolgáltatáson át ír, a feladatsor lépéseként).
 
     levezetes <jegyzet.md> --sorok 12-19 [--vegeredmeny] [--kikotes "x>=1" …] [--mod auto|egyenlet|kifejezes]
     egyseg "<sor>" [--jeloles v=m/s …]
-    arany              a C18 10 hibás és 10 helyes levezetése → felismert első hiba / téves riasztás
+    arany              az aranyhalmaz 10 hibás és 10 helyes levezetése → felismert első hiba / téves riasztás
     homokozo-proba     a homokozó biztonsági próbái ezen a gépen (RENDBEN / HIBA)
     levezetes-json     (C24b; a core `POST /api/matek/levezetes` alfolyamata) stdin: {sorok: [{sor, szoveg}], vegeredmeny,
                        kikotesek} → stdout: az ellenőrző ítélete, a sorszámok a jegyzet soraira képezve
@@ -50,7 +50,7 @@ def cmd_egyseg(a, hk) -> int:
 
 
 def arany_riport(hk) -> dict:
-    """A C18 `matek_ellenorzo` levezetései a homokozóban → összesítés és tételenkénti eredmény."""
+    """A `matek_ellenorzo` aranyhalmaz levezetései a homokozóban → összesítés és tételenkénti eredmény."""
     from kozos import arany as A
     adat = A.betolt(MODULOK / "eval" / "matek")
     feladat = {f["id"]: f for f in adat["feladatok"]}
@@ -205,7 +205,7 @@ def main(argv=None) -> int:
     eg = al.add_parser("egyseg", help="egy fizikai sor mértékegység-ellenőrzése")
     eg.add_argument("sor")
     eg.add_argument("--jeloles", action="append", default=[], help="pl. v=m/s")
-    al.add_parser("arany", help="a C18 levezetéseinek kiértékelése")
+    al.add_parser("arany", help="az aranyhalmaz levezetéseinek kiértékelése")
     al.add_parser("homokozo-proba", help="a homokozó biztonsági próbái")
     al.add_parser("levezetes-json", help="a core végpontjának alfolyamata (stdin/stdout JSON)")
     mg = al.add_parser("megoldas", help="a `matek_megoldas` feladat lépése (modell + CAS → callout, gépi írással)")
@@ -213,10 +213,10 @@ def main(argv=None) -> int:
     mg.add_argument("--tol", type=int, required=True)
     mg.add_argument("--ig", type=int, required=True)
     mg.add_argument("--feladat", required=True, help="a feladat szövege (a jegyzet tol–ig sorai, változatlanul)")
-    mg.add_argument("--modell", help="kifejezett modell (próba, D9)")
-    mg.add_argument("--masodik-modell", help="a második vélemény kifejezett modellje (próba, D9)")
+    mg.add_argument("--modell", help="kifejezett modell (csak próbában)")
+    mg.add_argument("--masodik-modell", help="a második vélemény kifejezett modellje (csak próbában)")
     mg.add_argument("--nincs-masodik", action="store_true")
-    mg.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára (D9)")
+    mg.add_argument("--proba", action="store_true", help="az írás a vault másolatára (a vault nem változik)")
     a = p.parse_args(argv)
     try:
         cfg = _cfg()

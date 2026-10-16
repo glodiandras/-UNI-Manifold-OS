@@ -20,7 +20,7 @@ kis-nagybetűtől és ékezettől független, listajel, idézetjel és `**` áll
 mező, a szabad szöveget a kinyerő nem nézi. A pont/max és a zárójeles százalék egyezése ±1,5 százalékpont; az ellentmondó vagy nem
 olvasható mező, illetve a több, egymásnak ellentmondó mező **jelzett hiány** (`ellentmondas`), nem tartalék a szövegre. Az üres
 mező (`Eredmény::`, pl. sablonból) nem mező: a szöveg dönt. Frontmatter-kulcs nem lehet: a kiértékelő jegyzet egy szakasza egy
-dolgozat (egy jegyzetben több), és az AI01 séma ismeretlen frontmatter-kulcsot nem enged (`config/vault-sema.json`).
+dolgozat (egy jegyzetben több), és a vault-séma ismeretlen frontmatter-kulcsot nem enged (`config/vault-sema.json`).
 Az eredmény `eredet` mezője: `"mezo"` | `"szoveg"`.
 
 A kinyerő a **vaultot nem módosítja**; a mezőt a felhasználó írja, gép soha.

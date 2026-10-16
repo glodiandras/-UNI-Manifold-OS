@@ -1,9 +1,9 @@
 """A legacy link-szabály befagyasztott másolata és az eltérések osztályozása (C10.6; csak tesztekhez).
 
-A CLAUDE.md 1. / 13. döntése óta a 2.0 feloldása és maszkja az Obsidiant követi, nem a legacyt (L42). A paritás
+A v2 1. / 13. döntése (`docs/dev/DECISIONS-v2.md`) óta a feloldás és a maszk az Obsidiant követi, nem a legacyt (L42). A paritás
 új meghatározása: **a dokumentált eltérések, és semmi más**. Ehhez itt áll a régi szabály (a C06 portja, ahogy a
 C10.5 végén a `core/index/feloldas.py`-ban volt): `regi_maszk`, `RegiFeloldo`, `regi_graf`. A másolat hűségét a
-valódi legacy őrzi: a `regi_graf` bájtra azonos az `mfd.obsidian_graf`-fal (`test_index_feloldas`, `graf_paritas`).
+régi eszköztárral a kézi kapu őrzi (`tests/kezi/graf_paritas.py`, a `MOS_LEGACY` jelöli ki): a `regi_graf` bájtra azonos a régi gráffal.
 
 `elteresek(gyökér)` minden fájl minden linkjét mindkét szabállyal kiszámolja, és az eltérőket osztályozza:
   K   kis-nagybetű: a régi szabály nem oldotta fel, az új a kis-nagybetűtől független menetben igen;

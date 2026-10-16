@@ -1,4 +1,4 @@
-"""A füzetlánc modellhívásai a workeren át (a modellt csak a modellgazda tölti, CLAUDE.md §4; D9).
+"""A füzetlánc modellhívásai a workeren át (a modellt csak a modellgazda tölti).
 
 Élesben a router dönt (`feladat`: `fuzet_fejezet`, `fuzet_valaszto`, `ocr_kezi`): csak kalibrált modell fut. Kifejezett modell
 (`--olvaso`, `--valaszto`, `--atirat`) csak próbában: a worker `proba: true`-val válaszol, és a gépi írás ezt csak a klónra engedi.
@@ -20,6 +20,19 @@ from core.modell.eval import keres_beallitas
 
 class NincsModell(RuntimeError):
     """A feladatra nincs kalibrált modell, és kifejezett (próba) modell sincs megadva."""
+
+
+def _nincs_modell(feladat: str, indok: str) -> NincsModell:
+    """Az egyetlen szöveg, amellyel a lánc megáll, ha a feladatnak nincs kalibrált modellje (akár a router előzetes döntése, akár a
+    worker 409-es válasza mondja)."""
+    ok = f" ({indok})" if indok and "kalibrált modell" not in indok else ""
+    return NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell{ok}: élesben nem fut; próbához adj meg egy "
+                       "modellnevet (a Beállítások › AI listájából) és --proba-t")
+
+
+def _nincs_kalibralt(e: Exception) -> bool:
+    """A worker 409-es `nincs_kalibralt` válasza (a megszakítás szintén 409, de nem ez)."""
+    return getattr(e, "kod", None) == 409 and bool((getattr(e, "adat", None) or {}).get("nincs_kalibralt"))
 
 
 class Modellek:
@@ -45,10 +58,14 @@ class Modellek:
         if feladat in self.kifejezett:
             return self.kifejezett[feladat]
         if feladat not in self._dontes:
-            d = kliens.keres(self.url(), "/router/valaszt", {"feladat": feladat})
+            try:
+                d = kliens.keres(self.url(), "/router/valaszt", {"feladat": feladat})
+            except kliens.KliensHiba as e:
+                if _nincs_kalibralt(e):
+                    raise _nincs_modell(feladat, str(e)) from None
+                raise
             if not d.get("modell"):
-                raise NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell ({d.get('indok') or 'a router nem választott'}): "
-                                  "élesben nem fut; próbához adj meg modellt (pl. --olvaso qwen35_9b) és --proba-t (D9)")
+                raise _nincs_modell(feladat, d.get("indok") or "a router nem választott")
             self._dontes[feladat] = d["modell"]
         return self._dontes[feladat]
 
@@ -64,7 +81,13 @@ class Modellek:
         k = keres_beallitas(self.beallitas(), m, beallitas_feladat or feladat, keres)
         extra = {x: k[x] for x in ("images", "max_tokens", "temperature", "gondolkodas", "repetition_penalty",
                                    "repetition_context_size") if x in k}
-        r = kliens.chat(self.url(), k["messages"], feladat=feladat, modell=self.kifejezett.get(feladat), **extra)
+        try:
+            r = kliens.chat(self.url(), k["messages"], feladat=feladat, modell=self.kifejezett.get(feladat), **extra)
+        except kliens.KliensHiba as e:
+            # a router döntése és a chat közben a kalibráció elveszhet: a worker 409-e is „nincs modell” — a lánc egyszer áll meg, nem fotónként hibázik
+            if _nincs_kalibralt(e):
+                raise _nincs_modell(feladat, str(e)) from None
+            raise
         szoveg = r["choices"][0]["message"]["content"]
         return szoveg, {"feladat": r.get("feladat") or feladat, "modell": r.get("modell") or nev, "proba": bool(r.get("proba"))}
 

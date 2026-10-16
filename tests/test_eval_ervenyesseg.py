@@ -1,10 +1,13 @@
-"""C18.1: a mérés érvényességi kapuja — a 2026-10-03-i valódi mérés másolatain és szintetikus válaszokon.
+"""C18.1: a mérés érvényességi kapuja — mérés-másolatokon és szintetikus válaszokon.
 
-A `tests/adat/c18_1/*.jsonl.gz` a `var/runs/eval` három fájljának másolata (id, verzió, válasz, usage, mp):
-a phi4_mini_reasoning matek_ellenorzo (20/20 levágva a `<think>`-ben), a qwen3_vl_4b ocr_kezi (hurkos) és a
-glm_ocr ocr_keplet (levágás-mentes). A régi sorokban nincs `keres_beallitas`: a keretet a teszt adja.
+A `tests/adat/c18_1/*.jsonl.gz` három futás fájlja (id, verzió, válasz, usage, mp), mind **szintetikus**: a phi4_mini_reasoning
+matek_ellenorzo (20/20 levágva a `<think>`-ben) és a glm_ocr ocr_keplet (levágás-mentes) alakját a `keszit_szintetikus.py`, a
+qwen3_vl_4b ocr_kezi (sok levágott, sor- és farok-hurkos) alakját a `keszit_ocr_kezi.py` állítja elő kitalált, semleges szövegből
+(füzetfotóból, jegyzetből vagy valódi modell-futásból származó adat nincs a termékben). A sorokban nincs `keres_beallitas`: a
+keretet a teszt adja.
 """
 import gzip
+import importlib.util
 import json
 import unittest
 
@@ -30,11 +33,38 @@ class ValodiMeresTest(unittest.TestCase):
         self.assertEqual((e["n"], e["levagott"], e["rossz"], e["ervenyes"]), (20, 20, 20, False))
 
     def test_qwen3_vl_hurkos_ocr_ervenytelen(self):
+        # a szintetikus fixture összetétele (keszit_ocr_kezi.py): 97 sor, 78 levágott, ebből 32 sor-hurok és 6 farok-hurok
         e = vizsgal("qwen3_vl_4b-ocr_kezi", 1500)
         self.assertEqual((e["n"], e["levagott"], e["ervenyes"]), (97, 78, False))
-        self.assertGreaterEqual(e["hurok"], 32)                  # legalább a felhasználó 32 sor-hurka
+        self.assertEqual(e["hurok"], 38)                         # 32 sor-hurok + 6 farok-ismétlődés
         self.assertEqual(sum(E.sorhurok(r["valasz"]) for r in masolat("qwen3_vl_4b-ocr_kezi")), 32)
+        self.assertEqual((e["ures"], e["hiba"]), (0, 0))
+        self.assertEqual(e["rossz"], 78)                         # a hurkos sorok mind a levágottak közt vannak
         self.assertGreater(e["rossz_arany"], 0.8)
+
+    def test_a_szintetikus_fixture_a_generator_kimenete_es_nincs_benne_valodi_adat(self):
+        spec = importlib.util.spec_from_file_location("keszit_ocr_kezi", ADAT / "keszit_ocr_kezi.py")
+        gen = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gen)
+        rek = masolat("qwen3_vl_4b-ocr_kezi")
+        self.assertEqual(rek, gen.rekordok())                    # a lemezen álló fájl a determinisztikus generátor kimenete
+        self.assertEqual({tuple(sorted(r)) for r in rek}, {("id", "mp", "usage", "valasz", "verzio")})
+        self.assertEqual({r["verzio"] for r in rek}, {gen.VERZIO})
+        self.assertEqual(len({r["id"] for r in rek}), gen.OSSZES)
+        self.assertEqual(len(rek), gen.OSSZES)
+        for r in rek:
+            self.assertEqual(set(r["usage"]), {"prompt_tokens", "completion_tokens", "generation_tps"})
+            self.assertNotIn("/", r["id"])
+
+    def test_a_ket_masik_fixture_is_a_generator_kimenete(self):
+        spec = importlib.util.spec_from_file_location("keszit_szintetikus", ADAT / "keszit_szintetikus.py")
+        gen = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gen)
+        kepletek, gondolkodasok = gen.rekordok()
+        self.assertEqual(masolat("glm_ocr-ocr_keplet"), kepletek)
+        self.assertEqual(masolat("phi4_mini_reasoning-matek_ellenorzo"), gondolkodasok)
+        for r in kepletek + gondolkodasok:
+            self.assertNotRegex(r["id"], r"IMG_|/")                  # nincs valódi fotónév
 
     def test_levagas_mentes_futas_ervenyes(self):
         e = vizsgal("glm_ocr-ocr_keplet", 200)

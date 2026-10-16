@@ -36,14 +36,14 @@ Source:
 
 Szöveges link: [[T03 - Az ókori Róma/Rómaiak|a rómaiak]] és [[M01 - Matek/Függvények]] és ![[M01 - Matek/kep.png]].
 
-Md-link: [a jegyzet](M01%20-%20Matek/F%C3%BCggv%C3%A9nyek.md) és file:///Volumes/Work/Manifold/titok.md URL.
+Md-link: [a jegyzet](M01%20-%20Matek/F%C3%BCggv%C3%A9nyek.md) és file:///Volumes/Lemez/Vault/titok.md URL.
 
 ```text
 [[M03 - Algebra/Elmélet/04 - Nevezetes szorzatok]]
-/Volumes/Work/Manifold/T03 - Az ókori Róma/Titok.md
+/Volumes/Lemez/Vault/T03 - Az ókori Róma/Titok.md
 ```
 
-Abszolút út: /Users/andras/Library/Mobile Documents/Manifold/x.md és a ~/Documents/naplo.txt, valamint C:\\Users\\a\\b.txt.
+Abszolút út: /Users/minta/Library/Mobile Documents/Vault/x.md és a ~/Documents/naplo.txt, valamint C:\\Users\\a\\b.txt.
 Az osztás 1/2/3 és az "és/vagy" marad. A hányados a/b is.
 """
 

@@ -133,7 +133,7 @@ def futtat(cfg, ut: str, *, gepi, worker, automatikus: bool = False, proba: bool
     resz = bool(kijeloles and kijeloles.strip())
     alap_md = kijeloles if resz else md        # „Kártyák ebből” kijelölésből: csak abból kérdez
     n = generalas.mennyiseg(alap_md, b, automatikus=automatikus, csak=uj)
-    if resz and n == 0 and generalas.mondatai(alap_md):
+    if resz and n == 0 and generalas.mondatai(alap_md, b.kihagyott_szakaszok):
         n = 1                                  # a kifejezett kijelölésből legalább egy kártyát kérünk
     proba_allapot = proba or resz              # a részleges futás nem jelöli feldolgozottnak a jegyzetet
     if n == 0:
@@ -147,7 +147,7 @@ def futtat(cfg, ut: str, *, gepi, worker, automatikus: bool = False, proba: bool
             dont = worker.valaszt()
         except Exception as exc:  # noqa: BLE001 — a worker hibája üzenetként
             if getattr(exc, "kod", None) == 409:
-                raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell (D9): élesen nem készül kártya. Próbához adj meg "
+                raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell: élesen nem készül kártya. Próbához adj meg "
                              f"modellt (a kimenet a vault klónjára kerül). ({exc})") from None
             raise
         if not dont.get("modell"):

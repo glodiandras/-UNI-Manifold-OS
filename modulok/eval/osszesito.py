@@ -33,8 +33,9 @@ def kihagyottak(cfg) -> dict[tuple[str, str], str]:
     p = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(p)
     ki: dict[tuple[str, str], str] = {}
-    for m in B.betolt(cfg).modellek.values():
-        mert = set(p.feladatai(m))
+    regiszter = list(B.betolt(cfg).modellek.values())
+    for m in regiszter:
+        mert = set(p.feladatai(m, regiszter))
         kihagy = dict(m.meres_kihagy_feladat)
         for f in p.SORREND:
             if m.meres_kihagy:

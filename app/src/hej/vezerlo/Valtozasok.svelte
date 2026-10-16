@@ -79,7 +79,7 @@
   <p class="halvany">A vault pillanatkép-tárolója nem érhető el, a változások nem listázhatók.</p>
 {:else if !adat.korok.length}
   <p class="halvany">
-    {#if feladat.forras === 'legacy'}A legacy feladat változásai ebben a nézetben nem érhetők el.{:else if !LEZART.has(feladat.allapot)}Eddig nem írt a vaultba.{:else}Nem írt a vaultba.{/if}
+    {#if feladat.forras !== '2.0'}Ehhez a feladathoz nem érhető el változás-előzmény.{:else if !LEZART.has(feladat.allapot)}Eddig nem írt a vaultba.{:else}Nem írt a vaultba.{/if}
   </p>
 {:else}
   {#each adat.korok as kor (kor.kor)}

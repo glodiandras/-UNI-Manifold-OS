@@ -79,7 +79,7 @@ TRANSCRIPT_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec("language", nullable=True),
     FieldSpec("transcript_status", enum=TRANSCRIPT_STATUSES),
     FieldSpec("transcript_postprocessed", required=False, kind=bool,
-              description="true if the text was altered after recognition (AI01 #14)"),
+              description="true if the text was altered after recognition"),
     FieldSpec("transcript_engine", required=False, nullable=True),
     FieldSpec("transcript_model", required=False, nullable=True),
     FieldSpec("transcript_confidence", required=False, nullable=True, kind=(int, float)),
@@ -105,7 +105,7 @@ MANIFEST_FIELDS: tuple[FieldSpec, ...] = (
     FieldSpec("anchor_format"),
     FieldSpec("transcript_status", enum=TRANSCRIPT_STATUSES),
     FieldSpec("nn_anchorable", nullable=True, kind=bool,
-              description="null = the vault owner has not decided yet (AI01 #9)"),
+              description="null = the vault owner has not decided yet"),
     FieldSpec("integration_status", enum=INTEGRATION_STATUSES),
 )
 

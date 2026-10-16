@@ -5,7 +5,7 @@ import hashlib
 import json
 import unittest
 
-from tests.eval_segedek import EVAL, eval_cfg, feladat, rekord
+from tests.eval_segedek import EVAL, aranyt_igenyel, eval_cfg, feladat, rekord
 from tests.helpers import ir, tmpdir
 
 FELADATOK = {"kifejtes": "kifejt", "osszefoglal_kijeloles": "osszefoglal"}
@@ -17,8 +17,9 @@ class _Alap(unittest.TestCase):
         self.addCleanup(self._t.cleanup)
         self.cfg, self.root, self.vault = eval_cfg(self._t.name)
 
-    def f(self, nev):
-        return feladat(self.cfg, nev)
+    def f(self, nev, adat=True):
+        """A feladatmodul; a nem szállított aranyhalmazú feladat a tesztet `[indokolt]` kihagyással zárja (`adat=True`)."""
+        return feladat(self.cfg, nev, adat)
 
     def tetel(self, nev, tid):
         return next(t for t in self.f(nev).tetelek(self.cfg) if t["id"] == tid)
@@ -228,6 +229,7 @@ class FagyasztoTest(_Alap):
         with self.assertRaises(ValueError):
             KK.fagyaszt_tetel(self.vault, {"ut": "T01 - Próba/a.md", "kezd": "nincs ilyen", "veg": "."}, False)
 
+    @aranyt_igenyel(*FELADATOK)
     def test_a_fagyasztott_halmaz_onmagaval_egyezik(self):
         """A fagyasztó a meglévő mezőket megtartja: az arany.json a `json_ki` alakjában áll (újraírás nem változtat rajta)."""
         from kozos import kijeloles as K

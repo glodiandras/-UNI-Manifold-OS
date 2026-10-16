@@ -253,7 +253,7 @@ def validate_source_folder(report: ValidationReport, folder: Path, config: Confi
             if status == "completed" and tfront.get("transcript_postprocessed") is True:
                 report.add(WARNING, "transcript.postprocessed", transcript_path,
                            "the text was post-processed, so it is no longer a character-exact "
-                           "quote source (AI01 #14)")
+                           "quote source")
         except PipelineError as exc:
             report.add(ERROR, "transcript.unreadable", transcript_path, str(exc))
 

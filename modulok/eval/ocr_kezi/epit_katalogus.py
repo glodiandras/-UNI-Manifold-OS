@@ -2,8 +2,8 @@
 
     bin/mos exec <python> -B modulok/eval/ocr_kezi/epit_katalogus.py
 
-Cél csak a tárgyi fejezetmappák `Elmélet/` alatti, számozott jegyzete (`NN - Cím.md`; L48, a legacy
-`jegyzet_szabaly`). A jegyzet `## Füzet` szakasza kimarad: a régi kötések nem befolyásolhatják a bírót.
+Cél csak a tárgyi fejezetmappák elmélet-almappájának (alap: `Elmélet/`) számozott jegyzete (`NN - Cím.md`). A jegyzet füzet-szakasza
+(alap: `## Füzet`) kimarad: a korábbi kötések nem befolyásolhatják a bírót.
 A katalógus az aranyhalmaz része: ha újraépül, az `ocr_kezi` és a `fuzet_fejezet` verziója is lép.
 """
 from __future__ import annotations
@@ -31,27 +31,29 @@ def tokenek(szoveg: str) -> list[str]:
     return [w[:TO_HOSSZ] for w in (tavolsag.hajt(x) for x in tavolsag.szavak(szoveg)) if len(w) >= 3 and not w.isdigit()]
 
 
-def _torzs(szoveg: str) -> str:
-    """A jegyzet törzse frontmatter és `## Füzet` szakasz nélkül, a beágyazások és linkcélok nélkül."""
+def _torzs(szoveg: str, szakasz: str = "Füzet") -> str:
+    """A jegyzet törzse frontmatter és füzet-szakasz (`## <szakasz>`) nélkül, a beágyazások és linkcélok nélkül."""
     if szoveg.startswith("---"):
         vege = szoveg.find("\n---", 3)
         szoveg = szoveg[vege + 4:] if vege > 0 else szoveg
-    szoveg = re.split(r"\n## Füzet\s*\n", szoveg)[0]
+    szoveg = re.split(r"\n## " + re.escape(szakasz) + r"\s*\n", szoveg)[0]
     szoveg = re.sub(r"!\[\[[^\]]*\]\]", " ", szoveg)
     szoveg = re.sub(r"\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]", lambda m: m.group(2) or m.group(1), szoveg)
     return szoveg
 
 
-def epit(vault: Path) -> dict:
+def epit(vault: Path, elmelet_mappa: str = "Elmélet", szakasz: str = "Füzet", targyak: dict | None = None) -> dict:
+    """A katalógus a vaultból. `elmelet_mappa`, `szakasz`: a `[fuzet]` beállításai; `targyak`: betű → tantárgy-név (alap: `TANTARGYAK`)."""
+    targyak = TANTARGYAK if targyak is None else targyak
     fejezetek, jegyzetek = [], []
     for top in sorted(p for p in vault.iterdir() if p.is_dir()):
         nev = unicodedata.normalize("NFC", top.name)
         m = _MAPPA.match(nev)
-        if not m or m.group(2) == "00" or m.group(1) not in TANTARGYAK:
+        if not m or m.group(2) == "00" or m.group(1) not in targyak:
             continue
-        elmelet = top / "Elmélet"
+        elmelet = top / elmelet_mappa
         if not elmelet.is_dir():
-            elmelet = next((d for d in top.iterdir() if unicodedata.normalize("NFC", d.name) == "Elmélet"), None)
+            elmelet = next((d for d in top.iterdir() if unicodedata.normalize("NFC", d.name) == unicodedata.normalize("NFC", elmelet_mappa)), None)
             if elmelet is None:
                 continue
         sajat = []
@@ -60,14 +62,14 @@ def epit(vault: Path) -> dict:
             n = _NEV.match(fn)
             if not n or not f.is_file():
                 continue
-            torzs = _torzs(f.read_text(encoding="utf-8"))
+            torzs = _torzs(f.read_text(encoding="utf-8"), szakasz)
             cimsorok = list(dict.fromkeys(x.strip() for x in re.findall(r"^#{1,3}\s+(.+)$", torzs, re.M)))
             szavak = Counter(tokenek(torzs))
             sajat.append((int(n.group(1)), {
-                "ut": f"{nev}/Elmélet/{fn}", "cim": n.group(2), "cimsorok": cimsorok[:24],
+                "ut": f"{nev}/{unicodedata.normalize('NFC', elmelet_mappa)}/{fn}", "cim": n.group(2), "cimsorok": cimsorok[:24],
                 "szavak": dict(szavak.most_common(SZAVAK_MAX))}))
         if sajat:
-            fejezetek.append({"kod": nev[:3], "nev": m.group(3), "targy": TANTARGYAK[m.group(1)]})
+            fejezetek.append({"kod": nev[:3], "nev": m.group(3), "targy": targyak[m.group(1)]})
             jegyzetek += [j for _, j in sorted(sajat, key=lambda t: (t[0], t[1]["ut"]))]
     return {"fejezetek": fejezetek, "jegyzetek": jegyzetek}
 

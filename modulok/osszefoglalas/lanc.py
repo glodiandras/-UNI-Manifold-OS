@@ -23,6 +23,7 @@ from datetime import datetime
 from typing import Callable
 
 from modulok.eval.kozos import kimenet
+from modulok.kapuk import forras as KF
 from modulok.kapuk import huseg as KH
 from modulok.kapuk import tokenek
 
@@ -42,7 +43,7 @@ class Megall(Exception):
 @dataclass(frozen=True)
 class Beallitas:
     """Az `[osszefoglalas]` szakasz (az `os.toml`)."""
-    mappa: str = "ATTCHMNTS - summaries"
+    mappa: str = FM.ALAP_MAPPA
     utotag: str = FM.UTOTAG
     darab_max_karakter: int = 2200
     szakasz_min_karakter: int = 20
@@ -61,9 +62,10 @@ class Beallitas:
     kontextus_max_karakter: int = 24000
     ablak_mp: int = 60
     gyorsitotar_ora: float = 12.0     # a modell-válasz gyorsítótárának élettartama (C26b; a `{tmp}` alatt)
+    kihagyott_szakaszok: tuple[str, ...] | None = field(default=None, compare=False)   # nem az `[osszefoglalas]` kulcsa: a `[kapuk] kihagyott_szakaszok` (None: az alap)
 
 
-_MEZOK = {f.name for f in fields(Beallitas)}
+_MEZOK = {f.name for f in fields(Beallitas)} - {"kihagyott_szakaszok"}
 
 
 def beallitas(cfg) -> Beallitas:
@@ -72,7 +74,7 @@ def beallitas(cfg) -> Beallitas:
     ismeretlen = sorted(set(adat) - _MEZOK)
     if ismeretlen:
         raise ValueError(f"[osszefoglalas]: ismeretlen kulcs: {', '.join(ismeretlen)}")
-    return Beallitas(**adat)
+    return Beallitas(**adat, kihagyott_szakaszok=KF.kihagyott_szakaszok(cfg))
 
 
 def profil(cfg=None) -> KH.Profil:

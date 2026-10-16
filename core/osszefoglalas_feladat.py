@@ -66,7 +66,7 @@ def _argv(cfg: Config, szint: str, utak: list[str], p: dict, stop: str, automati
         proba = True
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód (D9): az összefoglaló a vault APFS-klónjára kerül, a vaultba nem.")
+        figy.append("Próbamód: az összefoglaló a vault APFS-klónjára kerül, a vaultba nem.")
     return argv, figy
 
 
@@ -80,8 +80,8 @@ def _terv(cfg: Config, p: dict, stop: str):
     if szint == "jegyzet":
         if not _md_ut(ut):
             raise tasks.Invalid("Az `ut` a vault egy Markdown-jegyzetének relatív útja legyen.")
-        from .automatika import tartalmi_ut
-        if not tartalmi_ut(ut):
+        from .automatika import kisero_elotag, tartalmi_ut
+        if not tartalmi_ut(ut, kisero_elotag(cfg)):
             raise tasks.Invalid("Összefoglaló csak tartalmi jegyzetből készül (kísérőjegyzetből és rejtett mappából nem).")
         cim = "Összefoglaló a jegyzetből (modell + kapuk)"
         mit = ("A modell állításokat javasol a jegyzetből, mindegyik mellé a jegyzet szó szerinti mondatával; ami átmegy a kapukon, a "
@@ -89,8 +89,8 @@ def _terv(cfg: Config, p: dict, stop: str):
     elif szint == "mappa":
         if not _rel_ok(ut) or ut.lower().endswith(".md") or ut.rstrip("/").split("/")[0].startswith("."):
             raise tasks.Invalid("Az `ut` a vault egy mappájának relatív útja legyen.")
-        from .automatika import KISERO_ELOTAG
-        if ut.startswith(KISERO_ELOTAG):
+        from .automatika import kisero_elotag
+        if ut.startswith(kisero_elotag(cfg)):
             raise tasks.Invalid("Gépi kísérőjegyzet-mappából nem készül mappa-összefoglaló.")
         ut = ut.rstrip("/")
         cim = "Összefoglaló a mappából (jegyzet-összefoglalókból)"

@@ -57,7 +57,7 @@ def _argv(cfg: Config, utak: list[str], p: dict, stop: str, automatikus: bool) -
         proba = True
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód (D9): a kártyák a vault APFS-klónjára kerülnek, a vaultba nem.")
+        figy.append("Próbamód: a kártyák a vault APFS-klónjára kerülnek, a vaultba nem.")
     return argv, figy
 
 
@@ -93,20 +93,22 @@ def _auto_terv(cfg: Config, p: dict, stop: str):
 
 def kezi_szuro(cfg: Config):
     """A kézi „Kártyák ebből” szűrője: tartalmi `.md` (nem kísérőjegyzet, nem rejtett mappa)."""
-    from .automatika import tartalmi_ut
-    return tartalmi_ut
+    from .automatika import kisero_elotag, tartalmi_ut
+    elotag = kisero_elotag(cfg)
+    return lambda ut: tartalmi_ut(ut, elotag)
 
 
 def automatikus_szuro(cfg: Config):
     """Az automatikus kártya-fogyasztó szűrője: tartalmi `.md` egy **tantárgyi** mappában — a legfelső mappa első betűje a
     `[pdf.tags]` térképben áll (a tracker tantárgy-szabálya, 30(f); a workflow-, napló-, projekt- és sablonmappák jegyzetei a
     tanulásnak nem forrásai, ezekből az automatika nem készít kártyát — kézzel igen)."""
-    from .automatika import tartalmi_ut
+    from .automatika import kisero_elotag, tartalmi_ut
     betuk = frozenset(k for k in cfg.section("pdf", "tags"))
+    elotag = kisero_elotag(cfg)
 
     def szuro(ut: str) -> bool:
         felso = ut.replace("\\", "/").split("/", 1)
-        return tartalmi_ut(ut) and len(felso) == 2 and felso[0][:1] in betuk
+        return tartalmi_ut(ut, elotag) and len(felso) == 2 and felso[0][:1] in betuk
     return szuro
 
 

@@ -10,6 +10,7 @@ import unittest
 from core import automatika, tanulas_db
 from core.tulajdonsagok import Tulajdonsagok
 from modulok.eval.kozos import kimenet
+from tests.eval_segedek import aranyt_igenyel
 from modulok.kartya import formatum as F
 from modulok.kartya import generalas as G
 from modulok.kartya import horgony as H
@@ -350,6 +351,7 @@ class FeladatTest(unittest.TestCase):
         self.assertEqual(self.tasks.REGISTRY[self.KF.TIPUS].resources, frozenset({"modell", "vault"}))
 
 
+@aranyt_igenyel("szoveg")
 class MeresTest(unittest.TestCase):
     def test_mer_jegyzet_alakja(self):
         """A mérés (`modulok/kartya/meres.py`) az éles láncot futtatja a fagyasztott arany-jegyzeten; az álmodell jelöltjei

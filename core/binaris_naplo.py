@@ -258,15 +258,15 @@ def _mozgat(src: Path, dst: Path, letrehoz: bool = True) -> None:
     tartos.fsync_mappa(dst.parent)
 
 
-ARCHIV_INDOK = ("# A visszavont gépi tételek videó-klónjai\n\nA videólánc (C20b) a staging videóját APFS-klónként teszi a vaultba "
-                "(`ATTCHMNTS - Videos/`), a staging példánya marad. A tétel visszavonásakor a vaultbeli klón ide költözik: a "
-                "visszavonás nem töröl (68(b), CLAUDE.md §4). Az eredeti a stagingben áll; ez a példány a felhasználó igenjével "
+ARCHIV_INDOK = ("# A visszavont gépi tételek videó-klónjai\n\nA videólánc a staging videóját APFS-klónként teszi a vault "
+                "videómappájába, a staging példánya marad. A tétel visszavonásakor a vaultbeli klón ide költözik: a "
+                "visszavonás nem töröl. Az eredeti a stagingben áll; ez a példány a felhasználó igenjével "
                 "törölhető.\n")
 
 
-APKG_INDOK = ("# A visszavont `.apkg`-importok médiája\n\nAz Anki-csomag importja (83. döntés javaslata) a csomag képeit és hangjait a "
+APKG_INDOK = ("# A visszavont `.apkg`-importok médiája\n\nAz Anki-csomag importja a csomag képeit és hangjait a "
               "vault csatolmány-mappájába tette (gépi írás, `behoz`). Az import visszavonásakor a fájlok ide költöztek: a visszavonás "
-              "nem töröl (CLAUDE.md §4). Ezek a példányok a felhasználó igenjével törölhetők.\n")
+              "nem töröl. Ezek a példányok a felhasználó igenjével törölhetők.\n")
 
 
 def _klon_archival(src: Path, archiv: Path, kor: str) -> Path:

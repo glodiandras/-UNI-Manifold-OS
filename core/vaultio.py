@@ -80,7 +80,7 @@ _LEMEZ_HIBAK = {
     "EACCES": (503, "A lemez vagy a mappa nem írható (hozzáférés megtagadva): a fájl nem íródott ki."),
     "EPERM": (503, "A művelet nem engedélyezett ezen a fájlon vagy mappán: a fájl nem íródott ki."),
     "EROFS": (503, "A kötet csak olvasható: a fájl nem íródott ki."),
-    "EIO": (503, "Lemezhiba (I/O): a művelet nem sikerült. Ellenőrizd az SSD-t."),
+    "EIO": (503, "Lemezhiba (I/O): a művelet nem sikerült. Ellenőrizd a kötetet."),
     "ENXIO": (503, "A lemez nem érhető el (leválasztva?): a művelet nem sikerült."),
     "ENODEV": (503, "A lemez nem érhető el (leválasztva?): a művelet nem sikerült."),
 }

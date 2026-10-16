@@ -1,7 +1,8 @@
 """C31 (1. és 3. pont): az átállás paritás-riportja a VALÓDI vault APFS-klónján — a discover nem futtatja.
 
-    MOS_VAULT=/Volumes/Work/Manifold MOS_VAULT_GIT="<os>/var/vault.git" MOS_LEGACY="<legacy>/Legacy" \\
-    PYTHONPATH=. <venv python> -B tests/kezi/atallas_riport.py --state <os>/var/state --backup ~/Manifold-backup [--megtart]
+    MOS_VAULT="<vault>" MOS_VAULT_GIT="<os>/var/vault.git" MOS_LEGACY="<a régi telepítés gyökere>" \\
+    [MOS_REGI_UT="<a régi telepítés abszolút úttagja>"] \\
+    PYTHONPATH=. <venv python> -B tests/kezi/atallas_riport.py --state <os>/var/state --backup <backup> [--megtart]
 
 Öt szakasz; a riport a próbamappa `riport.json`-ja és a kimenet utolsó sora (RENDBEN / ELTÉRÉS):
   A. **Legacy-próbák a 2.0 írásai után**: klón (`frame.trial_clone`) + core a klónon (`_kornyezet.elkulonit`); a legacy
@@ -14,8 +15,8 @@
   C. **A pillanatkép-tároló folytonossága** (a klónon): `fsck --connectivity-only`, a commitok száma, a legacy-korszak
      (a C02 klónja, 2026-09-30 előtti) legújabb commitja a HEAD őse, a `Mos-Forras` értékkészlete; a `{backup}` minden
      `vault-*.bundle`-je `bundle verify` a klón ellen.
-  D. **A láncok állapotfájljai** (csak olvasva): a médiajobok `state.json`-jai (JSON-e, régi abszolút út), a bináris
-     mozgásnapló (`binaris_naplo.olvas`), a füzet- és a kvízlánc mappája.
+  D. **A láncok állapotfájljai** (csak olvasva): a médiajobok `state.json`-jai (JSON-e; a `MOS_REGI_UT` úttagot tartalmazó
+     régi abszolút út), a bináris mozgásnapló (`binaris_naplo.olvas`), a füzetlánc mappája.
   E. **Visszaállítási próba** (3. pont): a legújabb `vault-*.bundle` a `core.visszaallitas`-szal egy üres helyre a
      próbamappában; minden visszaállított fájl bájtra összevetve a valódi vaulttal; az eltérés csak a bundle óta
      rögzített vagy még nem rögzített változás lehet (a klón tárolójából ellenőrizve).
@@ -238,10 +239,19 @@ def c_szakasz(git_dir: Path, backup: Path) -> dict:
 
 # ---------------------------------------------------------------- D. állapotfájlok
 
-def d_szakasz(state: Path) -> dict:
+def _allapot_ala(cfg, kulcs: str, state: Path) -> Path:
+    """A konfigurált `kulcs` mappa a `--state` mappa alatt (a mappanév a konfigból jön, nem beégetett)."""
+    try:
+        return state / cfg.path(kulcs).relative_to(cfg.path("state"))
+    except ValueError:                      # a kulcs nem a `{state}` alatt van: a konfigurált út marad
+        return cfg.path(kulcs)
+
+
+def d_szakasz(cfg, state: Path) -> dict:
     from core import binaris_naplo
-    jobs = sorted((state / "Manifold-media" / "jobs").glob("*/state.json"))
-    hibas, regi_ut = [], []
+    regi_ut = os.environ.get("MOS_REGI_UT", "")                  # a régi telepítés abszolút úttagja (nincs alapértéke)
+    jobs = sorted(_allapot_ala(cfg, "video_jobs", state).glob("*/state.json"))
+    hibas, regi_utas = [], []
     for p in jobs:
         try:
             t = p.read_text(encoding="utf-8")
@@ -249,8 +259,8 @@ def d_szakasz(state: Path) -> dict:
         except (OSError, ValueError) as e:
             hibas.append(f"{p.parent.name}: {e}")
             continue
-        if "/Volumes/Work/Manifold-OS/" in t:
-            regi_ut.append(p.parent.name)
+        if regi_ut and regi_ut in t:
+            regi_utas.append(p.parent.name)
     naplo = state / "binaris-naplo.jsonl"
     nyers_sorok = len(naplo.read_text(encoding="utf-8").splitlines()) if naplo.is_file() else 0
     olvasott = len(binaris_naplo.olvas(naplo))
@@ -270,9 +280,9 @@ def d_szakasz(state: Path) -> dict:
                         rossz.append(str(p.relative_to(m)))
         return {"van": True, "fajl": db, "json": js, "hibas_json": rossz[:10]}
 
-    return {"media_jobs": len(jobs), "media_hibas": hibas[:10], "media_regi_abszolut_ut": len(regi_ut),
+    return {"media_jobs": len(jobs), "media_hibas": hibas[:10], "media_regi_abszolut_ut": len(regi_utas),
             "binaris_naplo_sor": nyers_sorok, "binaris_naplo_olvasott": olvasott,
-            "fuzet": fajlok(state / "Manifold-fuzet"), "kviz": fajlok(state / "Manifold-kviz")}
+            "fuzet": fajlok(_allapot_ala(cfg, "fuzet", state))}
 
 
 # ---------------------------------------------------------------- E. visszaállítás
@@ -340,7 +350,7 @@ def main() -> int:
               f"ős: {riport['C']['legacy_a_head_ose']}, fsck {riport['C']['fsck']}, bundle {len(riport['C']['bundlek'])}", flush=True)
         riport["E"] = e_szakasz(cfg, d, backup, valodi_vault, git_dir)
         print(f"[riport] E: {json.dumps({k: v for k, v in riport['E'].items() if k != 'kihagyva'}, ensure_ascii=False)}", flush=True)
-        riport["D"] = d_szakasz(state)
+        riport["D"] = d_szakasz(cfg, state)
         print(f"[riport] D: {json.dumps(riport['D'], ensure_ascii=False)}", flush=True)
         riport["A"] = a_szakasz(cfg, d, vault, git_dir)
         print(f"[riport] A: új találat {riport['A']['uj']}, megmagyarázatlan {len(riport['A']['magyarazatlan'])}", flush=True)

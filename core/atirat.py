@@ -2,7 +2,7 @@
 
 `GET /api/media/atirat?ut=<média>` → `{ut, vtt, nyelv, gepi, leiro, cuek: [{k, v, szoveg}], figyelmeztetes}`.
 
-A melléklet-mappa a legacy `vaultlib.sidecar_dir` olvasó szabálya (LEGACY-SZERZODESEK L44, AI01 PB07): a
+A melléklet-mappa a legacy `vaultlib.sidecar_dir` olvasó szabálya (LEGACY-SZERZODESEK L44): a
 videómappán (`ATTCHMNTS - Videos`) kívül álló médiánál a fájl saját mappája; a videómappában állónál a
 `<Téma>/Média/` rétegek közül az, amelyben a törzs `.info.json`-ja vagy forrásleíró `.md`-je áll (a témák
 ábécérendjében az első). Nincs találat: üres átirat, hiány és nem tévedés. A felirat `<törzs>.<nyelv>.vtt`

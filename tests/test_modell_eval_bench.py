@@ -205,7 +205,7 @@ class EvalTest(unittest.TestCase):
         self.assertEqual((ert["ervenyes"], ert["ervenyesseg"]["levagott"], ert["pontszam"]), (False, 4, 0.5))
         sor = ev.rogzit(self.cfg, ert, kalibralt=False)
         self.assertEqual(sor["ervenyes"], 0)
-        self.assertTrue(sor["megjegyzes"].startswith("érvénytelen (C18.1): ÉRVÉNYTELEN: levágott 4/4"))
+        self.assertTrue(sor["megjegyzes"].startswith("érvénytelen: ÉRVÉNYTELEN: levágott 4/4"))
         self.assertEqual(self.tabla.tabla("szoveg"), [])
         with self.assertRaisesRegex(ValueError, "kalibrált"):
             ev.rogzit(self.cfg, ert, kalibralt=True)
@@ -272,7 +272,7 @@ class EvalTest(unittest.TestCase):
             ev._beallit(["max_token=5"])
 
     def test_hianyzo_feladat(self):
-        with self.assertRaisesRegex(FileNotFoundError, "C18"):
+        with self.assertRaisesRegex(FileNotFoundError, "nincs ilyen aranyhalmaz-feladat"):
             ev.feladat_modul(self.cfg, "nincs")
 
 
@@ -374,12 +374,15 @@ class BenchTest(unittest.TestCase):
         self.assertEqual(bt.zar.tartalom(), "")
 
     def test_minta_par_es_keretellenorzes(self):
-        d = self.cfg.path("state") / "Manifold-media" / "itelet"
+        self.assertEqual(bench.minta_par(self.cfg), bench.ALAP_PAR)          # `--minta` nélkül a beépített, semleges pár
+        d = self.cfg.path("tmp") / "minta"
         d.mkdir(parents=True)
-        (d / "n_kotes_minta.json").write_text(json.dumps([{"ablak_szoveg": "a", "jegyzet_cim": "c",
-                                                           "jegyzet_reszlet": "r"}]), encoding="utf-8")
-        (d / "n_cimkek.json").write_text(json.dumps({"cimkek": [0]}), encoding="utf-8")
-        self.assertEqual(bench.minta_par(self.cfg)["y"], 0)
+        (d / "kotes_minta.json").write_text(json.dumps([{"ablak_szoveg": "a", "jegyzet_cim": "c",
+                                                         "jegyzet_reszlet": "r"}]), encoding="utf-8")
+        (d / "cimkek.json").write_text(json.dumps({"cimkek": [0]}), encoding="utf-8")
+        par = bench.minta_par(self.cfg, 0, minta=d / "kotes_minta.json", cimkek=d / "cimkek.json")
+        self.assertEqual((par["ablak_szoveg"], par["y"]), ("a", 0))             # a címke a megadott fájlból jön
+        self.assertNotIn("y", bench.minta_par(self.cfg, 0, minta=d / "kotes_minta.json"))   # címke-fájl nélkül nincs várt érték
         self.assertIsNone(bench.kep_elokeszit(self.cfg))                   # az álvaultban nincs fotó
         with self.assertRaises(B.RegiszterHiba):
             bench.futtat(self.cfg, ["nincs_ilyen"], log=lambda s: None)

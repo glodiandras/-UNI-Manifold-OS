@@ -98,7 +98,7 @@ class Szolgalat:
         with self._zar:
             futas = self._aktiv.id if self._aktiv and self._aktiv.allapot == "fut" else None
         return {"kalibralt": nev is not None, "modell": nev, "futas": futas, "modok": list(MODOK),
-                "indok": "" if nev else "A C++ AI-hoz még nincs kalibrált modell (a `kod` mérése után kapcsol be; D9)."}
+                "indok": "" if nev else "A C++ AI-hoz még nincs kalibrált modell (a `kod` feladat kalibrálása után kapcsol be)."}
 
     # ------------------------------------------------------------------ indítás
 

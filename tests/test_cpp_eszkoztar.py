@@ -191,7 +191,6 @@ class ForditParancsTest(unittest.TestCase):
         self.assertIsNone(eszkoztar.linker_figyelmeztetes({}))
         uz = eszkoztar.linker_figyelmeztetes({"linker": "rendszer"})
         self.assertIn("rendszer", uz)
-        self.assertIn("K168", uz)
         self.assertIn("lld", uz)
 
     def test_a_std_a_beallitasbol_jon(self):
@@ -640,7 +639,7 @@ class ParancssorTest(unittest.TestCase):
         self.assertIn("rendszer", d["linker_figyelmeztetes"])
         _, szoveg, _ = self.fut("allapot")
         self.assertIn("FIGYELEM", szoveg)
-        self.assertIn("K168", szoveg)
+        self.assertIn("rendszer", szoveg)
 
     def test_allapot_szoveg_a_telepitest_mondja_ha_nem_kesz(self):
         kod, ki, _ = self.fut("allapot")

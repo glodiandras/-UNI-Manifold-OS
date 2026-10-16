@@ -2,8 +2,8 @@
 vault-APFS-klónon írva, visszavonással (B). Modell nélkül fut (a lexikai besorolás és a verifikátor determinisztikus; ahol a legacy
 témáját a helyi modell vagy a gazda döntötte, a próba a legacy döntését adja meg, mint a legacy `--topic`); a discover nem futtatja.
 
-    MOS_VAULT=/Volumes/Work/Manifold MOS_VAULT_GIT="<fő checkout>/var/vault.git" \\
-    MOS_VIDEO_JOBS="<fő checkout>/var/state/Manifold-media/jobs" MOS_STAGING="<a staging-klón>" \\
+    MOS_VAULT="<vault>" MOS_VAULT_GIT="<fő checkout>/var/vault.git" \\
+    MOS_VIDEO_JOBS="<a médiajobok mappája>" MOS_STAGING="<a staging-klón>" \\
     bin/mos exec var/venv/bin/python -B tests/kezi/video_integralas_proba.py [--csak-olvas] [--n 8] [--megtart] [--limit N]
 
 A. **A valódi adaton, csak olvasva** — a legacy `kesz` jobjaira (`state.json`):

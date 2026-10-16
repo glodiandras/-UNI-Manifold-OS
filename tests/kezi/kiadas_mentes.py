@@ -1,6 +1,6 @@
 """C34 kézi kapu: a belső lemezes mentés VISSZAÁLLÍTHATÓSÁGA — csak olvas, csak a próbamappába ír (a discover nem futtatja).
 
-    bin/mos exec var/venv/bin/python -B tests/kezi/kiadas_mentes.py [--backup ~/Manifold-backup] [--megtart]
+    bin/mos exec var/venv/bin/python -B tests/kezi/kiadas_mentes.py [--backup <backup>] [--megtart]
     (munkafában: a vault, a `vault.git` és a mentés a fő checkoutból jön — `_kornyezet.munkafa_forras`; a `--backup` kell)
 
 A valódi `{backup}` legújabb bundle-jeit és állapotmásolatát visszaállítja egy ideiglenes próbamappába, és ellenőrzi:

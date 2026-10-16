@@ -201,11 +201,11 @@ def valtozasok(cfg: Config, fid: str) -> dict:
 
 def utvonalak(r) -> None:
     """A vezérlő végpontjai az útvonal-regiszterben; a `tasks.utvonalak` hívja (egy hely a feladatsorral)."""
-    from . import (fuzet_feladat, grafikon_feladat, kartya_feladat, kviz_feladat, matek_feladat, osszefoglalas_feladat,
+    from . import (fejleszto, fuzet_feladat, grafikon_feladat, kartya_feladat, kviz_feladat, matek_feladat, osszefoglalas_feladat,
                    probafeladat, vektorindex_feladat, videolanc)
     from .utvonalak import HttpError
 
-    if os.environ.get("MOS_PROBA_FELADAT") == "1":
+    if fejleszto.kapcsolo("MOS_PROBA_FELADAT"):          # csak Developer módban (tesztek, kézi próba): élesben nincs `proba` típus
         probafeladat.regisztral()
     videolanc.regisztral()                  # a videólánc feladattípusa (C20a): kézzel indított, a vaultba nem ír
     grafikon_feladat.regisztral()           # a ```plot automatikus beírása (C35b-mag): automatikus, a kapu alatt, gépi írással

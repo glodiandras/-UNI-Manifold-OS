@@ -119,10 +119,10 @@ class Tabla:
         if not feladat or not modell or not aranyhalmaz_verzio:
             raise ValueError("a feladat, a modell és az aranyhalmaz-verzió kötelező")
         if kalibralt and not ervenyes:
-            raise ValueError("érvénytelen mérés nem kaphat kalibrált jelet (C18.1)")
+            raise ValueError("érvénytelen mérés nem kaphat kalibrált jelet")
         if kalibralt and vazlat(aranyhalmaz_verzio):
-            raise ValueError(f"vázlat-aranyhalmazon ({aranyhalmaz_verzio}) mért sor nem kaphat kalibrált jelet (C19, T050): "
-                             "előbb a jóváhagyás (K27), utána újrapontozás")
+            raise ValueError(f"vázlat-aranyhalmazon ({aranyhalmaz_verzio}) mért sor nem kaphat kalibrált jelet: "
+                             "előbb az aranyhalmaz jóváhagyása, utána újrapontozás")
         oszlopok = ", ".join(MEZOK)
         jelek = ",".join("?" * len(MEZOK))
         with self._lock:

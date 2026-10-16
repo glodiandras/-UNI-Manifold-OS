@@ -23,6 +23,7 @@ enum Biztonsag {
         }
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata: → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -51,4 +52,5 @@ enum Biztonsag {
         }
         return hibak
     }
+#endif
 }

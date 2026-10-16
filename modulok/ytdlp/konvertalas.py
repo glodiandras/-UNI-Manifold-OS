@@ -165,8 +165,8 @@ def _eredeti_archivalas(eredeti: Path, gyoker: Path, relativ: str, *, nev: str |
         raise
     indok = gyoker / "INDOK.md"
     if not indok.exists():
-        indok.write_text("# A konvertálás előtti eredeti videók\n\nA videólánc (C20a) a nem natív formátumú (MKV, WebM, AV1/VP9) letöltést a "
-                         "beolvasáskor mp4-re konvertálta (CLAUDE.md 9. döntés); a staging a konvertáltat tartalmazza, az eredeti ide "
+        indok.write_text("# A konvertálás előtti eredeti videók\n\nA videólánc a nem natív formátumú (MKV, WebM, AV1/VP9) letöltést a "
+                         "beolvasáskor mp4-re konvertálta; a staging a konvertáltat tartalmazza, az eredeti ide "
                          "került, mert automatikus törlés nincs. A mappa bármikor törölhető a felhasználó jóváhagyásával.\n", encoding="utf-8")
     return cel
 

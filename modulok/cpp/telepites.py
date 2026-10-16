@@ -141,7 +141,7 @@ class Telepito:
         p = self.pinek
         meret = int(p["LLVM_BYTES"])
         return "\n".join([
-            "C++ eszközlánc: letöltési és másolási lista (D3: csak kifejezett igen után; bin/mos cpp telepit --igen)",
+            "C++ eszközlánc: letöltési és másolási lista (csak kifejezett igen után; bin/mos cpp telepit --igen)",
             f" 1. LLVM {p['LLVM_VERSION']} (macOS ARM64): {p['LLVM_ARCHIVE']}",
             f"    forrás : {p['LLVM_URL']}",
             f"    méret  : {meret:,} bájt ({meret / 2 ** 20:.1f} MiB)".replace(",", " "),

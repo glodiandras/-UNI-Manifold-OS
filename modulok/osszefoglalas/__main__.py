@@ -1,9 +1,9 @@
-"""`bin/mos osszefoglalas …` — az összefoglaló parancssora (C26a: a mag, csak olvas; C26b: `general`, `meres`).
+"""`bin/mos osszefoglalas …` — az összefoglaló parancssora (a mag csak olvas; a `general` és a `meres` ír / mér).
 
 - `general --szint jegyzet|mappa|video --ut X [--ut …] [--automatikus] [--proba] [--modell M] [--kiegeszit] [--stop-fajl F]`:
   az éles lánc (a feladat-lépés: a modellt a workeren át hívja, a vaultba a core gépi-írás szolgáltatásán át ír; a `MOS_CORE_URL`
   a feladatsortól jön). Egy összefoglaló = egy tétel = egy gépi commit.
-- `meres --modell M [--keret munka|tavol] --ki JELENTES.json [--limit N]`: az éles lánc mérése a C18 `szoveg` aranyhalmazon
+- `meres --modell M [--keret munka|tavol] --ki JELENTES.json [--limit N]`: az éles lánc mérése a `szoveg` aranyhalmazon
   (a vaultba nem ír).
 
 - `ellenoriz JEGYZET`: egy összefoglaló-jegyzet elemzése a vaultban: állítások, hibák, és hogy az idézetek még ott állnak-e a
@@ -44,7 +44,7 @@ def _bemenet(cfg, rp: str, b: L.Beallitas) -> tuple[SZ.Bemenet, str]:
     md = _olvas(cfg, rp)
     j = elemzo.elemez(md)
     return SZ.jegyzet_bemenet(md, rp.removesuffix(".md"), FM.cim_of(rp), j.fejezetek, j.blokkok,
-                              b.darab_max_karakter, b.szakasz_min_karakter), md
+                              b.darab_max_karakter, b.szakasz_min_karakter, b.kihagyott_szakaszok), md
 
 
 def ellenoriz(cfg, a) -> int:
@@ -110,7 +110,7 @@ def kontextus(cfg, a) -> int:
 
 
 def general(cfg, a) -> int:
-    """A feladat-lépés (C26b): összefoglaló a megadott utakhoz, utanként egy gépi tétel (egy kör). Az automatikus módban egy út hibája
+    """A feladat-lépés: összefoglaló a megadott utakhoz, utanként egy gépi tétel (egy kör). Az automatikus módban egy út hibája
     a többit nem állítja meg; a kézi (egy út) hibája 5-ös kilépés érthető üzenettel."""
     from core import gepi_kliens
 
@@ -148,7 +148,7 @@ def meres(cfg, a) -> int:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="mos osszefoglalas", description="Összefoglalás és kontextus-csomag (C26a, modell nélkül)")
+    ap = argparse.ArgumentParser(prog="mos osszefoglalas", description="Összefoglalás és kontextus-csomag (modell nélkül)")
     al = ap.add_subparsers(dest="parancs", required=True)
     e = al.add_parser("ellenoriz", help="egy összefoglaló-jegyzet elemzése és sodródás-vizsgálata (csak olvas)")
     e.add_argument("jegyzet", help="az összefoglaló-jegyzet vault-relatív útja")
@@ -165,11 +165,11 @@ def main(argv: list[str]) -> int:
     g.add_argument("--szint", choices=("jegyzet", "mappa", "video"), default="jegyzet")
     g.add_argument("--ut", action="append", required=True)
     g.add_argument("--automatikus", action="store_true")
-    g.add_argument("--proba", action="store_true", help="az írás a vault APFS-klónjára (D9)")
-    g.add_argument("--modell", help="kifejezett modell (csak próba, D9)")
+    g.add_argument("--proba", action="store_true", help="az írás a vault másolatára (a vault nem változik)")
+    g.add_argument("--modell", help="kifejezett modell (csak próbában)")
     g.add_argument("--kiegeszit", action="store_true", help="mappa-szint: a hiányzó jegyzet-összefoglalókat előbb elkészíti")
     g.add_argument("--stop-fajl")
-    m = al.add_parser("meres", help="az éles lánc mérése a C18 `szoveg` aranyhalmazon")
+    m = al.add_parser("meres", help="az éles lánc mérése a `szoveg` aranyhalmazon")
     m.add_argument("--modell", required=True)
     m.add_argument("--keret", default=None, help="munka | tavol (saját worker a keret-felülírással)")
     m.add_argument("--ki", required=True)

@@ -13,7 +13,7 @@ import Foundation
 // MARK: tiszta logika
 
 enum NaptarLogika {
-    /// Az EKAuthorizationStatus nyers értéke → a protokoll állapotneve (a legacy `allapotNev` szerint; macOS 14-en
+    /// Az EKAuthorizationStatus nyers értéke → a protokoll állapotneve (macOS 14-en
     /// a 3 a `fullAccess`, a 4 a `writeOnly`).
     static func allapotNev(_ nyers: Int) -> String {
         switch nyers {
@@ -190,6 +190,7 @@ enum NaptarLogika {
         return String(format: "#%02x%02x%02x", r, g, b)
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata: → a hibás esetek leírása (üres: rendben). EventKit-et nem érint.
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -263,6 +264,7 @@ enum NaptarLogika {
         }
         return hibak
     }
+#endif
 }
 
 struct NaptarHiba: Error {
@@ -397,7 +399,7 @@ enum Naptar {
         return d
     }
 
-    /// Az esemény kulcsa a legacy-vel azonos: `külső azonosító|előfordulás ISO`.
+    /// Az esemény kulcsa: `külső azonosító|előfordulás ISO`
     private static func esemenyKulcs(_ e: EKEvent, elofordulas: Date) -> String {
         let kulso = e.calendarItemExternalIdentifier
         let alap = (kulso?.isEmpty == false ? kulso! : e.calendarItemIdentifier)
@@ -507,14 +509,14 @@ enum Naptar {
     }
 
     /// Az EKSource a lista létrehozásához: név szerint; üres → a rendszer alapértelmezett emlékeztető-listájának
-    /// forrása; ennek hiányában az iCloud, majd az első helyi forrás.
+    /// forrása; ennek hiányában az első forrás, amelyben emlékeztető-lista van (nincs név szerinti előny), majd a helyi, a CalDAV.
     private static func keresForras(_ store: EKEventStore, nev: String?) -> EKSource? {
         if let nev, !nev.isEmpty {
             let talalatok = store.sources.filter { $0.title == nev }
             return talalatok.first(where: { !$0.calendars(for: .reminder).isEmpty }) ?? talalatok.first
         }
         if let alap = store.defaultCalendarForNewReminders()?.source { return alap }
-        return store.sources.first(where: { $0.title == "iCloud" })
+        return store.sources.first(where: { !$0.calendars(for: .reminder).isEmpty })
             ?? store.sources.first(where: { $0.sourceType.rawValue == 0 })
             ?? store.sources.first(where: { $0.sourceType.rawValue == 2 })
     }

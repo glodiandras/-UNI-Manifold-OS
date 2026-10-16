@@ -43,7 +43,8 @@ def vizsgal(txt: str, olvas: Callable[[str], str | None], letezik: Callable[[str
                 else:
                     t = elemzo.elemez(md)
                     cache[cel] = ("jegyzet", SZ.jegyzet_bemenet(md, cel, FM.cim_of(cel + ".md"), t.fejezetek, t.blokkok,
-                                                                 b.darab_max_karakter, b.szakasz_min_karakter), t)
+                                                                 b.darab_max_karakter, b.szakasz_min_karakter,
+                                                                 b.kihagyott_szakaszok), t)
         r = {"id": al.id, "szoveg": al.szoveg, "idezet": al.idezet, "cel": cel, "alcel": alcel, "felirat": al.horgony.felirat,
              "sodrodott": False, "horgony_hianyzik": False, "forras_hianyzik": False}
         c = cache[cel]

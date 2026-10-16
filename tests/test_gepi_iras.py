@@ -15,18 +15,21 @@ from core.modell import kalibracio
 from core.tulajdonsagok import Tulajdonsagok
 from core.utvonalak import HttpError
 from tests import csak_darwin
-from tests.helpers import REPO, alg_core, env, ir, tmpdir
+from tests.helpers import REPO, alg_core, env, ir, tmpdir, vault_sema
 from tests.index_segedek import index_indit
 
 NINCS = object()                         # a `modell` kulcs kihagyása a kérésből (C29.8, T043)
 FM = "---\nTags:\nSource:\nStatus:\nNN:\nCanvas:\n---\n"
 NFD = unicodedata.normalize("NFD", "Öröklés.md")
+SEMA_NELKULI = "CLAUDE.md"                                    # a séma alól kivett (ügynök-hordozó) fájl; a név számít, a mélység nem
+UGYNOK_UTAK = ["Sub/CLAUDE.md", "T01/Mélyebb/agents.MD", "Memory.md", "T01/sub/memory.md"]
+H1_KIVETEL = vault_sema()["h1"]["kivetel_utvonalak"][0] + "Napi log.md"      # a H1-szabály alól kivett útvonal
 KULONLEGES = ["T01/a -> b.md", "T01/tab\tnév.md", 'T01/idéz"őjel.md', "T01/Mi?.md", "T01/szög[let].md", "T01/" + NFD]
 ALAP = {
     "T01/a.md": FM + "# A\n\n## Gyakorlás\nelső sor\n\n## Más\nvége\n",
     "T01/crlf.md": "# C\r\n\r\n## Gyakorlás\r\nsor\r\n",
     "T01/kesz.md": "---\nTags:\nSource:\nStatus: Completed\nNN:\nCanvas:\n---\n# Kész\n",
-    "AI01 - Workflow System/CLAUDE.md": "# ügynök\n",
+    SEMA_NELKULI: "# ügynök\n",
     **{n: "# K\n\n## Gyakorlás\nx\n" for n in KULONLEGES},
 }
 
@@ -282,7 +285,16 @@ class EllenorzesTest(Alap):
         self.hiba(409, {"tipus": "uj", "ut": "t01/A.MD", "tartalom": FM, "osztaly": "normal"})   # létezik (kisbetűvel is)
         self.hiba(404, {"tipus": "csere", "ut": "T01/nincs.md", "tartalom": "x", "alap": "0" * 40})
         self.hiba(404, {"tipus": "beszuras", "ut": "T01/a.md", "szakasz": "Nincs ilyen", "szoveg": "x"})
-        self.hiba(400, {"tipus": "beszuras", "ut": "AI01 - Workflow System/CLAUDE.md", "szakasz": "ügynök", "szoveg": "x"})
+        self.hiba(400, {"tipus": "beszuras", "ut": SEMA_NELKULI, "szakasz": "ügynök", "szoveg": "x"})
+
+    def test_ugynok_hordozo_fajl_barmely_melysegben_tiltott(self):
+        """A kapu a fájlnevet nézi (nem a pontos utat): beágyazott `CLAUDE.md` / `AGENTS.md` / `MEMORY.md`, bármilyen kis-nagybetűvel
+        sem írható géppel — sem új fájlként, sem cserével, sem szakasz alá beszúrással."""
+        for ut in UGYNOK_UTAK:
+            with self.subTest(ut):
+                self.hiba(400, {"tipus": "uj", "ut": ut, "tartalom": "# ügynök\n"})
+                self.hiba(400, {"tipus": "csere", "ut": ut, "tartalom": "x", "alap": "0" * 40})
+                self.hiba(400, {"tipus": "beszuras", "ut": ut, "szakasz": "ügynök", "szoveg": "x", "letrehoz": True})
 
     def test_alap_hash_utkozes(self):
         e = self.hiba(409, {"tipus": "csere", "ut": "T01/a.md", "tartalom": "x", "alap": "0" * 40})
@@ -405,7 +417,7 @@ class AuditKapukTest(Alap):
         r = self.G.ir(self.keres(
             self.uj(FM + "# Új jegyzet\n"),                                                    # H1 == fájlnév
             self.uj(FM + "# Elsőként\n", "T01/07 - Elsőként.md"),                                # a sorszám-előtag nélkül
-            self.uj(FM + "# Bármi más\n", "AI02 - Log/Napi log.md"),                            # kivétel-útvonal
+            self.uj(FM + "# Bármi más\n", H1_KIVETEL),                                            # kivétel-útvonal
             self.uj(kv + "# Alma — Kvíz 2026-10-03 1015\n", "ATTCHMNTS - quizes/Alma — Kvíz 2026-10-03 1015.md", "kviz")))
         self.assertTrue(r["ok"] and r["valtozas"])
 

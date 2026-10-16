@@ -5,6 +5,7 @@ import unittest
 
 from modulok.eval.szoveg import feladat as SZ
 from modulok.osszefoglalas import promptok as P
+from tests.eval_segedek import aranyt_igenyel
 
 
 class PromptTest(unittest.TestCase):
@@ -16,6 +17,7 @@ class PromptTest(unittest.TestCase):
         self.assertEqual(hashlib.sha1(p.encode()).hexdigest(), self.REGI_SHA1)
         self.assertEqual(p, P.jegyzet_prompt("PÉLDA SZÖVEG\nmásodik sor"))
 
+    @aranyt_igenyel("szoveg")
     def test_a_tetelek_a_kozos_promptot_hasznaljak(self):
         t = next(x for x in SZ.tetelek(None) if x["id"] == "ossz-j01")
         szoveg = SZ.forras_szoveg("j01")

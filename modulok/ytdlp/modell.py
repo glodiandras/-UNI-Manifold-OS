@@ -1,7 +1,7 @@
-"""A videólánc modellhívásai a workeren át (C20b; a modellt csak a modellgazda tölti, CLAUDE.md §4; D9).
+"""A videólánc modellhívásai a workeren át (a modellt csak a modellgazda tölti).
 
 Élesben a router dönt (`atirat`, `tema`, `kotes`): csak kalibrált modell fut, és ha egy feladatra nincs, a lánc azt a lépést modell
-nélkül zárja (a lexikai út, D1) — **nem vár**. Kifejezett modell (`--atirat`, `--tema`, `--kotes`) csak próbában: a worker
+nélkül zárja (a lexikai út) — **nem vár**. Kifejezett modell (`--atirat`, `--tema`, `--kotes`) csak próbában: a worker
 `proba: true`-val válaszol, a gépi írás ezt csak a klónra engedi. A kérés a mérés beállítását kapja (`keres_beallitas`), hogy a
 kalibrált beállítás és az éles kérés ne térjen el.
 """
@@ -48,7 +48,7 @@ class Modellek:
 
     def modell_nev(self, feladat: str) -> str:
         if not self.van(feladat):
-            raise NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell: élesben nem fut; próbához adj meg modellt és --proba-t (D9)")
+            raise NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell: élesben nem fut; próbához adj meg egy modellnevet (a Beállítások › AI listájából) és --proba-t")
         return self.kifejezett.get(feladat) or self._dontes[feladat]
 
     def kerdez(self, feladat: str, prompt: str, max_tokens: int) -> tuple[str, dict]:

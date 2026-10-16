@@ -135,7 +135,7 @@ def modell_dontes(worker, modell: str | None) -> tuple[str, bool, str | None, st
                                                         "tétlenségben készül el")
     except Exception as exc:  # noqa: BLE001 — a worker hibája üzenetként
         if getattr(exc, "kod", None) == 409:
-            raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell (D9): élesen nem készül kvíz. Próbához adj meg "
+            raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell: élesen nem készül kvíz. Próbához adj meg "
                          f"modellt (a kimenet a vault klónjára kerül). ({exc})") from None
         raise
     raise Megall(f"A kvíz modellje most nem futhat: {dont.get('indok') or 'nincs választható modell'}.")
@@ -168,7 +168,7 @@ def korabbi_kvizek(cfg, ut: str) -> tuple[list[str], set[str]]:
 
 
 def mappa_nev(cfg) -> str:
-    return FM.nfc(cfg.section("kviz").get("mappa", "ATTCHMNTS - quizes")).strip("/")
+    return FM.nfc(cfg.section("kviz").get("mappa", FM.ALAP_MAPPA)).strip("/")
 
 
 def futtat(cfg, ut: str, *, gepi, worker, proba: bool = False, modell: str | None = None, n: int | None = None,

@@ -60,6 +60,16 @@ def blokk(link: str, kepletek_: list[str] | tuple = ()) -> list[str]:
     return sorok
 
 
+ALAP_SZAKASZ_NEV = "Füzet"                  # a `[fuzet] szakasz` alapja: a cél jegyzet szakaszának címe
+ALAP_SZAKASZ = "## " + ALAP_SZAKASZ_NEV
+ALAP_CEL_MAPPA = "ATTCHMNTS - photos"       # a `[fuzet] cel_mappa` alapja: a fotók helye a vaultban
+
+
+def szakasz_fejlec(nev: str | None = None) -> str:
+    """A cél jegyzet szakaszának fejléc-sora a `[fuzet] szakasz` értékéből (`## <név>`); üres vagy hiányzó: az alap."""
+    return "## " + str(nev or ALAP_SZAKASZ_NEV)
+
+
 def _szakasz(lines: list[str], szakasz: str) -> tuple[int, int] | None:
     try:
         i = next(k for k, s in enumerate(lines) if s.rstrip() == szakasz)
@@ -85,7 +95,7 @@ def _blokkok(lines: list[str], i: int, j: int) -> list[tuple[int, int, str]]:
     return ki
 
 
-def beagyaz(text: str, link: str, kepletek_: list[str] | tuple = (), szakasz: str = "## Füzet") -> str:
+def beagyaz(text: str, link: str, kepletek_: list[str] | tuple = (), szakasz: str = ALAP_SZAKASZ) -> str:
     """A fotó blokkjának beillesztése (idempotens). Új szakasz a jegyzet végére kerül."""
     uj = blokk(link, kepletek_)
     lines = text.split("\n")
@@ -114,7 +124,7 @@ def beagyaz(text: str, link: str, kepletek_: list[str] | tuple = (), szakasz: st
     return "\n".join(lines[:hova] + elotte + uj + utana + lines[hova:])
 
 
-def levalaszt(text: str, link: str, szakasz: str = "## Füzet") -> str:
+def levalaszt(text: str, link: str, szakasz: str = ALAP_SZAKASZ) -> str:
     """A `beagyaz` inverze: a fotó blokkja (beágyazás + callout) kiesik; ha a szakasz ezzel kiürül, a szakasz is."""
     lines = text.split("\n")
     sz = _szakasz(lines, szakasz)
@@ -139,7 +149,7 @@ def levalaszt(text: str, link: str, szakasz: str = "## Füzet") -> str:
     return eleje + "\n" + ("\n" + utana if utana.strip() else "")
 
 
-def blokk_kivesz(text: str, link: str, szakasz: str = "## Füzet") -> list[str] | None:
+def blokk_kivesz(text: str, link: str, szakasz: str = ALAP_SZAKASZ) -> list[str] | None:
     """A fotó meglévő blokkjának sorai (az átkötéshez: a callout a beágyazással együtt költözik); None, ha nincs."""
     lines = text.split("\n")
     sz = _szakasz(lines, szakasz)

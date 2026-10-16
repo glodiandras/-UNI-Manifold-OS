@@ -63,7 +63,7 @@
       spellcheck="false"
       autocomplete="off"
       maxlength={MAX_LEKERDEZES}
-      placeholder="path:mappa  tag:#címke  [Status:kész]"
+      placeholder="path:mappa  tag:#címke  [kulcs:érték]"
       aria-describedby="gv-lek-sugo"
       value={eff.lekerdezes}
       oninput={(e) => beallit({ lekerdezes: e.currentTarget.value })}

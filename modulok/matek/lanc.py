@@ -69,7 +69,7 @@ def futtat(*, ut: str, tol: int, ig: int, feladat: str, gepi, worker, homokozo, 
             dont = worker.valaszt()
         except Exception as exc:  # noqa: BLE001 — a worker hibája üzenetként
             if _hibakod(exc) == 409:
-                raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell (D9): élesen nem írható megoldás. Próbához adj meg "
+                raise Megall(f"A `{FELADAT}` feladatra nincs kalibrált modell: élesen nem írható megoldás. Próbához adj meg "
                              f"modellt (`modell`, a kimenet a vault klónjára kerül). ({exc})") from None
             raise
         if not dont.get("modell"):

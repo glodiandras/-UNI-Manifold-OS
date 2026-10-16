@@ -1,7 +1,7 @@
 """Anki-csomag (`.apkg`) export és import (`docs/C23-TERV.md` 4. fejezet) — csak a stdlib: `sqlite3`, `zipfile`,
 `compression.zstd` (Python 3.14), és egy kis kézi protobuf-dekóder.
 
-Referencia: az Anki-repó (`/Volumes/Work/anki-main`, csak olvasva) `rslib/src/import_export/package/` és
+Referencia: az upstream Anki-repó `rslib/src/import_export/package/` és
 `rslib/src/storage/schema11.sql` kódja.
 
 **Export**: a „Support older Anki versions” alak (LEGACY_2) — a legszélesebben olvasható (Anki desktop, AnkiMobile,

@@ -94,7 +94,7 @@ def darab(jid: str) -> dict:
     d = keszit.darab_szoveg(md, j["ut"], j["darab"]["index"], int(ARANY["darab_max_karakter"]), int(ARANY["szakasz_min_karakter"]))
     if A.szoveg_sha256(d["szoveg"]) != j["darab"]["sha256"]:
         raise ValueError(f"{jid}: a darab elcsúszott (a kapuk/forrás-előkészítés vagy a darabolás változott): "
-                         "futtasd a `modulok/eval/kviz/keszit.py --ellenoriz`-t, és hagyd jóvá az új halmazt (K134)")
+                         "futtasd a `modulok/eval/kviz/keszit.py --ellenoriz`-t, és hagyd jóvá az új halmazt")
     return d
 
 

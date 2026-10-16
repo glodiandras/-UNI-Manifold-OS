@@ -1,5 +1,5 @@
-"""`bin/mos video …` — a videólánc parancsai (C20a, C20b). Csak a `letoltes` használ hálózatot (D3). A vaultba csak az `integral` ír (C20b), a gépi-írás szolgáltatáson át, modellt a workeren át kér (a betöltő tölt); kézzel
-csak `--proba`-val (a vault APFS-klónjára), élesben a feladatsor lépéseként."""
+"""`bin/mos video …` — a videólánc parancsai. Csak a `letoltes` használ hálózatot. A vaultba csak az `integral` ír, a gépi-írás szolgáltatáson át,
+modellt a workeren át kér (a betöltő tölt); kézzel csak `--proba`-val (a vault másolatára), élesben a feladatsor lépéseként."""
 from __future__ import annotations
 
 import argparse
@@ -14,7 +14,7 @@ REPO = Path(__file__).resolve().parents[2]
 if str(REPO) not in sys.path:
     sys.path.insert(0, str(REPO))
 
-from core import config  # noqa: E402
+from core import config, fejleszto  # noqa: E402
 
 from . import konvertalas, staging  # noqa: E402
 from .eszkoz import pin as _pin, sha256 as _sha256  # noqa: E402
@@ -202,12 +202,12 @@ def config_ido() -> str:
 
 def cmd_integral(cfg, args) -> int:
     """C20b: a staging forrásainak bevitele a vaultba (gépi írás, tételenként visszavonható). Az éles írás csak a feladatsor
-    lépéseként indul (`MOS_FELADAT`); kézzel a `--proba` fut (a vault APFS-klónjára ír, D9). Kifejezett modell mindig próba."""
+    lépéseként indul (`MOS_FELADAT`); kézzel a `--proba` fut (a vault másolatára ír). Kifejezett modell mindig próba."""
     from . import bevitel, integralas
     from .modell import NincsModell
     kif = {"atirat": args.atirat, "tema": args.tema, "kotes": args.kotes}
     if any(kif.values()) and not args.proba:
-        print("kifejezett modell csak próbában (--proba) futhat (D9)", file=sys.stderr)
+        print("kifejezett modell csak próbában (--proba) futhat", file=sys.stderr)
         return 64
     if not args.proba and not os.environ.get("MOS_FELADAT"):
         print("az éles bevitel csak a feladatsor lépéseként indul (a vezérlőből); kézzel: --proba", file=sys.stderr)
@@ -246,7 +246,7 @@ def cmd_lepes(cfg, args) -> int:
     if args.lepes == "bejaras":
         return lepes_bejaras(cfg, args)
     if args.lepes == "letoltes":
-        if os.environ.get("MOS_VIDEO_HELYI_ENGEDELY") != "1":    # kizárólag a loopback-szerveres tesztek kapcsolója (tests/test_video_e2e.py)
+        if not fejleszto.kapcsolo("MOS_VIDEO_HELYI_ENGEDELY"):    # kizárólag Developer módban és a loopback-szerveres tesztek kapcsolójával (tests/test_video_e2e.py)
             halozat_orzo.telepit()      # A3-13: a yt-dlp átirányítása és a DNS-újrakötés sem érhet helyi/privát címet
         return lanc.letoltes(cfg, list(args.url), proba_gyoker=Path(args.proba_gyoker) if args.proba_gyoker else None,
                              stop_fajl=os.environ.get("MANIFOLD_STOP_FAJL"), eredmeny_fajl=Path(args.ki) if args.ki else None)
@@ -256,7 +256,7 @@ def cmd_lepes(cfg, args) -> int:
 def lepes_bejaras(cfg, args) -> int:
     """A `video_bejaras` feladat lépése: felfedezés, az eredmény a `--ki` fájlba (a core onnan adja a felületnek). Letöltés nincs."""
     from . import bejaras, halozat_orzo
-    if os.environ.get("MOS_VIDEO_HELYI_ENGEDELY") != "1":    # kizárólag a loopback-szerveres tesztek kapcsolója
+    if not fejleszto.kapcsolo("MOS_VIDEO_HELYI_ENGEDELY"):    # kizárólag Developer módban és a loopback-szerveres tesztek kapcsolójával
         halozat_orzo.telepit()
     if len(args.url) != 1 or not args.ki:
         print("HIBA: egy --url és a --ki kell", file=sys.stderr)
@@ -282,6 +282,9 @@ def lepes_bejaras(cfg, args) -> int:
 
 
 def _tesztek(cfg, pytest: bool) -> int:
+    if not fejleszto.aktiv():
+        print("HIBA: a `video selftest` és a `video test` fejlesztői parancs: Developer módban (MOS_FEJLESZTO=1) érhető el", file=sys.stderr)
+        return 64
     rc = 0
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     if pytest:
@@ -310,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_leltar)
 
-    p = al.add_parser("letoltes", help="linkek letöltése a stagingbe (HÁLÓZAT: D3); --bejaras: egy oldal összes videója")
+    p = al.add_parser("letoltes", help="linkek letöltése a stagingbe (HÁLÓZAT); --bejaras: egy oldal összes videója")
     p.add_argument("url", nargs="*")
     p.add_argument("--proba", action="store_true", help="a staging és az archívum a {tmp} alá kerül, pillanatkép nincs")
     p.add_argument("--bejaras", metavar="OLDAL", help="az oldal (és az alatta lévő oldalak) összes videója: előbb csak a lista")
@@ -323,16 +326,16 @@ def main(argv: list[str] | None = None) -> int:
     def integral_kapcsolok(p):
         p.add_argument("--mappa", action="append", default=[], help="staging-forrásmappa (vagy szülő); alap: a `pending` források")
         p.add_argument("--csoport", help="a behúzott fájlok beérkező csoportja ({video_bejovo}/<csoport>)")
-        p.add_argument("--proba", action="store_true", help="a gépi írás a vault APFS-klónjára (D9)")
+        p.add_argument("--proba", action="store_true", help="a gépi írás a vault másolatára (a vault nem változik)")
         p.add_argument("--atirat", help="kifejezett átirat-modell (csak próbában)")
         p.add_argument("--tema", help="kifejezett téma-modell (csak próbában)")
         p.add_argument("--kotes", help="kifejezett kötés-modell (csak próbában)")
         p.add_argument("--max", type=int)
         p.add_argument("--tema-mappa", metavar="MAPPA",
-                       help="kényszerített célmappa (pl. \"D13 - CS50\"): a téma-modell nem fut, a mellékletek a <MAPPA>/Média alá; "
-                            "csak --mappa/--csoport mellett (86. döntés, javasolt)")
+                       help="kényszerített célmappa (egy meglévő vagy új témamappa neve): a téma-modell nem fut, a mellékletek a <MAPPA>/Média alá; "
+                            "csak --mappa/--csoport mellett")
 
-    p = al.add_parser("integral", help="C20b: a staging forrásainak bevitele a vaultba (kézzel csak --proba)")
+    p = al.add_parser("integral", help="a staging forrásainak bevitele a vaultba (kézzel csak --proba)")
     integral_kapcsolok(p)
     p.set_defaults(fn=cmd_integral)
 
@@ -344,9 +347,9 @@ def main(argv: list[str] | None = None) -> int:
     integral_kapcsolok(p)
     p.set_defaults(fn=cmd_lepes)
 
-    p = al.add_parser("selftest", help="a portolt média-selftest (modell, hálózat és vault-író nélkül)")
+    p = al.add_parser("selftest", help="a média-selftest (modell, hálózat és vault-író nélkül)")
     p.set_defaults(fn=lambda cfg, a: _tesztek(cfg, pytest=False))
-    p = al.add_parser("test", help="az msp pytest-készlete + a portolt média-selftest")
+    p = al.add_parser("test", help="a letöltő pytest-készlete + a média-selftest")
     p.set_defaults(fn=lambda cfg, a: _tesztek(cfg, pytest=True))
 
     args = ap.parse_args(argv)

@@ -1,7 +1,7 @@
 """C20a kész-feltétele: a videólánc építőkövei a VALÓDI adaton (csak olvasva) és egy vault-APFS-klónon (a discover nem futtatja).
 
-    MOS_VAULT=/Volumes/Work/Manifold MOS_VAULT_GIT="<fő checkout>/var/vault.git" \\
-    MOS_VIDEO_JOBS="<fő checkout>/var/state/Manifold-media/jobs" \\
+    MOS_VAULT="<vault>" MOS_VAULT_GIT="<fő checkout>/var/vault.git" \\
+    MOS_VIDEO_JOBS="<a médiajobok mappája>" \\
     bin/mos exec var/venv/bin/python -B tests/kezi/video_proba.py [--csak-olvas] [--megtart] [--felmeres-limit N]
 
 A. **A valódi adaton, csak olvasva** (a legacy, a valódi vault és a fő `var/` nem módosul):

@@ -115,9 +115,13 @@ def allapot(app) -> dict:
                          "tetelek": [{k: t.get(k) for k in ("cim", "allapot", "uzenet", "commit")} | {"tema": (t.get("tema") or {}).get("tema"),
                                       "biztossag": (t.get("tema") or {}).get("biztossag"), "kotes_db": len(t.get("kotesek") or [])}
                                      for t in (r.get("tetelek") or [])[:20]]})
-    from .videolanc import temamappak
+    from .videolanc import TemamappaHiba, tema_minta, temamappak
+    try:
+        minta = tema_minta(app.cfg)
+    except TemamappaHiba:
+        minta = None                    # hibás `[video] tema_minta`: a javaslatlista az alapmintával (a bevitel úgyis jelzi a hibát)
     return {"staging": db, "varakozik": db.get("pending", 0), "legutobbi": riportok, "fuggo": fuggo,
-            "temamappak": temamappak(app.cfg.path("vault"))}
+            "temamappak": temamappak(app.cfg.path("vault"), minta)}
 
 
 # a tétel forrása (`kozvetlen` fájl vagy `beagyazott` lejátszó) és a közvetlen fájl adatai (84. d. javasolt kiegészítése); a diák csak metaadat

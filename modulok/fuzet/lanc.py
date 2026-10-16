@@ -27,7 +27,7 @@ from core import fuzet as F
 from core import gepi_kliens
 
 from . import formatum, kep, modszer
-from .katalogus import Katalogus
+from .katalogus import ALAP_ELMELET_MAPPA, Katalogus
 from .modell import Gyorsitotar, Modellek, NincsModell
 
 FORRAS = "mos-fuzet"
@@ -92,8 +92,10 @@ class Lanc:
         self._kat = katalogus
         self.tar = Gyorsitotar(cfg)
         fz = cfg.section("fuzet")
-        self.cel_mappa = str(fz.get("cel_mappa") or "ATTCHMNTS - photos")
-        self.szakasz = "## " + str(fz.get("szakasz") or "Füzet")
+        self.cel_mappa = str(fz.get("cel_mappa") or formatum.ALAP_CEL_MAPPA)
+        self.szakasz = formatum.szakasz_fejlec(fz.get("szakasz"))
+        self.elmelet_mappa = str(fz.get("elmelet_mappa") or ALAP_ELMELET_MAPPA)
+        self.cimkek = dict(cfg.section("pdf").get("tags") or {})       # `[pdf.tags]`: betű → tantárgy-címke (a tantárgy-felismerés kiegészítése)
         self.kepletek_max = int(fz.get("kepletek_max", 20))
         self.max_foto = int(max_foto or fz.get("max_foto", 40))
         self.tmp = cfg.path("tmp") / "fuzet"
@@ -105,7 +107,8 @@ class Lanc:
 
     def kat(self) -> Katalogus:
         if self._kat is None:
-            self._kat = Katalogus.vaultbol(self.cfg.path("vault"))
+            self._kat = Katalogus.vaultbol(self.cfg.path("vault"), elmelet_mappa=self.elmelet_mappa,
+                                           szakasz=self.szakasz.removeprefix("## "), cimkek=self.cimkek)
         return self._kat
 
     def _haladas(self, szazalek: float) -> None:
@@ -170,11 +173,11 @@ class Lanc:
             foto.jegyzet = self.cel
             return
         kat = self.kat()
-        if not modszer.ismert_targy(foto.olvasat):       # 80(h): „sehová nem illik” — nem köt be, nincs újrapróba
+        if not modszer.ismert_targy(foto.olvasat, self.cimkek):       # 80(h): „sehová nem illik” — nem köt be, nincs újrapróba
             foto.allapot = "kihagyva"
             foto.uzenet = f"nem illik sehová: a tantárgy ismeretlen ({foto.olvasat.get('tantargy') or '?'})"
             return
-        jl = modszer.jeloltek(foto.olvasat, kat)
+        jl = modszer.jeloltek(foto.olvasat, kat, self.cimkek)
         foto.jeloltek = jl
         if not jl:
             foto.allapot, foto.uzenet = "hiba", "nincs jelölt jegyzet (a tantárgy ismeretlen)"

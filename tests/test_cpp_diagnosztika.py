@@ -13,7 +13,7 @@ CLANG = """In file included from /m/munka/forras.cpp:1:
     7 |   int z;
       |       ^
 /m/munka/forras.cpp:7:7: note: declared here
-/Volumes/Work/Manifold-OS v2/runtime/sdk/usr/include/c++/v1/vector:100:3: warning: valami a fejlécben [-Wfoo]
+/opt/Minta Gyoker/runtime/sdk/usr/include/c++/v1/vector:100:3: warning: valami a fejlécben [-Wfoo]
 2 warnings and 1 error generated.
 """
 
@@ -28,15 +28,15 @@ ld64.lld: error: undefined symbol: __stack_chk_fail
 ASAN_HEAP = """=================================================================
 ==13439==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60200000091c at pc 0x0001047148dc bp 0x00016b6eb430 sp 0x00016b6eb428
 READ of size 4 at 0x60200000091c thread T0
-    #0 0x0001047148d8  (/Volumes/Work/Manifold-OS v2/var/tmp/x/m/p-hibakereso:arm64+0x1000008d8)
+    #0 0x0001047148d8  (/opt/Minta Gyoker/var/tmp/x/m/p-hibakereso:arm64+0x1000008d8)
     #1 0x000196513e84  (/usr/lib/dyld:arm64e+0x31e84)
 
 0x60200000091c is located 0 bytes after 12-byte region [0x602000000910,0x60200000091c)
 allocated by thread T0 here:
-    #0 0x000104b596cc  (/Volumes/Work/Manifold-OS v2/runtime/llvm/lib/clang/23/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64+0x656cc)
-    #1 0x000104714818  (/Volumes/Work/Manifold-OS v2/var/tmp/x/m/p-hibakereso:arm64+0x100000818)
+    #0 0x000104b596cc  (/opt/Minta Gyoker/runtime/llvm/lib/clang/23/lib/darwin/libclang_rt.asan_osx_dynamic.dylib:arm64+0x656cc)
+    #1 0x000104714818  (/opt/Minta Gyoker/var/tmp/x/m/p-hibakereso:arm64+0x100000818)
 
-SUMMARY: AddressSanitizer: heap-buffer-overflow (/Volumes/Work/Manifold-OS v2/var/tmp/x/m/p-hibakereso:arm64+0x1000008d8)
+SUMMARY: AddressSanitizer: heap-buffer-overflow (/opt/Minta Gyoker/var/tmp/x/m/p-hibakereso:arm64+0x1000008d8)
 Shadow bytes around the buggy address:
 ==13439==ABORTING
 """
@@ -162,7 +162,7 @@ class ForditoKimenetTest(unittest.TestCase):
         f = self.d["diagnosztika"][3]
         self.assertFalse(f["sajat"])
         self.assertTrue(f["fajl"].endswith("c++/v1/vector"))
-        self.assertIn("Manifold-OS v2", f["fajl"])                    # a szóközös út is egyben marad
+        self.assertIn("Minta Gyoker", f["fajl"])                    # a szóközös út is egyben marad
 
     def test_a_forraskod_idezet_es_az_osszegzes_nem_diagnosztika(self):
         self.assertEqual(len(self.d["diagnosztika"]), 4)
@@ -214,7 +214,7 @@ class JelentesTest(unittest.TestCase):
         self.assertEqual(j["keretek"][0]["offset"], 0x1000008D8)
         self.assertTrue(j["keretek"][0]["sajat_modul"])
         self.assertFalse(j["keretek"][1]["sajat_modul"])
-        self.assertIn("Manifold-OS v2", j["keretek"][0]["modul"])                   # szóközös út is egyben
+        self.assertIn("Minta Gyoker", j["keretek"][0]["modul"])                   # szóközös út is egyben
 
     def test_asan_stack_overflow_es_deadlysignal(self):
         j = D.jelentes(ASAN_STACK, "f.cpp", bin_nev="p-hibakereso")

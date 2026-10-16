@@ -21,7 +21,7 @@ PY_PREFIX = Path(os.path.realpath(sys.base_prefix))
 
 
 def q(p) -> str:
-    """Egy út shell-idézve (a repó útja szóközt tartalmaz: `Manifold-OS v2`)."""
+    """Egy út shell-idézve (a repó útja szóközt tartalmazhat)."""
     return shlex.quote(str(p))
 
 

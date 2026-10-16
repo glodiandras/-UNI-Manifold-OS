@@ -1,8 +1,8 @@
-"""`bin/mos kapu …` — a közös forráshűség-kapu parancssora (C22a; a modellt nem hív, a vaultba nem ír).
+"""`bin/mos kapu …` — a közös forráshűség-kapu parancssora (a modellt nem hív, a vaultba nem ír).
 
-- `meres [--irj FÁJL] [--mag N] [--jegyzetek N]`: a küszöbök mérése a C18 `szoveg` halmazán (~1–2 perc); a riportot kiírja
+- `meres [--irj FÁJL] [--mag N] [--jegyzetek N]`: a küszöbök mérése a `szoveg` halmazon (~1–2 perc); a riportot kiírja
   vagy a `--irj` fájlba teszi (`docs/C22-KAPU-MERES.md`); kilépési kód 0, ha a 90%-os pozitív padló tartható, különben 1.
-- `minta [--darab N] [--ki FÁJL]`: a K101 átnézési lapja (a küszöb két oldaláról N-N eset).
+- `minta [--darab N] [--ki FÁJL]`: az átnézési lap (a küszöb két oldaláról N-N eset).
 - `ellenoriz JEGYZET --idezet … --allitas … [--profil NÉV]`: egy állítás vizsgálata egy vault-jegyzeten (csak olvas).
 """
 from __future__ import annotations
@@ -73,13 +73,13 @@ def ellenoriz(a) -> int:
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="mos kapu", description="Közös forráshűség-kapu (C22a)")
+    ap = argparse.ArgumentParser(prog="mos kapu", description="Közös forráshűség-kapu")
     al = ap.add_subparsers(dest="parancs", required=True)
-    m = al.add_parser("meres", help="a küszöbök mérése a C18 szoveg halmazán")
+    m = al.add_parser("meres", help="a küszöbök mérése a szoveg halmazon")
     m.add_argument("--irj", help="a riport fájlja (alap: kiírja)")
     m.add_argument("--mag", type=int, default=1)
     m.add_argument("--jegyzetek", type=int, help="csak az első N jegyzet (gyors próba)")
-    n = al.add_parser("minta", help="a K101 átnézési lapja")
+    n = al.add_parser("minta", help="az átnézési lap (a küszöb két oldaláról N-N eset)")
     n.add_argument("--darab", type=int, default=10)
     n.add_argument("--ki")
     n.add_argument("--mag", type=int, default=1)

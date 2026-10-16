@@ -224,20 +224,20 @@ describe('az értesítések a WS-eseményekre', () => {
   it('új naptár: csak ha a vezérlő listájában javaslat a kategóriája, naptáranként egyszer', async () => {
     allapotValasz = alapAllapot({
       naptarak: [
-        { azon: 'n1', nev: 'Matek-felkészülés', forras: 'iCloud', szin: null, kategoria: 'egyeb', kategoria_forras: 'javaslat', eltunt: null },
+        { azon: 'n1', nev: 'Szakkör', forras: 'iCloud', szin: null, kategoria: 'egyeb', kategoria_forras: 'javaslat', eltunt: null },
         { azon: 'n2', nev: 'Edzés', forras: 'iCloud', szin: null, kategoria: 'edzes', kategoria_forras: 'auto', eltunt: null },
       ],
     });
     const esemeny = {
       tipus: 'naptar_valtozas', allapot: 'engedelyezve', uj: 0, valtozott: 0, torolt: 0,
       valtozasok: [
-        { azon: 'n1', fajta: 'uj', regi: null, uj: 'Matek-felkészülés' },
+        { azon: 'n1', fajta: 'uj', regi: null, uj: 'Szakkör' },
         { azon: 'n2', fajta: 'uj', regi: null, uj: 'Edzés' },
       ],
     };
     k.szetoszt(esemeny);
     await vi.waitFor(() => expect(ertesitesek.lista).toHaveLength(1));
-    expect(ertesitesek.lista[0].cim).toBe('Új naptár: „Matek-felkészülés”');
+    expect(ertesitesek.lista[0].cim).toBe('Új naptár: „Szakkör”');
     expect(ertesitesek.lista[0].szoveg).toBe('A kategóriát a vezérlőben erősítheted meg.');
     ertesitesek.lista[0].muvelet!.futtat();
     expect(felulet.manifoldLap).toBe(true);

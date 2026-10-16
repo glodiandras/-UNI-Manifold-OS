@@ -5,7 +5,7 @@ a valódi vaulthoz és `var/`-hoz egyik teszt sem nyúl."""
 import json
 import unittest
 
-from tests.eval_segedek import EVAL, eval_cfg, feladat, rekord
+from tests.eval_segedek import EVAL, aranyt_igenyel, eval_cfg, feladat, rekord
 from tests.helpers import tmpdir
 
 # (kérdés, válaszok A–D, helyes betű, idézet): a j01 5 tényének 5 kérdése; a rossz válaszok a jegyzet szókincséből vagy a
@@ -39,12 +39,15 @@ def kimenet(kerdesek) -> str:
 
 
 class _Alap(unittest.TestCase):
+    ADAT = True          # a teszt a szállított `kviz` aranyhalmazt igényli (hiányában `[indokolt]` kihagyás)
+
     def setUp(self):
         self._t = tmpdir()
         self.addCleanup(self._t.cleanup)
         self.cfg, self.root, self.vault = eval_cfg(self._t.name)
-        self.m = feladat(self.cfg, "kviz")
-        list(self.m.tetelek(self.cfg))                   # a profil és a [kviz] beállítás betöltése (mint az eval-keretben)
+        self.m = feladat(self.cfg, "kviz", adat=self.ADAT)
+        if self.ADAT:
+            list(self.m.tetelek(self.cfg))               # a profil és a [kviz] beállítás betöltése (mint az eval-keretben)
 
     def pont(self, kerdesek):
         return self.m.pontoz_jegyzet("j01", kimenet(kerdesek))
@@ -213,11 +216,14 @@ class PontozoTest(_Alap):
 
 
 class RegisztracioTest(_Alap):
+    ADAT = False         # a regiszter-ellenőrzések adat nélkül is futnak; a tételt igénylők külön jelöltek
+
     def test_router_feladat_csak_konfiguracioban(self):
         self.assertIn("kviz", self.cfg.section("router")["feladatok"])
         meres = self.cfg.section("meres", "feladat", "kviz")
         self.assertEqual(dict(meres), {"gondolkodas": False})
 
+    @aranyt_igenyel("kviz")
     def test_a_kerest_a_regiszter_egesziti_ki(self):
         from core.modell import beallitas as B
         from core.modell import eval as ev
@@ -239,6 +245,7 @@ class RegisztracioTest(_Alap):
         from core.modell import eval as ev
         self.assertEqual(ev.feladat_modul(self.cfg, "kviz").ROUTER_FELADAT, "kviz")
 
+    @aranyt_igenyel("kviz")
     def test_parancslista(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("parancslista", EVAL / "parancslista.py")

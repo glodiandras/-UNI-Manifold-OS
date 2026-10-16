@@ -55,12 +55,13 @@ class Profil:
 
 
 _MEZOK = {f.name for f in fields(Profil)} - {"nev"}
+_NEM_PROFIL = {"kihagyott_szakaszok"}            # a `[kapuk]` szakasz kulcsa, de nem a profilé: a `forras.kihagyott_szakaszok(cfg)` olvassa
 
 
 def profil(cfg, nev: str | None = None) -> Profil:
     """A profil az `os.toml` `[kapuk]` szakaszából, a `[kapuk.<nev>]` felülírásával. Ismeretlen kulcs vagy érték hiba."""
     szakasz = cfg.section("kapuk")
-    adat = {k: v for k, v in szakasz.items() if not isinstance(v, dict)}
+    adat = {k: v for k, v in szakasz.items() if not isinstance(v, dict) and k not in _NEM_PROFIL}
     if nev:
         adat.update(cfg.section("kapuk", nev))
     ismeretlen = sorted(set(adat) - _MEZOK)

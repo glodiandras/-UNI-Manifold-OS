@@ -53,7 +53,7 @@ class Hivo:
                 dont = kl.keres(u, "/router/valaszt", {"feladat": FELADAT})
             except kl.KliensHiba as e:
                 if e.kod == 409:
-                    raise ModellNemElerheto(f"a `{FELADAT}` feladatra nincs kalibrált modell (D9): {e}") from None
+                    raise ModellNemElerheto(f"a `{FELADAT}` feladatra nincs kalibrált modell: {e}") from None
                 raise ModellNemElerheto(f"a router nem válaszolt: {e}") from None
             if not dont.get("modell"):
                 raise ModellNemElerheto(f"a `{FELADAT}` modellje most nem futhat: {dont.get('indok') or 'a távol-keretre vár'}")

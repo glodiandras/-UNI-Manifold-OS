@@ -1,36 +1,35 @@
-"""A videó bevitele a vaultba (C20b) — a legacy `media_auto.py` 14 lépéses láncának portja, a D1-hez igazítva.
+"""A videó bevitele a vaultba (C20b) — a bevitel 14 lépéses lánca.
 
     probe → duplikatum → letoltes → nyelv → szovegreteg → tema → elhelyezes → jegyzet → jeloltek → igazolas → beiras
           → verifikacio → naplo → visszajelzes
 
-A 2.0-ban minden lépés a staging egy forrásmappáján fut (a link a C20a `video_letoltes` feladatával érkezik oda, a behúzott fájl a
-`bevitel.py`-val), és **egy videó = egy gépi tétel** (`Mos-Forras: mos-video`, kör `VIDEOBE-…`): a videó APFS-klónja a
-`ATTCHMNTS - Videos/` alá (`mozgat`), a felirat (`<törzs>.<nyelv>.vtt`), a proveniencia (`<törzs>.info.json`) és a forrásleíró jegyzet
-(`<törzs>.md`, a sentinel-lel) a `<Téma>/Média/` rétegbe (`uj`), és a kötések `#t=` horgonya a tananyag-jegyzetek `Source:` listájába
-(`csere`). A tétel egy kattintással visszavonható (a vezérlő „Mit változtatott” nézete); a videó-klón a visszavonáskor nem törlődik.
+Minden lépés a staging egy forrásmappáján fut (a link a `video_letoltes` feladattal érkezik oda, a behúzott fájl a `bevitel.py`-val), és
+**egy videó = egy gépi tétel** (`Mos-Forras: mos-video`, kör `VIDEOBE-…`): a videó APFS-klónja a videómappa alá (`mozgat`; `[video] vault_mappa`),
+a felirat (`<törzs>.<nyelv>.vtt`), a proveniencia (`<törzs>.info.json`) és a forrásleíró jegyzet (`<törzs>.md`, a sentinel-lel) a
+`<Téma>/Média/` rétegbe (`uj`), és a kötések `#t=` horgonya a tananyag-jegyzetek `Source:` listájába (`csere`). A tétel egy kattintással
+visszavonható (a vezérlő „Mit változtatott” nézete); a videó-klón a visszavonáskor nem törlődik.
 
-**D1 (nincs „kérdezz rá”, minden tétel végállapotba kerül)** — a legacy megálló állapotai helyett:
+**Nincs „kérdezz rá”, minden tétel végállapotba kerül:**
 
-| legacy                         | 2.0                                                                                              |
+| döntési pont                   | itt                                                                                              |
 |--------------------------------|--------------------------------------------------------------------------------------------------|
-| `dontesre_var` (téma)          | `itelet.tema_vegso`: biztos / valószínű / bizonytalan téma, a bizonytalan is beíródik (visszavonható) |
-| `nagy_modellre_var`            | nincs: a router kalibrált `tema`/`kotes` modellje dönt, ha van; ha nincs, a lexikai út               |
-| `igazolasra_var` (erős jelölt) | nincs: a verifikátor `auto` sávja beíródik; a `javaslat` a `kotes` modell olvasása után vagy `nem_kotve` (PB08) |
-| `g4_blokkol` (mfd.py)          | a gépi írás kapui (séma, Status, alap-hash) + a horgony utóellenőrzése (`horgony.beir`)              |
-| `naplo` (AI02 - Log)           | nem íródik a vaultba: a futás riportja `{runs}/video/<kör>.json`, a commit, a vezérlő nézete         |
+| téma                           | `itelet.tema_vegso`: biztos / valószínű / bizonytalan téma, a bizonytalan is beíródik (visszavonható) |
+| nagy modell                    | a router kalibrált `tema`/`kotes` modellje dönt, ha van; ha nincs, a lexikai út                      |
+| erős kötési jelölt             | a verifikátor `auto` sávja beíródik; a `javaslat` a `kotes` modell olvasása után vagy `nem_kotve`   |
+| séma- és tartalomkapuk         | a gépi írás kapui (séma, Status, alap-hash) + a horgony utóellenőrzése (`horgony.beir`)              |
+| napló                          | nem íródik a vaultba: a futás riportja `{runs}/video/<kör>.json`, a commit, a vezérlő nézete         |
 
 A tétel végállapotai: `integralva`, `mar_megvan`, `utkozes`, `nincs_tema`, `atirat_kalibralatlan`, `hiba` (a staging `integration.json`
 ennek megfelelően `integrated` / `in_review`; a kalibrálatlan átirat és a hiba `pending` marad: a következő kör újrapróbálja).
 
-**D9**: modell-kimenet (az átirat, a modell téma-ítélete, a modell kötés-olvasása) élesben csak kalibrált modellből íródik; a
-kifejezett modell mindig próba (`proba: true`: a gépi írás a vault APFS-klónjára megy). A lexikai besorolás és a verifikátor
-determinisztikus: `modell: null`.
+Modell-kimenet (az átirat, a modell téma-ítélete, a modell kötés-olvasása) élesben csak kalibrált modellből íródik; a kifejezett modell
+mindig próba (`proba: true`: a gépi írás a vault APFS-klónjára megy). A lexikai besorolás és a verifikátor determinisztikus: `modell: null`.
 
-**Célmappa (86. döntés, javasolt)**: a `tema_mappa` (`--tema-mappa "D13 - CS50"`, a Bevitel „Célmappa (téma)” mezője) a 6. lépést
-determinisztikussá teszi: a téma a megadott mappa (`forras: "célmappa"`, `biztos`), a téma-modell és a lexikai besorolás nem fut, a
-staging tárgya (Irodalom/Informatika) nem számít; a kötés csak a mappa saját jegyzeteihez (új mappánál nincs); a mellékletek a
-`<célmappa>/Média/` rétegbe, a hiányzó mappát a gépi írás első `uj` művelete hozza létre ugyanabban a tételben. Az átirat D9-szabálya
-változatlan: kész staging-átirat vagy kalibrált `atirat` nélkül a tétel `pending` marad.
+**Célmappa**: a `tema_mappa` (`--tema-mappa "<témamappa>"`, a Bevitel „Célmappa (téma)” mezője) a 6. lépést determinisztikussá teszi: a téma
+a megadott mappa (`forras: "célmappa"`, `biztos`), a téma-modell és a lexikai besorolás nem fut, a staging tárgya nem számít; a kötés csak
+a mappa saját jegyzeteihez (új mappánál nincs); a mellékletek a `<célmappa>/Média/` rétegbe, a hiányzó mappát a gépi írás első `uj`
+művelete hozza létre ugyanabban a tételben. Az átirat szabálya változatlan: kész staging-átirat vagy kalibrált `atirat` nélkül a tétel
+`pending` marad.
 """
 from __future__ import annotations
 
@@ -56,14 +55,16 @@ LEPESEK = ("probe", "duplikatum", "letoltes", "nyelv", "szovegreteg", "tema", "e
            "beiras", "verifikacio", "naplo", "visszajelzes")
 VEGALLAPOTOK = ("integralva", "mar_megvan", "utkozes", "nincs_tema", "atirat_kalibralatlan", "hiba", "kihagyva")
 STAGING_ALLAPOT = {"integralva": "integrated", "mar_megvan": "integrated", "utkozes": "in_review", "nincs_tema": "in_review"}
+# A staging forrás `targy` mezője (a letöltő tantárgy-nevei) → a tantárgy betűje. Az igazság a core `[pdf.tags]` táblázata (betű → címke):
+# a `targy_terkep` annak a fordítottját veszi, és erre az alapra írja rá; ez az alap, ha a táblázat hiányzik vagy nem nevezi meg a tárgyat.
 TARGY_TERKEP = {"Történelem": "T", "Irodalom": "I", "Magyar nyelv": "N", "Nyelvtan": "N", "Matematika": "M", "Fizika": "F",
-                "Digitális kultúra": "D", "Angol": "E"}          # a legacy media.staging.targy_terkep
+                "Digitális kultúra": "D", "Angol": "E"}
 MAX_KOTES_OLVASAS = 20          # videónként legfeljebb ennyi kötési javaslatot olvas el a modell
 ASR_HANGFEDETTSEG_MIN = 0.75    # media.atirat.gepi.degeneralt_kuszob
 
 
 def job_key(meta: dict) -> str:
-    """`<extractor>-<videóazonosító>` (a legacy munkamappa-kulcsa: a link és a staging ugyanazt adja)."""
+    """`<extractor>-<videóazonosító>` (a munkamappa kulcsa: a link és a staging ugyanazt adja)."""
     ex = re.sub(r"[^a-z0-9]+", "", str(meta.get("extractor_key") or meta.get("extractor") or "media").lower())
     vid = re.sub(r"[^A-Za-z0-9_-]+", "_", str(meta.get("id") or ""))
     if not vid:
@@ -71,14 +72,25 @@ def job_key(meta: dict) -> str:
     return f"{ex or 'media'}-{vid}"
 
 
-def targy_betu(src: dict) -> str | None:
-    return TARGY_TERKEP.get(nfc(src.get("targy") or ""))
+def targy_terkep(cimkek: dict | None = None) -> dict[str, str]:
+    """`{tantárgy-név: betű}`: a `[pdf.tags]` (`{betű: címke}`) fordítottja az alap (`TARGY_TERKEP`) fölött; azonos címkénél az első betű."""
+    ki = dict(TARGY_TERKEP)
+    forditott: dict[str, str] = {}
+    for betu, cimke in (cimkek or {}).items():
+        if isinstance(cimke, str) and cimke.strip() and str(betu).strip():
+            forditott.setdefault(nfc(cimke.strip()), str(betu).strip())
+    ki.update(forditott)
+    return ki
 
 
-def vault_videok(vault: Path) -> dict[str, str]:
-    """`{videóazonosító: a melléklet vault-útja}` a témák `Média/` rétegének `.info.json`-jaiból (a legacy `find_existing`)."""
+def targy_betu(src: dict, cimkek: dict | None = None) -> str | None:
+    return targy_terkep(cimkek).get(nfc(src.get("targy") or ""))
+
+
+def vault_videok(vault: Path, tema_minta=None, kizart_mappak=None) -> dict[str, str]:
+    """`{videóazonosító: a melléklet vault-útja}` a témák `Média/` rétegének `.info.json`-jaiból."""
     ki: dict[str, str] = {}
-    for t in X.temak(vault):
+    for t in X.temak(vault, tema_minta, kizart_mappak):
         d = vault / t / elhelyezes.ALAP_RETEG
         if not d.is_dir():
             continue
@@ -90,29 +102,6 @@ def vault_videok(vault: Path) -> dict[str, str]:
                     continue
                 if vid is not None:
                     ki.setdefault(str(vid), nfc(f"{t}/{elhelyezes.ALAP_RETEG}/{f}"))
-    return ki
-
-
-def olvasott_cimkek(itelet_mappa: Path | None) -> dict:
-    """`{(futás-kulcs, jegyzet, t): (y, ki, idő, indok)}` — a legacy olvasott kötés-címkéi (Claude, 2026-09-20/23): ahol egy párt
-    már elolvastak, a döntés a címke (I21). A fájlok a legacy alkalmazásmappájából (`{state}/Manifold-media/itelet/`), csak olvasva."""
-    ki: dict = {}
-    if not itelet_mappa or not Path(itelet_mappa).is_dir():
-        return ki
-    for minta, cimkek, ki_, ido in (("n_kotes_minta.json", "n_cimkek.json", "claude", "2026-09-20"),
-                                     ("n_kotes_minta_2.json", "n_cimkek_2.json", "claude", "2026-09-23")):
-        try:
-            m = json.loads((Path(itelet_mappa) / minta).read_text(encoding="utf-8"))
-            c = json.loads((Path(itelet_mappa) / cimkek).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        ys = c.get("cimkek") or []
-        indok = c.get("nemleges_indok") or c.get("indoklas") or {}
-        for i, (par, y) in enumerate(zip(m, ys), 1):
-            try:
-                ki[(par["azonosito"], nfc(par["jegyzet"]), int(par["t"]))] = (int(y), ki_, ido, indok.get(str(i)))
-            except (KeyError, TypeError, ValueError):
-                continue
     return ki
 
 
@@ -128,7 +117,7 @@ class Tetel:
     jeloltek: list = field(default_factory=list)
     utak: list = field(default_factory=list)
     commit: str | None = None
-    jelek: dict = field(default_factory=dict)       # lépés → a modell-jel (D9)
+    jelek: dict = field(default_factory=dict)       # lépés → a modell-jel
 
     def jel(self, lepes: str, allapot: str = "kesz", **reszlet) -> None:
         self.lepesek[lepes] = {"allapot": allapot, **reszlet}
@@ -160,8 +149,9 @@ class Integralas:
         self.max_db = max_db or int(v.get("integralas_max", 50))
         self.ffmpeg = ffmpeg or str(cfg.path("ffmpeg"))
         self.felmeres = felmeres or konvertalas.felmeres
-        self.temak_felulir = dict(temak or {})     # kulcs → téma: a legacy `--topic` (gazdai döntés) megfelelője, a próbakörnek
+        self.temak_felulir = dict(temak or {})     # kulcs → téma: a `--tema-felulir` (gazdai döntés) megfelelője, a próbakörnek
         self.cimkek = dict(cfg.section("pdf").get("tags") or {})
+        self.index_kw = X.index_beallitas(cfg)      # `[video] tema_minta`, `kizart_mappak`, `[fuzet] elmelet_mappa`
         # 86. döntés (javasolt): a kényszerített célmappa — a téma determinisztikus (a téma-modell és a lexikai besorolás nem fut, a
         # staging tárgya nem számít), a kötés csak a mappa saját jegyzeteihez; az ellenőrzés egyetlen helye a `core/videolanc.py`
         self.tema_mappa = (videolanc.temamappa_ellenoriz(self.vault, tema_mappa, self.cimkek) if tema_mappa is not None else None)
@@ -171,14 +161,13 @@ class Integralas:
         self._klon: Path | None = None
         app = cfg.path("video_jobs").parent
         self.elvet = KT.elvetettek(app / "kotes" / "elvetett.jsonl")
-        self.olvasott = olvasott_cimkek(app / "itelet")
 
     # -------------------------------------------------- közös
 
     def idx(self) -> X.NoteIndex:
         if self._idx is None:
             t0 = time.time()
-            self._idx = X.NoteIndex(self.vault)
+            self._idx = X.NoteIndex(self.vault, **self.index_kw)
             self._korp = KT.Korpusz(self._idx)
             self.log(f"[videó] jegyzetindex: {self._idx.nd} elméleti jegyzet, {len(self._idx.topics)} téma ({time.time() - t0:.1f} s)")
         return self._idx
@@ -235,7 +224,7 @@ class Integralas:
         self.kor = gepi_kliens.uj_kor(KOR_ELOTAG)
         self.log(f"[videó] {self.kor}: {len(forrasok)} forrás" + (" · PRÓBA (a vault APFS-klónján)" if self.proba else ""))
         tetelek: list[Tetel] = []
-        vaultban = vault_videok(self.vault) if forrasok else {}
+        vaultban = vault_videok(self.vault, self.index_kw["tema_minta"], self.index_kw["kizart_mappak"]) if forrasok else {}
         megallt = False
         for i, m in enumerate(forrasok):
             if self.stop():
@@ -284,7 +273,7 @@ class Integralas:
         vtt_nev = f"{torzs}.{nyelv}.vtt"
         f = X.Forras(video_nev, vtt_cuek(vtt), hossz or -1.0)
         # 6. tema
-        targy = targy_betu(src)
+        targy = targy_betu(src, self.cimkek)
         if self.tema_mappa:
             targy = X.targy(self.tema_mappa)
             v = {"tema": self.tema_mappa, "forras": "célmappa", "biztossag": "biztos",
@@ -309,7 +298,7 @@ class Integralas:
                                torzs=torzs, sentinel=VO.SENTINEL)
         if terv["utkozesek"]:
             t.jel("elhelyezes", "utkozes", utkozesek=terv["utkozesek"])
-            t.allapot, t.uzenet = "utkozes", "névütközés (felülírás nincs, I13): " + ", ".join(terv["utkozesek"])
+            t.allapot, t.uzenet = "utkozes", "névütközés (felülírás nincs): " + ", ".join(terv["utkozesek"])
             return
         cel = terv["cel"]
         t.jel("elhelyezes", cel=cel, video_cel=terv["video_cel"], fajlok=sorted([video_nev, vtt_nev, info_nev]))
@@ -383,14 +372,14 @@ class Integralas:
             return vtt, snyelv, None
         if src.get("atirat_kesz") and snyelv:
             vtt = VO.vtt_stagingbol(src, snyelv, hossz)
-            t.jel("nyelv", nyelv=snyelv, kod="staging", forras="a staging átiratának nyelve (msp config transcript.language)")
+            t.jel("nyelv", nyelv=snyelv, kod="staging", forras="a staging átiratának nyelve (config transcript.language)")
             t.jel("szovegreteg", osztaly="gépi", fajl=f"{Path(video_nev).stem}.{snyelv}.vtt", cue=len(vtt_cuek(vtt)),
-                  hangfedettseg=VO.fedettseg(vtt, hossz), forras=f"staging — {a.get('transcript_engine')}, újra-ASR nélkül (K2)")
+                  hangfedettseg=VO.fedettseg(vtt, hossz), forras=f"staging — {a.get('transcript_engine')}, újra-ASR nélkül")
             return vtt, snyelv, None
         # a lánc maga ír át: a router kalibrált `atirat` modellje (élesben), vagy a kifejezett (próba); a nyelvet a hang dönti
         if not self.M.van("atirat"):
-            raise NincsModell("nincs kész staging-átirat, és az `atirat` feladatra nincs kalibrált modell (K29): a tétel a "
-                              "kalibráció után a következő körben fut (élesben modell nélkül nem írunk át, D9)")
+            raise NincsModell("nincs kész staging-átirat, és az `atirat` feladatra nincs kalibrált modell: a tétel a "
+                              "kalibráció után a következő körben fut (élesben kalibrálatlan modellel nem írunk át)")
         r, jel = self.M.atir(src["media"], itelet.norm_lang(src["source"].get("language")))
         t.jelek["atirat"] = jel
         nyelv = itelet.norm_lang(r.get("nyelv")) or "hu"
@@ -463,13 +452,6 @@ class Integralas:
                 c["ablak_szoveg"] = f.szoveg(r["t"])
                 c["jegyzet_reszlet"] = X.best_passage(n["body"], w_sw, idx)
             out.append(c)
-        # az olvasott címkék (a legacy; erősebb bizonyíték bármely gépi jelnél, I21)
-        for c in out:
-            hit = self.olvasott.get((t.kulcs, nfc(c["jegyzet"]), int(c["t"])))
-            if hit:
-                y, ki, ido, ok_ = hit
-                c.update(sav="olvasott", dontes="elfogad" if y == 1 else "elvet", ki=f"{ki} (olvasott címke, {ido})",
-                         indok=f"olvasott címke ({ido})" + ("" if y == 1 else f": {ok_ or 'nem az'}"))
         varo = [c for c in out if not c.get("dontes")]
         olvasott = 0
         if varo and self.M.van("kotes"):
@@ -484,15 +466,15 @@ class Integralas:
                     c.update(sav="modell", dontes="elfogad", ki="modell", indok=itelet.kotes_indok(c))
                     if not t.jelek.get("kotes") or jel.get("proba"):
                         t.jelek["kotes"] = jel
-        for c in out:                         # PB08 (D1): a mért sáv alatti javaslat nem kötött, a gazda nem kap kérdést
+        for c in out:                         # a mért sáv alatti javaslat nem kötött, a gazda nem kap kérdést
             if not c.get("dontes"):
-                c.update(dontes="nem_kotve", ki="szabaly (PB08)", indok="a mért sáv alatt — nem kötve (PB08, D1)")
+                c.update(dontes="nem_kotve", ki="szabaly", indok="a mért sáv alatt — nem kötve")
             c.pop("ablak_szoveg", None)
             c.pop("jegyzet_reszlet", None)
         t.jeloltek = out
         elf = [c for c in out if c["dontes"] == "elfogad"]
         t.jel("jeloltek", db=len(out), gep=sum(c["sav"] == "gep" for c in out), javaslat=len(res["javaslat"]),
-              olvasott_cimke=sum(c["sav"] == "olvasott" for c in out), modell_olvasott=olvasott)
+              modell_olvasott=olvasott)
         t.jel("igazolas", elfogadva=len(elf), elvetve=sum(c["dontes"] == "elvet" for c in out),
               nem_kotve=sum(c["dontes"] == "nem_kotve" for c in out))
         return elf

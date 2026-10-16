@@ -59,9 +59,10 @@ class Beallitas:
     duplikat_jaccard: float = 0.6
     kerulendo_max: int = 12
     engedett_jelek: tuple[str, ...] = MK.ENGEDETT_JELEK
+    kihagyott_szakaszok: tuple[str, ...] | None = field(default=None, compare=False)   # nem a `[kviz]` kulcsa: a `[kapuk] kihagyott_szakaszok` (None: az alap)
 
 
-_MEZOK = {f.name for f in fields(Beallitas)}
+_MEZOK = {f.name for f in fields(Beallitas)} - {"kihagyott_szakaszok"}
 
 
 def beallitas(cfg) -> Beallitas:
@@ -73,7 +74,7 @@ def beallitas(cfg) -> Beallitas:
         raise ValueError(f"[kviz]: ismeretlen kulcs: {', '.join(ismeretlen)}")
     if "engedett_jelek" in adat:
         adat["engedett_jelek"] = tuple(adat["engedett_jelek"])
-    return Beallitas(**adat)
+    return Beallitas(**adat, kihagyott_szakaszok=KF.kihagyott_szakaszok(cfg))
 
 
 def most() -> datetime:
@@ -438,8 +439,8 @@ def general(forras_md: str, forras_ut: str, generalo: ModellHivas, ellenorzo: Mo
     t0 = time.time()
     mikor = mikor or most()
     cim = cim_of(forras_ut)
-    fs = KF.ForrasSzoveg.jegyzetbol(forras_md, cim=cim)
-    szak = KF.elokeszit(forras_md, min_karakter=b.szakasz_min_karakter)
+    fs = KF.ForrasSzoveg.jegyzetbol(forras_md, cim=cim, kihagy=b.kihagyott_szakaszok)
+    szak = KF.elokeszit(forras_md, min_karakter=b.szakasz_min_karakter, kihagy=b.kihagyott_szakaszok)
     if not szak:
         raise Megall("a jegyzetnek nincs olyan szöveges része, amelyből kérdezni lehet")
     darab = darabok(szak, b.darab_max_karakter)

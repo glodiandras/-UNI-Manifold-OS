@@ -58,6 +58,7 @@ enum ErtesitesLogika {
         }
     }
 
+#if MOS_DEVELOPER
     /// A `--selftest` táblázata: → a hibás esetek leírása (üres: rendben).
     static func ellenorzes() -> [String] {
         var hibak: [String] = []
@@ -84,6 +85,7 @@ enum ErtesitesLogika {
         egyez("engedélyezett", kuldhet(.authorized), true)
         return hibak
     }
+#endif
 }
 
 /// A rendszerértesítések küldője és a kattintás-kezelő. Csak app-csomagból futtatva él (a `UNUserNotificationCenter` csomag nélkül

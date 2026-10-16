@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from core.index import kereses
 from core.index.hibrid import darabolas, frissites, kereso as KR, kerdezz, normal, rangsor, vektortar
 from core.vaultio import Invalid
+from tests.eval_segedek import aranyt_igenyel
 from tests.helpers import ir, tmpdir
 from tests.hibrid_segedek import FAJLOK, AlBeagyazo, AlReranker
 from tests.index_segedek import alvault, index_indit
@@ -534,6 +535,7 @@ class MeresTest(AlvaultAlap):
         r = m.futtat(self.kereso(reranker=AlReranker("borostyán")), self.PAROK)
         self.assertIn("recall5", r["valtozatok"]["fts_vektor_rerank"])
 
+    @aranyt_igenyel("kereses", fajl="parok.json")
     def test_a_valodi_halmaz_formaja(self):
         """A fagyasztott `parok.json` a mérő bemenete: minden párnak van azonosítója, típusa, kérdése és célja."""
         self.meres()                                         # a mérő a modulok/eval/kereses útját a sys.path-ra teszi
