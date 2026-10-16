@@ -31,7 +31,7 @@ def _terv(cfg: Config, p: dict, stop: str):
             raise tasks.Invalid(f"A `max` 1–{MAX_JEGYZET} egész szám legyen.")
         argv += ["--max", str(m)]
     return ([tasks.Step("A keresés vektorindexének frissítése", argv, str(cfg.root), jogok=lepes_kapu.JOGOK_NINCS)],
-            "A változott jegyzetek darabjai beágyazódnak a jelentés szerinti kereséshez (a vaultba nem ír).", [])
+            'Build embeddings for the changed notes so they can be searched by meaning (the vault is unchanged).', [])
 
 
 def regisztral() -> None:

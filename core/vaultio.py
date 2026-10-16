@@ -29,8 +29,9 @@ from pathlib import Path
 
 from . import cpp_teszt, frame, mediatipus, snapshot, tartos, utkapu
 from .config import Config
+from .hibakod import angol_uzenet
 from .index.feloldas import canvas_bajtbol
-from .utvonalak import HttpError, Valasz
+from .utvonalak import HttpError, kodos, Valasz
 
 MAX_SZOVEG = 8 * 1024 * 1024            # ennél nagyobb szöveget nem töltünk be és nem írunk
 TMP_UTOTAG = tartos.TMP_UTOTAG          # az ideiglenes fájl utótagja (a pillanatkép kizárja)
@@ -92,16 +93,18 @@ _LEMEZ_HIBAK = {
 
 
 def lemez_hiba(e: OSError, vault: Path | None = None) -> tuple[int, dict]:
-    """Egy `OSError` válasza (T175): 507 (megtelt, túl nagy) vagy 503 (nem írható, nem elérhető), magyar üzenettel, abszolút út
-    nélkül, `lemez_hiba: true` és az errno neve. Ha a vault eltűnt, azt mondja ki."""
+    """An English disk error with a stable code, status and no absolute paths."""
     import errno as _errno
     nev = _errno.errorcode.get(e.errno or 0, "")
     if vault is not None and not vault.is_dir():
-        return 503, {"hiba": f"A vault nem érhető el ({vault.name}): a kötet le van választva vagy a mappa átnevezve. "
-                             "A szerkesztőben lévő szöveg megvan; a mentés a kötet visszatérésekor sikerül.",
+        kod, param = "lemez.nem_elerheto", {"vault": vault.name}
+        return 503, {"hiba": angol_uzenet(kod, param), "kod": kod, "param": param,
                      "lemez_hiba": True, "errno": nev or None, "vault_elerheto": False}
-    kod, uzenet = _LEMEZ_HIBAK.get(nev, (503, f"Fájlrendszer-hiba ({nev or type(e).__name__}): a művelet nem sikerült."))
-    return kod, {"hiba": uzenet, "lemez_hiba": True, "errno": nev or None}
+    statusz = _LEMEZ_HIBAK.get(nev, (503, ""))[0]
+    kod = f"lemez.{nev.lower()}" if nev in _LEMEZ_HIBAK else "lemez.hiba"
+    param = {"errno": nev or type(e).__name__}
+    return statusz, {"hiba": angol_uzenet(kod, param), "kod": kod, "param": param,
+                    "lemez_hiba": True, "errno": nev or None}
 
 
 class Conflict(RuntimeError):
@@ -159,11 +162,11 @@ def norm_path(rp) -> str:
     """A felületről jött vault-relatív út: NFC, `/` elválasztó. Tilos az üres, a `.`/`..` és a rejtett
     (ponttal kezdődő) szegmens — így a `.obsidian`, a `.trash` és az ideiglenes fájlok sem érhetők el."""
     if not isinstance(rp, str) or not rp.strip():
-        raise Invalid("hiányzó út")
+        raise kodos(Invalid("hiányzó út"), "vault.ut_hianyzik")
     rp = nfc(rp).replace("\\", "/").strip().strip("/")
     reszek = rp.split("/")
     if _UT_VEZERLO.search(rp) or any(r in ("", ".", "..") or r.startswith(".") for r in reszek):
-        raise Invalid(f"érvénytelen út: {rp!r}")      # a vezérlőkarakteres (újsoros, U+2028, …) út a commit-metaadatot hamisítaná (L13)
+        raise kodos(Invalid(f"érvénytelen út: {rp!r}"), "vault.ut_ervenytelen", ut=rp)      # a vezérlőkarakteres (újsoros, U+2028, …) út a commit-metaadatot hamisítaná (L13)
     return rp
 
 
@@ -218,7 +221,7 @@ class Vault:
         root = self.root
         p = root / rp
         if not utkapu.alatta(root, p):
-            raise Invalid(f"a vaulton kívüli út: {rp}")
+            raise kodos(Invalid(f"a vaulton kívüli út: {rp}"), "vault.vaulton_kivul", ut=rp)
         return p
 
     def kanonikus(self, rp: str, utolso: bool = True) -> str:
@@ -277,10 +280,10 @@ class Vault:
         rp = norm_path(rp)
         tipus = MEDIA_TIPUS.get(os.path.splitext(rp)[1].lower())
         if not tipus:
-            raise Invalid(f"nem kiszolgálható fájltípus: {rp}")
+            raise kodos(Invalid(f"nem kiszolgálható fájltípus: {rp}"), "vault.fajltipus", ut=rp)
         p = self._abs(rp)
         if not p.is_file():
-            raise NotFound(f"nincs ilyen fájl: {rp}")
+            raise kodos(NotFound(f"nincs ilyen fájl: {rp}"), "vault.nincs_fajl", ut=rp)
         return self._on_disk(p), tipus
 
     def read(self, rp) -> dict:
@@ -289,14 +292,14 @@ class Vault:
         olvasásra nyitja, mert a mentés a hibás bájtokat felülírná (C08, bájthűség)."""
         rp = self.kanonikus(norm_path(rp))
         if not rp.lower().endswith(OLVASHATO):
-            raise Invalid(f"nem szöveges fájl: {rp}")
+            raise kodos(Invalid(f"nem szöveges fájl: {rp}"), "vault.nem_szoveges", ut=rp)
         p = self._abs(rp)
         if not p.is_file():
-            raise NotFound(f"nincs ilyen fájl: {rp}")
+            raise kodos(NotFound(f"nincs ilyen fájl: {rp}"), "vault.nincs_fajl", ut=rp)
         p = self._on_disk(p)
         st = p.stat()
         if st.st_size > MAX_SZOVEG:
-            raise Invalid("túl nagy fájl")
+            raise kodos(Invalid("túl nagy fájl"), "vault.tul_nagy_fajl")
         b = p.read_bytes()
         try:
             tartalom, hiba = b.decode("utf-8"), False
@@ -313,15 +316,15 @@ class Vault:
         A tartalom soremelését a fájléhoz igazítja (CRLF-es fájl CRLF marad)."""
         rp = self.kanonikus(norm_path(d.get("ut")))
         if not rp.lower().endswith(IRHATO):
-            raise Invalid("csak jegyzet (.md), adatbázis-nézet (.base), canvas (.canvas) vagy C++ forrás (.cpp) menthető")
+            raise kodos(Invalid("csak jegyzet (.md), adatbázis-nézet (.base), canvas (.canvas) vagy C++ forrás (.cpp) menthető"), "vault.menthetetlen_tipus")
         tartalom, alap = d.get("tartalom"), d.get("alap")
         if not isinstance(tartalom, str):
-            raise Invalid("hiányzik a tartalom")
+            raise kodos(Invalid("hiányzik a tartalom"), "vault.tartalom_hianyzik")
         if not isinstance(alap, str) or not alap:
-            raise Invalid("hiányzik az alapváltozat (alap) — vakon nem írunk felül")
+            raise kodos(Invalid("hiányzik az alapváltozat (alap) — vakon nem írunk felül"), "vault.alap_hianyzik")
         p = self._abs(rp)
         if not p.is_file():
-            raise NotFound(f"a fájl közben eltűnt (áthelyezték vagy törölték?): {rp}")
+            raise kodos(NotFound(f"a fájl közben eltűnt (áthelyezték vagy törölték?): {rp}"), "vault.fajl_eltunt", ut=rp)
         p = self._on_disk(p)
         felulir = d.get("felulir") is True
         hatarido = time.monotonic() + self.kor_zar_varakozas_mp
@@ -333,7 +336,7 @@ class Vault:
                     pass                                 # az útvonal-zár a várakozás közben szabad (gépi írás nem éhezik)
             if time.monotonic() >= hatarido:
                 raise HttpError(423, "a core éppen a vaultot írja (a kör-zár foglalt): a lemezen lévő változat még nem "
-                                     "került pillanatképbe, ezért a felülírás várakozik", foglalt=True)
+                                     "került pillanatképbe, ezért a felülírás várakozik", foglalt=True, kod="vault.kor_zar_foglalt")
             time.sleep(0.05)
 
     def _write(self, d: dict, rp: str, p: Path, tartalom: str, alap: str, felulir: bool = False) -> dict:
@@ -349,14 +352,14 @@ class Vault:
                 tartalom = tartalom.replace("\n", "\r\n")
             b = tartalom.encode("utf-8")
             if len(b) > MAX_SZOVEG:
-                raise Invalid("túl nagy jegyzet")
+                raise kodos(Invalid("túl nagy jegyzet"), "vault.tul_nagy_jegyzet")
             if rp.lower().endswith(".canvas"):
                 _, canvas_hiba = canvas_bajtbol(b)       # C14: hibás JSON nem kerül a lemezre
                 if canvas_hiba:
-                    raise Invalid(f"a canvas nem érvényes JSON Canvas, nem mentődött: {canvas_hiba}")
+                    raise kodos(Invalid(f"a canvas nem érvényes JSON Canvas, nem mentődött: {canvas_hiba}"), "vault.canvas_ervenytelen", hiba=canvas_hiba)
             if sha1(regi) != alap and b != regi:         # azonos tartalom elavult alappal: az elveszett válasz utáni újraküldés (no-op)
-                raise Conflict("a jegyzet a betöltés óta megváltozott (Obsidian, szinkron vagy egy lánc írta)",
-                               hash=sha1(regi), jel=mark(p.stat()))
+                raise kodos(Conflict("a jegyzet a betöltés óta megváltozott (Obsidian, szinkron vagy egy lánc írta)",
+                               hash=sha1(regi), jel=mark(p.stat())), "vault.jegyzet_valtozott")
             if repo and d.get("elso"):
                 try:
                     elotte = repo.commit("kézi változások a szerkesztés előtt", {"Mos-Forras": "kezi"})
@@ -365,8 +368,8 @@ class Vault:
             if b != regi:
                 def ellenoriz():
                     if p.read_bytes() != regi:           # az írás közben is változhatott
-                        raise Conflict("a jegyzet mentés közben megváltozott", hash=sha1(p.read_bytes()),
-                                       jel=mark(p.stat()))
+                        raise kodos(Conflict("a jegyzet mentés közben megváltozott", hash=sha1(p.read_bytes()),
+                                       jel=mark(p.stat())), "vault.jegyzet_mentes_kozben")
                     self.sajat(rp, sha1(b))
                 atomi_csere(p, b, ellenoriz)
             else:
@@ -436,10 +439,10 @@ class Vault:
         `newFileLocation` (`root`: a gyökér, `current`: a forrás mappája, `folder`: a `newFileFolderPath`, ha az létezik,
         különben a gyökér). → a `create` kérése (`mappa`, `nev`, `mappa_keszit`)."""
         if not isinstance(cel, str) or not cel.strip():
-            raise Invalid("hiányzik a link célja")
+            raise kodos(Invalid("hiányzik a link célja"), "vault.link_cel_hianyzik")
         tiszta = nfc(cel).strip().replace("\\", "/").lstrip("/")
         if self.NEM_JEGYZET_CEL.search(tiszta):
-            raise Invalid(f"a cél nem jegyzet (a fájl nem található): {cel}")
+            raise kodos(Invalid(f"a cél nem jegyzet (a fájl nem található): {cel}"), "vault.link_cel_nincs", cel=cel)
         kit = ".cpp" if tipus == "cpp" else ".md"          # C36a-UI: a hiányzó `x.cpp` célja C++ forrás
         if tiszta.lower().endswith(kit):
             tiszta = tiszta[:-len(kit)]
@@ -466,36 +469,36 @@ class Vault:
         normalizálástól függetlenül — nem ír felül. Sablon a C15 hatóköre."""
         if isinstance(d.get("link"), dict):            # C31 (T158): a feloldatlan link új jegyzete — a helyet a core dönti
             if d.get("mappa") or d.get("tipus") not in (None, "md", "cpp"):
-                raise Invalid("a `link` mellett nem adható meg `mappa`, és a `tipus` csak `md` vagy `cpp`")
+                raise kodos(Invalid("a `link` mellett nem adható meg `mappa`, és a `tipus` csak `md` vagy `cpp`"), "vault.link_mappa")
             d = {**{k: v for k, v in d.items() if k != "link"},
                  **self.link_jegyzet_helye(d["link"].get("cel"), d["link"].get("forras"), d.get("tipus") or "md")}
         tipus = d.get("tipus") or "md"
         if tipus not in _FELIRAT:
-            raise Invalid("a tipus `md`, `base`, `canvas` vagy `cpp`")
+            raise kodos(Invalid("a tipus `md`, `base`, `canvas` vagy `cpp`"), "vault.tipus_hibas")
         kit = "." + tipus
         mappa = self.kanonikus(norm_path(d.get("mappa"))) if d.get("mappa") else ""
         nev = nfc(str(d.get("nev") or "")).strip()
         if nev.lower().endswith(kit):
             nev = nev[:-len(kit)].rstrip()
         if not nev or nev.startswith(".") or _TILTOTT_NEV.search(nev) or len(nev.encode("utf-8")) > 200:
-            raise Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal')
+            raise kodos(Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal'), "vault.nev_ervenytelen")
         rp = f"{mappa}/{nev}{kit}" if mappa else f"{nev}{kit}"
         cel_mappa = self._abs(mappa) if mappa else self.root
         mappat_keszit = False
         if not cel_mappa.is_dir():
             # C15: a napi jegyzet hónapmappája hiányozhat; csak kifejezett kérésre jön létre, és csak tiszta nevekkel
             if not (d.get("mappa_keszit") and not cel_mappa.exists()) or any(_TILTOTT_NEV.search(r) for r in mappa.split("/")):
-                raise NotFound(f"nincs ilyen mappa: {mappa}")
+                raise kodos(NotFound(f"nincs ilyen mappa: {mappa}"), "vault.nincs_mappa", mappa=mappa)
             mappat_keszit = True
         p = self._abs(rp)
         if not mappat_keszit and (p.exists() or any(nfc(n).lower() == nfc(nev + kit).lower() for n in os.listdir(cel_mappa))):
-            raise Invalid(f"már van ilyen nevű fájl: {rp}")
+            raise kodos(Invalid(f"már van ilyen nevű fájl: {rp}"), "vault.van_ilyen_fajl", ut=rp)
         tartalom = {"base": UJ_BASE, "canvas": UJ_CANVAS, "cpp": cpp_teszt.cpp_vaz()}.get(tipus) \
             or f"# {_H1_ELOTAG.sub('', nev)}\n"
         if d.get("tartalom") is not None:                # C15: sablonból kiértékelt váz a H1-váz helyett (C36a: a `.cpp` váza is)
             if tipus not in ("md", "cpp") or not isinstance(d["tartalom"], str) \
                     or len(d["tartalom"].encode("utf-8")) > MAX_SZOVEG:
-                raise Invalid("a `tartalom` csak egy (nem túl nagy) szöveg lehet, és csak jegyzethez vagy C++ forráshoz")
+                raise kodos(Invalid("a `tartalom` csak egy (nem túl nagy) szöveg lehet, és csak jegyzethez vagy C++ forráshoz"), "vault.tartalom_alak")
             tartalom = d["tartalom"]
         with frame.try_run_lock(self.cfg) as szabad:
             repo = self._repo() if szabad and not self.busy() else None
@@ -507,7 +510,7 @@ class Vault:
             try:                                              # tmp + F_FULLFSYNC + RENAME_EXCL: ha közben létrejött, nem írjuk felül
                 tartos.kizaro_ir(p, tartalom.encode("utf-8"))
             except FileExistsError:
-                raise Invalid(f"már van ilyen nevű fájl: {rp}") from None
+                raise kodos(Invalid(f"már van ilyen nevű fájl: {rp}"), "vault.van_ilyen_fajl", ut=rp) from None
             pillanat, figyelmeztetes = None, None
             if repo:
                 try:

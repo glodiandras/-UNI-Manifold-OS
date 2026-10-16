@@ -9,6 +9,7 @@
 // négy kategóriája (tudod · szerencsés tipp · tévképzet · hiány). A kitöltés egyszeri `kulcsot` kap: a hálózati hiba utáni
 // újrapróba ugyanazzal a kulccsal megy, a core nem hoz létre második kitöltést.
 
+import { t } from '../lib/i18n';
 import { kvizApi, type KvizApi } from './api';
 import type { Ertekeles, KitoltesValaszEgy, KvizKerdes, KvizMod, KvizValasz, Megoldas } from './tipusok';
 
@@ -150,7 +151,7 @@ export class KvizMenet {
     if (this.fazis !== 'kerdes' || !q || this.kuld) return;
     if (this.valasztott === null && !tipp) return;               // válasz nélkül csak a „nem tudom” (tipp) megy
     if (!this.token) {
-      this.hiba = 'A kitöltés lejárt: nyisd meg újra a kvízt.';
+      this.hiba = t('A kitöltés lejárt: nyisd meg újra a kvízt.');
       return;
     }
     this.kuld = true;
@@ -183,7 +184,7 @@ export class KvizMenet {
   async kiertekel(): Promise<void> {
     if (this.kuld || !this.valaszok.length) return;
     if (!this.token) {
-      this.hiba = 'A kitöltés lejárt: nyisd meg újra a kvízt.';
+      this.hiba = t('A kitöltés lejárt: nyisd meg újra a kvízt.');
       return;
     }
     this.kuld = true;
@@ -222,7 +223,7 @@ export class KvizMenet {
     if (!q) return;
     const uj = !q.kerdes.jelolt;
     try {
-      if (!this.token) throw new Error('A kitöltés lejárt: nyisd meg újra a kvízt.');
+      if (!this.token) throw new Error(t('A kitöltés lejárt: nyisd meg újra a kvízt.'));
       await this.api.jelol(this.ut, this.token, q.kerdes.id, uj);
       q.kerdes.jelolt = uj;
     } catch (e) {

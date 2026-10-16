@@ -35,36 +35,36 @@ def biztonsagos_nev(nev) -> str:
     nev = unicodedata.normalize("NFC", os.path.basename(str(nev or "")).strip())
     nev = _NEV.sub("_", nev).lstrip(".")
     if not nev or not nev.lower().endswith(KITERJESZTESEK) or len(nev.encode("utf-8")) > 200:
-        raise HttpError(400, "csak videófájl tölthető fel (mp4, m4v, mov, mkv, webm, avi; legfeljebb 200 bájtos névvel)")
+        raise HttpError(400, "csak videófájl tölthető fel (mp4, m4v, mov, mkv, webm, avi; legfeljebb 200 bájtos névvel)", kod="video.csak_video")
     return nev
 
 
 def bejovo(app, body: dict) -> dict:
     if not isinstance(body, dict):
-        raise HttpError(400, "a kérés JSON-objektum")
+        raise HttpError(400, "a kérés JSON-objektum", kod="video.torzs_objektum")
     nev = biztonsagos_nev(body.get("nev"))
     csoport = body.get("csoport") or time.strftime("%Y%m%d-%H%M%S-") + secrets.token_hex(3)
     if not isinstance(csoport, str) or not CSOPORT.fullmatch(csoport):
-        raise HttpError(400, "érvénytelen csoport-azonosító")
+        raise HttpError(400, "érvénytelen csoport-azonosító", kod="video.csoport_ervenytelen")
     offset = body.get("offset", 0)
     if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
-        raise HttpError(400, "az `offset` nemnegatív egész")
+        raise HttpError(400, "az `offset` nemnegatív egész", kod="video.offset")
     adat = body.get("adat", "")
     if not isinstance(adat, str) or len(adat) > MAX_DARAB_BAJT * 4 // 3 + 8:
-        raise HttpError(413 if isinstance(adat, str) else 400, "a darab base64-kódolt `adat` mezőben jön, legfeljebb 8 MiB")
+        raise HttpError(413 if isinstance(adat, str) else 400, "a darab base64-kódolt `adat` mezőben jön, legfeljebb 8 MiB", kod="video.adat_mezo")
     try:
         b = base64.b64decode(adat, validate=True)
     except (binascii.Error, ValueError):
-        raise HttpError(400, "az `adat` nem érvényes base64") from None
+        raise HttpError(400, "az `adat` nem érvényes base64", kod="video.base64") from None
     max_bajt = int(float(app.cfg.section("video").get("bejovo_max_gb", 20)) * (1 << 30))
     if offset + len(b) > max_bajt:
-        raise HttpError(413, f"a fájl nagyobb a megengedettnél ({max_bajt >> 30} GiB)")
+        raise HttpError(413, f"a fájl nagyobb a megengedettnél ({max_bajt >> 30} GiB)", kod="video.fajl_nagy", param={"gib": max_bajt >> 30})
     d = app.cfg.path("video_bejovo") / csoport
     d.mkdir(parents=True, exist_ok=True)
     part = d / f".{nev}.part"
     meglevo = part.stat().st_size if part.exists() else 0
     if offset != meglevo:
-        raise HttpError(409, f"a darab helye ({offset}) nem a fájl jelenlegi vége ({meglevo})", offset=meglevo, csoport=csoport)
+        raise HttpError(409, f"a darab helye ({offset}) nem a fájl jelenlegi vége ({meglevo})", offset=meglevo, csoport=csoport, kod="video.darab_helye", param={"offset": offset, "vege": meglevo})
     with open(part, "ab") as fh:
         fh.write(b)
     meret = meglevo + len(b)
@@ -72,7 +72,7 @@ def bejovo(app, body: dict) -> dict:
         return {"ok": True, "csoport": csoport, "offset": meret}
     if meret == 0:
         part.unlink(missing_ok=True)
-        raise HttpError(400, "üres fájl")
+        raise HttpError(400, "üres fájl", kod="video.ures")
     from . import tartos
     torzs, kit = os.path.splitext(nev)
     for i in range(1, 1000):
@@ -83,7 +83,7 @@ def bejovo(app, body: dict) -> dict:
         except FileExistsError:
             continue
     else:
-        raise HttpError(409, "nincs szabad név a beérkező mappában")
+        raise HttpError(409, "nincs szabad név a beérkező mappában", kod="video.nincs_nev")
     return {"ok": True, "csoport": csoport, "nev": cel.name, "meret": meret, "kesz": True}
 
 
@@ -133,14 +133,14 @@ def bejaras(app, url) -> dict:
     „már megvan” jel). Csak olvas; ha még nincs eredmény (a feladat fut vagy nem indult), `{kesz: false}`."""
     from .videolanc import bejaras_fajl
     if not isinstance(url, str) or not url.strip() or len(url) > 2000:
-        raise HttpError(400, "add meg a bejárt oldal linkjét (`url`)")
+        raise HttpError(400, "add meg a bejárt oldal linkjét (`url`)", kod="video.url_hianyzik")
     p = bejaras_fajl(app.cfg, url)
     try:
         adat = json.loads(p.read_text(encoding="utf-8"))
     except FileNotFoundError:
         return {"kesz": False}
     except (OSError, ValueError):
-        raise HttpError(500, "a bejárás eredménye nem olvasható; indítsd újra a bejárást") from None
+        raise HttpError(500, "a bejárás eredménye nem olvasható; indítsd újra a bejárást", kod="video.bejaras_nem_olvashato") from None
     tetelek = [{k: t.get(k) for k in ("oldal", "cim", "video", "megvan")} | {k: t[k] for k in KOZVETLEN_MEZOK if t.get(k) is not None}
                for t in (adat.get("tetelek") or []) if isinstance(t, dict)]
     return {"kesz": True, "start": adat.get("start"), "ido": adat.get("ido"), "oldalak": adat.get("oldalak", 0),

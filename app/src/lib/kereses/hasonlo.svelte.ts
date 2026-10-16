@@ -3,6 +3,8 @@
 // mondja ki (`nincs_vektor`), és modellt nem tölt. Csak a látható, kinyitott szakasz tölt (C38: csend); a vault változására
 // 1 s csend után frissül, gépelés közben nem.
 
+import { t } from '../i18n';
+
 import { ApiHiba, kerdez } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 
@@ -32,11 +34,11 @@ export const HASONLO_N = 12;
 export function allapotSzoveg(a: HasonloAllapot): string {
   switch (a) {
     case 'nincs_tar':
-      return 'Még nincs vektorindex: a hasonló jegyzetekhez a vektorindex automatikus építése kell (tétlenségben fut).';
+      return t('Még nincs vektorindex: a hasonló jegyzetekhez a vektorindex automatikus építése kell (tétlenségben fut).');
     case 'nincs_vektor':
-      return 'Ennek a jegyzetnek még nincs vektora — a vektorindex a következő tétlen időszakban feldolgozza.';
+      return t('Ennek a jegyzetnek még nincs vektora — a vektorindex a következő tétlen időszakban feldolgozza.');
     case 'nem_jegyzet':
-      return 'Hasonló jegyzetek csak Markdown-jegyzethez vannak.';
+      return t('Hasonló jegyzetek csak Markdown-jegyzethez vannak.');
     default:
       return '';
   }

@@ -4,6 +4,7 @@
   nem tölthető be: ilyenkor a sáv helyén egy halvány jelzés áll.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { ikonFajta, ikonok } from '../../lib/vault/ikonok.svelte';
   import { linkek } from '../../lib/vault/linkek.svelte';
 
@@ -25,9 +26,9 @@
 </script>
 
 {#if adat && f.fajta === 'kep' && src}
-  <div class="boritok"><img {src} alt="A jegyzet borítóképe" decoding="async" /></div>
+  <div class="boritok"><img {src} alt={t('A jegyzet borítóképe')} decoding="async" /></div>
 {:else if adat}
-  <p class="nincs" title={adat.ertek}>Borítókép: {adat.ertek} — nem tölthető be (csak a vaultban álló kép jeleníthető meg).</p>
+  <p class="nincs" title={adat.ertek}>{t('Borítókép: {ertek} — nem tölthető be (csak a vaultban álló kép jeleníthető meg).', { ertek: adat.ertek })}</p>
 {/if}
 
 <style>

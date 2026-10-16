@@ -2,6 +2,7 @@
 // dokumentumon át megy (egy írási út: automatikus mentés, ütközés, ⌘Z).
 
 import { kerdez } from '../../lib/core/api';
+import { tartalmiNyelv } from '../../lib/munkater/nyelv.svelte';
 import { asszisztensApi } from '../../lib/asszisztens/api';
 import { vezerloKapcsolok } from '../../lib/vezerlo/kapcsolok.svelte';
 import { beallitKiserok } from '../../osszefoglalas/allando';
@@ -22,6 +23,7 @@ export async function kiserokBetolt(keres: typeof kerdez = kerdez): Promise<void
   try {
     const s = await keres<Sema>('/api/vault/sema', { idokorlat: 5000 });
     beallitKiserok(s.kisero, s.kisero_elotag);
+    tartalmiNyelv.beallit(s.nyelv);
   } catch {
     /* az alap marad */
   }
@@ -43,6 +45,7 @@ export function tulajdonsagApi(): TulajdonsagApi {
     sema: async (ut) => {
       const s = await kerdez<Sema>(`/api/vault/sema?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 });
       beallitKiserok(s.kisero, s.kisero_elotag);
+      tartalmiNyelv.beallit(s.nyelv);
       return s;
     },
     kulcsok: (ut) =>

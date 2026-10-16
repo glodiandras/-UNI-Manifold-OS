@@ -3,6 +3,8 @@
 // eldobódik; a core 400-as magyar hibaüzenete (hibás zárójel, hibás regex, a 2 s-os regex-időtúllépés) szó szerint
 // jelenik meg. A panel állapota az oldalsáv nézetváltásán át megmarad (nem a komponensben él).
 
+import { t } from '../i18n';
+
 import { ApiHiba, kerdez } from '../core/api';
 
 export interface KeresesHely {
@@ -232,7 +234,7 @@ export class VaultKereses {
         this.hiba = null;
       } else {
         this.indexEpul = false;
-        this.hiba = e instanceof ApiHiba && e.statusz === 0 ? 'A core nem válaszol — a keresés most nem elérhető.' : e instanceof Error ? e.message : String(e);
+        this.hiba = e instanceof ApiHiba && e.statusz === 0 ? t('A core nem válaszol — a keresés most nem elérhető.') : e instanceof Error ? e.message : String(e);
       }
     } finally {
       if (sorszam === this.sorszam) {

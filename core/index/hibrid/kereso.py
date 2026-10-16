@@ -21,6 +21,7 @@ from ...vaultio import Invalid
 from .. import kereses
 from . import frissites, normal, rangsor
 from .vektortar import DarabSor, Vektortar
+from ...hibakod import kodol
 
 MODOK = ("hibrid", "lexikai")
 
@@ -156,9 +157,9 @@ class HibridKereso:
 
     def keres(self, q: str, limit: int = 20, mod: str = "hibrid") -> dict:
         if not isinstance(q, str) or not q.strip():
-            raise Invalid("üres keresés")
+            raise kodol(Invalid("üres keresés"), "hibrid.kereso.ures_kereses")
         if mod not in MODOK:
-            raise Invalid(f"ismeretlen keresési mód: {mod} ({' | '.join(MODOK)})")
+            raise kodol(Invalid(f"ismeretlen keresési mód: {mod} ({' | '.join(MODOK)})"), "hibrid.kereso.ismeretlen_keresesi_mod_mod_join", {"mod": mod, "join": ' | '.join(MODOK)})
         limit = max(1, min(int(limit), 1000))
         ok = "kert_lexikai" if mod == "lexikai" else self.miert_lexikai()
         if ok is not None:
@@ -221,7 +222,7 @@ class HibridKereso:
     def darab_jeloltek(self, kerdes: str, n: int = 8) -> list[Jelolt]:
         """A kérdéshez legjobb `n` darab (lásd a modul leírását). Beágyazó nélkül csak a lexikai ág fut."""
         if not isinstance(kerdes, str) or not kerdes.strip():
-            raise Invalid("üres kérdés")
+            raise kodol(Invalid("üres kérdés"), "hibrid.kereso.ures_kerdes")
         q_tovek = normal.tovek(kerdes)
         jeloltek: dict[tuple[str, int], DarabSor] = {}
         hasonlosag: dict[tuple[str, int], float] = {}

@@ -10,6 +10,7 @@
   import { onMount, untrack } from 'svelte';
   import type { NezetProps } from '../../lib/elrendezes/nezetek.svelte';
   import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
+  import { t } from '../../lib/i18n';
   import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Highlighter, PanelLeft, Search, X, ZoomIn, ZoomOut } from '../../lib/ikon/ikonok';
   import { kornyezet } from '../../lib/kornyezet';
   import IkonGomb from '../../lib/ui/IkonGomb.svelte';
@@ -179,7 +180,7 @@
     const sel = document.getSelection();
     const olvasott = lapok ? kijelolesOlvas(lapok, sel) : { k: null, tobbLap: false };
     if (olvasott.tobbLap) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A kiemelés egy oldalon belül legyen', szoveg: 'Jelöld ki külön a két oldal részét.' });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A kiemelés egy oldalon belül legyen'), szoveg: t('Jelöld ki külön a két oldal részét.') });
       return;
     }
     const k = olvasott.k ?? kijeloles;
@@ -197,13 +198,13 @@
       const b = await idezetBeszur(ut, uj.oldal, uj.szoveg);
       ertesitesek.ertesit({
         szint: 'siker',
-        cim: b ? `Kiemelve, idézet: ${fajlNev(b.ut)}` : 'Kiemelve',
-        szoveg: b?.source ? `A Source mezőbe: ${uj.oldal}. oldal` : `${fajlNev(uj.fajl)} · ${uj.oldal}. oldal`,
+        cim: b ? t('Kiemelve, idézet: {nev}', { nev: fajlNev(b.ut) }) : t('Kiemelve'),
+        szoveg: b?.source ? t('A Source mezőbe: {n}. oldal', { n: uj.oldal }) : `${fajlNev(uj.fajl)} · ` + t('{n}. oldal', { n: uj.oldal }),
         idotartam: 3000,
       });
-      if (uj.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Pillanatkép nélkül mentve', szoveg: uj.figyelmeztetes });
+      if (uj.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Pillanatkép nélkül mentve'), szoveg: uj.figyelmeztetes });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A kiemelés nem mentődött', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A kiemelés nem mentődött'), szoveg: e instanceof Error ? e.message : String(e) });
     } finally {
       dolgozik = false;
     }
@@ -214,7 +215,7 @@
     const p = celSzerkeszto();
     const v = p?.nezet();
     if (!p || !v) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Jelölj ki szöveget a PDF-ben', szoveg: 'A kiemelés idézetként a nyitott jegyzetbe kerül.' });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Jelölj ki szöveget a PDF-ben'), szoveg: t('A kiemelés idézetként a nyitott jegyzetbe kerül.') });
       return;
     }
     const cel = await linkek.linkCel(ut, p.ut).catch(() => `${fajlNev(ut)}.pdf`);
@@ -225,7 +226,7 @@
       const b = blokkHely(v.state.doc.toString(), fm.ig, link, fm.ig);
       v.dispatch({ changes: b, userEvent: 'input.paste', scrollIntoView: true });
     } else v.dispatch({ changes: { from, to, insert: link }, selection: { anchor: from + link.length }, userEvent: 'input.paste', scrollIntoView: true });
-    ertesitesek.ertesit({ szint: 'siker', cim: `Link a ${oldal}. oldalra`, szoveg: fajlNev(p.ut), idotartam: 2000 });
+    ertesitesek.ertesit({ szint: 'siker', cim: t('Link a {n}. oldalra', { n: oldal }), szoveg: fajlNev(p.ut), idotartam: 2000 });
   }
 
   async function menuIdezet() {
@@ -233,7 +234,7 @@
     menu = null;
     if (!m) return;
     const b = await idezetBeszur(ut, m.k.oldal, m.k.szoveg);
-    if (b) ertesitesek.ertesit({ szint: 'siker', cim: `Idézet: ${fajlNev(b.ut)}`, idotartam: 2000 });
+    if (b) ertesitesek.ertesit({ szint: 'siker', cim: t('Idézet: {nev}', { nev: fajlNev(b.ut) }), idotartam: 2000 });
   }
 
   function menuMegnyit(e: MouseEvent) {
@@ -249,9 +250,9 @@
     try {
       await kiemelesApi.torol(ut, m.k.id, kiemelesek?.hash ?? null);
       await kiemelesekBetolt();
-      ertesitesek.ertesit({ szint: 'info', cim: 'Kiemelés törölve', szoveg: 'A pillanatképből visszavonható.', idotartam: 2500 });
+      ertesitesek.ertesit({ szint: 'info', cim: t('Kiemelés törölve'), szoveg: t('A pillanatképből visszavonható.'), idotartam: 2500 });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A kiemelés nem törölhető', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A kiemelés nem törölhető'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -426,10 +427,10 @@
       if (!el) return;
       hiba =
         e?.name === 'PasswordException'
-          ? 'A PDF jelszóval védett; a Manifold nem nyitja meg.'
+          ? t('A PDF jelszóval védett; a Manifold nem nyitja meg.')
           : e?.name === 'InvalidPDFException'
-            ? 'A fájl nem érvényes vagy sérült PDF.'
-            : `A PDF nem tölthető be: ${e?.message ?? e}`;
+            ? t('A fájl nem érvényes vagy sérült PDF.')
+            : t('A PDF nem tölthető be: {hiba}', { hiba: String(e?.message ?? e) });
     });
 
     const valtozas = (utak: string[]) => {
@@ -501,15 +502,15 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<article class="pdf-ful" bind:this={doboz} onkeydown={lapBillentyu} aria-label={`PDF: ${fajlNev(ut)}`}>
+<article class="pdf-ful" bind:this={doboz} onkeydown={lapBillentyu} aria-label={t('PDF: {nev}', { nev: fajlNev(ut) })}>
   <header class="eszkoztar">
-    <IkonGomb ikon={PanelLeft} cimke="Oldalbélyegek" lenyomva={sav} onclick={() => parancs('belyegek')} />
+    <IkonGomb ikon={PanelLeft} cimke={t('Oldalbélyegek')} lenyomva={sav} onclick={() => parancs('belyegek')} />
     <p class="morzsa" title={ut}>
       <span class="morzsa-ikon"><JegyzetIkon {ut} tipus="pdf" meret={14} /></span>
       {#if mappa(ut)}<span class="mappa">{`${mappa(ut).replaceAll('/', ' / ')} / `}</span>{/if}<span class="nev">{fajlNev(ut)}</span>
     </p>
-    <div class="csoport" role="group" aria-label="Lapozás">
-      <IkonGomb ikon={ChevronLeft} cimke="Előző oldal" disabled={!dok || oldal <= 1} onclick={() => ugras(oldal - 1)} />
+    <div class="csoport" role="group" aria-label={t('Lapozás')}>
+      <IkonGomb ikon={ChevronLeft} cimke={t('Előző oldal')} disabled={!dok || oldal <= 1} onclick={() => ugras(oldal - 1)} />
       <label class="oldal">
         <span class="rejtett">Oldal</span>
         <input
@@ -536,25 +537,25 @@
         />
         <span class="osszes">/ {dok?.numPages ?? '–'}</span>
       </label>
-      <IkonGomb ikon={ChevronRight} cimke="Következő oldal" disabled={!dok || oldal >= (dok?.numPages ?? 1)} onclick={() => ugras(oldal + 1)} />
+      <IkonGomb ikon={ChevronRight} cimke={t('Következő oldal')} disabled={!dok || oldal >= (dok?.numPages ?? 1)} onclick={() => ugras(oldal + 1)} />
     </div>
-    <div class="csoport" role="group" aria-label="Nagyítás">
-      <IkonGomb ikon={ZoomOut} cimke="Kicsinyítés" billentyu="Mod+-" disabled={!dok} onclick={() => lepes(-1)} />
+    <div class="csoport" role="group" aria-label={t('Nagyítás')}>
+      <IkonGomb ikon={ZoomOut} cimke={t('Kicsinyítés')} billentyu="Mod+-" disabled={!dok} onclick={() => lepes(-1)} />
       <select
         class="nagyitas"
-        aria-label="Nagyítás"
+        aria-label={t('Nagyítás')}
         disabled={!dok}
         value={nagyitas === 'page-width' || nagyitas === 'page-fit' ? nagyitas : 'egyeni'}
         onchange={(e) => nagyit(e.currentTarget.value === 'egyeni' ? skala : e.currentTarget.value)}
       >
-        <option value="page-width">Oldalszélesség</option>
-        <option value="page-fit">Egész oldal</option>
+        <option value="page-width">{t('Oldalszélesség')}</option>
+        <option value="page-fit">{t('Egész oldal')}</option>
         <option value="egyeni">{szazalek}</option>
       </select>
-      <IkonGomb ikon={ZoomIn} cimke="Nagyítás" billentyu="Mod+=" disabled={!dok} onclick={() => lepes(1)} />
+      <IkonGomb ikon={ZoomIn} cimke={t('Nagyítás|gomb')} billentyu="Mod+=" disabled={!dok} onclick={() => lepes(1)} />
     </div>
-    <IkonGomb ikon={Search} cimke="Keresés a PDF-ben" billentyu="Mod+F" lenyomva={kereso} disabled={!dok} onclick={() => (kereso ? keresoZar() : keresoNyit())} />
-    <IkonGomb ikon={Highlighter} cimke="Kiemelés és idézet a jegyzetbe" billentyu="Mod+Shift+I" disabled={!dok || dolgozik} onclick={() => void kiemel()} />
+    <IkonGomb ikon={Search} cimke={t('Keresés a PDF-ben')} billentyu="Mod+F" lenyomva={kereso} disabled={!dok} onclick={() => (kereso ? keresoZar() : keresoNyit())} />
+    <IkonGomb ikon={Highlighter} cimke={t('Kiemelés és idézet a jegyzetbe')} billentyu="Mod+Shift+I" disabled={!dok || dolgozik} onclick={() => void kiemel()} />
   </header>
 
   {#if kereso}
@@ -562,8 +563,8 @@
       <input
         bind:this={keresoMezo}
         type="search"
-        placeholder="Keresés a PDF-ben"
-        aria-label="Keresés a PDF-ben"
+        placeholder={t('Keresés a PDF-ben')}
+        aria-label={t('Keresés a PDF-ben')}
         bind:value={keres}
         oninput={keresGepel}
         onkeydown={(e) => {
@@ -577,11 +578,11 @@
         }}
       />
       <span class="talalat" role="status">
-        {#if keres && talalat.nincs}Nincs találat{:else if talalat.osszes}{talalat.aktualis} / {talalat.osszes}{/if}
+        {#if keres && talalat.nincs}{t('Nincs találat')}{:else if talalat.osszes}{talalat.aktualis} / {talalat.osszes}{/if}
       </span>
-      <IkonGomb ikon={ChevronUp} cimke="Előző találat" billentyu="Shift+Enter" disabled={!talalat.osszes} onclick={() => keresKuld('again', true)} />
-      <IkonGomb ikon={ChevronDown} cimke="Következő találat" billentyu="Enter" disabled={!talalat.osszes} onclick={() => keresKuld('again')} />
-      <IkonGomb ikon={X} cimke="Keresés bezárása" billentyu="Escape" onclick={keresoZar} />
+      <IkonGomb ikon={ChevronUp} cimke={t('Előző találat')} billentyu="Shift+Enter" disabled={!talalat.osszes} onclick={() => keresKuld('again', true)} />
+      <IkonGomb ikon={ChevronDown} cimke={t('Következő találat')} billentyu="Enter" disabled={!talalat.osszes} onclick={() => keresKuld('again')} />
+      <IkonGomb ikon={X} cimke={t('Keresés bezárása')} billentyu="Escape" onclick={keresoZar} />
     </div>
   {/if}
 
@@ -595,7 +596,7 @@
       <div class="lapkont" bind:this={kont} tabindex="0" role="document" aria-label="Lapok">
         <div class="pdfViewer" bind:this={lapok}></div>
       </div>
-      {#if !dok && !hiba}<p class="allapot">A PDF betöltése…</p>{/if}
+      {#if !dok && !hiba}<p class="allapot">{t('A PDF betöltése…')}</p>{/if}
       {#if hiba}<p class="allapot hiba" role="alert">{hiba}</p>{/if}
     </div>
   </div>
@@ -610,17 +611,17 @@
       disabled={dolgozik}
       onmousedown={(e) => e.preventDefault()}
       onclick={() => void kiemel()}
-      title="A kijelölés kiemelése; idézetként a jegyzetbe (⇧⌘I)"
+      title={t('A kijelölés kiemelése; idézetként a jegyzetbe (⇧⌘I)')}
     >
-      Kiemelés
+      {t('Kiemelés')}
     </button>
   {/if}
 
   {#if menu}
-    <div class="menu" role="menu" style:left="{menu.x}px" style:top="{menu.y}px" aria-label="Kiemelés">
-      <button type="button" role="menuitem" onclick={() => void menuIdezet()}>Idézet beszúrása a jegyzetbe</button>
-      <button type="button" role="menuitem" onclick={menuMegnyit}>Megnyitás a kiemelés-jegyzetben</button>
-      <button type="button" role="menuitem" class="veszelyes" onclick={() => void menuTorol()}>Kiemelés törlése</button>
+    <div class="menu" role="menu" style:left="{menu.x}px" style:top="{menu.y}px" aria-label={t('Kiemelés')}>
+      <button type="button" role="menuitem" onclick={() => void menuIdezet()}>{t('Idézet beszúrása a jegyzetbe')}</button>
+      <button type="button" role="menuitem" onclick={menuMegnyit}>{t('Megnyitás a kiemelés-jegyzetben')}</button>
+      <button type="button" role="menuitem" class="veszelyes" onclick={() => void menuTorol()}>{t('Kiemelés törlése')}</button>
     </div>
   {/if}
 </article>

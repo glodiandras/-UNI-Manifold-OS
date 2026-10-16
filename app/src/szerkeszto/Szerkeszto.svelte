@@ -5,6 +5,7 @@
   a felső sor a fül tartós nézet-állapotába kerül. A jegyzet elhagyása lezárja a szerkesztést (pillanatkép).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { EditorState, StateEffect, Transaction } from '@codemirror/state';
   import { EditorView } from '@codemirror/view';
   import { onMount, untrack } from 'svelte';
@@ -21,6 +22,7 @@
   import { linkek } from '../lib/vault/linkek.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
   import { bovitmenyek, elonezetMod, forrasMod, irhatosagKapcsolo, modKapcsolo, szinkronJel } from './beallitas';
+  import { felismertNyelv } from './nyelv';
   import type { Csatolt, Dokumentum } from './dokumentum/dokumentum.svelte';
   import { csere } from './dokumentum/kulonbseg';
   import { alapKliens, javaslatUrit } from './asszisztens/javaslat';
@@ -54,6 +56,7 @@
   let olvaso: Olvaso | undefined = $state();
   let view = $state.raw<EditorView | null>(null);
   let docValtozat = $state(0);
+  let tartalmiKod = $state('');
 
   function kezdoMod(): Mod {
     const m = untrack(() => ful.nezet?.mod);
@@ -117,12 +120,12 @@
           mod: szerkMod,
           csakOlvashato: !!d.csakOlvashato,
           ut,
-          cimke: `Jegyzet: ${fajlNev(ut)}`,
+          cimke: t('Jegyzet: {nev}', { nev: fajlNev(ut) }),
           linkNev,
           kiegeszites: { fajlok: () => fajlok.lista, legutobbi: () => felulet.legutobbiFajlok, tanul: asszisztensTanulLink },
           tovabbi: [folytatasBovitmeny(), folytatasForras.of({ ...folytatasKliens,
             kapcsolo: () => vezerloKapcsolok.ertek.asszisztens,
-            jelzes: szoveg => ertesitesek.ertesit({ szint: 'info', cim: 'Asszisztens', szoveg }),
+            jelzes: szoveg => ertesitesek.ertesit({ szint: 'info', cim: t('Asszisztens'), szoveg }),
           }), kartyaUtemezo(), kartyaUtemezoForras.of(kartyaBeallitas), csatolmanyBovitmeny(ut), eloTulajdonsagForras.of({ ut, nyitottsag: felulet.tulajdonsagok,
             kiegeszites: { fajlok: () => fajlok.lista, legutobbi: () => felulet.legutobbiFajlok } })],
           // C30b-mag: a linkeletlen említések javaslata (Tab/Esc); a kapcsoló élő értéke a core állapota (10. döntés)
@@ -146,6 +149,7 @@
       parent: cmHely,
       dispatchTransactions(trs, v) {
         v.update(trs);
+        tartalmiKod = v.state.field(felismertNyelv);
         for (const tr of trs)
           if (tr.docChanged && !tr.annotation(szinkronJel)) {
             d.valtozott(tr.changes, tr.newDoc, csatolt);
@@ -155,6 +159,7 @@
           }
       },
     });
+    tartalmiKod = view.state.field(felismertNyelv);
     if (tarolt) {
       view.dispatch({ effects: modKapcsolo.reconfigure(szerkMod === 'elo' ? elonezetMod() : forrasMod()) });
       const g = tarolt.gorgetes;
@@ -284,7 +289,7 @@
       (e) => {
         if (!el) return;
         betoltesHiba =
-          e instanceof ApiHiba && e.statusz === 404 ? 'A jegyzet nincs meg (törölték vagy áthelyezték).' : `A jegyzet nem tölthető be: ${e instanceof Error ? e.message : e}`;
+          e instanceof ApiHiba && e.statusz === 404 ? t('A jegyzet nincs meg (törölték vagy áthelyezték).') : t('A jegyzet nem tölthető be: {hiba}', { hiba: e instanceof Error ? e.message : String(e) });
       },
     );
     return () => {
@@ -314,9 +319,9 @@
   const allapotSzoveg = $derived.by(() => {
     switch (dok?.allapot) {
       case 'hiba':
-        return dok.zarraVar ? 'Nincs mentve — várakozás a zárra' : 'Nincs mentve — újrapróbálás';
+        return dok.zarraVar ? t('Nincs mentve — várakozás a zárra') : t('Nincs mentve — újrapróbálás');
       case 'eltunt':
-        return 'A fájl eltűnt — nincs mentve';
+        return t('A fájl eltűnt — nincs mentve');
       default:
         return '';
     }
@@ -331,11 +336,11 @@
     </p>
     <div class="jelek" role="status">
       {#if dok?.csakOlvashato}
-        <span class="jel figyelmeztetes" title={dok.csakOlvashato}>Csak olvasható</span>
+        <span class="jel figyelmeztetes" title={dok.csakOlvashato}>{t('Csak olvasható')}</span>
       {/if}
       {#if dok?.allapot === 'utkozes'}
         <button type="button" class="jel hiba gomb" onclick={() => (utkozesNyitva = true)}>
-          Ütközés — döntés kell
+          {t('Ütközés — döntés kell')}
         </button>
       {:else if allapotSzoveg}
         <!-- C38: a hibás állapot jele mindig látszik; a halk „Mentés…”/„Mentve” a jobb alsó sarokban áll (E12) -->
@@ -343,11 +348,11 @@
       {/if}
     </div>
     {#if mod === 'olvaso'}
-      <IkonGomb ikon={SquarePen} cimke="Szerkesztés" billentyu="Mod+E" data-csend-rejt onclick={() => regiszter.futtat('szerkeszto.olvaso', 'gomb')} />
+      <IkonGomb ikon={SquarePen} cimke={t('Szerkesztés')} billentyu="Mod+E" data-csend-rejt onclick={() => regiszter.futtat('szerkeszto.olvaso', 'gomb')} />
     {:else}
       <IkonGomb
         ikon={BookOpen}
-        cimke="Olvasó nézet"
+        cimke={t('Olvasó nézet')}
         billentyu="Mod+E"
         data-csend-rejt
         onclick={() => regiszter.futtat('szerkeszto.olvaso', 'gomb')}
@@ -376,7 +381,7 @@
   <div class="cm-hely" bind:this={cmHely} hidden={mod === 'olvaso'}></div>
 
   {#if mod === 'olvaso' && dok && view}
-    <Olvaso bind:this={olvaso} {view} {dok} {ut} valtozat={docValtozat} />
+    <Olvaso bind:this={olvaso} {view} {dok} {ut} valtozat={docValtozat} nyelv={tartalmiKod} />
   {/if}
 
   {#if dok?.allapot === 'utkozes' && utkozesNyitva && aktiv}

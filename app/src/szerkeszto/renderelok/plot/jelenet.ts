@@ -2,6 +2,7 @@
 // (a nagyításkor és a mozgatáskor újra számolódik), a CAS-jellemzők jelölői, a jelmagyarázat és a képernyőolvasónak
 // szóló leírás. A színek **design-token nevek** (25. döntés): a rajzoló oldja fel őket az aktuális témában.
 
+import { t as tx } from '../../../lib/i18n';
 import type { Meret, Nezet } from './interakcio';
 import { szam, szepSzoveg, type Jellemzok } from './jellemzok';
 import { egybe, mintaz, type Minta } from './mintavetel';
@@ -155,17 +156,17 @@ export function jelmagyarazat(terv: Rajzterv): { szin: string; cimke: string }[]
 /** A képernyőolvasónak: a függvények és a nevezetes pontok szövegben (a rajz maga `role="img"`). */
 export function leiras(terv: Rajzterv, eredmenyek: ReadonlyMap<number, Jellemzok>): string {
   const reszek = [
-    ...terv.gorbek.map((g) => (g.fajta === 'fuggveny' ? `y = ${g.kifejezes}${g.cimke ? ` (${g.cimke})` : ''}` : `paraméteres görbe${g.cimke ? ` (${g.cimke})` : ''}`)),
-    ...terv.tartomanyok.map((t) => `y ${t.relacio} ${t.kifejezes} tartomány`),
+    ...terv.gorbek.map((g) => (g.fajta === 'fuggveny' ? `y = ${g.kifejezes}${g.cimke ? ` (${g.cimke})` : ''}` : `${tx('paraméteres görbe')}${g.cimke ? ` (${g.cimke})` : ''}`)),
+    ...terv.tartomanyok.map((tt) => tx('y {rel} {kif} tartomány', { rel: tt.relacio, kif: tt.kifejezes })),
   ];
   const pontok: string[] = [];
   terv.gorbek.forEach((_g, i) => {
     const j = eredmenyek.get(i);
     if (!j || (j.allapot !== 'ok' && j.allapot !== 'reszleges')) return;
-    for (const z of j.zerushelyek) pontok.push(`zérushely x = ${szepSzoveg(z.x)}`);
-    for (const s of j.szelsoertekek) pontok.push(`${s.tipus} (${szepSzoveg(s.x)}; ${szepSzoveg(s.y)})`);
-    for (const a of [...j.aszimptotak, ...j.ferde_aszimptotak]) pontok.push(`aszimptota ${szepSzoveg(a.egyenlet)}`);
+    for (const z of j.zerushelyek) pontok.push(tx('zérushely x = {x}', { x: szepSzoveg(z.x) }));
+    for (const s of j.szelsoertekek) pontok.push(`${s.tipus === 'maximum' ? tx('maximum') : tx('minimum')} (${szepSzoveg(s.x)}; ${szepSzoveg(s.y)})`);
+    for (const a of [...j.aszimptotak, ...j.ferde_aszimptotak]) pontok.push(tx('aszimptota {egyenlet}', { egyenlet: szepSzoveg(a.egyenlet) }));
   });
-  for (const p of terv.pontok) pontok.push(`pont (${szam(p.x)}; ${szam(p.y)})${p.cimke ? ` ${p.cimke}` : ''}`);
-  return `Grafikon: ${reszek.join('; ') || 'nincs rajzolt elem'}.${pontok.length ? ` Nevezetes pontok: ${pontok.join('; ')}.` : ''}`;
+  for (const p of terv.pontok) pontok.push(`${tx('pont')} (${szam(p.x)}; ${szam(p.y)})${p.cimke ? ` ${p.cimke}` : ''}`);
+  return `${tx('Grafikon: {elemek}.', { elemek: reszek.join('; ') || tx('nincs rajzolt elem') })}${pontok.length ? ' ' + tx('Nevezetes pontok: {pontok}.', { pontok: pontok.join('; ') }) : ''}`;
 }

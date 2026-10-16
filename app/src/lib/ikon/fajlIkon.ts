@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { IconNode } from 'lucide';
 import type { FajlTipus } from '../vault/fajlok.svelte';
 import { Code, File, FileImage, FileMusic, FilePlay, FileText, LayoutDashboard, Table2 } from './ikonok';
@@ -21,13 +22,13 @@ export function fajlIkon(tipus: FajlTipus | undefined, ut?: string | null): Icon
 }
 
 export const TIPUS_NEV: Record<FajlTipus, string> = {
-  md: 'jegyzet',
-  canvas: 'canvas',
-  base: 'adatbázis-nézet',
+  get md() { return t('jegyzet'); },
+  get canvas() { return t('canvas'); },
+  get base() { return t('adatbázis-nézet'); },
   pdf: 'PDF',
-  kep: 'kép',
-  video: 'videó',
-  hang: 'hang',
-  felirat: 'felirat',
-  egyeb: 'fájl',
+  get kep() { return t('kép'); },
+  get video() { return t('videó'); },
+  get hang() { return t('hang'); },
+  get felirat() { return t('felirat'); },
+  get egyeb() { return t('fájl'); },
 };

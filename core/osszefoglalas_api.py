@@ -83,7 +83,7 @@ class OsszefoglalasApi:
         try:
             cs = m.kontextus.csomag(jegyzetek, maxk, kerdes)
         except m.lanc.Megall as exc:
-            raise HttpError(422, str(exc)) from None
+            raise HttpError(422, str(exc), kod="osszefoglalas.kontextus_hiba") from None
         return {"ok": True, "szoveg": cs.szoveg, "azonositok": cs.azonositok, "benne": cs.benne, "csonkolt": cs.csonkolt,
                 "kihagyott": cs.kihagyott, "karakter": cs.karakter}
 

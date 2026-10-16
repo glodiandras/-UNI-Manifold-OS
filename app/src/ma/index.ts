@@ -5,6 +5,7 @@ import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { nezetek } from '../lib/elrendezes/nezetek.svelte';
 import { CalendarCheck, CalendarDays, FilePlus, FileText } from '../lib/ikon/ikonok';
+import { tk } from '../lib/i18n';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import Ma from './Ma.svelte';
 import { maAdat } from './modell.svelte';
@@ -21,16 +22,16 @@ export function maTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapcs
   const leParancsok = reg.regisztralMind([
     {
       id: 'naplo.napi',
-      nev: 'Napi jegyzet megnyitása',
-      kategoria: 'Napló',
+      nev: tk('Napi jegyzet megnyitása'),
+      kategoria: tk('Napló'),
       billentyu: 'Mod+Shift+D',
       ikon: CalendarCheck,
       futtat: () => void napiJegyzetNyit(felulet),
     },
     {
       id: 'ma.megnyit',
-      nev: 'Manifold áttekintő',
-      kategoria: 'Napló',
+      nev: tk('Manifold áttekintő'),
+      kategoria: tk('Napló'),
       ikon: CalendarDays,
       futtat: () => {
         felulet.atfedes = null;
@@ -39,8 +40,8 @@ export function maTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapcs
     },
     {
       id: 'sablon.beszur',
-      nev: 'Sablon beszúrása…',
-      kategoria: 'Szerkesztő',
+      nev: tk('Sablon beszúrása…'),
+      kategoria: tk('Szerkesztő'),
       ikon: FileText,
       elerheto: sablonBeszurasElerheto,
       futtat: () => {
@@ -50,8 +51,8 @@ export function maTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapcs
     },
     {
       id: 'sablon.uj-jegyzet',
-      nev: 'Új jegyzet sablonból…',
-      kategoria: 'Fájl',
+      nev: tk('Új jegyzet sablonból…'),
+      kategoria: tk('Fájl'),
       ikon: FilePlus,
       futtat: () => ujJegyzetSablonbol(felulet, null),
     },

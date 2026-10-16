@@ -2,6 +2,7 @@
 // (hash-alapú mentés, a nyitott szerkesztők élőben megkapják, ugyanaz a pillanatkép-szabály, mint a gépelésnél):
 // nem új core-írás. A pozíció az indexből jön (a mentett szövegre); ha a sor közben megváltozott, nem írunk.
 
+import { t as tx } from '../../lib/i18n';
 import { ChangeSet } from '@codemirror/state';
 import { ApiHiba } from '../../lib/core/api';
 import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
@@ -22,12 +23,12 @@ export async function emlitesLinkel(celUt: string, forras: string, t: Emlites): 
   try {
     dok = await szerkesztok.dokumentumok.megnyit(forras);
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A jegyzet nem nyitható meg', szoveg: e instanceof ApiHiba ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: tx('A jegyzet nem nyitható meg'), szoveg: e instanceof ApiHiba ? e.message : String(e) });
     return false;
   }
   try {
     if (dok.csakOlvashato || dok.allapot === 'utkozes' || dok.allapot === 'eltunt') {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A jegyzet most nem írható', szoveg: dok.csakOlvashato ?? forras });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: tx('A jegyzet most nem írható'), szoveg: dok.csakOlvashato ?? forras });
       return false;
     }
     const szoveg = dok.szoveg;
@@ -43,12 +44,12 @@ export async function emlitesLinkel(celUt: string, forras: string, t: Emlites): 
     dok.valtozott(cs, cs.apply(szoveg), null, true); // nyitott szerkesztőnél az előzménybe kerül: a ⌘Z visszahozza (C29.7b)
     const eredmeny = await dok.ment();
     if (!eredmeny.ok) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A link nem mentődött', szoveg: dok.hiba ?? forras });
+      ertesitesek.ertesit({ szint: 'hiba', cim: tx('A link nem mentődött'), szoveg: dok.hiba ?? forras });
       return false;
     }
     return true;
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A link nem írható be', szoveg: e instanceof Error ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: tx('A link nem írható be'), szoveg: e instanceof Error ? e.message : String(e) });
     return false;
   } finally {
     await szerkesztok.dokumentumok.elenged(dok); // a nyitott szerkesztő-nézet tartja életben, különben lezár és kikerül
@@ -56,6 +57,6 @@ export async function emlitesLinkel(celUt: string, forras: string, t: Emlites): 
 }
 
 function elavult(): false {
-  ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A jegyzet közben megváltozott', szoveg: 'A lista frissül, próbáld újra.', idotartam: 4000 });
+  ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: tx('A jegyzet közben megváltozott'), szoveg: tx('A lista frissül, próbáld újra.'), idotartam: 4000 });
   return false;
 }

@@ -302,7 +302,7 @@ class Tracker:
                 # A felület kötege: 503, hogy a kliens újrapróbálja (30(b): az 5xx-et újraküldi, a 200-at nem — a köteg
                 # különben elveszne; 2026-10-14, F3). A core saját gyűjtői (`kliens` nélkül) soha nem kapnak kivételt.
                 raise HttpError(503, "A tracker adatbázisa most nem írható; a felület később újraküldi a köteget.",
-                                fogadva=False, db_hiba=True) from e
+                                fogadva=False, db_hiba=True, kod="tracker.nem_irhato_kotegelt") from e
             return {"fogadva": False, "hiba": "a tracker adatbázisa nem írható"}
         return valasz
 
@@ -755,7 +755,7 @@ class Tracker:
                     db += c.execute(f"DELETE FROM {t}").rowcount
         except (sqlite3.Error, OSError) as e:
             self._naploz("torles", e)
-            raise HttpError(503, "a tracker adatbázisa nem írható") from e
+            raise HttpError(503, "a tracker adatbázisa nem írható", kod="tracker.nem_irhato") from e
         try:
             tisztitva = szemelyes_db.tisztit(self.cfg)
         except (sqlite3.Error, OSError) as e:

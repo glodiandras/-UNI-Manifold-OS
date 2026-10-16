@@ -1,6 +1,7 @@
 // A szerkesztő telepítése (C08): a `.md` nézet, a parancsok, a Mermaid-renderelő és a WS-figyelés. Az
 // `App.svelte` hívja egyszer, a héj alapparancsai mellett.
 
+import { t, tk } from '../lib/i18n';
 import 'katex/dist/katex.min.css';
 import './szerkeszto.css';
 import './notion.css';
@@ -53,7 +54,7 @@ function parancsok(): Parancs[] {
   const formaz = (id: string, nev: string, jel: string, billentyu?: string): Parancs => ({
     id: `szerkeszto.${id}`,
     nev,
-    kategoria: 'Szerkesztő',
+    kategoria: tk('Szerkesztő'),
     billentyu,
     elerheto: szerkeszt,
     futtat: () => {
@@ -67,7 +68,7 @@ function parancsok(): Parancs[] {
   const notion = (id: string, nev: string, fut: (v: EditorView) => unknown, tobb: Partial<Parancs> = {}): Parancs => ({
     id: `szerkeszto.${id}`,
     nev,
-    kategoria: 'Szerkesztő',
+    kategoria: tk('Szerkesztő'),
     elerheto: elo,
     futtat: () => {
       const v = sz()?.nezet();
@@ -80,25 +81,25 @@ function parancsok(): Parancs[] {
   return [
     // J2: a kézi hívás (⌘J; az ütközés-próba a regiszterben és a CM-keymapekben: tests/billentyu-utkozes.test.ts) — kijelölés
     // nélkül folytatás, kijelöléssel kifejtés; ⇧⌘J a kijelölés összefoglalása. A javaslat Tab-bal egy tranzakció (⌘Z).
-    notion('asszisztens', 'Asszisztens: kiegészítés a kurzornál vagy a kijelölés kifejtése', v => v.dispatch({ effects: folytatasKezi.of({ mod: folytatasKeziMod(v) }) }),
+    notion('asszisztens', tk('Asszisztens: kiegészítés a kurzornál vagy a kijelölés kifejtése'), v => v.dispatch({ effects: folytatasKezi.of({ mod: folytatasKeziMod(v) }) }),
       { billentyu: 'Mod+J', elerheto: () => irhatoNezet(sz()) }),
-    notion('asszisztens-kifejt', 'Asszisztens: a kijelölés kifejtése', v => v.dispatch({ effects: folytatasKezi.of({ mod: 'kifejt' }) }),
+    notion('asszisztens-kifejt', tk('Asszisztens: a kijelölés kifejtése'), v => v.dispatch({ effects: folytatasKezi.of({ mod: 'kifejt' }) }),
       { elerheto: () => irhatoNezet(sz()) && !sz()!.nezet()!.state.selection.main.empty }),
-    notion('asszisztens-osszefoglal', 'Asszisztens: a kijelölés összefoglalása', v => v.dispatch({ effects: folytatasKezi.of({ mod: 'osszefoglal' }) }),
+    notion('asszisztens-osszefoglal', tk('Asszisztens: a kijelölés összefoglalása'), v => v.dispatch({ effects: folytatasKezi.of({ mod: 'osszefoglal' }) }),
       { billentyu: 'Mod+Shift+J', elerheto: () => irhatoNezet(sz()) && !sz()!.nezet()!.state.selection.main.empty }),
     ...kartyaParancsok(),
-    notion('perjel', 'Beszúrás-menü (/)', perjelNyit),
-    notion('blokk-menu', 'Blokk: menü a kurzornál', blokkMenuParancs),
-    notion('blokk-fel', 'Blokk: mozgatás fel', (v) => blokkLep(v, -1)),
-    notion('blokk-le', 'Blokk: mozgatás le', (v) => blokkLep(v, 1)),
-    notion('blokk-duplikal', 'Blokk: duplikálás', blokkDuplikal),
-    notion('blokk-torol', 'Blokk: törlés', blokkTorol),
-    notion('blokk-link', 'Blokk: link másolása', (v) => blokkLinkMasol(v)),
-    notion('link', 'Link beállítása', linkParancs, { billentyu: 'Mod+K', ikon: Link, elerheto: szerkeszt }),
+    notion('perjel', tk('Beszúrás-menü (/)'), perjelNyit),
+    notion('blokk-menu', tk('Blokk: menü a kurzornál'), blokkMenuParancs),
+    notion('blokk-fel', tk('Blokk: mozgatás fel'), (v) => blokkLep(v, -1)),
+    notion('blokk-le', tk('Blokk: mozgatás le'), (v) => blokkLep(v, 1)),
+    notion('blokk-duplikal', tk('Blokk: duplikálás'), blokkDuplikal),
+    notion('blokk-torol', tk('Blokk: törlés'), blokkTorol),
+    notion('blokk-link', tk('Blokk: link másolása'), (v) => blokkLinkMasol(v)),
+    notion('link', tk('Link beállítása'), linkParancs, { billentyu: 'Mod+K', ikon: Link, elerheto: szerkeszt }),
     {
       id: 'szerkeszto.link-beszur',
-      nev: 'Wikilink beszúrása ([[)',
-      kategoria: 'Szerkesztő',
+      nev: tk('Wikilink beszúrása ([[)'),
+      kategoria: tk('Szerkesztő'),
       ikon: Link,
       elerheto: szerkeszt,
       futtat: () => {
@@ -108,8 +109,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.beagyazas-beszur',
-      nev: 'Beágyazás beszúrása (![[)',
-      kategoria: 'Szerkesztő',
+      nev: tk('Beágyazás beszúrása (![[)'),
+      kategoria: tk('Szerkesztő'),
       elerheto: szerkeszt,
       futtat: () => {
         const v = sz()?.nezet();
@@ -118,8 +119,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.link-megnyit',
-      nev: 'Link megnyitása a kurzornál',
-      kategoria: 'Szerkesztő',
+      nev: tk('Link megnyitása a kurzornál'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+Enter',
       // csak ha a kurzor linken áll (különben a ⌘↩ a CodeMirror üres sort beszúró parancsáé marad)
       elerheto: () => {
@@ -133,8 +134,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.link-elonezet',
-      nev: 'Link előnézete a kurzornál',
-      kategoria: 'Szerkesztő',
+      nev: tk('Link előnézete a kurzornál'),
+      kategoria: tk('Szerkesztő'),
       elerheto: () => {
         const v = sz()?.nezet();
         return !!v && sz()!.mod() !== 'olvaso' && !!linkAt(v.state, v.state.selection.main.head);
@@ -147,8 +148,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.olvaso',
-      nev: 'Olvasó / szerkesztés',
-      kategoria: 'Szerkesztő',
+      nev: tk('Olvasó / szerkesztés'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+E',
       ikon: BookOpen,
       elerheto: () => !!sz(),
@@ -156,8 +157,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.forras',
-      nev: 'Live Preview / Forrás',
-      kategoria: 'Szerkesztő',
+      nev: tk('Live Preview / Forrás'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+Shift+E',
       ikon: Code,
       elerheto: () => !!sz(),
@@ -165,29 +166,29 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.mentes',
-      nev: 'Mentés most',
-      kategoria: 'Szerkesztő',
+      nev: tk('Mentés most'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+S',
       elerheto: () => !!(szerkesztok.masNezet ?? sz()),
       futtat: () => (szerkesztok.masNezet ?? sz())?.mentes(),
     },
     {
       id: 'szerkeszto.pillanatkep',
-      nev: 'Pillanatkép a jegyzetről',
-      kategoria: 'Szerkesztő',
+      nev: tk('Pillanatkép a jegyzetről'),
+      kategoria: tk('Szerkesztő'),
       elerheto: () => !!sz(),
       futtat: () => sz()?.pillanatkep(),
     },
-    formaz('felkover', 'Félkövér', '**', 'Mod+B'),
-    formaz('dolt', 'Dőlt', '*', 'Mod+I'),
-    formaz('kiemeles', 'Kiemelés', '==', 'Mod+Shift+H'),
-    formaz('athuzott', 'Áthúzott', '~~'),
-    formaz('kod', 'Kód', '`'),
+    formaz('felkover', tk('Félkövér'), '**', 'Mod+B'),
+    formaz('dolt', tk('Dőlt'), '*', 'Mod+I'),
+    formaz('kiemeles', tk('Kiemelés'), '==', 'Mod+Shift+H'),
+    formaz('athuzott', tk('Áthúzott'), '~~'),
+    formaz('kod', tk('Kód'), '`'),
     {
       // C21 (5., 10. pont): a ⌘⇧L a CodeMirror searchKeymap-jéé (selectSelectionMatches) — a szabad ⌥⌘L
       id: 'szerkeszto.keplet-ocr',
-      nev: 'Képlet a vágólapról (OCR)',
-      kategoria: 'Szerkesztő',
+      nev: tk('Képlet a vágólapról (OCR)'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+Alt+L',
       elerheto: szerkeszt,
       futtat: () => {
@@ -197,8 +198,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.kereses',
-      nev: 'Keresés a jegyzetben',
-      kategoria: 'Szerkesztő',
+      nev: tk('Keresés a jegyzetben'),
+      kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+F',
       ikon: Search,
       elerheto: () => !!sz() && sz()!.mod() !== 'olvaso',
@@ -209,8 +210,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.gepeles-meres',
-      nev: 'Fejlesztő: gépelési késleltetés mérése',
-      kategoria: 'Fejlesztő',
+      nev: tk('Fejlesztő: gépelési késleltetés mérése'),
+      kategoria: tk('Fejlesztő'),
       elerheto: () => !!sz()?.nezet(),
       futtat: () => {
         const v = sz()?.nezet();
@@ -219,8 +220,8 @@ function parancsok(): Parancs[] {
     },
     {
       id: 'szerkeszto.szintetikus-meres',
-      nev: 'Fejlesztő: szintetikus gépelési mérés (leválasztott másolaton)',
-      kategoria: 'Fejlesztő',
+      nev: tk('Fejlesztő: szintetikus gépelési mérés (leválasztott másolaton)'),
+      kategoria: tk('Fejlesztő'),
       elerheto: () => !!sz()?.nezet() && sz()!.mod() !== 'olvaso',
       futtat: async () => {
         const v = sz()?.nezet();
@@ -246,7 +247,7 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
   const indulasiUzenetek = (lista: unknown) => {
     if (!Array.isArray(lista)) return;
     for (const u of lista)
-      if (typeof u === 'string') ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Helyreállítás induláskor', szoveg: u, idotartam: 0 });
+      if (typeof u === 'string') ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Helyreállítás induláskor'), szoveg: u, idotartam: 0 });
   };
   const szinkron = () => {
     for (const d of szerkesztok.dokumentumok.lista()) void d.kulsoValtozas();
@@ -269,7 +270,7 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
     reg.regisztralMind(grafikonParancsok(() => (szerkesztok.aktiv?.ut ? { ut: szerkesztok.aktiv.ut, mentes: () => szerkesztok.aktiv?.mentes() ?? Promise.resolve() } : null))), // 80(a): grafikon csak gombra (⌘P)
     // K1: a core git-figyelmeztetése (a mentés pillanatkép nélkül ment) és az indulási helyreállítás üzenetei
     kapcsolat.figyel('pillanat_hiba', (e) =>
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Mentés pillanatkép nélkül', szoveg: String(e.uzenet ?? ''), idotartam: 0, rendszer: true }),
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Mentés pillanatkép nélkül'), szoveg: String(e.uzenet ?? ''), idotartam: 0, rendszer: true }),
     ),
     kapcsolat.figyel('hello', (e) => {
       indulasiUzenetek(e.figyelmeztetesek);
@@ -286,15 +287,15 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
         vaultErtesites = ertesitesek.ertesit({
           kulcs: 'vault-elerheto',
           szint: 'hiba',
-          cim: 'A vault nem érhető el',
+          cim: t('A vault nem érhető el'),
           szoveg:
-            'A kötet eltűnt (kihúzták vagy leválasztották). A szerkesztőben lévő szöveg megvan, de nem menthető, amíg a kötet vissza nem jön — ne zárd be az appot, és ne húzd ki újra.',
+            t('A kötet eltűnt (kihúzták vagy leválasztották). A szerkesztőben lévő szöveg megvan, de nem menthető, amíg a kötet vissza nem jön — ne zárd be az appot, és ne húzd ki újra.'),
           idotartam: 0,
         });
       } else if (vaultErtesites !== null) {
         ertesitesek.elvet(vaultErtesites);
         vaultErtesites = null;
-        ertesitesek.ertesit({ szint: 'siker', cim: 'A vault újra elérhető', szoveg: 'A mentés folytatódik.', idotartam: 4000 });
+        ertesitesek.ertesit({ szint: 'siker', cim: t('A vault újra elérhető'), szoveg: t('A mentés folytatódik.'), idotartam: 4000 });
       }
     }),
     // a core túlcsordult sora (események vesztek el): a `CoreKapcsolat` ebből tömeges `vault_valtozas`-t is csinál, amely
@@ -315,9 +316,9 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
         const szoveg = d.fajlSzoveg();
         ertesitesek.ertesit({
           szint: 'figyelmeztetes',
-          cim: 'A jegyzet közben eltűnt',
-          szoveg: `${ut} — törölték vagy áthelyezték. A szerkesztő tartalma nem veszett el, a vágólapra másolható.`,
-          muvelet: { nev: 'Másolás', futtat: () => void vagolapra(szoveg) },
+          cim: t('A jegyzet közben eltűnt'),
+          szoveg: t('{ut} — törölték vagy áthelyezték. A szerkesztő tartalma nem veszett el, a vágólapra másolható.', { ut }),
+          muvelet: { nev: t('Másolás'), futtat: () => void vagolapra(szoveg) },
           idotartam: 0,
         });
       }

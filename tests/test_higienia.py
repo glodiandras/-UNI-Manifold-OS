@@ -3,6 +3,7 @@ import hashlib
 import os
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from core import higienia
 from core.tulajdonsagok import Tulajdonsagok
@@ -160,7 +161,7 @@ class FajtaTest(HigieniaAlap):
         t = self.fajta(r, "hianyzo_forrashorgony")
         self.assertEqual(sorted((x["ut"], x["reszlet"]["alcel"]) for x in t),
                          [("Tul.md", "page=4"), ("Tul.md", "page=999")])
-        self.assertIn("3 oldalas", t[0]["uzenet"])
+        self.assertIn("3 pages", t[0]["uzenet"])
         self.assertIn("Tan.pdf#page=", t[0]["uzenet"])
         # a Source-tulajdonság hibája is jelzi a tulajdonságot; az oldalszámon belüli horgony nem tétel
         self.assertEqual([x["reszlet"].get("tulajdonsag") for x in t if x["reszlet"]["alcel"] == "page=4"], ["Source"])
@@ -460,6 +461,52 @@ class CliTest(HigieniaAlap):
         rc, _, hiba = self._fut(cfg)
         self.assertEqual(rc, 1)
         self.assertIn("index", hiba)
+
+
+class AngolTetelTest(HigieniaAlap):
+    def test_a_higieniai_uzenetek_angolok_a_fajlok_es_azonositok_valtozatlanok(self):
+        r = self.riport({
+            "Magyar cím.md": jo("[[Missing target]] és $\\frac{a}{b$\n"),
+            "Orphan.md": jo("user content\n"),
+            "Frontmatter.md": "---\n- invalid\n---\n# Frontmatter\n",
+        })
+        elvart = {"torott_link": "Broken link:", "arva_jegyzet": "Orphan note:",
+                  "hibas_keplet": "Invalid formula:", "hibas_frontmatter": "Invalid frontmatter syntax:"}
+        for fajta, kezdet in elvart.items():
+            tetelek = self.fajta(r, fajta)
+            self.assertTrue(tetelek, fajta)
+            self.assertTrue(all(t["uzenet"].startswith(kezdet) for t in tetelek), tetelek)
+        link = self.fajta(r, "torott_link")[0]
+        self.assertEqual(link["reszlet"]["cel_nyers"], "Missing target")
+        self.assertEqual(link["ut"], "Magyar cím.md")
+        keplet = self.fajta(r, "hibas_keplet")[0]
+        self.assertIn("Unclosed opening braces", keplet["uzenet"])
+        self.assertIn("1", keplet["uzenet"])
+        eredeti = vaultbajtok(self.v)
+        self.assertEqual([t["azonosito"] for t in self.h.riport()["tetelek"]], [t["azonosito"] for t in r["tetelek"]])
+        regi_problemak = self.h.tulajdonsagok.problemak
+
+        def mas_szoveg(*args, **kwargs):
+            return [{**p, "uzenet": "Más felületi szöveg"} for p in regi_problemak(*args, **kwargs)]
+
+        with mock.patch.object(higienia, "keplethiba_angol", return_value="Más képletszöveg"), \
+                mock.patch.object(higienia, "frontmatter_hiba_angol", return_value="Más YAML-szöveg"), \
+                mock.patch.object(self.h.tulajdonsagok, "problemak", side_effect=mas_szoveg):
+            mas_nyelv = self.h.riport()
+        self.assertEqual([t["azonosito"] for t in mas_nyelv["tetelek"]], [t["azonosito"] for t in r["tetelek"]])
+        self.assertEqual(vaultbajtok(self.v), eredeti)
+
+    def test_a_legacy_kepletproba_szovege_megmarad_a_reszlet_angol(self):
+        forrasok = ["", "a}", "{a", r"\left( x", r"\end{matrix}", r"\begin{a}\end{b}", r"\begin{aligned}"]
+        for forras in forrasok:
+            with self.subTest(forras=forras):
+                hiba = higienia.kepletproba(forras)
+                self.assertIsNotNone(hiba)
+                angol = higienia.keplethiba_angol(hiba)
+                self.assertNotEqual(angol, hiba)
+                self.assertNotEqual(angol, "The formula structure is invalid.")
+        self.assertEqual(higienia.kepletproba(""), "üres képlet")
+        self.assertIn("aligned", higienia.keplethiba_angol(higienia.kepletproba(r"\begin{aligned}")))
 
 
 if __name__ == "__main__":

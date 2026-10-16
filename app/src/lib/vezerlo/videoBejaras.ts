@@ -3,6 +3,7 @@
 // `GET /api/video/bejaras?url=` válasza; innen a felhasználó kiválasztja a letöltendőket, és a kiválasztott videók egy
 // `video_letoltes` feladatba mennek (`bejaras: true`; a `max_db` fölött `megerosit: true` kell).
 
+import { t } from '../i18n';
 export interface BejarasTetel {
   oldal: string;
   cim: string;
@@ -24,11 +25,11 @@ export interface BejarasTetel {
 }
 
 /** A tétel forrásának rövid leírása a listában: „közvetlen fájl (1080p, en, felirattal)” | „beágyazott lejátszó”. */
-export function forrasLeiras(t: BejarasTetel): string {
-  if (t.forras !== 'kozvetlen') return 'beágyazott lejátszó';
-  const reszek = [t.minoseg, t.nyelv].filter((x): x is string => !!x);
-  reszek.push(t.felirat ? 'felirattal' : 'felirat nélkül');
-  return `közvetlen fájl (${reszek.join(', ')})`;
+export function forrasLeiras(tetel: BejarasTetel): string {
+  if (tetel.forras !== 'kozvetlen') return t('beágyazott lejátszó');
+  const reszek = [tetel.minoseg, tetel.nyelv].filter((x): x is string => !!x);
+  reszek.push(tetel.felirat ? t('felirattal') : t('felirat nélkül'));
+  return t('közvetlen fájl ({reszek})', { reszek: reszek.join(', ') });
 }
 
 export interface BejarasEredmeny {

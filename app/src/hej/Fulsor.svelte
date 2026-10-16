@@ -3,6 +3,7 @@
   a fülek húzhatók (sorrend, és át egy másik panelre).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
   import { CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, Network, Plus, X } from '../lib/ikon/ikonok';
@@ -22,17 +23,17 @@
 
   /** Az önálló nézet-fül (gráf, Ma) címe; a helyi gráfé a középpont neve. */
   function nezetCim(f: Ful): string {
-    if (f.nezet?.tipus === 'ma' || f.nezet?.tipus === 'manifold') return 'Manifold';
-    if (f.nezet?.tipus === 'dolgozat') return 'Dolgozat';
-    if (f.nezet?.tipus === 'statisztika') return 'Statisztika';
-    if (f.nezet?.tipus === 'hasznalat') return 'Használat';
-    if (f.nezet?.tipus !== 'graf') return 'Új fül';
+    if (f.nezet?.tipus === 'ma' || f.nezet?.tipus === 'manifold') return t('Manifold');
+    if (f.nezet?.tipus === 'dolgozat') return t('Dolgozat');
+    if (f.nezet?.tipus === 'statisztika') return t('Statisztika');
+    if (f.nezet?.tipus === 'hasznalat') return t('Használat');
+    if (f.nezet?.tipus !== 'graf') return t('Új fül');
     const kozep = typeof f.nezet.kozeppont === 'string' ? fajlNev(f.nezet.kozeppont) : '';
-    return f.nezet.mod === 'helyi' && kozep ? `Helyi gráf: ${kozep}` : 'Gráf';
+    return f.nezet.mod === 'helyi' && kozep ? t('Helyi gráf: {kozep}', { kozep }) : t('Gráf');
   }
   const nezetIkon = (f: Ful) =>
     (f.nezet?.tipus === 'ma' || f.nezet?.tipus === 'manifold') ? CalendarDays : f.nezet?.tipus === 'dolgozat' ? GraduationCap : f.nezet?.tipus === 'statisztika' ? ChartNoAxesColumn : f.nezet?.tipus === 'hasznalat' ? Gauge : Network;
-  const cim = (f: Ful) => (f.ut ? fajlNev(f.ut) : nezetFul(f) ? nezetCim(f) : 'Új fül');
+  const cim = (f: Ful) => (f.ut ? fajlNev(f.ut) : nezetFul(f) ? nezetCim(f) : t('Új fül'));
   const tabId = (f: Ful) => `ful-${f.id}`;
 
   function aktival(f: Ful) {
@@ -91,7 +92,7 @@
   <div
     class="fulek"
     role="tablist"
-    aria-label="Fülek"
+    aria-label={t('Fülek')}
     tabindex="-1"
     bind:this={lista}
     ondragover={felett}
@@ -135,8 +136,8 @@
           type="button"
           class="bezar"
           tabindex="-1"
-          aria-label="{cim(f)} bezárása"
-          title="Bezárás (⌘W)"
+          aria-label={t('{cim} bezárása', { cim: cim(f) })}
+          title={t('Bezárás (⌘W)')}
           onclick={() => m.bezar(panel.id, f.id)}
         >
           <Ikon ikon={X} meret={14} />
@@ -144,7 +145,7 @@
       </div>
     {/each}
   </div>
-  <IkonGomb ikon={Plus} cimke="Új fül" billentyu="Mod+T" kicsi data-csend-rejt onclick={() => m.ujFul(panel.id)} />
+  <IkonGomb ikon={Plus} cimke={t('Új fül')} billentyu="Mod+T" kicsi data-csend-rejt onclick={() => m.ujFul(panel.id)} />
 </div>
 
 <style>

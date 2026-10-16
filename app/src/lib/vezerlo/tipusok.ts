@@ -21,6 +21,9 @@ export interface Feladat {
   lepes_i: number;
   kilepes: number | null;
   hiba: string | null;
+  /** A feladathiba nyelvfüggetlen kódja és paraméterei; a kész `hiba` szöveg a tartalék. */
+  kod?: string;
+  param?: Record<string, unknown>;
   leallitas_kerve: boolean;
   /** a feladat eredete: `2.0` (a Manifold saját sora) vagy más (egy korábbi importból: napló és változás-előzmény nincs vagy máshol van) */
   forras: string;

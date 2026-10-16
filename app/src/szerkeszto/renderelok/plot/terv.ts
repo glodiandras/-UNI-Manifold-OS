@@ -1,6 +1,7 @@
 // Az ábrából rajzterv (C35a): a kifejezések lefordítása, az ablak kiválasztása (a megadott tartomány, különben a
 // mintákból „szép” határokkal), a hibás elem halk kihagyása. Tiszta logika: a JSXGraph-ot a `rajzolo.ts` hívja.
 
+import { t as tx } from '../../../lib/i18n';
 import type { Abra } from './forras';
 import { KifejezesHiba, fordit, konstans, type Ertek } from './kifejezes';
 
@@ -88,16 +89,16 @@ function tartomanyKonstans(par: [string, string], nev: string, fig: string[]): [
   try {
     const lo = konstans(par[0]);
     const hi = konstans(par[1]);
-    if (!(lo < hi)) throw new KifejezesHiba('az alsó határ kisebb legyen a felsőnél');
+    if (!(lo < hi)) throw new KifejezesHiba(tx('az alsó határ kisebb legyen a felsőnél'));
     return [lo, hi];
   } catch (e) {
-    fig.push(`${nev} tartomány: ${e instanceof Error ? e.message : String(e)}`);
+    fig.push(tx('{nev} tartomány: {hiba}', { nev, hiba: e instanceof Error ? e.message : String(e) }));
     return null;
   }
 }
 
 export function terv(abra: Abra): Rajzterv {
-  const fig: string[] = abra.hibak.map(([n, uzenet]) => `${n}. sor: ${uzenet}`);
+  const fig: string[] = abra.hibak.map(([n, uzenet]) => tx('{n}. sor: {uzenet}', { n, uzenet }));
   const gorbek: Gorbe[] = [];
   const tartomanyok: TartomanyElem[] = [];
   const pontok: PontElem[] = [];
@@ -110,7 +111,7 @@ export function terv(abra: Abra): Rajzterv {
     const tengely = /^([xy])-felirat "([^"<>]{1,80})"$/.exec(e.szoveg);
     if (sz) szinek.set(Number(sz[1]), sz[2]);
     else if (tengely) tengelyFelirat[tengely[1] as 'x' | 'y'] = tengely[2];
-    else if (/^(szin |[xy]-felirat )/.test(e.szoveg)) fig.push('Hibás szín vagy tengelyfelirat-beállítás.');
+    else if (/^(szin |[xy]-felirat )/.test(e.szoveg)) fig.push(tx('Hibás szín vagy tengelyfelirat-beállítás.'));
   }
   const szin = () => { const i = db++; return szinek.get(i + 1) ?? SOROZAT_SZIN[i % SOROZAT_SZIN.length]; };
   const hibas = (leiras: string, e: unknown) => fig.push(`${leiras}: ${e instanceof Error ? e.message : String(e)}`);
@@ -122,10 +123,10 @@ export function terv(abra: Abra): Rajzterv {
       } else if (e.fajta === 'egyenlotlenseg') {
         tartomanyok.push({ relacio: e.relacio, cimke: e.cimke, kifejezes: e.kifejezes, ertek: fordit(e.kifejezes, 'x'), szin: szin() });
       } else if (e.fajta === 'parameteres') {
-        if (e.t === 'e') throw new KifejezesHiba('a paraméter neve nem lehet `e` (az Euler-szám)');
+        if (e.t === 'e') throw new KifejezesHiba(tx('a paraméter neve nem lehet `e` (az Euler-szám)'));
         const lo = konstans(e.tartomany[0]);
         const hi = konstans(e.tartomany[1]);
-        if (!(lo < hi)) throw new KifejezesHiba('a paraméter alsó határa kisebb legyen a felsőnél');
+        if (!(lo < hi)) throw new KifejezesHiba(tx('a paraméter alsó határa kisebb legyen a felsőnél'));
         gorbek.push({
           fajta: 'parameteres',
           cimke: e.cimke,

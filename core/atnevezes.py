@@ -33,6 +33,7 @@ from . import frame, osszeomlas, snapshot, tartos, vaultio
 from .bazis import hivatkozas as bazis_hivatkozas
 from .index import feloldas, linkek
 from .index.feloldas import SKIP_DIRS, Feloldo, nfc
+from .hibakod import kodol
 
 SZOVEGES = (".md", ".canvas")
 MOZGATHATO = SZOVEGES + (".base",)        # a `.base` szöveges fájl, a pillanatkép-tárolóban van (23. döntés)
@@ -125,18 +126,18 @@ def helyreallit(cfg) -> list[str]:
             utkozo.append(f["ut"])
     if repo is not None and repo.live():
         repo.index_frissit()                # a visszaírt fájlok stat-adata ne zajoljon a git-indexben (T101)
-    elso = f"Egy átnevezés megszakadt ({n['regi']} → {n['uj']}; a core az írások közben leállt). "
+    elso = f"A rename was interrupted ({n['regi']} → {n['uj']}) when the core stopped during writing. "
     if visszaallt:
-        uzenet = elso + "A vault visszaállt az átnevezés előtti állapotra; az átnevezés újra elindítható."
+        uzenet = elso + "The vault was restored to its state before the rename. You can try renaming again."
     elif utkozo:
-        uzenet = elso + "Semmit nem tudtam visszaállítani."
+        uzenet = elso + "No files could be restored."
     else:
-        uzenet = elso + "A vault még érintetlen volt: nem kellett visszaállítani semmit; az átnevezés újra elindítható."
+        uzenet = elso + "The vault had not changed, so no restoration was needed. You can try renaming again."
     if utkozo:
         megtartva = d.with_name(f"{NAPLO}-megtartva-{time.strftime('%Y%m%d-%H%M%S')}")
         os.rename(d, megtartva)
-        uzenet += (f" Ezeket a fájlokat közben más is átírta, ezért nem írtam vissza: {', '.join(utkozo[:10])}. "
-                   f"Az eredeti bájtjaik itt vannak: {megtartva}.")
+        uzenet += (f" These files were changed by another writer and were left untouched: {', '.join(utkozo[:10])}. "
+                   f"Their original bytes are preserved at: {megtartva}.")
     else:
         _naplo_torol(cfg)
     return [uzenet]
@@ -145,9 +146,12 @@ def helyreallit(cfg) -> list[str]:
 class Hiba(Exception):
     """Az átnevezés kérés- vagy állapothibája; `kod`: HTTP-kód."""
 
-    def __init__(self, kod: int, uzenet: str, **adat):
+    def __init__(self, statusz: int, uzenet: str, **adat):
         super().__init__(uzenet)
-        self.kod, self.adat = kod, adat
+        self.kod, self.adat = statusz, adat
+        # The numeric HTTP status and the string translation code are independent.
+        if isinstance(adat.get("kod"), str):
+            kodol(self, adat["kod"], adat.get("param"))
 
 
 @dataclass
@@ -323,7 +327,7 @@ class Atnevezes:
             return terv
         fajlok = [rp for rp, _ in feloldas.bejaras(self.v.root)]
         if regi not in fajlok:
-            raise vaultio.NotFound(f"nincs ilyen fájl az indexben: {regi}")
+            raise kodol(vaultio.NotFound(f"nincs ilyen fájl az indexben: {regi}"), "atnevezes.nincs_ilyen_fajl_indexben_regi", {"regi": regi})
         if uj in fajlok:
             terv.blokkolok.append(f"Már van ilyen nevű fájl: {uj}")
             return terv
@@ -567,7 +571,7 @@ class Atnevezes:
     def vegrehajt(self, ut, uj, terv_hash) -> dict:
         repo = self.v.repo()
         if repo is None:
-            raise Hiba(409, "Nincs élő pillanatkép-tároló: pillanatkép nélkül nem nevezek át.")
+            raise kodol(Hiba(409, "Nincs élő pillanatkép-tároló: pillanatkép nélkül nem nevezek át."), "atnevezes.nincs_pillanatkep")
         if self.busy():
             raise Hiba(409, "Egy vault-író feladat fut — az átnevezés a vége után indítható.", foglalt=True)
         t = self._terv(ut, uj)

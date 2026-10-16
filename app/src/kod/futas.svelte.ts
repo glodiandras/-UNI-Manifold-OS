@@ -4,6 +4,7 @@
 // semmit maga: a fordítás, a futtatás és az összevetés a motoré (`modulok/cpp`, homokozóban, 53(b)).
 
 import { ApiHiba, kerdez } from '../lib/core/api';
+import { t, tk } from '../lib/i18n';
 import type { CoreEsemeny, CoreKapcsolat } from '../lib/core/ws.svelte';
 
 export type FutasMod = 'gyors' | 'hibakereso';
@@ -89,16 +90,16 @@ export type TesztAllapot =
 
 /** A teszt-állapotok magyar neve (a panel és a beágyazás). */
 export const ALLAPOT_NEV: Record<string, string> = {
-  atment: 'átment',
-  hibas_kimenet: 'hibás kimenet',
-  futasi_hiba: 'futási hiba',
-  idotullepes: 'időtúllépés',
-  memoria: 'memóriakorlát',
-  kimenet_tullepes: 'túl sok kimenet',
-  iras_korlat: 'írási korlát',
-  szanitizer: 'sanitizer-hiba',
-  homokozo_hiba: 'homokozó-hiba',
-  hibas_teszt: 'hibás teszt-blokk',
+  atment: tk('átment'),
+  hibas_kimenet: tk('hibás kimenet'),
+  futasi_hiba: tk('futási hiba'),
+  idotullepes: tk('időtúllépés'),
+  memoria: tk('memóriakorlát'),
+  kimenet_tullepes: tk('túl sok kimenet'),
+  iras_korlat: tk('írási korlát'),
+  szanitizer: tk('sanitizer-hiba'),
+  homokozo_hiba: tk('homokozó-hiba'),
+  hibas_teszt: tk('hibás teszt-blokk'),
 };
 
 export interface TesztEredmeny {
@@ -216,7 +217,7 @@ export function alkalmaz(a: Futas | null, e: CoreEsemeny, korabbiak: ReadonlySet
       break;
     }
     case 'hiba':
-      f.hiba = { kod: szoveg(e.kod), uzenet: szoveg(e.uzenet) ?? 'ismeretlen hiba' };
+      f.hiba = { kod: szoveg(e.kod), uzenet: szoveg(e.uzenet) ?? t('ismeretlen hiba') };
       f.allapot = 'hiba';
       break;
     case 'megszakitva':
@@ -319,7 +320,7 @@ export class KodFutasok {
     } catch (e) {
       // a core újraindult, a futás nincs meg: lezárt hibának számít (különben a panel örökké „fut”)
       if (e instanceof ApiHiba && e.statusz === 404 && this.aktiv?.futas === a.futas)
-        this.beallit({ ...a, allapot: 'hiba', hiba: { kod: 'elveszett', uzenet: 'a futás a core újraindulásakor megszakadt' } });
+        this.beallit({ ...a, allapot: 'hiba', hiba: { kod: 'elveszett', uzenet: t('a futás a core újraindulásakor megszakadt') } });
     }
   }
 

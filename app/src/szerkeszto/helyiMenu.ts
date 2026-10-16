@@ -8,11 +8,12 @@
 // (`menuElemek` Manifold-csoportja — EGY lista, a saját menüé is), a héj a `willOpenMenu`-ban fűzi hozzá, a választás a
 // `window.manifold.parancs(id)` hídon fut. Héj nélkül (böngésző, teszt, régi héj) és a billentyűs megnyitásnál (⇧F10, Menü) a saját menü marad.
 
+import { t } from '../lib/i18n';
 import type { Extension } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
 import { hejKepesseg, hejnek } from '../lib/core/hej';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-import { regiszter } from '../lib/parancsok/regiszter';
+import { regiszter, parancsNev } from '../lib/parancsok/regiszter';
 import { JEGYZET_MENU_PARANCSOK } from '../vezerlo/helyorzok';
 import { irhato } from './beallitas';
 import { jegyzetUtja } from './elo/jegyzet';
@@ -34,25 +35,25 @@ export function menuElemek(view: EditorView): { elemek: MenuElem[]; akciok: Map<
     elemek.push(e);
     akciok.set(e.id, fn);
   };
-  hozzaad({ id: 'kivag', nev: 'Kivágás', jelzo: '⌘X', letiltva: !van || !ir, csoport: 'Szerkesztés' }, () => {
+  hozzaad({ id: 'kivag', nev: t('Kivágás'), jelzo: '⌘X', letiltva: !van || !ir, csoport: 'Szerkesztés' /* i18n-ignore: csoportkulcs, nem látszik */ }, () => {
     const s = view.state.selection.main;
     void vagolapra(view.state.sliceDoc(s.from, s.to));
     if (irhato(view)) view.dispatch({ changes: { from: s.from, to: s.to }, userEvent: 'delete.cut' });
   });
-  hozzaad({ id: 'masol', nev: 'Másolás', jelzo: '⌘C', letiltva: !van, csoport: 'Szerkesztés' }, () => {
+  hozzaad({ id: 'masol', nev: t('Másolás'), jelzo: '⌘C', letiltva: !van, csoport: 'Szerkesztés' /* i18n-ignore: csoportkulcs, nem látszik */ }, () => {
     const s = view.state.selection.main;
     void vagolapra(view.state.sliceDoc(s.from, s.to));
   });
-  hozzaad({ id: 'beillesztes', nev: 'Beillesztés', jelzo: '⌘V', letiltva: !ir, csoport: 'Szerkesztés' }, () => {
+  hozzaad({ id: 'beillesztes', nev: t('Beillesztés'), jelzo: '⌘V', letiltva: !ir, csoport: 'Szerkesztés' /* i18n-ignore: csoportkulcs, nem látszik */ }, () => {
     navigator.clipboard.readText().then(
       (t) => irhato(view) && view.dispatch(view.state.replaceSelection(t), { userEvent: 'input.paste', scrollIntoView: true }),
-      () => ertesitesek.ertesit({ szint: 'info', cim: 'A beillesztéshez használd a ⌘V-t', szoveg: 'A böngészőmotor itt nem engedi a vágólap olvasását.' }),
+      () => ertesitesek.ertesit({ szint: 'info', cim: t('A beillesztéshez használd a ⌘V-t'), szoveg: t('A böngészőmotor itt nem engedi a vágólap olvasását.') }),
     );
   });
   for (const id of JEGYZET_MENU_PARANCSOK) {
     const p = regiszter.kap(id);
     if (!p) continue;
-    hozzaad({ id: `parancs:${id}`, nev: p.nev, csoport: 'Manifold', letiltva: !regiszter.elerheto(p) }, () => void regiszter.futtat(id, 'menu'));
+    hozzaad({ id: `parancs:${id}`, nev: parancsNev(p), csoport: 'Manifold', letiltva: !regiszter.elerheto(p) }, () => void regiszter.futtat(id, 'menu'));
   }
   return { elemek, akciok };
 }
@@ -66,7 +67,7 @@ export function nativMenuElemek(view: EditorView): { id: string; nev: string; le
 
 function nyit(view: EditorView, x: number, y: number): void {
   const { elemek, akciok } = menuElemek(view);
-  lebegoMenu(view, x, y, elemek, akciok, 'Jegyzet menü');
+  lebegoMenu(view, x, y, elemek, akciok, t('Jegyzet menü'));
 }
 
 export function helyiMenuBovitmeny(): Extension {

@@ -134,6 +134,15 @@ class ConfigError(ValueError):
         self.kod = kod
         self.param = dict(param or {})
 
+    @property
+    def hiba_kod(self) -> str:
+        """A szerver `hiba_torzs()` ezt tölti a hibatörzs `kod` mezőjébe (a felület a `hiba.<kod>` kulcsot fordítja)."""
+        return self.kod
+
+    @property
+    def hiba_param(self) -> dict:
+        return {str(k): v if v is None or isinstance(v, (str, int, float, bool)) else str(v) for k, v in self.param.items()}
+
 
 def os_root() -> Path:
     """A gyökér: `MOS_ROOT`, különben a csomag saját helyéből."""

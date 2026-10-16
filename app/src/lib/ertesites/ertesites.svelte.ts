@@ -1,9 +1,12 @@
 // Az értesítések egyetlen szolgáltatása és egyetlen helye (C07). Minden modul innen szól a felhasználónak:
 //
-//   ertesitesek.ertesit({ szint: 'siker', cim: 'Kártyák elkészültek', szoveg: '12 új kártya' });
+//   ertesitesek.ertesit({ szint: 'siker', cim: t('Kártyák elkészültek'), szoveg: tp('{n} új kártya', 12) });
 //
 // A jobb alsó sarokban legfeljebb 3 látszik; hoverre és fókuszra az időzítő megáll. A munkamenet
 // előzménye az állapotsor gombja mögött marad (legfeljebb 50).
+//
+// A hívó fordítja a feliratokat a bejelentés előtt. A szolgáltatás kész szöveget és felhasználói adatot kap: egy második
+// t() a fájlnévben álló |utótagot kontextusnak nézhetné, vagy egy esemény címét véletlenül szótárkulcsként fordíthatná.
 
 export type Szint = 'info' | 'siker' | 'figyelmeztetes' | 'hiba';
 
@@ -58,21 +61,23 @@ export class Ertesitesek {
     const szint = be.szint ?? 'info';
     const szoveg = be.szoveg ?? '';
     const idotartam = be.idotartam ?? (szint === 'hiba' || be.muvelet ? 10000 : 5000);
+    const cim = be.cim;
+    const muvelet = be.muvelet ?? null;
     const kulcsos = be.kulcs ? this.lista.find((e) => e.kulcs === be.kulcs) : undefined;
     if (kulcsos) {
-      Object.assign(kulcsos, { szint, cim: be.cim, szoveg, muvelet: be.muvelet ?? null, idotartam, ido: Date.now(), rendszer: be.rendszer ?? false });
+      Object.assign(kulcsos, { szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), rendszer: be.rendszer ?? false });
       this.idozit(kulcsos.id, idotartam);
       this.rendszerKuld(kulcsos);
       return kulcsos.id;
     }
-    const mar = this.lista.find((e) => !e.kulcs && e.cim === be.cim && e.szoveg === szoveg && e.szint === szint);
+    const mar = this.lista.find((e) => !e.kulcs && e.cim === cim && e.szoveg === szoveg && e.szint === szint);
     if (mar) {
       mar.darab += 1;
       mar.ido = Date.now();
       this.idozit(mar.id, mar.idotartam);
       return mar.id;
     }
-    const e: Ertesites = { id: this.kov++, szint, cim: be.cim, szoveg, muvelet: be.muvelet ?? null, idotartam, ido: Date.now(), darab: 1, kulcs: be.kulcs ?? null, rendszer: be.rendszer ?? false };
+    const e: Ertesites = { id: this.kov++, szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), darab: 1, kulcs: be.kulcs ?? null, rendszer: be.rendszer ?? false };
     this.lista.push(e);
     this.elozmeny.unshift(e);
     if (this.elozmeny.length > MAX_ELOZMENY) this.elozmeny.length = MAX_ELOZMENY;

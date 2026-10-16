@@ -4,6 +4,7 @@
   revert-commitként, a kör-zár alatt); a már visszavont kört jelzi.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { untrack } from 'svelte';
   import { ApiHiba } from '../../lib/core/api';
   import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
@@ -11,7 +12,7 @@
   import { Undo2 } from '../../lib/ikon/ikonok';
   import { kornyezet } from '../../lib/kornyezet';
   import { vezerloApi } from '../../lib/vezerlo/api';
-  import { utReszei } from '../../lib/vezerlo/megjelenites';
+  import { feladatSzoveg, utReszei } from '../../lib/vezerlo/megjelenites';
   import { LEZART, type Feladat, type ValtozasFajl, type Valtozasok } from '../../lib/vezerlo/tipusok';
   import FeladatDiff from './FeladatDiff.svelte';
 
@@ -57,7 +58,7 @@
     visszaHiba = null;
     try {
       await vezerloApi.visszavon(kor);
-      ertesitesek.ertesit({ szint: 'siker', cim: 'Visszavonva', szoveg: `${feladat.cim} — ${kor}` });
+      ertesitesek.ertesit({ szint: 'siker', cim: t('Visszavonva'), szoveg: `${feladatSzoveg(feladat.cim)} — ${kor}` });
       megerosit = null;
       await betolt();
     } catch (e) {
@@ -74,35 +75,35 @@
 {#if hiba}
   <p class="hiba" role="alert">{hiba}</p>
 {:else if !adat}
-  <p class="halvany" role="status">Betöltés…</p>
+  <p class="halvany" role="status">{t('Betöltés…')}</p>
 {:else if adat.nincs_tar}
-  <p class="halvany">A vault pillanatkép-tárolója nem érhető el, a változások nem listázhatók.</p>
+  <p class="halvany">{t('A vault pillanatkép-tárolója nem érhető el, a változások nem listázhatók.')}</p>
 {:else if !adat.korok.length}
   <p class="halvany">
-    {#if feladat.forras !== '2.0'}Ehhez a feladathoz nem érhető el változás-előzmény.{:else if !LEZART.has(feladat.allapot)}Eddig nem írt a vaultba.{:else}Nem írt a vaultba.{/if}
+    {#if feladat.forras !== '2.0'}{t('Ehhez a feladathoz nem érhető el változás-előzmény.')}{:else if !LEZART.has(feladat.allapot)}{t('Eddig nem írt a vaultba.')}{:else}{t('Nem írt a vaultba.')}{/if}
   </p>
 {:else}
   {#each adat.korok as kor (kor.kor)}
-    <section class="kor" aria-label={`Kör: ${kor.kor}`}>
+    <section class="kor" aria-label={t('Kör: {kor}', { kor: kor.kor })}>
       <header>
         <span class="kor-nev">{kor.kor}</span>
         {#if kor.visszavonva}
-          <span class="jelzo">visszavonva</span>
+          <span class="jelzo">{t('visszavonva')}</span>
         {:else if kor.visszavonhato}
           {#if megerosit === kor.kor}
             <span class="megerosit">
-              <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = null)}>Mégse</button>
-              <button type="button" class="m-gomb semleges gomb veszely" disabled={dolgozik} onclick={() => visszavon(kor.kor)}>Visszavonás</button>
+              <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = null)}>{t('Mégse')}</button>
+              <button type="button" class="m-gomb semleges gomb veszely" disabled={dolgozik} onclick={() => visszavon(kor.kor)}>{t('Visszavonás')}</button>
             </span>
           {:else}
             <button type="button" class="m-gomb semleges gomb" onclick={() => ((megerosit = kor.kor), (visszaHiba = null))}>
-              <Ikon ikon={Undo2} meret={14} /> Visszavonás
+              <Ikon ikon={Undo2} meret={14} /> {t('Visszavonás')}
             </button>
           {/if}
         {/if}
       </header>
       {#if megerosit === kor.kor}
-        <p class="figy">A kör változásai visszafordulnak (új commit); ez is visszavonható. A kézi szerkesztéseid nem sérülnek.</p>
+        <p class="figy">{t('A kör változásai visszafordulnak (új commit); ez is visszavonható. A kézi szerkesztéseid nem sérülnek.')}</p>
       {/if}
       {#if visszaHiba && megerosit === kor.kor}
         <div class="hiba" role="alert">
@@ -116,7 +117,7 @@
             {@const r = utReszei(f.ut)}
             <li>
               <button type="button" class="fajl" title={f.ut} onclick={() => (diff = { fajl: f, sha: c.sha })}>
-                <span class="all a-{f.allapot}" aria-label={f.allapot === 'A' ? 'új' : f.allapot === 'D' ? 'törölve' : 'módosítva'}>{f.allapot}</span>
+                <span class="all a-{f.allapot}" aria-label={f.allapot === 'A' ? t('új') : f.allapot === 'D' ? t('törölve') : t('módosítva')}>{f.allapot}</span>
                 <span class="nev"><b>{r.nev}</b>{#if r.mappa}<small>{r.mappa}</small>{/if}</span>
                 <span class="szam"><i class="p">+{darab(f.plusz)}</i><i class="m">−{darab(f.minusz)}</i></span>
               </button>
@@ -127,7 +128,7 @@
     </section>
   {/each}
   {#if adat.levagva}
-    <p class="halvany" role="status">A lista csonka: a feladatnak ennél több gépi commitja van, csak a legfrissebbek látszanak.</p>
+    <p class="halvany" role="status">{t('A lista csonka: a feladatnak ennél több gépi commitja van, csak a legfrissebbek látszanak.')}</p>
   {/if}
 {/if}
 

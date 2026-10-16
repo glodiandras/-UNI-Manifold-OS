@@ -11,6 +11,7 @@
 //             szabállyal), a gépelt `#page=12` horgony és `|alias` változatlanul marad.
 // A szűrés a felületen, a lekért (gyorsítótárazott) listán történik: a gépelés nem vár a core-ra.
 
+import { t, tp, tk } from '../../lib/i18n';
 import type { IconNode } from 'lucide';
 import { fajlIkon } from '../../lib/ikon/fajlIkon';
 import { FuzzyIndex, normalizal } from '../../lib/kereses/fuzzy';
@@ -42,7 +43,7 @@ export interface JavaslatLista {
   eros: boolean;
 }
 
-export const NINCS_A_SEMABAN = 'vaultban használt';
+export const NINCS_A_SEMABAN = tk('vaultban használt');
 const MAX_ELEM = 30;
 
 export type JavaslatFajta = 'link' | 'ertek';
@@ -58,7 +59,7 @@ function erosE(nev: string, q: string): boolean {
 }
 
 const szamJel = (db: number) => (db > 0 ? String(db) : undefined);
-const szamLeiras = (db: number) => (db > 0 ? `${db} jegyzetben` : 'A vaultban még nincs használva');
+const szamLeiras = (db: number) => (db > 0 ? tp('{n} jegyzetben', db) : t('A vaultban még nincs használva'));
 
 // ---------------------------------------------------------------------- értékek és kulcsok
 
@@ -73,7 +74,7 @@ export function ertekLista(ertekek: readonly ErtekJavaslat[], q: string, kizar: 
         nev: e.ertek,
         ertek: e.ertek,
         jelzo: szamJel(e.db),
-        leiras: e.sema === false ? `${szamLeiras(e.db)}; a vaultban használt érték` : szamLeiras(e.db),
+        leiras: e.sema === false ? t('{leiras}; a vaultban használt érték', { leiras: szamLeiras(e.db) }) : szamLeiras(e.db),
         megjegyzes: e.sema === false ? NINCS_A_SEMABAN : undefined,
       }),
     );
@@ -101,8 +102,8 @@ export function kulcsLista(kulcsok: readonly KulcsJavaslat[], q: string, kizar: 
         id: `k:${k.kulcs}`,
         nev: k.kulcs,
         ertek: k.kulcs,
-        jelzo: k.sema ? 'séma' : szamJel(k.db),
-        leiras: k.sema ? `A vault sémájának kulcsa; ${szamLeiras(k.db).toLowerCase()}` : szamLeiras(k.db),
+        jelzo: k.sema ? t('séma') : szamJel(k.db),
+        leiras: k.sema ? t('A vault sémájának kulcsa; {leiras}', { leiras: szamLeiras(k.db).toLowerCase() }) : szamLeiras(k.db),
       }),
     );
   const query = q.trim();

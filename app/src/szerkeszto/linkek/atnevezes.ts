@@ -2,6 +2,7 @@
 // a ⌘P-parancsok, és a `vault_atnevezes` WS-esemény kezelője (a nyitott fülek átcímzése, az „eltűnt” értesítés
 // elnyomása). A link-átírás és a referencia-próba a core dolga (L42, a legacy I30 szabálya); itt csak kérés van.
 
+import { t, tp, tk } from '../../lib/i18n';
 import { ApiHiba, kerdez } from '../../lib/core/api';
 import type { CoreKapcsolat } from '../../lib/core/ws.svelte';
 import type { Felulet } from '../../lib/elrendezes/felulet.svelte';
@@ -83,9 +84,9 @@ export function regiDokumentumokKikerulnek(regi: string, mappa: boolean): void {
     const szoveg = d.fajlSzoveg();
     ertesitesek.ertesit({
       szint: 'figyelmeztetes',
-      cim: 'Mentetlen szöveg az átnevezéskor',
-      szoveg: `${d.ut} — az átnevezés közben gépelt, még nem mentett szöveg nem került a fájlba. A vágólapra másolható.`,
-      muvelet: { nev: 'Másolás', futtat: () => void vagolapra(szoveg) },
+      cim: t('Mentetlen szöveg az átnevezéskor'),
+      szoveg: t('{ut} — az átnevezés közben gépelt, még nem mentett szöveg nem került a fájlba. A vágólapra másolható.', { ut: d.ut }),
+      muvelet: { nev: t('Másolás'), futtat: () => void vagolapra(szoveg) },
       idotartam: 0,
     });
   }
@@ -115,12 +116,12 @@ export async function atnevezesVisszavon(r: Eredmeny, felulet: Felulet): Promise
     await kerdez('/api/pillanat/vault/visszavonas', { metodus: 'POST', torzs: { sha: r.pillanat }, idokorlat: 120000 });
     felulet.utatNevez(r.uj, r.regi);
     regiDokumentumokKikerulnek(r.uj, !!r.mappa);
-    ertesitesek.ertesit({ szint: 'siker', cim: 'Átnevezés visszavonva', szoveg: `${r.uj} → ${r.regi}`, idotartam: 4000 });
+    ertesitesek.ertesit({ szint: 'siker', cim: t('Átnevezés visszavonva'), szoveg: `${r.uj} → ${r.regi}`, idotartam: 4000 });
     return true;
   } catch (e) {
     ertesitesek.ertesit({
       szint: 'hiba',
-      cim: 'A visszavonás nem sikerült',
+      cim: t('A visszavonás nem sikerült'),
       szoveg: e instanceof ApiHiba ? e.message : String(e),
       idotartam: 0,
     });
@@ -133,12 +134,12 @@ export async function atnevezesVisszavon(r: Eredmeny, felulet: Felulet): Promise
 /** Siker utáni értesítés „Visszavonás” művelettel. */
 export function atnevezesErtesites(r: Eredmeny, felulet: Felulet): void {
   const db = r.mappa ? r.modositott.filter((m) => !m.startsWith(r.uj + '/')).length : r.modositott.filter((m) => m !== r.uj).length;
-  const mozgott = r.mappa ? ` · ${r.mozgo_fajlok ?? 0} jegyzet` : '';
+  const mozgott = r.mappa ? ' · ' + tp('{n} jegyzet', r.mozgo_fajlok ?? 0) : '';
   ertesitesek.ertesit({
     szint: 'siker',
-    cim: r.mappa ? 'Mappa átnevezve' : 'Átnevezve',
-    szoveg: `${r.regi} → ${r.uj}${mozgott}${db ? ` · ${db} jegyzet linkjei átírva` : ''}`,
-    muvelet: r.pillanat && r.visszavonhato !== false ? { nev: 'Visszavonás', futtat: () => void atnevezesVisszavon(r, felulet) } : undefined,
+    cim: r.mappa ? t('Mappa átnevezve') : t('Átnevezve'),
+    szoveg: `${r.regi} → ${r.uj}${mozgott}${db ? ' · ' + tp('{n} jegyzet linkjei átírva', db) : ''}`,
+    muvelet: r.pillanat && r.visszavonhato !== false ? { nev: t('Visszavonás'), futtat: () => void atnevezesVisszavon(r, felulet) } : undefined,
     idotartam: 15000,
   });
 }
@@ -187,7 +188,7 @@ export function atnevezesParancsok(felulet: Felulet): Parancs[] {
     felulet.atfedes = 'atnevezes';
   };
   return [
-    { id: 'vault.atnevezes', nev: 'Jegyzet átnevezése…', kategoria: 'Fájl', billentyu: 'F2', elerheto: () => !!cel(), futtat: () => nyit('nev') },
-    { id: 'vault.athelyezes', nev: 'Jegyzet áthelyezése…', kategoria: 'Fájl', elerheto: () => !!cel(), futtat: () => nyit('hely') },
+    { id: 'vault.atnevezes', nev: t('Jegyzet átnevezése…'), kategoria: tk('Fájl'), billentyu: 'F2', elerheto: () => !!cel(), futtat: () => nyit('nev') },
+    { id: 'vault.athelyezes', nev: t('Jegyzet áthelyezése…'), kategoria: tk('Fájl'), elerheto: () => !!cel(), futtat: () => nyit('hely') },
   ];
 }

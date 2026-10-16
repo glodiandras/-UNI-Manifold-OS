@@ -29,6 +29,7 @@ from typing import Callable, Iterable, Iterator
 
 from ...vaultio import Invalid
 from .kereso import HibridKereso, Jelolt
+from ...hibakod import kodol
 
 PROMPT_VERZIO = "kerdezz-v1"
 ModellHivas = Callable[[str, int], "str | Iterable[str]"]
@@ -162,7 +163,7 @@ def folyam(kerdes: str, kereso: HibridKereso, hivo: ModellHivas | None, b: Beall
     """Az események (`{"tipus": "forrasok" | "mondat" | "elvetve" | "vege", …}`), lásd a modul leírását. `hivo` nélkül
     csak a forrásvizsgálat fut: elég forrásnál `vege` / `nincs_modell`."""
     if not isinstance(kerdes, str) or not kerdes.strip():
-        raise Invalid("üres kérdés")
+        raise kodol(Invalid("üres kérdés"), "hibrid.kerdezz.ures_kerdes")
     b = b or Beallitas()
     prof = prof or profil()
     jeloltek = elegseges(kereso.darab_jeloltek(kerdes, max(b.darab_n * 3, b.darab_n)), b)[:b.darab_n]

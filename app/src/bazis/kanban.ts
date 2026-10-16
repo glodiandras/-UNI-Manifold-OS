@@ -4,6 +4,7 @@
 // csak `.md` sor és csak note-tulajdonság húzható, és csak skalár értékű (nem lista / dátum / link) oszlopba.
 
 import type { Ertek, Sor, Valasz } from './tipusok';
+import { tk } from '../lib/i18n';
 
 export interface KanbanOszlop {
   /** a csoport nyers értéke (a core `Ertek`-je); a „Nincs érték” oszlopé `null` */
@@ -15,7 +16,7 @@ export interface KanbanOszlop {
   fogad: boolean;
 }
 
-export const NINCS_ERTEK = 'Nincs érték';
+export const NINCS_ERTEK = tk('Nincs érték');
 
 /** A csoportosító tulajdonság kulcsa a `.base`-ből (`note.Status` → `Status`); `null`, ha nem frontmatter-tulajdonság. */
 export function csoportKulcs(valasz: Valasz): string | null {

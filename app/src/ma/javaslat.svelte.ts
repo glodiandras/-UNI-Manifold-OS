@@ -3,6 +3,7 @@
 // Hibánál az üzenet a kártyán és egy értesítésben is látszik (a core lezárhatja a javaslatot, és a kártya eltűnik).
 
 import { ApiHiba } from '../lib/core/api';
+import { t } from '../lib/i18n';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import { naptarApi } from '../lib/naptar/api';
 import { maAdat } from './modell.svelte';
@@ -23,11 +24,11 @@ export class JavaslatKezelo {
     try {
       await (mit === 'jovahagy' ? naptarApi.jovahagy(id) : naptarApi.elvet(id));
       ok = true;
-      if (mit === 'jovahagy') ertesitesek.ertesit({ szint: 'siker', cim: 'A tanulási blokk bekerült a naptárba' });
+      if (mit === 'jovahagy') ertesitesek.ertesit({ szint: 'siker', cim: t('A tanulási blokk bekerült a naptárba') });
     } catch (e) {
       const uzenet = e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e);
       this.hibak = { ...this.hibak, [id]: uzenet };
-      ertesitesek.ertesit({ szint: 'hiba', cim: mit === 'jovahagy' ? 'A blokk nem írható a naptárba' : 'A javaslat nem vethető el', szoveg: uzenet });
+      ertesitesek.ertesit({ szint: 'hiba', cim: mit === 'jovahagy' ? t('A blokk nem írható a naptárba') : t('A javaslat nem vethető el'), szoveg: uzenet });
     } finally {
       this.foglalt = this.foglalt.filter((x) => x !== id);
     }

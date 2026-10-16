@@ -24,13 +24,13 @@ def utvonalak(r) -> None:
         t = k.torzs()
         azon, kat = t.get("azon"), t.get("kategoria")
         if not isinstance(azon, str) or not isinstance(kat, str):
-            raise HttpError(400, "az `azon` és a `kategoria` szöveg legyen")
+            raise HttpError(400, "az `azon` és a `kategoria` szöveg legyen", kod="naptar.azon_kategoria_szoveg")
         try:
             ki = naptar.kategoria_allit(k.app.cfg, azon, kat)
         except ValueError as e:
-            raise HttpError(400, str(e)) from None
+            raise HttpError(400, str(e), kod="naptar.kategoria_hibas") from None
         except KeyError as e:
-            raise HttpError(404, str(e.args[0])) from None
+            raise HttpError(404, str(e.args[0]), kod="naptar.nincs_naptar") from None
         k.app.bus.publish({"tipus": "naptar_valtozas", "allapot": "kategoria", "uj": 0, "valtozott": 0, "torolt": 0,
                            "valtozasok": []})
         return ki
@@ -43,7 +43,7 @@ def utvonalak(r) -> None:
     def utkozes_latva(k):
         azonok = k.torzs().get("azonok")
         if azonok is not None and not (isinstance(azonok, list) and all(isinstance(a, int) for a in azonok)):
-            raise HttpError(400, "az `azonok` egész számok listája legyen")
+            raise HttpError(400, "az `azonok` egész számok listája legyen", kod="naptar.azonok_lista")
         return {"ok": True, "db": k.app.naptar.emlekezteto.utkozes_latva(azonok)}
 
     r.get("/api/naptar/allapot", allapot)

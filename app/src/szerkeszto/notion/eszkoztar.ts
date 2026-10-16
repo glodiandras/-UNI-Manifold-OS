@@ -7,6 +7,7 @@
 // zárójelek százalékkal kódolódnak (minden Markdown-megjelenítőben érvényes). A kijelölt link URL-je
 // szerkeszthető, a link eltávolítható (a szöveg marad).
 
+import { t, tk } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
 import { EditorView, showTooltip, type Tooltip, type TooltipView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
@@ -115,10 +116,10 @@ interface GombLeiras {
 }
 
 const GOMBOK: GombLeiras[] = [
-  { jel: '**', ikon: Bold, cimke: 'Félkövér', billentyu: '⌘B' },
-  { jel: '*', ikon: Italic, cimke: 'Dőlt', billentyu: '⌘I' },
-  { jel: '`', ikon: Code, cimke: 'Kód' },
-  { jel: '==', ikon: Highlighter, cimke: 'Kiemelés', billentyu: '⌘⇧H' },
+  { jel: '**', ikon: Bold, cimke: tk('Félkövér'), billentyu: '⌘B' },
+  { jel: '*', ikon: Italic, cimke: tk('Dőlt'), billentyu: '⌘I' },
+  { jel: '`', ikon: Code, cimke: tk('Kód') },
+  { jel: '==', ikon: Highlighter, cimke: tk('Kiemelés'), billentyu: '⌘⇧H' },
 ];
 
 class Eszkoztar {
@@ -134,13 +135,13 @@ class Eszkoztar {
     const d = this.dom;
     d.className = 'nt-eszkoztar';
     d.setAttribute('role', 'toolbar');
-    d.setAttribute('aria-label', 'Formázás');
+    d.setAttribute('aria-label', t('Formázás'));
     d.addEventListener('mousedown', (e) => {
       if ((e.target as HTMLElement).closest('input') === null) e.preventDefault(); // a kijelölés maradjon
     });
     this.sor.className = 'nt-eszk-sor';
     for (const g of GOMBOK) {
-      const b = this.gomb(g.ikon, g.billentyu ? `${g.cimke} (${g.billentyu})` : g.cimke, g.cimke);
+      const b = this.gomb(g.ikon, g.billentyu ? `${t(g.cimke)} (${g.billentyu})` : t(g.cimke), t(g.cimke));
       b.addEventListener('click', () => {
         korbefog(this.view, g.jel);
         this.frissit(this.view.state);
@@ -152,7 +153,7 @@ class Eszkoztar {
     elv.className = 'nt-eszk-elvalaszto';
     elv.setAttribute('role', 'separator');
     this.sor.appendChild(elv);
-    this.linkGomb = this.gomb(Link, 'Link (⌘K)', 'Link');
+    this.linkGomb = this.gomb(Link, t('Link (⌘K)'), t('Link'));
     this.linkGomb.addEventListener('click', () => this.linkNyit());
     this.sor.appendChild(this.linkGomb);
 
@@ -161,7 +162,7 @@ class Eszkoztar {
     this.urlMezo.type = 'text';
     this.urlMezo.className = 'nt-eszk-mezo';
     this.urlMezo.placeholder = 'https://…';
-    this.urlMezo.setAttribute('aria-label', 'A link címe');
+    this.urlMezo.setAttribute('aria-label', t('A link címe'));
     this.urlMezo.spellcheck = false;
     this.urlMezo.addEventListener('keydown', (e) => {
       if (e.isComposing) return;
@@ -174,11 +175,11 @@ class Eszkoztar {
         this.linkZar();
       }
     });
-    const ok = this.gomb(Check, 'Link beállítása', 'Link beállítása');
+    const ok = this.gomb(Check, t('Link beállítása'), t('Link beállítása'));
     ok.addEventListener('click', () => this.linkAlkalmaz());
-    this.eltavolit = this.gomb(Unlink, 'Link eltávolítása', 'Link eltávolítása');
+    this.eltavolit = this.gomb(Unlink, t('Link eltávolítása'), t('Link eltávolítása'));
     this.eltavolit.addEventListener('click', () => this.linkEltavolit());
-    const meg = this.gomb(X, 'Mégse (esc)', 'Mégse');
+    const meg = this.gomb(X, t('Mégse (esc)'), t('Mégse'));
     meg.addEventListener('click', () => this.linkZar());
     this.urlSor.append(this.urlMezo, ok, this.eltavolit, meg);
     d.append(this.sor, this.urlSor);

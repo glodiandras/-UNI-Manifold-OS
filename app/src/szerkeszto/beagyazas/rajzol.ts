@@ -6,6 +6,7 @@
 // **Körkörös beágyazás**: a render-láncban (`ut#alcel`) már szereplő cél helyett „Körkörös beágyazás” jelzés;
 // a mélységkorlát 6. Hiányzó cél: halvány jelzés és létrehozás gomb.
 
+import { t } from '../../lib/i18n';
 import { ApiHiba } from '../../lib/core/api';
 import { linkek, type BeagyazasAdat } from '../../lib/vault/linkek.svelte';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
@@ -64,7 +65,7 @@ async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Pr
     adat = await (o.sor ? o.sor.futtat(leker, o.jel) : leker());
   } catch (e) {
     if (o.jel?.aborted) return;
-    uzenet(kont, 'beagyazas-hiba', `A beágyazás nem tölthető be: ${e instanceof ApiHiba ? e.message : String(e)}`);
+    uzenet(kont, 'beagyazas-hiba', t('A beágyazás nem tölthető be: {hiba}', { hiba: e instanceof ApiHiba ? e.message : String(e) }));
     kesz();
     return;
   }
@@ -78,9 +79,9 @@ async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Pr
     } else if (adat.tipus === 'jegyzet') {
       if (korkoros(lanc, adat.ut, link.alcel)) {
         const utvonal = [...lanc.map((k) => fajlNev(k.ut)), fajlNev(adat.ut)].join(' → ');
-        uzenet(kont, 'beagyazas-hiba', `Körkörös beágyazás: ${utvonal}`);
+        uzenet(kont, 'beagyazas-hiba', t('Körkörös beágyazás: {utvonal}', { utvonal }));
       } else if (melyseg >= MAX_MELYSEG) {
-        uzenet(kont, 'beagyazas-hiba', 'Túl mély beágyazás');
+        uzenet(kont, 'beagyazas-hiba', t('Túl mély beágyazás'));
       } else {
         const osztaly = !o.kompakt && !link.alcel ? jegyzetOsztalyRenderelok.keres(adat, link) : undefined;
         if (osztaly) await osztaly.render(adat, link, kont, o);        // a kísérőjegyzet (kvíz, kártyapakli) interaktív blokk
@@ -91,7 +92,7 @@ async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Pr
       await r.render(adat, link, kont, o);
     }
   } catch (e) {
-    uzenet(kont, 'beagyazas-hiba', `A beágyazás nem rajzolható: ${e instanceof Error ? e.message : String(e)}`);
+    uzenet(kont, 'beagyazas-hiba', t('A beágyazás nem rajzolható: {hiba}', { hiba: e instanceof Error ? e.message : String(e) }));
   }
   kesz();
 }
@@ -102,19 +103,19 @@ function hianyzo(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): void {
   kont.className = 'beagyazas beagyazas-hianyzo';
   kont.replaceChildren();
   const s = el('span', 'beagyazas-uzenet');
-  s.textContent = `Nem található: ${link.cel}`;
+  s.textContent = t('Nem található: {cel}', { cel: link.cel });
   kont.appendChild(s);
   if (!ISMERT_KITERJESZTES.test(link.cel)) {
     const b = el('button', 'beagyazas-letrehoz');
     b.type = 'button';
-    b.textContent = 'Létrehozás';
+    b.textContent = t('Létrehozás');
     b.addEventListener('click', async (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
       const ut = await jegyzetLetrehoz(o.forras, link.cel);
       if (ut) {
         const cim = el('span', 'beagyazas-uzenet');
-        cim.textContent = `Létrehozva: ${fajlNev(ut)}`;
+        cim.textContent = t('Létrehozva: {nev}', { nev: fajlNev(ut) });
         kont.replaceChildren(cim);
       }
     });
@@ -129,7 +130,7 @@ function jegyzet(kont: HTMLElement, adat: BeagyazasAdat, link: LinkAdat, o: Beag
   kont.replaceChildren();
   if (adat.alcel_hiba) {
     const s = el('span', 'beagyazas-uzenet');
-    s.textContent = `Nem található: ${fajlNev(adat.ut!)}#${link.alcel}`;
+    s.textContent = t('Nem található: {nev}#{alcel}', { nev: fajlNev(adat.ut!), alcel: link.alcel ?? '' });
     kont.className = 'beagyazas beagyazas-hianyzo';
     kont.appendChild(s);
     return;
@@ -164,7 +165,7 @@ function jegyzet(kont: HTMLElement, adat: BeagyazasAdat, link: LinkAdat, o: Beag
   );
   if (!szoveg.trim()) {
     const u = el('span', 'beagyazas-uzenet');
-    u.textContent = 'A jegyzet üres.';
+    u.textContent = t('A jegyzet üres.');
     torzs.appendChild(u);
   }
   kont.appendChild(torzs);
@@ -210,7 +211,7 @@ async function kep(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Be
   if (meret?.magassag) img.height = meret.magassag;
   img.addEventListener('load', () => o.kesz?.());
   img.addEventListener('error', () => {
-    uzenet(kont, 'beagyazas-hiba', `A kép nem tölthető be: ${fajlNev(adat.ut!)}`);
+    uzenet(kont, 'beagyazas-hiba', t('A kép nem tölthető be: {nev}', { nev: fajlNev(adat.ut!) }));
     o.kesz?.();
   });
   // a jegyzetben a megjelenített szélességnek megfelelő, kicsinyített változat (audit M9); az eredeti csak kattintásra
@@ -218,7 +219,7 @@ async function kep(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Be
   img.src = await linkek.mediaUrl(adat.ut!, w);
   img.tabIndex = 0;
   img.setAttribute('role', 'button');
-  img.setAttribute('aria-label', `Kép nagyítása: ${img.alt}`);
+  img.setAttribute('aria-label', t('Kép nagyítása: {alt}', { alt: img.alt }));
   img.addEventListener('click', (e) => {
     e.preventDefault();
     void nagyitas(adat.ut!, img);

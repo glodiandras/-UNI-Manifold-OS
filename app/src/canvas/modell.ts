@@ -4,6 +4,7 @@
 // A műveletek a modellt nem módosítják helyben: új objektumot adnak (a régi a visszavonásé).
 
 import { elemez, ertekbol, JsonHiba } from './json';
+import { tk, t } from '../lib/i18n';
 
 export type JsonObj = Record<string, unknown>;
 
@@ -79,35 +80,35 @@ export function beolvas(szoveg: string): Beolvasas {
   try {
     v = ertekbol(elemez(szoveg));
   } catch (e) {
-    if (e instanceof JsonHiba) return rossz(`A canvas nem érvényes JSON: ${e.message}`, { sor: e.sor, oszlop: e.oszlop });
+    if (e instanceof JsonHiba) return rossz(t('A canvas nem érvényes JSON: {hiba}', { hiba: e.message }), { sor: e.sor, oszlop: e.oszlop });
     throw e;
   }
-  if (!objektum(v)) return rossz('A canvas gyökere nem objektum.');
+  if (!objektum(v)) return rossz(t('A canvas gyökere nem objektum.'));
   for (const k of ['nodes', 'edges'] as const)
-    if (k in v && !Array.isArray(v[k])) return rossz(`A „${k}” nem tömb.`);
+    if (k in v && !Array.isArray(v[k])) return rossz(t('A „{kulcs}” nem tömb.', { kulcs: k }));
   const ids = new Set<string>();
   for (const [n, c] of ((v.nodes ?? []) as unknown[]).entries()) {
-    if (!objektum(c)) return rossz(`A ${n + 1}. node nem objektum.`);
-    if (typeof c.id !== 'string' || !c.id) return rossz(`A ${n + 1}. node-nak nincs azonosítója (id).`);
-    if (ids.has(c.id)) return rossz(`Két elemnek azonos az azonosítója: ${c.id}.`);
+    if (!objektum(c)) return rossz(t('A {n}. node nem objektum.', { n: n + 1 }));
+    if (typeof c.id !== 'string' || !c.id) return rossz(t('A {n}. node-nak nincs azonosítója (id).', { n: n + 1 }));
+    if (ids.has(c.id)) return rossz(t('Két elemnek azonos az azonosítója: {id}.', { id: c.id }));
     ids.add(c.id);
-    if (typeof c.type !== 'string') return rossz(`A(z) ${c.id} node-nak nincs típusa (type).`);
+    if (typeof c.type !== 'string') return rossz(t('A(z) {id} node-nak nincs típusa (type).', { id: c.id }));
     for (const m of ['x', 'y', 'width', 'height'])
-      if (!szam(c[m])) return rossz(`A(z) ${c.id} node „${m}” mezője nem szám.`);
-    if (!ISMERT_TIPUSOK.includes(c.type)) figyelmeztetesek.push(`Ismeretlen node-típus: ${c.type} (${c.id}).`);
+      if (!szam(c[m])) return rossz(t('A(z) {id} node „{mezo}” mezője nem szám.', { id: c.id, mezo: m }));
+    if (!ISMERT_TIPUSOK.includes(c.type)) figyelmeztetesek.push(t('Ismeretlen node-típus: {tipus} ({id}).', { tipus: c.type, id: c.id }));
     for (const m of ['x', 'y', 'width', 'height'])
-      if (!Number.isInteger(c[m])) figyelmeztetesek.push(`A(z) ${c.id} node „${m}” mezője nem egész szám.`);
+      if (!Number.isInteger(c[m])) figyelmeztetesek.push(t('A(z) {id} node „{mezo}” mezője nem egész szám.', { id: c.id, mezo: m }));
   }
   const csomopontIds = new Set(ids);
   for (const [n, e] of ((v.edges ?? []) as unknown[]).entries()) {
-    if (!objektum(e)) return rossz(`A ${n + 1}. él nem objektum.`);
-    if (typeof e.id !== 'string' || !e.id) return rossz(`A ${n + 1}. élnek nincs azonosítója (id).`);
-    if (ids.has(e.id)) return rossz(`Két elemnek azonos az azonosítója: ${e.id}.`);
+    if (!objektum(e)) return rossz(t('A {n}. él nem objektum.', { n: n + 1 }));
+    if (typeof e.id !== 'string' || !e.id) return rossz(t('A {n}. élnek nincs azonosítója (id).', { n: n + 1 }));
+    if (ids.has(e.id)) return rossz(t('Két elemnek azonos az azonosítója: {id}.', { id: e.id }));
     ids.add(e.id);
     if (typeof e.fromNode !== 'string' || typeof e.toNode !== 'string')
-      return rossz(`A(z) ${e.id} élnek nincs kezdő vagy záró node-ja.`);
+      return rossz(t('A(z) {id} élnek nincs kezdő vagy záró node-ja.', { id: e.id }));
     if (!csomopontIds.has(e.fromNode) || !csomopontIds.has(e.toNode))
-      figyelmeztetesek.push(`A(z) ${e.id} él nem létező node-ra mutat; nem rajzolódik.`);
+      figyelmeztetesek.push(t('A(z) {id} él nem létező node-ra mutat; nem rajzolódik.', { id: e.id }));
   }
   return { vaszon: v as Vaszon, hiba: null, hely: null, figyelmeztetesek };
 }
@@ -125,12 +126,12 @@ export function ujId(v: Vaszon, foglalt: Set<string> = new Set()): string {
 
 /** A preset színek neve (a spec: 1 piros … 6 lila); a hex szín a felhasználó adata, nyersen. */
 export const SZIN_NEV: Record<string, string> = {
-  '1': 'piros',
-  '2': 'narancs',
-  '3': 'sárga',
-  '4': 'zöld',
-  '5': 'cián',
-  '6': 'lila',
+  '1': tk('piros'),
+  '2': tk('narancs'),
+  '3': tk('sárga'),
+  '4': tk('zöld'),
+  '5': tk('cián'),
+  '6': tk('lila'),
 };
 
 /** A szín CSS-értéke: a preset a tokenre képeződik, a hex szín nyersen, a többi (ismeretlen) nincs. */

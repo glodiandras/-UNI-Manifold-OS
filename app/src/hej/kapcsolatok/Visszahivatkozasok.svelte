@@ -3,6 +3,7 @@
   megnyílik az adott soron (⌘: új fül, ⌘⌥: osztás). A canvas- és a frontmatter-forrás jelölve.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { fajlNev, mappa } from '../../lib/vault/fajlok.svelte';
   import { kornyezetReszek, type VisszaForras, type VisszaLink } from '../../lib/vault/kapcsolatok.svelte';
 
@@ -20,9 +21,9 @@
 </script>
 
 {#if !forrasok.length}
-  <p class="ures">Erre a jegyzetre nem mutat link.</p>
+  <p class="ures">{t('Erre a jegyzetre nem mutat link.')}</p>
 {:else}
-  <p class="osszes" aria-live="polite">{darab} link, {forrasok.length} jegyzetből</p>
+  <p class="osszes" aria-live="polite">{t('{darab} link, {forras} jegyzetből', { darab, forras: forrasok.length })}</p>
   <ul class="forrasok">
     {#each forrasok as f (f.ut)}
       <li class="forras">

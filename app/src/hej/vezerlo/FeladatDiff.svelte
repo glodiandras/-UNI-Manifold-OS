@@ -4,6 +4,7 @@
   diffjével közös (`mergeNezet`). Visszaállítani innen nem lehet: a visszavonás a kör szintjén van.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import type { MergeView } from '@codemirror/merge';
   import { onDestroy, onMount } from 'svelte';
   import Atfedes from '../../lib/ui/Atfedes.svelte';
@@ -38,15 +39,15 @@
 
   const megjegyzes = $derived.by(() => {
     if (!valtozat) return '';
-    if (valtozat.szoveg_ok === 'kodolas') return 'A változat nem érvényes UTF-8, az összevetés nem érhető el.';
-    if (valtozat.szoveg_ok === 'nagy') return 'A változat túl nagy az összevetéshez.';
+    if (valtozat.szoveg_ok === 'kodolas') return t('A változat nem érvényes UTF-8, az összevetés nem érhető el.');
+    if (valtozat.szoveg_ok === 'nagy') return t('A változat túl nagy az összevetéshez.');
     return '';
   });
-  const balCim = $derived(fajl.allapot === 'A' ? 'Még nem létezett' : 'A feladat előtt');
-  const jobbCim = $derived(fajl.allapot === 'D' ? 'Törölve lett' : 'A feladat után');
+  const balCim = $derived(fajl.allapot === 'A' ? t('Még nem létezett') : t('A feladat előtt'));
+  const jobbCim = $derived(fajl.allapot === 'D' ? t('Törölve lett') : t('A feladat után'));
 </script>
 
-<Atfedes cimke="A feladat változása egy fájlban" nev="feladatdiff" {onbezar} szeles>
+<Atfedes cimke={t('A feladat változása egy fájlban')} nev="feladatdiff" {onbezar} szeles>
   <div class="diff">
     <header>
       <h2>{fajl.ut}</h2>
@@ -55,10 +56,10 @@
     {#if megjegyzes}<p class="megjegyzes" role="status">{megjegyzes}</p>{/if}
     <div class="oszlopfej" aria-hidden="true"><span>{balCim}</span><span>{jobbCim}</span></div>
     <div class="merge" bind:this={hely}>
-      {#if !valtozat && !hiba}<p class="megjegyzes" role="status">Betöltés…</p>{/if}
+      {#if !valtozat && !hiba}<p class="megjegyzes" role="status">{t('Betöltés…')}</p>{/if}
     </div>
     <footer>
-      <button type="button" class="m-gomb semleges gomb" onclick={onbezar}>Bezárás</button>
+      <button type="button" class="m-gomb semleges gomb" onclick={onbezar}>{t('Bezárás')}</button>
     </footer>
   </div>
 </Atfedes>

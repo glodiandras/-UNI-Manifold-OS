@@ -1,5 +1,6 @@
 <!-- Egy panel: fülsor + az aktív fül nézete (a nézet-regiszterből). Kattintás vagy fókusz aktiválja. -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { nezetek } from '../lib/elrendezes/nezetek.svelte';
   import type { PanelCs } from '../lib/elrendezes/munkaterulet.svelte';
   import { kornyezet } from '../lib/kornyezet';
@@ -23,7 +24,7 @@
 <section
   class="panel"
   class:aktiv
-  aria-label={ful?.ut ? `Panel: ${ful.ut}` : 'Panel'}
+  aria-label={ful?.ut ? t('Panel: {ut}', { ut: ful.ut }) : t('Panel')}
   onpointerdowncapture={aktival}
   onfocusin={aktival}
 >

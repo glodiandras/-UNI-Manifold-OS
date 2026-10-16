@@ -5,7 +5,9 @@
   válasz előtt nincs a kliensben. Csak tokenekből rajzol (25. döntés).
 -->
 <script lang="ts">
+  import { tartalmiNyelv } from '../lib/munkater/nyelv.svelte';
   import { tick } from 'svelte';
+  import { nyelv, t, tk, tp } from '../lib/i18n';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import { BETUK } from './allando';
   import { md } from './megjelenites';
@@ -18,12 +20,12 @@
   let kilepesKerdes = $state(false);
 
   const KATEGORIA: Record<Kategoria, { cim: string; leiras: string; osztaly: string }> = {
-    tudja: { cim: 'tudod', leiras: 'helyes, és biztos voltál', osztaly: 'siker' },
-    szerencses: { cim: 'szerencsés tipp', leiras: 'helyes, de tippelted — ingatag', osztaly: 'figy' },
-    tevkepzet: { cim: 'tévképzet', leiras: 'biztos voltál, de rossz — ezt javítsd először', osztaly: 'hiba' },
-    hiany: { cim: 'hiány', leiras: 'nem tudtad (tippelve rossz, vagy kihagyva)', osztaly: 'halvany' },
+    tudja: { cim: tk('tudod'), leiras: tk('helyes, és biztos voltál'), osztaly: 'siker' },
+    szerencses: { cim: tk('szerencsés tipp'), leiras: tk('helyes, de tippelted — ingatag'), osztaly: 'figy' },
+    tevkepzet: { cim: tk('tévképzet'), leiras: tk('biztos voltál, de rossz — ezt javítsd először'), osztaly: 'hiba' },
+    hiany: { cim: tk('hiány'), leiras: tk('nem tudtad (tippelve rossz, vagy kihagyva)'), osztaly: 'halvany' },
   };
-  const ALLAPOT: Record<string, string> = { rendben: 'rendben', ingatag: 'ingatag', hianyos: 'hiányos' };
+  const ALLAPOT: Record<string, string> = { rendben: tk('rendben'), ingatag: tk('ingatag'), hianyos: tk('hiányos') };
 
   const cim = $derived(menet.adat?.kviz.cim ?? '');
   const utolso = $derived(menet.adat?.elozmenyek.at(-1) ?? null);
@@ -34,9 +36,9 @@
 
   const itelet = $derived.by(() => {
     if (!m || !v) return '';
-    if (m.helyes) return v.tipp ? '✓ Helyes — de tippelve: érdemes átnézni' : '✓ Helyes';
-    if (v.valasz === null) return 'Ez lett volna a helyes';
-    return v.tipp ? '✗ Nem ez' : '✗ Nem ez — és biztosra mentél: ez tévképzet, ezt nézd át először';
+    if (m.helyes) return v.tipp ? t('✓ Helyes — de tippelve: érdemes átnézni') : t('✓ Helyes');
+    if (v.valasz === null) return t('Ez lett volna a helyes');
+    return v.tipp ? t('✗ Nem ez') : t('✗ Nem ez — és biztosra mentél: ez tévképzet, ezt nézd át először');
   });
 
   /** A fázis- és kérdésváltáskor a fókusz a megfelelő elemre kerül (a billentyűk a blokkon belül élnek). */
@@ -74,57 +76,57 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (a blokk saját billentyűit kezeli: 1–4, A–D, ↵, T, N) -->
-<div class="kviz" bind:this={gyoker} tabindex="-1" role="group" aria-label={`Kvíz: ${cim}`} lang="hu" onkeydown={billentyu}>
+<div class="kviz" bind:this={gyoker} tabindex="-1" role="group" aria-label={t('Kvíz: {cim}', { cim })} lang={nyelv.kod} onkeydown={billentyu}>
   {#if menet.fazis === 'betolt'}
-    <p class="kviz-al">Kvíz betöltése…</p>
+    <p class="kviz-al">{t('Kvíz betöltése…')}</p>
   {:else if menet.fazis === 'hiba'}
-    <p class="kviz-hiba" role="alert">A kvíz nem tölthető be: {menet.hiba}</p>
-    <div class="kviz-sor"><button type="button" class="m-gomb semleges kviz-gomb" onclick={() => void menet.betolt()}>Újra</button></div>
+    <p class="kviz-hiba" role="alert">{t('A kvíz nem tölthető be: {hiba}', { hiba: menet.hiba ?? '' })}</p>
+    <div class="kviz-sor"><button type="button" class="m-gomb semleges kviz-gomb" onclick={() => void menet.betolt()}>{t('Újra')}</button></div>
   {:else if menet.fazis === 'kezdo' && menet.adat}
     <div class="kviz-fej">
       <div>
-        <div class="kviz-cim">Kvíz · {cim}</div>
+        <div class="kviz-cim">{t('Kvíz · {cim}', { cim })}</div>
         <div class="kviz-al">
-          {menet.adat.kviz.kerdesek.length} kérdés{utolso ? ` · legutóbb ${utolso.pont}/${utolso.osszes} (${utolso.szazalek} %)` : ' · még nem töltötted ki'}
+          {tp('{n} kérdés', menet.adat.kviz.kerdesek.length)}{utolso ? ' · ' + t('legutóbb {pont}/{osszes} ({szazalek} %)', { pont: utolso.pont, osszes: utolso.osszes, szazalek: utolso.szazalek }) : ' · ' + t('még nem töltötted ki')}
         </div>
       </div>
       <div class="kviz-sor">
         {#if menet.adat.ujra.length}
-          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => menet.indit('hibasak')}>A hibások és tippeltek újra ({menet.adat.ujra.length})</button>
+          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => menet.indit('hibasak')}>{t('A hibások és tippeltek újra ({n})', { n: menet.adat.ujra.length })}</button>
         {/if}
-        <button type="button" class="m-gomb kviz-gomb elsodleges" data-fokusz onclick={() => menet.indit()}>Kitöltés</button>
+        <button type="button" class="m-gomb kviz-gomb elsodleges" data-fokusz onclick={() => menet.indit()}>{t('Kitöltés')}</button>
       </div>
     </div>
     {#if menet.adat.megvaltozott}
-      <p class="kviz-megj">A kvíz az utolsó kitöltés óta megváltozott: az előzmények a régi kérdésekre vonatkoznak.</p>
+      <p class="kviz-megj">{t('A kvíz az utolsó kitöltés óta megváltozott: az előzmények a régi kérdésekre vonatkoznak.')}</p>
     {/if}
     {#if menet.adat.hibak.length}
-      <p class="kviz-megj">{menet.adat.hibak.length} hibás kérdés kimarad: {menet.adat.hibak.map((h) => h.fajta.replaceAll('_', ' ')).join(', ')}.</p>
+      <p class="kviz-megj">{tp('{n} hibás kérdés kimarad: {lista}.', menet.adat.hibak.length, { lista: menet.adat.hibak.map((h) => h.fajta.replaceAll('_', ' ')).join(', ') })}</p>
     {/if}
   {:else if (menet.fazis === 'kerdes' || menet.fazis === 'visszajelzes') && q}
     <div class="kviz-fej">
       <div>
-        <div class="kviz-cim">Kvíz · {cim}</div>
+        <div class="kviz-cim">{t('Kvíz · {cim}', { cim })}</div>
         <div class="kviz-al">
-          {menet.mod === 'hibasak' ? 'csak az előzőleg hibás vagy tippelt kérdések · ' : ''}{menet.i + 1}/{menet.lista.length}. kérdés{q.kerdes.szakasz ? ` · ${q.kerdes.szakasz}` : ''}
+          {menet.mod === 'hibasak' ? t('csak az előzőleg hibás vagy tippelt kérdések') + ' · ' : ''}{t('{i}/{n}. kérdés', { i: menet.i + 1, n: menet.lista.length })}{q.kerdes.szakasz ? ' · ' + q.kerdes.szakasz : ''}
         </div>
       </div>
       {#if kilepesKerdes}
-        <div class="kviz-sor" role="group" aria-label="Kilépés">
-          <span class="kviz-al">Abbahagyod? {menet.valaszok.length} megválaszolt kérdés számít.</span>
-          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => { kilepesKerdes = false; void menet.kilep(); }}>Kiértékelés most</button>
-          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => (kilepesKerdes = false)}>Folytatom</button>
+        <div class="kviz-sor" role="group" aria-label={t('Kilépés')}>
+          <span class="kviz-al">{tp('Abbahagyod? {n} megválaszolt kérdés számít.', menet.valaszok.length)}</span>
+          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => { kilepesKerdes = false; void menet.kilep(); }}>{t('Kiértékelés most')}</button>
+          <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => (kilepesKerdes = false)}>{t('Folytatom')}</button>
         </div>
       {:else}
-        <button type="button" class="m-gomb semleges kviz-gomb" onclick={kilepes}>Kilépés</button>
+        <button type="button" class="m-gomb semleges kviz-gomb" onclick={kilepes}>{t('Kilépés')}</button>
       {/if}
     </div>
     <div class="kviz-sav" aria-hidden="true"><i style:width="{szazalekSav()}%"></i></div>
     {#if q.kerdes.jelolt}
-      <p class="kviz-megj">Ezt a kérdést korábban hibásnak jelölted — a pontszámba nem számít.</p>
+      <p class="kviz-megj">{t('Ezt a kérdést korábban hibásnak jelölted — a pontszámba nem számít.')}</p>
     {/if}
-    <div class="kviz-kerdes" use:md={{ szoveg: q.kerdes.kerdes, ut: forras }}></div>
-    <div class="kviz-opciok" role="radiogroup" aria-label="Válaszok">
+    <div class="kviz-kerdes" lang={tartalmiNyelv.kod} use:md={{ szoveg: q.kerdes.kerdes, ut: forras }}></div>
+    <div class="kviz-opciok" role="radiogroup" aria-label={t('Válaszok')}>
       {#each q.sorrend as oi, p (oi)}
         <button
           type="button"
@@ -138,40 +140,40 @@
           onclick={() => menet.valaszt(p)}
         >
           <span class="kviz-betu">{BETUK[p]}</span>
-          <span class="kviz-opcio-szoveg" use:md={{ szoveg: q.kerdes.valaszok[oi], ut: forras }}></span>
+          <span class="kviz-opcio-szoveg" lang={tartalmiNyelv.kod} use:md={{ szoveg: q.kerdes.valaszok[oi], ut: forras }}></span>
         </button>
       {/each}
     </div>
     {#if menet.hiba}<p class="kviz-hiba" role="alert">{menet.hiba}</p>{/if}
     {#if menet.fazis === 'kerdes'}
       <div class="kviz-sor kviz-muveletek">
-        <button type="button" class="m-gomb kviz-gomb elsodleges" disabled={menet.valasztott === null || menet.kuld} onclick={() => void menet.ellenoriz(false)}>Ellenőrzés — biztos vagyok</button>
-        <button type="button" class="m-gomb semleges kviz-gomb" disabled={menet.valasztott === null || menet.kuld} onclick={() => void menet.ellenoriz(true)}>Csak tippeltem</button>
-        <button type="button" class="m-gomb semleges kviz-gomb" disabled={menet.kuld} onclick={() => void menet.nemTudom()}>Nem tudom</button>
+        <button type="button" class="m-gomb kviz-gomb elsodleges" disabled={menet.valasztott === null || menet.kuld} onclick={() => void menet.ellenoriz(false)}>{t('Ellenőrzés — biztos vagyok')}</button>
+        <button type="button" class="m-gomb semleges kviz-gomb" disabled={menet.valasztott === null || menet.kuld} onclick={() => void menet.ellenoriz(true)}>{t('Csak tippeltem')}</button>
+        <button type="button" class="m-gomb semleges kviz-gomb" disabled={menet.kuld} onclick={() => void menet.nemTudom()}>{t('Nem tudom')}</button>
       </div>
       <p class="kviz-al kviz-sugo">
-        <kbd>1</kbd>–<kbd>4</kbd> vagy <kbd>A</kbd>–<kbd>D</kbd> választ · <kbd>↵</kbd> biztos vagyok · <kbd>T</kbd> csak tippeltem · <kbd>N</kbd> nem tudom. A „tipp” jelzése a válasz előtt számít: ebből látod meg, mit tudsz biztosan, és hol van tévképzet.
+        <kbd>1</kbd>–<kbd>4</kbd> {t('vagy')} <kbd>A</kbd>–<kbd>D</kbd> {t('választ')} · <kbd>↵</kbd> {t('biztos vagyok')} · <kbd>T</kbd> {t('csak tippeltem')} · <kbd>N</kbd> {t('nem tudom')}. {t('A „tipp” jelzése a válasz előtt számít: ebből látod meg, mit tudsz biztosan, és hol van tévképzet.')}
       </p>
     {:else if m}
       <div class="kviz-visszajelzes" class:rossz={!m.helyes} role="status" aria-live="polite">
         <div class="kviz-itelet">{itelet}</div>
         {#if !m.helyes}
-          <div>A helyes válasz: <b use:md={{ szoveg: m.helyes_valasz, ut: forras }}></b></div>
+          <div>{t('A helyes válasz:')} <b lang={tartalmiNyelv.kod} use:md={{ szoveg: m.helyes_valasz, ut: forras }}></b></div>
         {/if}
-        {#if m.magyarazat}<div use:md={{ szoveg: m.magyarazat, ut: forras }}></div>{/if}
+        {#if m.magyarazat}<div lang={tartalmiNyelv.kod} use:md={{ szoveg: m.magyarazat, ut: forras }}></div>{/if}
         <blockquote class="kviz-idezet">
-          <div class="kviz-al">A jegyzetben — {m.szakasz ?? cim}</div>
-          <div use:md={{ szoveg: m.idezet, ut: forras }}></div>
+          <div class="kviz-al">{t('A jegyzetben — {szakasz}', { szakasz: m.szakasz ?? cim })}</div>
+          <div lang={tartalmiNyelv.kod} use:md={{ szoveg: m.idezet, ut: forras }}></div>
         </blockquote>
         <div class="kviz-sor">
-          <button type="button" class="m-gomb semleges kviz-gomb" onclick={(e) => megnyit(e, m.horgony)}>Átnézem a jegyzetben</button>
-          <button type="button" class="m-gomb semleges kviz-gomb" class:aktiv={q.kerdes.jelolt} title="Ha a kérdés vagy a kulcs rossz: nem számít a pontszámba, és a kvízmodell mérésébe kerül" onclick={() => void menet.jelol()}>
-            {q.kerdes.jelolt ? 'Hibásnak jelölve — visszavonás' : 'Hibás a kérdés?'}
+          <button type="button" class="m-gomb semleges kviz-gomb" onclick={(e) => megnyit(e, m.horgony)}>{t('Átnézem a jegyzetben')}</button>
+          <button type="button" class="m-gomb semleges kviz-gomb" class:aktiv={q.kerdes.jelolt} title={t('Ha a kérdés vagy a kulcs rossz: nem számít a pontszámba, és a kvízmodell mérésébe kerül')} onclick={() => void menet.jelol()}>
+            {q.kerdes.jelolt ? t('Hibásnak jelölve — visszavonás') : t('Hibás a kérdés?')}
           </button>
         </div>
       </div>
       <div class="kviz-sor">
-        <button type="button" class="m-gomb kviz-gomb elsodleges" data-fokusz disabled={menet.kuld} onclick={() => void menet.kovetkezo()}>{utolsoKerdes ? 'Kiértékelés' : 'Következő'}</button>
+        <button type="button" class="m-gomb kviz-gomb elsodleges" data-fokusz disabled={menet.kuld} onclick={() => void menet.kovetkezo()}>{utolsoKerdes ? t('Kiértékelés') : t('Következő')}</button>
         <span class="kviz-al"><kbd>↵</kbd></span>
       </div>
     {/if}
@@ -179,8 +181,8 @@
     {@const e = menet.ertekeles}
     {@const o = e.osszegzes}
     <div class="kviz-fej">
-      <div class="kviz-cim">Elemzés · {cim}{e.mod === 'hibasak' ? ' · csak a hibásak' : ''}</div>
-      <button type="button" class="m-gomb semleges kviz-gomb" data-fokusz onclick={() => void menet.vissza()}>Bezár</button>
+      <div class="kviz-cim">{t('Elemzés · {cim}', { cim })}{e.mod === 'hibasak' ? ' · ' + t('csak a hibásak') : ''}</div>
+      <button type="button" class="m-gomb semleges kviz-gomb" data-fokusz onclick={() => void menet.vissza()}>{t('Bezár')}</button>
     </div>
     <div class="kviz-eredmeny">
       <div class="kviz-pontszam"><b>{o.pont}/{o.osszes}</b><span>{o.szazalek} %</span></div>
@@ -188,58 +190,58 @@
     </div>
     <div class="kviz-matrix">
       {#each Object.entries(KATEGORIA) as [kat, k] (kat)}
-        <div class="kviz-cella {k.osztaly}"><b>{o.matrix[kat as Kategoria] ?? 0}</b><span>{k.cim}</span><small>{k.leiras}</small></div>
+        <div class="kviz-cella {k.osztaly}"><b>{o.matrix[kat as Kategoria] ?? 0}</b><span>{t(k.cim)}</span><small>{t(k.leiras)}</small></div>
       {/each}
     </div>
     {#if e.onismeret.biztos || e.onismeret.tipp}
       <p class="kviz-al">
-        Önismeret:
-        {[e.onismeret.biztos ? `a biztosnak jelölt válaszaid közül ${e.onismeret.biztos_helyes}/${e.onismeret.biztos} helyes` : '',
-          e.onismeret.tipp ? `a tippjeid közül ${e.onismeret.tipp_helyes}/${e.onismeret.tipp} talált` : ''].filter(Boolean).join(' · ')}.
+        {t('Önismeret:')}
+        {[e.onismeret.biztos ? t('a biztosnak jelölt válaszaid közül {h}/{n} helyes', { h: e.onismeret.biztos_helyes, n: e.onismeret.biztos }) : '',
+          e.onismeret.tipp ? t('a tippjeid közül {h}/{n} talált', { h: e.onismeret.tipp_helyes, n: e.onismeret.tipp }) : ''].filter(Boolean).join(' · ')}.
       </p>
     {/if}
     {#if menet.hiba}<p class="kviz-hiba" role="alert">{menet.hiba}</p>{/if}
     <div class="kviz-sor">
       {#if e.ujra.length}
-        <button type="button" class="m-gomb kviz-gomb elsodleges" onclick={() => menet.indit('hibasak')}>A hibások és tippeltek újra ({e.ujra.length})</button>
+        <button type="button" class="m-gomb kviz-gomb elsodleges" onclick={() => menet.indit('hibasak')}>{t('A hibások és tippeltek újra ({n})', { n: e.ujra.length })}</button>
       {/if}
-      <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => menet.indit()}>Újra az egész</button>
-      <button type="button" class="m-gomb semleges kviz-gomb" onclick={(ev) => megnyit(ev, null)}>A jegyzet</button>
+      <button type="button" class="m-gomb semleges kviz-gomb" onclick={() => menet.indit()}>{t('Újra az egész')}</button>
+      <button type="button" class="m-gomb semleges kviz-gomb" onclick={(ev) => megnyit(ev, null)}>{t('A jegyzet')}</button>
     </div>
-    <h4 class="kviz-alcim">Mit és hol nézz át</h4>
+    <h4 class="kviz-alcim">{t('Mit és hol nézz át')}</h4>
     {#each e.javaslatok as j, n (j.szakasz)}
       <div class="kviz-javaslat" class:elso={j.prioritas === 1}>
         <div class="kviz-sor">
           <span class="kviz-cimke p{j.prioritas}">{n + 1}. {j.cimke}</span>
-          <b>{j.szakasz}</b>
-          <span class="kviz-al">({j.kerdesek.map((x) => `${x}.`).join(', ')} kérdés)</span>
-          <button type="button" class="m-gomb semleges kviz-gomb" onclick={(ev) => megnyit(ev, j.horgony)}>Átnézem</button>
+          <b lang={tartalmiNyelv.kod}>{j.szakasz}</b>
+          <span class="kviz-al">({t('{lista} kérdés', { lista: j.kerdesek.map((x) => `${x}.`).join(', ') })})</span>
+          <button type="button" class="m-gomb semleges kviz-gomb" onclick={(ev) => megnyit(ev, j.horgony)}>{t('Átnézem')}</button>
         </div>
-        <ul>{#each j.teendok as t (t)}<li>{t}</li>{/each}</ul>
-        {#each j.tevkepzetek as t (t.sorszam)}
+        <ul>{#each j.teendok as teendo (teendo)}<li>{teendo}</li>{/each}</ul>
+        {#each j.tevkepzetek as tk2 (tk2.sorszam)}
           <div class="kviz-tevk">
-            <b>{t.sorszam}.</b> <span use:md={{ szoveg: t.kerdes, ut: forras }}></span>
-            <div class="kviz-al">azt hitted: <b use:md={{ szoveg: t.hitted, ut: forras }}></b> · a jegyzet szerint: <b use:md={{ szoveg: t.helyes, ut: forras }}></b></div>
+            <b>{tk2.sorszam}.</b> <span lang={tartalmiNyelv.kod} use:md={{ szoveg: tk2.kerdes, ut: forras }}></span>
+            <div class="kviz-al">{t('azt hitted:')} <b lang={tartalmiNyelv.kod} use:md={{ szoveg: tk2.hitted, ut: forras }}></b> · {t('a jegyzet szerint:')} <b lang={tartalmiNyelv.kod} use:md={{ szoveg: tk2.helyes, ut: forras }}></b></div>
           </div>
         {/each}
-        {#each j.idezetek as t (t)}
-          <blockquote class="kviz-idezet"><div class="kviz-al">olvasd újra</div><div use:md={{ szoveg: t, ut: forras }}></div></blockquote>
+        {#each j.idezetek as idezet (idezet)}
+          <blockquote class="kviz-idezet"><div class="kviz-al">{t('olvasd újra')}</div><div lang={tartalmiNyelv.kod} use:md={{ szoveg: idezet, ut: forras }}></div></blockquote>
         {/each}
       </div>
     {:else}
-      <p class="kviz-siker-uzenet">Nincs mit átnézni: minden válasz helyes volt, és biztos voltál benne.</p>
+      <p class="kviz-siker-uzenet">{t('Nincs mit átnézni: minden válasz helyes volt, és biztos voltál benne.')}</p>
     {/each}
     {#if e.fedetlen_szakaszok.length}
-      <p class="kviz-al">Ez a kvíz nem kérdezett ezekből: {e.fedetlen_szakaszok.join(', ')}. Egy új kvíz más kérdéseket kap.</p>
+      <p class="kviz-al">{t('Ez a kvíz nem kérdezett ezekből: {lista}. Egy új kvíz más kérdéseket kap.', { lista: e.fedetlen_szakaszok.join(', ') })}</p>
     {/if}
     {#if e.szakaszok.length}
       <details class="kviz-szakaszok">
-        <summary>Szakaszonként</summary>
+        <summary>{t('Szakaszonként')}</summary>
         <table>
-          <thead><tr><th>Szakasz</th><th>Helyes</th><th>Állapot</th></tr></thead>
+          <thead><tr><th>{t('Szakasz')}</th><th>{t('Helyes')}</th><th>{t('Állapot')}</th></tr></thead>
           <tbody>
             {#each e.szakaszok as s (s.szakasz)}
-              <tr><td>{s.szakasz}</td><td class="kviz-szam">{s.helyes}/{s.osszes}</td><td><span class="kviz-cimke {s.allapot}">{ALLAPOT[s.allapot]}</span></td></tr>
+              <tr><td lang={tartalmiNyelv.kod}>{s.szakasz}</td><td class="kviz-szam">{s.helyes}/{s.osszes}</td><td><span class="kviz-cimke {s.allapot}">{t(ALLAPOT[s.allapot] ?? s.allapot)}</span></td></tr>
             {/each}
           </tbody>
         </table>

@@ -237,10 +237,10 @@ class EszkoztarNelkulTest(CppApiAlap):
         self.assertIn("clang++", d["hianyzo"])
         self.assertIsNone(d["futas"])
 
-    def test_ellenoriz_503_magyar_uzenettel(self):
+    def test_ellenoriz_503_angol_uzenettel(self):
         kod, d = self.k("POST", "/api/cpp/ellenoriz", {"ut": JEGYZET})
         self.assertEqual(kod, 503)
-        self.assertIn("bin/mos cpp telepit", d["hiba"])
+        self.assertIn("not installed", d["hiba"])
 
     def test_formaz_503(self):
         kod, d = self.k("POST", "/api/cpp/formaz", {"szoveg": "int main(){}"})

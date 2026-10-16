@@ -2,6 +2,8 @@
 // `.obsidian/graph.json` értékeiből számolt kiindulás. A tényleges érték = a felülírás, ennek hiányában a graph.json,
 // annak hiányában az alap. A graph.json csak olvasható (az `.obsidian` a vault része; ide a 2.0 nem ír vissza).
 
+import { t } from '../i18n';
+
 import type { ErokBeallitas } from './fizika';
 import type { SzinCsoport } from './modell';
 
@@ -23,10 +25,10 @@ export type ErokKulcs = 'taszitas' | 'rugo' | 'rugohossz' | 'kozep';
 
 /** A csúszkák tartománya (szorzó az alapértékre; 1 = alap). */
 export const EROK_TARTOMANY: Record<ErokKulcs, { min: number; max: number; lepes: number; nev: string }> = {
-  taszitas: { min: 0.2, max: 4, lepes: 0.05, nev: 'Taszítás' },
-  rugo: { min: 0.1, max: 3, lepes: 0.05, nev: 'Rugóerő' },
-  rugohossz: { min: 0.3, max: 4, lepes: 0.05, nev: 'Rugóhossz' },
-  kozep: { min: 0, max: 4, lepes: 0.05, nev: 'Középre húzás' },
+  taszitas: { min: 0.2, max: 4, lepes: 0.05, get nev() { return t('Taszítás'); } },
+  rugo: { min: 0.1, max: 3, lepes: 0.05, get nev() { return t('Rugóerő'); } },
+  rugohossz: { min: 0.3, max: 4, lepes: 0.05, get nev() { return t('Rugóhossz'); } },
+  kozep: { min: 0, max: 4, lepes: 0.05, get nev() { return t('Középre húzás'); } },
 };
 
 export const EROK_KULCSOK = Object.keys(EROK_TARTOMANY) as ErokKulcs[];
@@ -63,12 +65,12 @@ const veges = (x: unknown): x is number => typeof x === 'number' && Number.isFin
 /** Az Obsidian erői a csúszkák szorzóira (a legacy leképezése: az Obsidian alapjaihoz mérve). */
 export function erokGraphJsonbol(j: GrafJson | null | undefined): Record<ErokKulcs, number> {
   const e = j?.van ? (j.erok ?? {}) : {};
-  const t = (k: ErokKulcs, v: number) => korlat(v, EROK_TARTOMANY[k].min, EROK_TARTOMANY[k].max);
+  const korlatoz = (k: ErokKulcs, v: number) => korlat(v, EROK_TARTOMANY[k].min, EROK_TARTOMANY[k].max);
   return {
-    taszitas: t('taszitas', e.taszitas ? e.taszitas / 10 : 1),
-    rugo: t('rugo', veges(e.rugo) ? e.rugo : 1),
-    rugohossz: t('rugohossz', e.tavolsag ? e.tavolsag / 250 : 1),
-    kozep: t('kozep', e.kozep ? e.kozep / 0.518713248970312 : 1),
+    taszitas: korlatoz('taszitas', e.taszitas ? e.taszitas / 10 : 1),
+    rugo: korlatoz('rugo', veges(e.rugo) ? e.rugo : 1),
+    rugohossz: korlatoz('rugohossz', e.tavolsag ? e.tavolsag / 250 : 1),
+    kozep: korlatoz('kozep', e.kozep ? e.kozep / 0.518713248970312 : 1),
   };
 }
 

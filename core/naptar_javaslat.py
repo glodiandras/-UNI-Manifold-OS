@@ -284,7 +284,7 @@ class Javaslatok:
         with szemelyes_db.olvaso(self.cfg, 3) as c:
             r = c.execute("SELECT * FROM naptar_javaslat WHERE id=?", (azon,)).fetchone() if c else None
         if r is None:
-            raise HttpError(404, "nincs ilyen javaslat")
+            raise HttpError(404, "nincs ilyen javaslat", kod="naptar.javaslat_nincs")
         return dict(r)
 
     # ---- döntés
@@ -296,7 +296,7 @@ class Javaslatok:
     def _elvet(self, azon: int) -> dict:
         j = self._egy(azon)
         if j["allapot"] != "uj":
-            raise HttpError(409, f"a javaslat már el van döntve ({j['allapot']})")
+            raise HttpError(409, f"a javaslat már el van döntve ({j['allapot']})", kod="naptar.javaslat_eldontve", param={"allapot": j["allapot"]})
         with szemelyes_db.iro(self.cfg) as c:
             c.execute("UPDATE naptar_javaslat SET allapot='elvetett', dontve=? WHERE id=?", (self._most(), azon))
         self.publish({"tipus": "naptar_javaslat", "elvetett": azon})
@@ -324,17 +324,17 @@ class Javaslatok:
         írható tanulás-naptár vagy a sáv közben foglalt lett: a javaslat `lejart`/`hiba` jelzéssel marad megőrizve."""
         j = self._egy(azon)
         if j["allapot"] != "uj":
-            raise HttpError(409, f"a javaslat már el van döntve ({j['allapot']})")
+            raise HttpError(409, f"a javaslat már el van döntve ({j['allapot']})", kod="naptar.javaslat_eldontve", param={"allapot": j["allapot"]})
         most = self.mikor().astimezone()
         k0, k1 = naptar._ido(j["kezd"]), naptar._ido(j["veg"])
         if k0 is None or k1 is None or k1 <= most:
             self._lezar(azon, "lejart", "a javasolt idő már elmúlt")
-            raise HttpError(409, "a javasolt idő már elmúlt")
+            raise HttpError(409, "a javasolt idő már elmúlt", kod="naptar.javaslat_elmult")
         with szemelyes_db.olvaso(self.cfg, 3) as c:
             esemenyek = naptar.esemenyek(c, k0 - timedelta(days=1), k1 + timedelta(days=1), self.cfg) if c else []
         if any(a < k1 and b > k0 for a, b in _foglalt(esemenyek)):
             self._lezar(azon, "lejart", "a sáv közben foglalt lett")
-            raise HttpError(409, "a javasolt sáv közben foglalt lett a naptárban")
+            raise HttpError(409, "a javasolt sáv közben foglalt lett a naptárban", kod="naptar.sav_foglalt")
         from .felkeszultseg.keret import olvas as napi_keret
         with szemelyes_db.olvaso(self.cfg, 3) as c:
             beirt = c.execute("SELECT nap, perc, esemeny_azon FROM naptar_javaslat WHERE allapot='beirva' AND nap=?",
@@ -342,11 +342,11 @@ class Javaslatok:
         foglalt_perc = _napi_foglalt(esemenyek, beirt).get(j['nap'], 0)
         if foglalt_perc + j['perc'] > napi_keret(self.cfg):
             self._lezar(azon, 'lejart', KERET_ELFOGYOTT)
-            raise HttpError(409, 'A napi tanulási keret közben elfogyott vagy megváltozott. Frissítsd a javaslatokat.')
+            raise HttpError(409, 'A napi tanulási keret közben elfogyott vagy megváltozott. Frissítsd a javaslatokat.', kod="naptar.keret_elfogyott")
         naptarak = self._naptarak()
         if not naptarak:
             raise HttpError(409, "nincs tanulás kategóriájú naptár, amelybe a blokk beírható volna "
-                                 "(a vezérlőben kategorizáld a naptárakat, vagy add meg a `[naptar] tanulas_naptar` kulcsot)")
+                                 "(a vezérlőben kategorizáld a naptárakat, vagy add meg a `[naptar] tanulas_naptar` kulcsot)", kod="naptar.nincs_tanulas_naptar")
         jegyzet = f"Manifold-javaslat #{azon}\n{j['indok'] or ''}".strip()
         hiba = None
         for n in naptarak:
@@ -356,7 +356,7 @@ class Javaslatok:
             except SegedHiba as e:
                 hiba = str(e)
         else:
-            raise HttpError(502, f"a naptárba nem sikerült beírni: {hiba}")
+            raise HttpError(502, f"a naptárba nem sikerült beírni: {hiba}", kod="naptar.beiras_nem_sikerult", param={"hiba": hiba})
         with szemelyes_db.iro(self.cfg) as c:
             c.execute("UPDATE naptar_javaslat SET allapot='beirva', esemeny_azon=?, dontve=? WHERE id=?",
                       (r.get("azon"), self._most(), azon))

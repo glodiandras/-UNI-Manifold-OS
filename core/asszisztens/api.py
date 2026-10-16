@@ -9,7 +9,7 @@ from ..utvonalak import HttpError
 def _torzs(k) -> dict:
     d = k.torzs()
     if not isinstance(d, dict):
-        raise HttpError(400, "JSON-objektum kell")
+        raise HttpError(400, "JSON-objektum kell", kod="asszisztens.api.objektum_kell")
     return d
 
 
@@ -36,12 +36,12 @@ def utvonalak(r) -> None:
     def emlitesek(k):
         d = _torzs(k)
         if not isinstance(d.get("szoveg"), str):
-            raise HttpError(400, "a szöveg kötelező")
+            raise HttpError(400, "a szöveg kötelező", kod="asszisztens.api.szoveg_kotelezo")
         if not a(k).kapcsolo():
             return {"ut": d.get("ut"), "emlitesek": [], "kapcsolo": False}
         limit = d.get("limit")
         if limit is not None and (isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500):
-            raise HttpError(400, "a limit 1 és 500 közötti egész szám")
+            raise HttpError(400, "a limit 1 és 500 közötti egész szám", kod="asszisztens.api.limit_tartomany")
         return {**a(k).emlitesek.keres(d.get("ut"), d["szoveg"], limit), "kapcsolo": True}
     r.post("/api/asszisztens/emlitesek", emlitesek)
 

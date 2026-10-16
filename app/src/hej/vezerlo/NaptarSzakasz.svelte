@@ -4,6 +4,7 @@
   meg kell erősíteni) és a legutóbbi naptár-változások. Csak nyitott szakasznál tölt; a naptárba itt nem írunk.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { naptarVezerlo as modell } from '../../lib/naptar/allapot.svelte';
   import { naptarHid } from '../../lib/naptar/hid.svelte';
@@ -26,57 +27,57 @@
 </script>
 
 {#if modell.hiba && !a}
-  <p class="hiba" role="alert">A naptár állapota nem érhető el: {modell.hiba}</p>
+  <p class="hiba" role="alert">{t('A naptár állapota nem érhető el: {hiba}', { hiba: modell.hiba })}</p>
 {:else if !a}
-  <p class="halvany" role="status">Betöltés…</p>
+  <p class="halvany" role="status">{t('Betöltés…')}</p>
 {:else}
   <dl>
-    <dt>Naptár</dt>
+    <dt>{t('Naptár')}</dt>
     <dd>{engedelySzoveg(a.esemeny_engedely)}</dd>
-    <dt>Emlékeztetők</dt>
+    <dt>{t('Emlékeztetők')}</dt>
     <dd>{engedelySzoveg(a.emlekezteto_engedely)}</dd>
   </dl>
   {#if kerheto}
     {#if hejben}
       <button type="button" class="m-gomb semleges gomb" disabled={naptarHid.kerdesben} onclick={() => naptarHid.kerd()}>
-        {naptarHid.kerdesben ? 'A rendszer ablakában döntsd el…' : 'Naptár-engedély kérése'}
+        {naptarHid.kerdesben ? t('A rendszer ablakában döntsd el…') : t('Naptár-engedély kérése')}
       </button>
       {#if naptarHid.hiba}<p class="hiba" role="alert">{naptarHid.hiba}</p>{/if}
     {:else}
-      <p class="halvany">Az engedélyt a Manifold.app kéri; böngészőből nem kérhető.</p>
+      <p class="halvany">{t('Az engedélyt a Manifold.app kéri; böngészőből nem kérhető.')}</p>
     {/if}
   {/if}
   {#if beallitando}
-    <p class="halvany">A hozzáférést a Rendszerbeállítások › Adatvédelem és biztonság › Naptárak (és Emlékeztetők) alatt engedélyezheted.</p>
+    <p class="halvany">{t('A hozzáférést a Rendszerbeállítások › Adatvédelem és biztonság › Naptárak (és Emlékeztetők) alatt engedélyezheted.')}</p>
   {/if}
 
   <dl>
-    <dt>Utolsó szinkron</dt>
+    <dt>{t('Utolsó szinkron')}</dt>
     <dd>{mikorSzoveg(a.utolso ?? a.utolso_szinkron?.vege, ma)}</dd>
-    <dt>Eredmény</dt>
+    <dt>{t('Eredmény')}</dt>
     <dd>{szinkronEredmeny(a)}</dd>
   </dl>
   <button type="button" class="m-gomb semleges gomb" disabled={modell.foglalt} onclick={() => void modell.szinkron()}>
-    {modell.foglalt ? 'Szinkronizálás…' : 'Szinkron most'}
+    {modell.foglalt ? t('Szinkronizálás…') : t('Szinkron most')}
   </button>
   {#if modell.muveletHiba}<p class="hiba" role="alert">{modell.muveletHiba}</p>{/if}
 
-  <h3>Emlékeztetők tükre</h3>
+  <h3>{t('Emlékeztetők tükre')}</h3>
   {#if a.emlekezteto_allapot.be}
     <dl>
-      <dt>Aktív</dt>
+      <dt>{t('Aktív')}</dt>
       <dd>{a.emlekezteto_allapot.tukor.aktiv}</dd>
-      <dt>Kézzel törölt</dt>
+      <dt>{t('Kézzel törölt')}</dt>
       <dd>{a.emlekezteto_allapot.tukor.kezi_torolt}</dd>
     </dl>
   {:else}
-    <p class="halvany">Az emlékeztető-tükör ki van kapcsolva.</p>
+    <p class="halvany">{t('Az emlékeztető-tükör ki van kapcsolva.')}</p>
   {/if}
 
   <h3 class="sor">
-    <span>Ütközések</span>
+    <span>{t('Ütközések')}</span>
     {#if nyitottUtkozesek.length > 1}
-      <button type="button" class="szoveg-gomb" onclick={() => void modell.utkozesLatva()}>Mind láttam</button>
+      <button type="button" class="szoveg-gomb" onclick={() => void modell.utkozesLatva()}>{t('Mind láttam')}</button>
     {/if}
   </h3>
   {#if nyitottUtkozesek.length}
@@ -84,34 +85,34 @@
       {#each nyitottUtkozesek as u (u.id)}
         <li>
           <div class="szoveg">
-            <span class="cim" title={u.ut ?? ''}>{u.szoveg || (u.ut ? fajlNev(u.ut) : 'Emlékeztető')}</span>
+            <span class="cim" title={u.ut ?? ''}>{u.szoveg || (u.ut ? fajlNev(u.ut) : t('Emlékeztető'))}</span>
             <span class="halvany">{utkozesFajtaSzoveg(u.fajta)} · {mikorSzoveg(u.mikor, ma)}</span>
             {#if u.reszlet}<span class="halvany">{u.reszlet}</span>{/if}
           </div>
-          <button type="button" class="szoveg-gomb" aria-label={`Láttam: ${u.szoveg || u.fajta}`} onclick={() => void modell.utkozesLatva([u.id])}>
-            Láttam
+          <button type="button" class="szoveg-gomb" aria-label={t('Láttam: {mi}', { mi: u.szoveg || u.fajta })} onclick={() => void modell.utkozesLatva([u.id])}>
+            {t('Láttam')}
           </button>
         </li>
       {/each}
     </ul>
   {:else}
-    <p class="halvany">Nincs új ütközés.{lattUtkozes ? ` (${lattUtkozes} már látott)` : ''}</p>
+    <p class="halvany">{t('Nincs új ütközés.')}{lattUtkozes ? ` ${t('({n} már látott)', { n: lattUtkozes })}` : ''}</p>
   {/if}
 
-  <h3>Naptárak</h3>
+  <h3>{t('Naptárak')}</h3>
   {#if a.naptarak.length}
     <ul class="lista">
       {#each a.naptarak as n (n.azon)}
         {@const folyamatban = modell.kategoriaFolyamatban.includes(n.azon)}
         <li class="naptar" class:eltunt={!!n.eltunt}>
           <div class="szoveg">
-            <span class="cim"><span class="pont" style:background={n.szin || 'var(--keret-eros)'} aria-hidden="true"></span>{n.nev}{n.eltunt ? ' (eltűnt)' : ''}</span>
+            <span class="cim"><span class="pont" style:background={n.szin || 'var(--keret-eros)'} aria-hidden="true"></span>{n.nev}{n.eltunt ? ` ${t('(eltűnt)')}` : ''}</span>
             {#if n.kategoria_forras === 'javaslat'}
-              <span class="javaslat">javaslat — erősítsd meg</span>
+              <span class="javaslat">{t('javaslat — erősítsd meg')}</span>
             {/if}
           </div>
           <select
-            aria-label={`Kategória: ${n.nev}`}
+            aria-label={t('Kategória: {nev}', { nev: n.nev })}
             disabled={folyamatban}
             value={n.kategoria}
             onchange={(e) => void modell.kategoriaAllit(n.azon, e.currentTarget.value)}
@@ -126,21 +127,21 @@
               type="button"
               class="szoveg-gomb"
               disabled={folyamatban}
-              aria-label={`Megerősítem: ${n.nev}`}
+              aria-label={t('Megerősítem: {nev}', { nev: n.nev })}
               onclick={() => void modell.kategoriaAllit(n.azon, n.kategoria)}
             >
-              Megerősítem
+              {t('Megerősítem')}
             </button>
           {/if}
         </li>
       {/each}
     </ul>
   {:else}
-    <p class="halvany">Még nincs beolvasott naptár.</p>
+    <p class="halvany">{t('Még nincs beolvasott naptár.')}</p>
   {/if}
 
   {#if a.valtozasok.length}
-    <h3>Változások</h3>
+    <h3>{t('Változások')}</h3>
     <ul class="lista">
       {#each a.valtozasok.slice(0, 5) as v, i (v.mikor + v.azon + v.fajta + i)}
         <li>

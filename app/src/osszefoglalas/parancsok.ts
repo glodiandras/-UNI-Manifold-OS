@@ -6,6 +6,7 @@
 import { ApiHiba } from '../lib/core/api';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+import { t, tp } from '../lib/i18n';
 import { fajlNev } from '../lib/vault/fajlok.svelte';
 import { irhato } from '../szerkeszto/beallitas';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
@@ -33,8 +34,8 @@ export async function osszefoglalasFajlbol(ut: string): Promise<void> {
   if (!video && !tartalmiJegyzet(ut)) {
     ertesitesek.ertesit({
       szint: 'info',
-      cim: 'Ebből nem készül összefoglaló',
-      szoveg: osszefoglaloUt(ut) ? 'Ez maga egy összefoglaló; a forrásjegyzetből készül.' : 'Tartalmi jegyzetet vagy videó/hang fájlt jelölj ki.',
+      cim: t('Ebből nem készül összefoglaló'),
+      szoveg: osszefoglaloUt(ut) ? t('Ez maga egy összefoglaló; a forrásjegyzetből készül.') : t('Tartalmi jegyzetet vagy videó/hang fájlt jelölj ki.'),
     });
     return;
   }
@@ -42,15 +43,15 @@ export async function osszefoglalasFajlbol(ut: string): Promise<void> {
     if (!video) await mentesElotte(ut);
     await osszefoglalasApi.keszit({ szint: video ? 'video' : 'jegyzet', ut });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'Az összefoglaló nem indult el', szoveg: uzenet(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('Az összefoglaló nem indult el'), szoveg: uzenet(e) });
     return;
   }
   ertesitesek.ertesit({
     szint: 'info',
-    cim: 'Összefoglaló készül',
+    cim: t('Összefoglaló készül'),
     szoveg: video
-      ? 'A modell az átirat időablakaiból állításokat javasol időkód-linkekkel; ami átmegy a kapukon, a kísérőjegyzetbe kerül (visszavonható).'
-      : 'A modell állításokat javasol a jegyzetből, mindegyik mellé a jegyzet mondatával; ami átmegy a kapukon, a kísérőjegyzetbe kerül, a jegyzetbe beágyazó sor (visszavonható).',
+      ? t('A modell az átirat időablakaiból állításokat javasol időkód-linkekkel; ami átmegy a kapukon, a kísérőjegyzetbe kerül (visszavonható).')
+      : t('A modell állításokat javasol a jegyzetből, mindegyik mellé a jegyzet mondatával; ami átmegy a kapukon, a kísérőjegyzetbe kerül, a jegyzetbe beágyazó sor (visszavonható).'),
   });
 }
 
@@ -62,8 +63,8 @@ export async function osszefoglalasMappabol(mappa: string): Promise<void> {
     if (terv.van.length + terv.keszul.length < 2) {
       ertesitesek.ertesit({
         szint: 'figyelmeztetes',
-        cim: 'Kevés jegyzet a mappa-összefoglalóhoz',
-        szoveg: `Legalább két jegyzet-összefoglaló kell; most ${terv.van.length} van, és ${terv.keszul.length} készülhetne el.`,
+        cim: t('Kevés jegyzet a mappa-összefoglalóhoz'),
+        szoveg: t('Legalább két jegyzet-összefoglaló kell; most {van} van, és {keszul} készülhetne el.', { van: terv.van.length, keszul: terv.keszul.length }),
       });
       return;
     }
@@ -71,16 +72,16 @@ export async function osszefoglalasMappabol(mappa: string): Promise<void> {
     const marad = terv.hianyzik.length - terv.keszul.length;
     ertesitesek.ertesit({
       szint: 'info',
-      cim: 'Mappa-összefoglaló készül',
+      cim: t('Mappa-összefoglaló készül'),
       szoveg:
-        `${terv.van.length} jegyzethez már van összefoglaló` +
-        (terv.keszul.length ? `, ${terv.keszul.length} még előbb elkészül` : '') +
-        `; összesen ${terv.tetelek} gépi írás, egyenként visszavonható` +
-        (marad > 0 ? `. ${marad} jegyzet kimarad (egy kérésben legfeljebb ${terv.tetelek - 1} új jegyzet-összefoglaló készül; futtasd újra).` : '.'),
+        tp('{n} jegyzethez már van összefoglaló', terv.van.length) +
+        (terv.keszul.length ? t(', {n} még előbb elkészül', { n: terv.keszul.length }) : '') +
+        t('; összesen {n} gépi írás, egyenként visszavonható', { n: terv.tetelek }) +
+        (marad > 0 ? t('. {marad} jegyzet kimarad (egy kérésben legfeljebb {max} új jegyzet-összefoglaló készül; futtasd újra).', { marad, max: terv.tetelek - 1 }) : '.'),
       idotartam: 12000,
     });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A mappa-összefoglaló nem indult el', szoveg: uzenet(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A mappa-összefoglaló nem indult el'), szoveg: uzenet(e) });
   }
 }
 
@@ -91,7 +92,7 @@ function aktivUt(felulet: Felulet): string | null {
 export function osszefoglalas(felulet: Felulet): Promise<void> {
   const ut = aktivUt(felulet);
   if (!ut) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy jegyzetet', szoveg: 'Az összefoglaló a jegyzetből (vagy a videó/hang átiratából) készül.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Nyiss meg egy jegyzetet'), szoveg: t('Az összefoglaló a jegyzetből (vagy a videó/hang átiratából) készül.') });
     return Promise.resolve();
   }
   return osszefoglalasFajlbol(ut);
@@ -100,7 +101,7 @@ export function osszefoglalas(felulet: Felulet): Promise<void> {
 export function osszefoglalasAktivMappabol(felulet: Felulet): Promise<void> {
   const ut = aktivUt(felulet);
   if (!ut || !ut.includes('/')) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy mappában álló jegyzetet', szoveg: 'A mappa-összefoglaló az aktív jegyzet mappájából készül.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Nyiss meg egy mappában álló jegyzetet'), szoveg: t('A mappa-összefoglaló az aktív jegyzet mappájából készül.') });
     return Promise.resolve();
   }
   return osszefoglalasMappabol(ut.slice(0, ut.lastIndexOf('/')));
@@ -110,7 +111,7 @@ export function osszefoglalasAktivMappabol(felulet: Felulet): Promise<void> {
 export async function kontextusCsomag(felulet: Felulet): Promise<void> {
   const ut = aktivUt(felulet);
   if (!ut || !ut.toLowerCase().endsWith('.md')) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy jegyzetet', szoveg: 'A kontextus-csomag a megnyitott jegyzetből készül.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Nyiss meg egy jegyzetet'), szoveg: t('A kontextus-csomag a megnyitott jegyzetből készül.') });
     return;
   }
   try {
@@ -120,16 +121,16 @@ export async function kontextusCsomag(felulet: Felulet): Promise<void> {
     kulsoAi.beallit([ut], ok);
     ertesitesek.ertesit({
       szint: ok ? 'siker' : 'figyelmeztetes',
-      cim: ok ? 'A kontextus-csomag a vágólapon van' : 'A vágólapra másolás nem sikerült',
+      cim: ok ? t('A kontextus-csomag a vágólapon van') : t('A vágólapra másolás nem sikerült'),
       szoveg:
-        `${cs.benne.length} jegyzet, ${cs.karakter} karakter` +
-        (cs.csonkolt.length ? ' (a hosszú jegyzet további fejezetei kimaradtak)' : '') +
-        '; útvonal nincs benne. Add a külső AI-nak, majd illeszd vissza a válaszát.',
-      muvelet: { nev: 'Válasz beillesztése…', futtat: () => kulsoAiMegnyit(felulet) },
+        t('{n} jegyzet, {k} karakter', { n: cs.benne.length, k: cs.karakter }) +
+        (cs.csonkolt.length ? ' ' + t('(a hosszú jegyzet további fejezetei kimaradtak)') : '') +
+        t('; útvonal nincs benne. Add a külső AI-nak, majd illeszd vissza a válaszát.'),
+      muvelet: { nev: t('Válasz beillesztése…'), futtat: () => kulsoAiMegnyit(felulet) },
       idotartam: 15000,
     });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A kontextus-csomag nem készült el', szoveg: uzenet(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A kontextus-csomag nem készült el'), szoveg: uzenet(e) });
   }
 }
 
@@ -138,7 +139,7 @@ export function kulsoAiMegnyit(felulet: Felulet): void {
   if (!kulsoAi.utak.length) {
     const ut = aktivUt(felulet);
     if (!ut || !ut.toLowerCase().endsWith('.md')) {
-      ertesitesek.ertesit({ szint: 'info', cim: 'Előbb készíts kontextus-csomagot', szoveg: 'A válasz azokon a jegyzeteken kapuzódik, amelyekből a csomag készült.' });
+      ertesitesek.ertesit({ szint: 'info', cim: t('Előbb készíts kontextus-csomagot'), szoveg: t('A válasz azokon a jegyzeteken kapuzódik, amelyekből a csomag készült.') });
       return;
     }
     kulsoAi.beallit([ut], false);
@@ -151,7 +152,7 @@ export function torzsBeszur(torzs: string): { ok: boolean; hiba?: string } {
   const p = szerkesztok.aktiv;
   const v = p?.nezet();
   if (!p || p.mod() === 'olvaso' || !v || !irhato(v)) {
-    return { ok: false, hiba: v && !irhato(v) ? 'A jegyzet csak olvasható.' : 'Nyiss meg egy jegyzetet szerkesztésre.' };
+    return { ok: false, hiba: v && !irhato(v) ? t('A jegyzet csak olvasható.') : t('Nyiss meg egy jegyzetet szerkesztésre.') };
   }
   const doc = v.state.doc.toString();
   const s = v.state.selection.main;

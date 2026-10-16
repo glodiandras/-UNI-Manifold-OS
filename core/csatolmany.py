@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 from . import frame, rejtett, snapshot, tartos, vaultio
 from .utvonalak import HttpError
+from .hibakod import kodol
 
 DARAB = 4 * 1024 * 1024
 ELAVULT_MP = 24 * 3600          # ennyi ideje nem érintett feltöltési mappa elavult (félbehagyott vagy rég lezárt import)
@@ -51,7 +52,7 @@ def _kor_zar(cfg):
         try:
             verem.enter_context(frame.run_lock(cfg, wait=False, turelem_mp=frame.felhasznaloi_turelem(cfg)))
         except frame.Busy as e:
-            raise HttpError(409, 'Egy másik vault-művelet (gépi írás vagy mentés) éppen fut. Próbáld újra egy kicsit később.',
+            raise HttpError(409, 'Egy másik vault-művelet (gépi írás vagy mentés) éppen fut. Próbáld újra egy kicsit később.', kod="csatolmany.masik_vault_muvelet_fut",
                             foglalt=True) from e
         yield
 
@@ -102,7 +103,7 @@ def _takarit_neha(gyoker: Path) -> None:
 
 def nev_ellenor(nev):
     if not isinstance(nev, str) or not nev.strip() or nev.startswith('.') or vaultio._TILTOTT_NEV.search(nev) or len(nev.encode()) > 200:
-        raise HttpError(400, 'Érvénytelen fájlnév.')
+        raise HttpError(400, 'Érvénytelen fájlnév.', kod="csatolmany.ervenytelen_fajlnev")
     return vaultio.norm_path(nev.strip())
 
 
@@ -115,7 +116,7 @@ def beallitas(vault_gyoker) -> str:
     except (OSError, ValueError, AttributeError):
         cel = ''
     if not isinstance(cel, str):
-        raise HttpError(400, 'Hibás csatolmány-mappa a vault beállításában.')
+        raise HttpError(400, 'Hibás csatolmány-mappa a vault beállításában.', kod="csatolmany.hibas_csatolmany_mappa")
     return cel
 
 
@@ -133,7 +134,7 @@ def mappa(vault_gyoker, jegyzet_ut: str) -> str:
         return ''
     cel = vaultio.norm_path(cel)
     if any(vaultio._TILTOTT_NEV.search(r) for r in cel.split('/')):
-        raise vaultio.Invalid(f'a csatolmány-mappa (attachmentFolderPath) érvénytelen: {cel}')
+        raise kodol(vaultio.Invalid(f'a csatolmány-mappa (attachmentFolderPath) érvénytelen: {cel}'), "csatolmany.csatolmany_mappa_attachmentfolderpath_ervenytelen_cel", {"cel": cel})
     return cel
 
 
@@ -159,17 +160,17 @@ def feltolt(app, d):
     v = app.vault
     azon = d.get('azon') or secrets.token_hex(16)
     if not isinstance(azon, str) or not _AZON.fullmatch(azon):
-        raise HttpError(400, 'Érvénytelen feltöltésazonosító.')
+        raise HttpError(400, 'Érvénytelen feltöltésazonosító.', kod="csatolmany.ervenytelen_feltoltesazonosito")
     offset = d.get('offset', 0)
     if type(offset) is not int or offset < 0:
-        raise HttpError(400, 'Érvénytelen darabpozíció.')
+        raise HttpError(400, 'Érvénytelen darabpozíció.', kod="csatolmany.ervenytelen_darabpozicio")
     adat = d.get('adat', '')
     if not isinstance(adat, str) or len(adat) > DARAB * 4 // 3 + 8:
-        raise HttpError(413, 'Túl nagy feltöltési darab.')
+        raise HttpError(413, 'Túl nagy feltöltési darab.', kod="csatolmany.tul_nagy_feltoltesi_darab")
     try:
         bajtok = base64.b64decode(adat, validate=True)
     except (ValueError, binascii.Error):
-        raise HttpError(400, 'Hibás feltöltési adat.') from None
+        raise HttpError(400, 'Hibás feltöltési adat.', kod="csatolmany.hibas_feltoltesi_adat") from None
     gyoker = app.cfg.path('tmp') / 'csatolmany'
     _takarit_neha(gyoker)
     m = gyoker / azon
@@ -180,7 +181,7 @@ def feltolt(app, d):
         meta = m / 'meta.json'
         if not meta.exists():
             if offset:
-                raise HttpError(409, 'A feltöltés első darabja hiányzik.')
+                raise HttpError(409, 'A feltöltés első darabja hiányzik.', kod="csatolmany.elso_darab_hianyzik")
             nev = nev_ellenor(d.get('nev'))
             cel = csatolmany_mappa(v, d['forras']) if d.get('forras') else (vaultio.norm_path(d['mappa']) if d.get('mappa') else '')
             v._abs(cel) if cel else v.root
@@ -194,10 +195,10 @@ def feltolt(app, d):
             # Az utolsó darab ismétlése (a lezárás az előző próbán foglalt zárral vagy hibával megállt, a darab már hozzáfűződött):
             # ugyanazzal a tartalommal nem hiba, a lezárás újra fut (2026-10-14, F2).
             if not (vege and bajtok and offset + len(bajtok) == hossz and _vege_egyezik(part, bajtok)):
-                raise HttpError(409, 'A feltöltési darabok sorrendje eltér.', offset=hossz)
+                raise HttpError(409, 'A feltöltési darabok sorrendje eltér.', kod="csatolmany.darabok_sorrendje_elter", offset=hossz)
         else:
             if hossz + len(bajtok) > 20 * 1024 ** 3:
-                raise HttpError(413, 'A fájl nagyobb 20 GiB-nál.')
+                raise HttpError(413, 'A fájl nagyobb 20 GiB-nál.', kod="csatolmany.fajl_tul_nagy")
             with part.open('ab') as f:
                 f.write(bajtok); f.flush(); os.fsync(f.fileno())
             hossz += len(bajtok)
@@ -216,7 +217,7 @@ def feltolt(app, d):
                 ki.flush(); os.fsync(ki.fileno())
             with _kor_zar(app.cfg):
                 if not atmeneti.is_file():
-                    raise HttpError(409, 'A célmappa a feltöltés közben megváltozott. Próbáld újra.')
+                    raise HttpError(409, 'A célmappa a feltöltés közben megváltozott. Próbáld újra.', kod="csatolmany.celmappa_megvaltozott")
                 repo = v.repo()
                 if repo:
                     repo.commit('kézi változások import előtt', {'Mos-Forras': 'kezi'})
@@ -232,7 +233,7 @@ def feltolt(app, d):
                     tartos.fsync_mappa(cel_mappa)
                     break
                 else:
-                    raise HttpError(409, 'Nincs szabad fájlnév.')
+                    raise HttpError(409, 'Nincs szabad fájlnév.', kod="csatolmany.nincs_szabad_fajlnev")
                 return _lezar(app, v, repo, cel, azon, eredmeny, part)
         finally:
             atmeneti.unlink(missing_ok=True)
@@ -279,7 +280,7 @@ def uj_mappa(app, d):
     with _kor_zar(app.cfg):
         p = app.vault._abs(rp)
         if any(vaultio.nfc(n).casefold() == nev.casefold() for n in os.listdir(p.parent)):
-            raise HttpError(409, 'Már van ilyen nevű fájl vagy mappa.')
+            raise HttpError(409, 'Már van ilyen nevű fájl vagy mappa.', kod="csatolmany.nev_foglalt")
         p.mkdir(); tartos.fsync_mappa(p.parent)
         app.index.frissit([app.index.lemez_ut(rp)])
     return {'ok': True, 'ut': rp}
@@ -295,13 +296,13 @@ def hej_cli(cfg) -> Path:
 
 def kuka(app, d, vegrehajt=None):
     if d.get('megerosit') is not True:
-        raise HttpError(400, 'A Kukába helyezést meg kell erősíteni.')
+        raise HttpError(400, 'A Kukába helyezést meg kell erősíteni.', kod="csatolmany.kuka_megerosites")
     rp = app.vault.kanonikus(vaultio.norm_path(d.get('ut')))
     with _kor_zar(app.cfg), contextlib.ExitStack() as verem:
         p = app.vault.lemezen(rp)
         gy, szulo = app.vault.root.resolve(), p.parent.resolve()
         if not p.name or szulo / p.name == gy or (szulo != gy and gy not in szulo.parents):
-            raise HttpError(400, 'Csak a vaulton belüli fájl vagy mappa tehető a Kukába.')
+            raise HttpError(400, 'Csak a vaulton belüli fájl vagy mappa tehető a Kukába.', kod="csatolmany.csak_vaulton_belul_kukaba")
         utak = [rp]
         if p.is_dir():
             for dp, dn, fn in os.walk(p):        # I6 (F3): a `.manifold` (állapot) nélkül; a többi mappa (`.git`, `node_modules` …) zárolt marad (v2)
@@ -314,11 +315,11 @@ def kuka(app, d, vegrehajt=None):
             zarak[id(z)] = z
         for z in zarak.values():
             if not z.acquire(timeout=3):
-                raise HttpError(409, 'Az egyik fájl mentése még tart. Próbáld újra.')
+                raise HttpError(409, 'Az egyik fájl mentése még tart. Próbáld újra.', kod="csatolmany.fajl_mentese_tart")
             verem.callback(z.release)
         kulcs = vaultio.nfc(rp).casefold()
         if any(vaultio.nfc(u).casefold() == kulcs or vaultio.nfc(u).casefold().startswith(kulcs + '/') for u in app.atnevezes.mentetlen()):
-            raise HttpError(409, 'A fájlban vagy mappában mentetlen dokumentum van.')
+            raise HttpError(409, 'A fájlban vagy mappában mentetlen dokumentum van.', kod="csatolmany.mentetlen_dokumentum")
         repo = app.vault.repo()
         if repo:
             repo.commit('kézi változások a Kukába helyezés előtt', {'Mos-Forras': 'kezi'})

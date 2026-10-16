@@ -4,6 +4,7 @@
 //
 //   calloutTipusok.regisztral({ nevek: ['card'], cim: 'Kártya', ikon: …, szin: 'lila' });
 
+import { t as tr, tk } from '../../lib/i18n';
 import type { IconNode } from 'lucide';
 import {
   Bug,
@@ -33,34 +34,34 @@ export interface CalloutTipus {
 }
 
 const BEEPITETT: CalloutTipus[] = [
-  { nevek: ['note'], cimek: { note: 'Megjegyzés' }, ikon: Pencil, szin: 'kek' },
+  { nevek: ['note'], cimek: { note: tk('Megjegyzés|callout') }, ikon: Pencil, szin: 'kek' },
   {
     nevek: ['abstract', 'summary', 'tldr'],
-    cimek: { abstract: 'Kivonat', summary: 'Összefoglaló', tldr: 'Röviden' },
+    cimek: { abstract: tk('Kivonat|callout'), summary: tk('Összefoglaló|callout'), tldr: tk('Röviden|callout') },
     ikon: ClipboardList,
     szin: 'cian',
   },
-  { nevek: ['info'], cimek: { info: 'Információ' }, ikon: Info, szin: 'kek' },
-  { nevek: ['todo'], cimek: { todo: 'Teendő' }, ikon: CircleCheck, szin: 'kek' },
-  { nevek: ['tip', 'hint', 'important'], cimek: { tip: 'Tipp', hint: 'Ötlet', important: 'Fontos' }, ikon: Flame, szin: 'cian' },
-  { nevek: ['success', 'check', 'done'], cimek: { success: 'Siker', check: 'Rendben', done: 'Kész' }, ikon: Check, szin: 'zold' },
+  { nevek: ['info'], cimek: { info: tk('Információ|callout') }, ikon: Info, szin: 'kek' },
+  { nevek: ['todo'], cimek: { todo: tk('Teendő|callout') }, ikon: CircleCheck, szin: 'kek' },
+  { nevek: ['tip', 'hint', 'important'], cimek: { tip: tk('Tipp|callout'), hint: tk('Ötlet|callout'), important: tk('Fontos|callout') }, ikon: Flame, szin: 'cian' },
+  { nevek: ['success', 'check', 'done'], cimek: { success: tk('Siker|callout'), check: tk('Rendben|callout'), done: tk('Kész|callout') }, ikon: Check, szin: 'zold' },
   {
     nevek: ['question', 'help', 'faq'],
-    cimek: { question: 'Kérdés', help: 'Segítség', faq: 'Gyakori kérdés' },
+    cimek: { question: tk('Kérdés|callout'), help: tk('Segítség|callout'), faq: tk('Gyakori kérdés|callout') },
     ikon: CircleQuestionMark,
     szin: 'narancs',
   },
   {
     nevek: ['warning', 'caution', 'attention'],
-    cimek: { warning: 'Figyelmeztetés', caution: 'Vigyázat', attention: 'Figyelem' },
+    cimek: { warning: tk('Figyelmeztetés|callout'), caution: tk('Vigyázat|callout'), attention: tk('Figyelem|callout') },
     ikon: TriangleAlert,
     szin: 'narancs',
   },
-  { nevek: ['failure', 'fail', 'missing'], cimek: { failure: 'Kudarc', fail: 'Sikertelen', missing: 'Hiányzik' }, ikon: X, szin: 'piros' },
-  { nevek: ['danger', 'error'], cimek: { danger: 'Veszély', error: 'Hiba' }, ikon: Zap, szin: 'piros' },
-  { nevek: ['bug'], cimek: { bug: 'Programhiba' }, ikon: Bug, szin: 'piros' },
-  { nevek: ['example'], cimek: { example: 'Példa' }, ikon: List, szin: 'lila' },
-  { nevek: ['quote', 'cite'], cimek: { quote: 'Idézet', cite: 'Hivatkozás' }, ikon: Quote, szin: 'szurke' },
+  { nevek: ['failure', 'fail', 'missing'], cimek: { failure: tk('Kudarc|callout'), fail: tk('Sikertelen|callout'), missing: tk('Hiányzik|callout') }, ikon: X, szin: 'piros' },
+  { nevek: ['danger', 'error'], cimek: { danger: tk('Veszély|callout'), error: tk('Hiba|callout') }, ikon: Zap, szin: 'piros' },
+  { nevek: ['bug'], cimek: { bug: tk('Programhiba|callout') }, ikon: Bug, szin: 'piros' },
+  { nevek: ['example'], cimek: { example: tk('Példa|callout') }, ikon: List, szin: 'lila' },
+  { nevek: ['quote', 'cite'], cimek: { quote: tk('Idézet|callout'), cite: tk('Hivatkozás|callout') }, ikon: Quote, szin: 'szurke' },
 ];
 
 export interface CalloutMegjelenes {
@@ -78,7 +79,7 @@ export class CalloutTipusok {
   }
 
   regisztral(t: CalloutTipus): () => void {
-    for (const n of t.nevek) if (this.tipusok.has(n)) throw new Error(`már regisztrált callout-típus: ${n}`);
+    for (const n of t.nevek) if (this.tipusok.has(n)) throw new Error(`már regisztrált callout-típus: ${n}`); // i18n-ignore: programozói hiba
     for (const n of t.nevek) this.tipusok.set(n, t);
     return () => {
       for (const n of t.nevek) if (this.tipusok.get(n) === t) this.tipusok.delete(n);
@@ -98,7 +99,7 @@ export class CalloutTipusok {
       const note = this.tipusok.get('note')!;
       return { tipus: kis, cim: tipus.charAt(0).toUpperCase() + tipus.slice(1), ikon: note.ikon, szin: note.szin };
     }
-    return { tipus: kis, cim: t.cimek[kis] ?? t.cimek[t.nevek[0]] ?? tipus, ikon: t.ikon, szin: t.szin };
+    return { tipus: kis, cim: tr(t.cimek[kis] ?? t.cimek[t.nevek[0]] ?? tipus), ikon: t.ikon, szin: t.szin };
   }
 }
 

@@ -3,6 +3,7 @@
   Kattintásra a szerkesztő a fejezetre ugrik.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { szerkesztok } from '../../szerkeszto/szerkesztok.svelte';
 
   const peldany = $derived(szerkesztok.aktiv);
@@ -16,9 +17,9 @@
 </script>
 
 {#if !peldany}
-  <p class="ures">Nincs megnyitott jegyzet.</p>
+  <p class="ures">{t('Nincs megnyitott jegyzet.')}</p>
 {:else if !elemek.length}
-  <p class="ures">A jegyzetben nincs fejezet.</p>
+  <p class="ures">{t('A jegyzetben nincs fejezet.')}</p>
 {:else}
   <ul>
     {#each elemek as e, i (`${e.sor}:${i}`)}

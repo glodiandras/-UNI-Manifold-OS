@@ -4,6 +4,7 @@
   ablakát a héj mutatja); böngészőből csak a magyarázat látszik. Megtagadott engedélynél csak a teendő szövege áll.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { naptarHid } from '../lib/naptar/hid.svelte';
   import { naptarJelzes } from '../lib/naptar/megjelenites';
   import type { NaptarAllapotSzakasz, Hiba } from './tipusok';
@@ -20,11 +21,11 @@
     {#if jelzes.kerheto}
       {#if hejben}
         <button type="button" class="m-gomb semleges gomb" disabled={naptarHid.kerdesben} onclick={() => naptarHid.kerd()}>
-          {naptarHid.kerdesben ? 'A rendszer ablakában döntsd el…' : 'Naptár-engedély kérése'}
+          {naptarHid.kerdesben ? t('A rendszer ablakában döntsd el…') : t('Naptár-engedély kérése')}
         </button>
         {#if naptarHid.hiba}<p class="hiba" role="alert">{naptarHid.hiba}</p>{/if}
       {:else}
-        <p class="halvany">Az engedélyt a Manifold.app kéri; böngészőből nem kérhető.</p>
+        <p class="halvany">{t('Az engedélyt a Manifold.app kéri; böngészőből nem kérhető.')}</p>
       {/if}
     {/if}
   </div>

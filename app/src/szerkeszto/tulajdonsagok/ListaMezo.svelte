@@ -6,6 +6,7 @@
   kiemelt javaslatot az ↩ vagy a Tab veszi fel, erős találat nélkül az ↩ a gépelt szöveget.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import Ikon from '../../lib/ikon/Ikon.svelte';
   import { X } from '../../lib/ikon/ikonok';
   import { wikiReszek } from './ertek';
@@ -74,7 +75,7 @@
         <span class="szoveg" title={e}>{w ? w.felirat : e}</span>
       {/if}
       {#if irhato}
-        <button type="button" class="torol" aria-label="{e} eltávolítása" onclick={() => onvaltozas(elemek.filter((_, j) => j !== i))}>
+        <button type="button" class="torol" aria-label={t('{e} eltávolítása', { e })} onclick={() => onvaltozas(elemek.filter((_, j) => j !== i))}>
           <Ikon ikon={X} meret={14} />
         </button>
       {/if}
@@ -85,8 +86,8 @@
       <JavaslatMezo
         size={1}
         osztaly="bevitel"
-        cimke="{cimke}: új elem"
-        placeholder={elemek.length ? '+' : 'Új elem'}
+        cimke={t('{cimke}: új elem', { cimke })}
+        placeholder={elemek.length ? '+' : t('Új elem')}
         bind:value={bevitel}
         javasol={javasol ?? nincsJavaslat}
         onvalaszt={(e) => void javaslatValaszt(e)}

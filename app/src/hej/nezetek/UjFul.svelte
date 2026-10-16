@@ -1,5 +1,6 @@
 <!-- Üres fül: a következő lépések, gyorsbillentyűvel. -->
 <script lang="ts">
+  import { t, tk } from '../../lib/i18n';
   import type { NezetProps } from '../../lib/elrendezes/nezetek.svelte';
   import { regiszter } from '../../lib/parancsok/regiszter';
   import Billentyu from '../../lib/ui/Billentyu.svelte';
@@ -7,21 +8,21 @@
   let {}: NezetProps = $props();
 
   const LEHETOSEGEK: { id: string; nev: string; akkord?: string }[] = [
-    { id: 'ma.megnyit', nev: 'Ma' },
-    { id: 'naplo.napi', nev: 'Napi jegyzet', akkord: 'Mod+Shift+D' },
-    { id: 'hej.valto', nev: 'Fájl megnyitása', akkord: 'Mod+O' },
-    { id: 'hej.paletta', nev: 'Parancsok', akkord: 'Mod+P' },
-    { id: 'ful.bezar', nev: 'Fül bezárása', akkord: 'Mod+W' },
+    { id: 'ma.megnyit', nev: tk('Ma') },
+    { id: 'naplo.napi', nev: tk('Napi jegyzet'), akkord: 'Mod+Shift+D' },
+    { id: 'hej.valto', nev: tk('Fájl megnyitása'), akkord: 'Mod+O' },
+    { id: 'hej.paletta', nev: tk('Parancsok'), akkord: 'Mod+P' },
+    { id: 'ful.bezar', nev: tk('Fül bezárása'), akkord: 'Mod+W' },
   ];
 </script>
 
 <div class="uj-ful">
-  <h2>Nincs megnyitott jegyzet</h2>
+  <h2>{t('Nincs megnyitott jegyzet')}</h2>
   <ul role="list">
     {#each LEHETOSEGEK as l (l.id)}
       <li>
         <button type="button" onclick={() => regiszter.futtat(l.id, 'gomb')}>
-          <span>{l.nev}</span>
+          <span>{t(l.nev)}</span>
           {#if l.akkord}<Billentyu akkord={l.akkord} />{/if}
         </button>
       </li>

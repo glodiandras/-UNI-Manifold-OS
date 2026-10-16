@@ -4,6 +4,7 @@
 // Az Olvasó (`data-cel` elemek) és a szerkesztő (CodeMirror-pozíció → szintaxisfa) ugyanezt a modult használja;
 // a billentyűzetes párja a „Link előnézete a kurzornál” parancs (`mutat`).
 
+import { t } from '../../lib/i18n';
 import { beagyazasElem } from '../beagyazas/rajzol';
 import type { LinkAdat } from './adat';
 
@@ -57,7 +58,7 @@ class LebegoElonezet {
     const pop = document.createElement('div');
     pop.className = 'link-elonezet';
     pop.setAttribute('role', 'region');
-    pop.setAttribute('aria-label', 'Link előnézete');
+    pop.setAttribute('aria-label', t('Link előnézete'));
     pop.tabIndex = -1;
     this.vezerlo = new AbortController();
     const tartalom = document.createElement('div');

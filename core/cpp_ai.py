@@ -31,6 +31,7 @@ from pathlib import Path
 
 from .utvonalak import HttpError, Valasz
 from .vaultio import Invalid, NotFound, norm_path
+from .hibakod import angol_uzenet, kodol
 
 REPO = Path(__file__).resolve().parent.parent
 MODOK = ("hiba", "tipp", "megoldas", "teszt", "stressz")
@@ -105,7 +106,7 @@ class Szolgalat:
     def indit(self, d: dict, worker) -> Valasz:
         mod = d.get("mod")
         if mod not in MODOK:
-            raise Invalid(f"a `mod` ezek egyike: {', '.join(MODOK)}")
+            raise kodol(Invalid(f"a `mod` ezek egyike: {', '.join(MODOK)}"), "cpp_ai.mod_ezek_egyike_join", {"join": ', '.join(MODOK)})
         if mod == "megoldas" and d.get("megerosit") is not True:
             raise HttpError(400, "a teljes megoldás csak külön megerősítéssel kérhető", kod="megerosites_kell")
         f = self.feladat_fn(d.get("ut"))
@@ -113,7 +114,7 @@ class Szolgalat:
         if d.get("jegyzet") is not None:
             jegyzet = self.vault.kanonikus(norm_path(str(d["jegyzet"])))
             if not jegyzet.lower().endswith(".md"):
-                raise Invalid("a `jegyzet` .md fájl legyen")
+                raise kodol(Invalid("a `jegyzet` .md fájl legyen"), "cpp_ai.jegyzet_md_fajl_legyen")
         if f["cpp"] is None:
             raise HttpError(400, f["hiba"] or "nincs .cpp megoldás", kod="nincs_cpp")
         if jegyzet is None and len(f["jegyzetek"]) > 1:
@@ -135,7 +136,7 @@ class Szolgalat:
             argv.append("--megerosit")
         with self._zar:
             if self._leallt:
-                raise HttpError(503, "a core leáll")
+                raise HttpError(503, "a core leáll", kod="cpp_ai.core_leall")
             if self._aktiv is not None and self._aktiv.allapot == "fut":
                 raise HttpError(409, "már fut egy AI-kérés", kod="foglalt", ai=self._aktiv.id)
             futas = AIFutas(f"ai-{os.urandom(6).hex()}", mod, f["cpp"], jegyzet)
@@ -207,6 +208,13 @@ class Szolgalat:
             futas.kesz = {k: v for k, v in d.items() if k != "szakasz"}
             futas.allapot = "kesz"
         elif sz == "hiba":
+            regi = str(d.get("uzenet") or "")
+            kod = d.get("kod")
+            param = d.get("param") if isinstance(d.get("param"), dict) else {}
+            uzenet = angol_uzenet(kod, param, "The AI request failed. Open its log for details.")
+            if regi and regi != uzenet:
+                futas.log = (futas.log + [regi])[-LOG_VEGE:]
+            d = {**d, "uzenet": uzenet}
             futas.hiba = {"kod": d.get("kod"), "uzenet": d.get("uzenet")}
             futas.allapot = "hiba"
         elif sz == "megszakitva":
@@ -230,9 +238,9 @@ class Szolgalat:
         futas = self._keres(d.get("ai"))
         szint = d.get("szint")
         if futas.mod != "tipp":
-            raise Invalid("ez nem tipp-kérés")
+            raise kodol(Invalid("ez nem tipp-kérés"), "cpp_ai.ez_tipp_keres")
         if not isinstance(szint, int) or isinstance(szint, bool) or szint not in TIPP_SZINTEK:
-            raise Invalid("a `szint` 1, 2 vagy 3")
+            raise kodol(Invalid("a `szint` 1, 2 vagy 3"), "cpp_ai.szint_1_2_3")
         if futas.eredmeny is None:
             raise HttpError(409, "a tipp még nem érkezett meg", kod="nincs_eredmeny")
         uj = szint not in futas.felfedett
@@ -243,10 +251,10 @@ class Szolgalat:
 
     def _keres(self, aid) -> AIFutas:
         if not isinstance(aid, str) or not aid:
-            raise Invalid("hiányzik az `ai`")
+            raise kodol(Invalid("hiányzik az `ai`"), "cpp_ai.hianyzik_ai")
         f = self._futasok.get(aid) if AI_ID.match(aid) else None
         if f is None:
-            raise NotFound(f"nincs ilyen AI-kérés: {aid}")
+            raise kodol(NotFound(f"nincs ilyen AI-kérés: {aid}"), "cpp_ai.nincs_ilyen_ai_keres_aid", {"aid": aid})
         return f
 
     def futas(self, aid: str) -> dict:

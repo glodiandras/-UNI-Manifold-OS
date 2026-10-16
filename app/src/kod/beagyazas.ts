@@ -4,6 +4,7 @@
 // marad link-chip. A szerkeszthető beágyazás nem része (C36a2).
 
 import { kerdez } from '../lib/core/api';
+import { t } from '../lib/i18n';
 import { fajlNev } from '../lib/vault/fajlok.svelte';
 import type { BeagyazasRenderelo } from '../szerkeszto/beagyazas/regiszter';
 import { chip } from '../szerkeszto/beagyazas/rajzol';
@@ -18,11 +19,11 @@ export const CPP = /\.cpp$/i;
 /** A jelvény szövege és fajtája egy összesítőből (vagy `null`, ha még nem futott). */
 export function jelveny(o: Osszesito | undefined): { szoveg: string; fajta: 'jo' | 'rossz' | 'semleges' } | null {
   if (!o) return null;
-  if (o.allapot === 'megszakitva') return { szoveg: 'megszakítva', fajta: 'semleges' };
-  if (o.allapot === 'hiba') return { szoveg: 'nem futott le', fajta: 'rossz' };
-  if (!o.fordit_ok) return { szoveg: 'fordítási hiba', fajta: 'rossz' };
-  if (!o.tesztek_db) return { szoveg: 'lefordul', fajta: 'semleges' };
-  return { szoveg: `${o.atment_db}/${o.tesztek_db} átment`, fajta: o.atment_db === o.tesztek_db ? 'jo' : 'rossz' };
+  if (o.allapot === 'megszakitva') return { szoveg: t('megszakítva'), fajta: 'semleges' };
+  if (o.allapot === 'hiba') return { szoveg: t('nem futott le'), fajta: 'rossz' };
+  if (!o.fordit_ok) return { szoveg: t('fordítási hiba'), fajta: 'rossz' };
+  if (!o.tesztek_db) return { szoveg: t('lefordul'), fajta: 'semleges' };
+  return { szoveg: t('{atment}/{db} átment', { atment: o.atment_db, db: o.tesztek_db }), fajta: o.atment_db === o.tesztek_db ? 'jo' : 'rossz' };
 }
 
 function jelvenyRajzol(span: HTMLElement, ut: string): void {
@@ -60,7 +61,7 @@ export const kodBeagyazasRenderelo: BeagyazasRenderelo = {
     const gomb = document.createElement('button');
     gomb.type = 'button';
     gomb.className = 'kod-beagyazas-nyit';
-    gomb.textContent = 'Megnyitás';
+    gomb.textContent = t('Megnyitás');
     gomb.addEventListener('click', nyit);
     fej.append(nev, jel, gomb);
     const pre = document.createElement('pre');

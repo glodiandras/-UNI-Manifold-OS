@@ -68,11 +68,11 @@ class Mintatar:
         """A felület jelzése egy felhasználói műveletről: `{muvelet: cimke|sablon|link, ut, ertek}` → `{fogadva, tanult}`."""
         muvelet, ut, ertek = d.get("muvelet"), d.get("ut"), d.get("ertek")
         if muvelet not in MUVELETEK:
-            raise HttpError(400, "a művelet cimke, sablon vagy link lehet")
+            raise HttpError(400, "a művelet cimke, sablon vagy link lehet", kod="asszisztens.mintatar.muvelet_ertek")
         if not isinstance(ut, str) or not ut.lower().endswith(".md") or len(ut) > 1000:
-            raise HttpError(400, "az `ut` egy jegyzet vault-relatív útja")
+            raise HttpError(400, "az `ut` egy jegyzet vault-relatív útja", kod="asszisztens.mintatar.ut_kell")
         if not isinstance(ertek, str) or not ertek.strip() or len(ertek) > 300 or "\x00" in ertek or "\n" in ertek:
-            raise HttpError(400, "az `ertek` legfeljebb 300 karakteres, egysoros szöveg")
+            raise HttpError(400, "az `ertek` legfeljebb 300 karakteres, egysoros szöveg", kod="asszisztens.mintatar.ertek_hossz")
         if not self.kapcsolo():
             return {"fogadva": False, "ok": "asszisztens_ki"}
         ut, ertek = nfc(ut), nfc(ertek.strip())
@@ -117,7 +117,7 @@ class Mintatar:
         """A kártya sorsa: `{azon, tipus, helyzet, dontes: elfogad|elutasit|figyelmen_kivul, cim?}` → a hangolás új állása."""
         azon, tipus, helyzet, dontes = d.get("azon"), d.get("tipus"), d.get("helyzet"), d.get("dontes")
         if not isinstance(azon, str) or not _AZON.match(azon) or azon.split(":", 1)[0] != tipus:
-            raise HttpError(400, "érvénytelen javaslat-azonosító")
+            raise HttpError(400, "érvénytelen javaslat-azonosító", kod="asszisztens.mintatar.javaslat_azonosito")
         if not self.kapcsolo():
             return {"fogadva": False, "ok": "asszisztens_ki"}
         allas = self.hangolo.rogzit(tipus, helyzet, dontes)
@@ -221,11 +221,11 @@ class Mintatar:
         Modellt nem hív, a vaultba nem ír; kikapcsolt Asszisztensnél nincs javaslat."""
         ut, szoveg, alkalom = d.get("ut"), d.get("szoveg"), d.get("alkalom", "szunet")
         if not isinstance(ut, str) or not ut.lower().endswith(".md"):
-            raise HttpError(400, "az `ut` egy jegyzet vault-relatív útja")
+            raise HttpError(400, "az `ut` egy jegyzet vault-relatív útja", kod="asszisztens.mintatar.ut_kell")
         if not isinstance(szoveg, str) or len(szoveg) > MAX_SZOVEG:
-            raise HttpError(400, "a `szoveg` kötelező (legfeljebb 200 000 karakter)")
+            raise HttpError(400, "a `szoveg` kötelező (legfeljebb 200 000 karakter)", kod="asszisztens.mintatar.szoveg_kell")
         if alkalom not in ALKALMAK:
-            raise HttpError(400, "az `alkalom` megnyitas vagy szunet lehet")
+            raise HttpError(400, "az `alkalom` megnyitas vagy szunet lehet", kod="asszisztens.mintatar.alkalom_ertek")
         alap = float(beallitasok(self.cfg)["kartya_alap_mp"])
         if not self.kapcsolo():
             return {"javaslat": None, "varakozas_mp": alap, "kapcsolo": False}

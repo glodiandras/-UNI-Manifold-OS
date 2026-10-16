@@ -24,8 +24,9 @@ from .asszisztens.beallitasok import beallitasok
 from .index import indexelo, pdfszoveg
 from .index import linkek as index_linkek
 from .index.feloldas import nfc
-from .tulajdonsagok import _fm_elemez
+from .tulajdonsagok import _fm_elemez, frontmatter_hiba_angol
 from .vaultio import NotFound
+from .hibakod import kodol
 
 FAJTAK = ("torott_link", "tobbertelmu_link", "arva_jegyzet", "hibas_keplet", "hibas_frontmatter", "sema_sertes",
           "hianyzo_forrashorgony", "hianyzo_media")
@@ -77,6 +78,26 @@ def kepletproba(forras: str) -> str | None:
     if verem:
         return f"\\begin{{{verem[-1]}}} lezárás nélkül"
     return None
+
+
+def keplethiba_angol(hiba: str) -> str:
+    """English finding text for the legacy structural check, retaining its counts and environments."""
+    allando = {
+        "üres képlet": "The formula is empty.",
+        "felesleges záró kapcsos zárójel (})": "An extra closing brace (}) has no matching opening brace.",
+        "a \\left és a \\right nem párosítható": "The \\left and \\right commands are not paired.",
+    }
+    if hiba in allando:
+        return allando[hiba]
+    if m := re.fullmatch(r"(\d+) lezáratlan kapcsos zárójel \(\{\)", hiba):
+        return f"Unclosed opening braces ({{): {m[1]}."
+    if m := re.fullmatch(r"\\end\{(.*?)\} kezdő \\begin nélkül", hiba):
+        return f"The \\end{{{m[1]}}} command has no opening \\begin."
+    if m := re.fullmatch(r"a \\begin és az \\end környezet neve nem egyezik \((.*?)\)", hiba):
+        return f"The \\begin and \\end environment names do not match ({m[1]})."
+    if m := re.fullmatch(r"\\begin\{(.*?)\} lezárás nélkül", hiba):
+        return f"The \\begin{{{m[1]}}} environment is not closed."
+    return "The formula structure is invalid."
 
 
 # ---------------------------------------------------------------- riport
@@ -151,7 +172,7 @@ class Higienia:
         with self.index.olvaso() as c:
             if ut is not None and c.execute("SELECT 1 FROM fajl WHERE ut = ? AND torolve IS NULL AND tipus = 'md'",
                                             (ut,)).fetchone() is None:
-                raise NotFound(f"nincs ilyen jegyzet az indexben: {ut}")
+                raise kodol(NotFound(f"nincs ilyen jegyzet az indexben: {ut}"), "higienia.nincs_ilyen_jegyzet_indexben_ut", {"ut": ut})
             jegyzetek = c.execute("SELECT COUNT(*) FROM fajl f WHERE f.torolve IS NULL AND f.tipus = 'md'" + szuro,
                                   arg).fetchone()[0]
         lep.fazis()
@@ -244,20 +265,20 @@ class Higienia:
                 if af == "oldal":
                     m = _OLDAL.match(alcel)
                     if not (m and int(m.group(1)) >= 1):
-                        return "érvénytelen oldalhorgony"
+                        return "invalid page anchor"
                     n = lapszam.get(cel) if cel_tipus == "pdf" else None       # C30b (K205 (c)): `oldal ≤ oldalszám`
-                    return f"az oldal nincs a PDF-ben ({n} oldalas)" if n is not None and int(m.group(1)) > n else None
+                    return f"the page is outside the PDF ({n} pages)" if n is not None and int(m.group(1)) > n else None
                 if af == "ido":
-                    return None if _IDO.match(alcel) else "érvénytelen időhorgony"
+                    return None if _IDO.match(alcel) else "invalid time anchor"
                 if fajta != "wiki":
                     return None
                 celut = ut if (cel is None and not nyers.strip()) else (cel if cel_tipus == "md" else None)
                 if celut is None:
                     return None
                 if af == "blokk":
-                    return None if alcel[1:].strip() in blokkok.get(celut, ()) else "a hivatkozott blokk nincs a célban"
+                    return None if alcel[1:].strip() in blokkok.get(celut, ()) else "the linked block is missing from the target"
                 ok = index_linkek.fejezet_tartomany(fejezetek.get(celut, []), 10 ** 9, alcel) is not None
-                return None if ok else "a hivatkozott fejezet nincs a célban"
+                return None if ok else "the linked heading is missing from the target"
 
             if cel is None:
                 if not nyers.strip():
@@ -267,11 +288,11 @@ class Higienia:
                             tetel("hianyzo_forrashorgony", HIBA, f"{hiba[0].upper()}{hiba[1:]}: #{alcel}")
                     continue
                 if tul == "Source":
-                    tetel("hianyzo_forrashorgony", HIBA, f"A forrás nem található: {nyers}", tulajdonsag="Source")
+                    tetel("hianyzo_forrashorgony", HIBA, f"The source was not found: {nyers}", tulajdonsag="Source")
                 elif beag and _kiterjesztes_tipus(nyers) in _MEDIA_TIPUSOK:
-                    tetel("hianyzo_media", HIBA, f"A beágyazott média nem található: {nyers}")
+                    tetel("hianyzo_media", HIBA, f"The embedded media was not found: {nyers}")
                 else:
-                    tetel("torott_link", HIBA, f"Törött link: {nyers}")
+                    tetel("torott_link", HIBA, f"Broken link: {nyers}")
                 continue
             if alcel:
                 hiba = horgony_hiba()
@@ -281,7 +302,7 @@ class Higienia:
             if tul == "Source":
                 continue
             if tobb:
-                tetel("tobbertelmu_link", FIGYELEM, f"Többértelmű link: {nyers}", jelolt=cel)
+                tetel("tobbertelmu_link", FIGYELEM, f"Ambiguous link: {nyers}", jelolt=cel)
 
     # -------------------------------------------------- árva jegyzet
 
@@ -305,7 +326,7 @@ class Higienia:
             if _kizart(ut, b["higienia_arva_kizart"], reteg):
                 continue
             ki.append({"azonosito": _azonosito("arva_jegyzet", ut, ""), "fajta": "arva_jegyzet", "szint": TAJEKOZTATO,
-                       "ut": ut, "sor": None, "uzenet": "Árva jegyzet: nincs bejövő és nincs kimenő jegyzet-link.",
+                       "ut": ut, "sor": None, "uzenet": "Orphan note: no incoming or outgoing note links.",
                        "reszlet": {}})
 
     # -------------------------------------------------- képletek
@@ -321,11 +342,12 @@ class Higienia:
             hiba = kepletproba(forras)
             if hiba is None:
                 continue
+            uzenet = keplethiba_angol(hiba)
             kulcs = f"{forras}"
             szamlalo[(ut, kulcs)] += 1
             ki.append({"azonosito": _azonosito("hibas_keplet", ut, f"{kulcs}|{szamlalo[(ut, kulcs)]}"),
                        "fajta": "hibas_keplet", "szint": HIBA, "ut": ut, "sor": sor,
-                       "uzenet": f"Hibás képlet: {hiba}", "reszlet": {"hiba": hiba, "forras": (forras or "")[:200]}})
+                       "uzenet": f"Invalid formula: {uzenet}", "reszlet": {"hiba": uzenet, "forras": (forras or "")[:200]}})
 
     # -------------------------------------------------- frontmatter: formai hiba, érték-típus, séma
 
@@ -351,13 +373,14 @@ class Higienia:
         for ut, fm, fm_hiba in jegyzetek:
             lep.sor()
             if fm_hiba:
+                hiba = frontmatter_hiba_angol(fm_hiba)
                 ki.append({"azonosito": _azonosito("hibas_frontmatter", ut, "fm"), "fajta": "hibas_frontmatter",
-                           "szint": HIBA, "ut": ut, "sor": 1, "uzenet": f"A frontmatter formai hibás: {fm_hiba}",
-                           "reszlet": {"hiba": fm_hiba}})
+                           "szint": HIBA, "ut": ut, "sor": 1, "uzenet": f"Invalid frontmatter syntax: {hiba}",
+                           "reszlet": {"hiba": hiba}})
             for k in ervenytelen.get(ut, []):
                 ki.append({"azonosito": _azonosito("hibas_frontmatter", ut, f"ertek|{k}"), "fajta": "hibas_frontmatter",
                            "szint": FIGYELEM, "ut": ut, "sor": 1,
-                           "uzenet": f"A(z) „{k}” tulajdonság értéke nem illik a típusához.",
+                           "uzenet": f"The value of the ‘{k}’ property does not match its type.",
                            "reszlet": {"hiba": None, "kulcs": k}})
             for p in self._sema(ut, fm, ertekek.get(ut, {})):
                 ki.append({"azonosito": _azonosito("sema_sertes", ut, f"{p['kod']}|{p['kulcs']}|{p['ertek']}"),

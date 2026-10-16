@@ -71,14 +71,14 @@ def szuro_fa(nyers, hely: str) -> tuple[Szuro | None, list[dict]]:
     if isinstance(nyers, list):                         # lista: implicit `and`
         nyers = {"and": nyers}
     if not isinstance(nyers, dict):
-        return None, [hiba(hely, "a szűrő szöveg vagy and/or/not szerkezet")]
+        return None, [hiba(hely, "a szűrő szöveg vagy and/or/not szerkezet", kod="bazis.modell.szuro_szerkezet")]
     if len(nyers) != 1 or next(iter(nyers)) not in ("and", "or", "not"):
-        return None, [hiba(hely, "a szűrő objektum pontosan egy `and`, `or` vagy `not` kulcsot tartalmaz")]
+        return None, [hiba(hely, "a szűrő objektum pontosan egy `and`, `or` vagy `not` kulcsot tartalmaz", kod="bazis.modell.szuro_objektum_kulcs")]
     kulcs, lista = next(iter(nyers.items()))
     if lista is None:
         lista = []
     if not isinstance(lista, list):
-        return None, [hiba(f"{hely}.{kulcs}", f"a `{kulcs}` értéke lista")]
+        return None, [hiba(f"{hely}.{kulcs}", f"a `{kulcs}` értéke lista", kod="bazis.modell.kulcs_erteke_lista", param={"kulcs": kulcs})]
     gyerekek = []
     for i, e in enumerate(lista):
         sz, h = szuro_fa(e, f"{hely}.{kulcs}[{i}]")
@@ -209,7 +209,7 @@ def _nezet(i: int, n: dict, figy: list) -> Nezet:
     tipus = _TIPUS_ALIAS.get(eredeti.lower(), eredeti.lower())
     ismert = tipus in TIPUSOK
     if not ismert:
-        figy.append(hiba(f"views[{i}]", f"ismeretlen nézettípus: {eredeti} — táblázatként jelenik meg"))
+        figy.append(hiba(f"views[{i}]", f"ismeretlen nézettípus: {eredeti} — táblázatként jelenik meg", kod="bazis.modell.ismeretlen_nezettipus", param={"eredeti": eredeti}))
         tipus = "table"
     nev = n.get("name")
     return Nezet(i, n, str(nev) if nev not in (None, "") else f"Nézet {i + 1}", tipus, eredeti, ismert)
@@ -230,22 +230,22 @@ def betolt(szoveg: str) -> tuple[Bazis, list[dict]]:
     if nyers is None:
         nyers = {}
     if not isinstance(nyers, dict):
-        return Bazis({}, [], vegzetes=True), [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll")]
+        return Bazis({}, [], vegzetes=True), [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll", kod="bazis.modell.base_gyoker")]
     nyers = {str(k): v for k, v in nyers.items()}
     figy: list[dict] = []
     for kulcs in ("formulas", "properties", "summaries"):
         if nyers.get(kulcs) is not None and not isinstance(nyers[kulcs], dict):
-            hibak.append(hiba(kulcs, f"a `{kulcs}` kulcs–érték párokból áll"))
+            hibak.append(hiba(kulcs, f"a `{kulcs}` kulcs–érték párokból áll", kod="bazis.modell.kulcs_ertek_parok", param={"kulcs": kulcs}))
     nezetek_nyers = nyers.get("views")
     if nezetek_nyers is None:
         nezetek_nyers = []
     if not isinstance(nezetek_nyers, list):
-        hibak.append(hiba("views", "a `views` lista"))
+        hibak.append(hiba("views", "a `views` lista", kod="bazis.modell.views_lista"))
         nezetek_nyers = []
     nezetek = []
     for i, n in enumerate(nezetek_nyers):
         if not isinstance(n, dict):
-            hibak.append(hiba(f"views[{i}]", "a nézet kulcs–érték párokból áll"))
+            hibak.append(hiba(f"views[{i}]", "a nézet kulcs–érték párokból áll", kod="bazis.modell.nezet_ertek_parok"))
             continue
         nezetek.append(_nezet(len(nezetek), n, figy))
     if not nezetek and not hibak:                   # üres fájl / üres lista: az alap nézet csak megjelenítés
@@ -267,7 +267,7 @@ def betolt(szoveg: str) -> tuple[Bazis, list[dict]]:
         except KifejezesHiba as e:
             hibak.append(hiba(f"summaries.{nev}", str(e)))
         except Exception:                           # a nem szöveg kifejezés
-            hibak.append(hiba(f"summaries.{nev}", "az összesítő nem kifejezés-szöveg"))
+            hibak.append(hiba(f"summaries.{nev}", "az összesítő nem kifejezés-szöveg", kod="bazis.modell.osszesito_szoveg"))
     return b, hibak
 
 
@@ -444,7 +444,7 @@ def _forras_csere(regi: str, uj) -> tuple[str, list[dict], str]:
     **új** hiba akadályoz: a YAML-hiba mindig, a szűrő-, képlet-, összesítő-hiba csak ha a régi szövegben még nem
     volt (így a már hibás fájl javítható lépésenként)."""
     if not isinstance(uj, str):
-        return regi, [hiba("muvelet", "hiányzik a szöveg")], ""
+        return regi, [hiba("muvelet", "hiányzik a szöveg", kod="bazis.modell.hianyzik_szoveg")], ""
     _, regi_hibak = betolt(regi)
     _, uj_hibak = betolt(uj)
     regiek = {(h["hely"], h["uzenet"]) for h in regi_hibak}
@@ -461,7 +461,7 @@ def modosit(szoveg: str, muvelet: dict) -> tuple[str, list[dict], str]:
     képlethiba), vagy a visszaolvasás eltér. Az érvényes, de **már korábban is hibás** részek (egy másik nézet
     hibás szűrője) nem akadályozzák az új módosítást: csak az új hibák számítanak."""
     if not isinstance(muvelet, dict):
-        return szoveg, [hiba("muvelet", "a művelet objektum")], ""
+        return szoveg, [hiba("muvelet", "a művelet objektum", kod="bazis.modell.muvelet_objektum")], ""
     if muvelet.get("fajta") == "forras_csere":
         return _forras_csere(szoveg, muvelet.get("szoveg"))
     try:
@@ -471,7 +471,7 @@ def modosit(szoveg: str, muvelet: dict) -> tuple[str, list[dict], str]:
     if nyers is None:
         nyers = {}
     if not isinstance(nyers, dict):
-        return szoveg, [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll")], ""
+        return szoveg, [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll", kod="bazis.modell.base_gyoker")], ""
     nyers = copy.deepcopy({str(k): v for k, v in nyers.items()})
     if not nyers.get("views") and muvelet.get("fajta") not in ("nezet_uj",):
         nyers["views"] = [{"type": "table", "name": "Táblázat"}]      # az üres fájl alap nézete így lesz valódi
@@ -484,9 +484,9 @@ def modosit(szoveg: str, muvelet: dict) -> tuple[str, list[dict], str]:
     try:
         vissza = _yaml(uj)
     except yaml.YAMLError as e:
-        return szoveg, [hiba("yaml", f"a kiírt szöveg nem olvasható vissza: {e}")], ""
+        return szoveg, [hiba("yaml", f"a kiírt szöveg nem olvasható vissza: {e}", kod="bazis.modell.kiirt_nem_olvashato", param={"e": e})], ""
     if vissza != nyers:
-        return szoveg, [hiba("yaml", "a kiírt szöveg visszaolvasva eltér")], ""
+        return szoveg, [hiba("yaml", "a kiírt szöveg visszaolvasva eltér", kod="bazis.modell.kiirt_elter")], ""
     _, regi_hibak = betolt(szoveg)
     _, uj_hibak = betolt(uj)
     regiek = {(h["hely"], h["uzenet"]) for h in regi_hibak}

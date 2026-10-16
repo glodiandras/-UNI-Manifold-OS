@@ -40,6 +40,18 @@ cp "$MODUL/Info.plist" "$APP/Contents/Info.plist"
 [ -f "$MODUL/ikon/AppIcon.icns" ] || { echo "HIBA: nincs shell/ikon/AppIcon.icns (bash shell/ikon/keszit.sh)" >&2; exit 1; }
 cp "$MODUL/ikon/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 "$MOS_HOME/bin/mos" epites > "$APP/Contents/Resources/epites.json"
+# A héj szövegei (F4): a verziókövetett `Resources/*.lproj` mappák (Localizable.strings: kulcs = a magyar forrásszöveg, érték = az angol)
+# a csomagba másolódnak; a hiányzó vagy hibás angol szótár nem marad némán el (hiányzó kulcsnál a felirat magyar maradna).
+[ -f "$MODUL/Resources/en.lproj/Localizable.strings" ] || { echo "HIBA: nincs shell/Resources/en.lproj/Localizable.strings" >&2; exit 1; }
+[ -f "$MODUL/Resources/en.lproj/InfoPlist.strings" ] || { echo "HIBA: nincs shell/Resources/en.lproj/InfoPlist.strings" >&2; exit 1; }
+for LPROJ in "$MODUL"/Resources/*.lproj; do
+  if [ -d "$LPROJ" ]; then
+    for SZOTAR in "$LPROJ"/*.strings; do
+      plutil -lint "$SZOTAR" >/dev/null || { echo "HIBA: hibás lokalizáció: $SZOTAR" >&2; exit 1; }
+    done
+    cp -R "$LPROJ" "$APP/Contents/Resources/"
+  fi
+done
 codesign --force --deep --sign "$IDENTITAS" ${ALAIRAS_KAPCSOLOK[@]+"${ALAIRAS_KAPCSOLOK[@]}"} "$APP"
 codesign --verify --deep --strict "$APP"
 if [ "$IDENTITAS" = "-" ]; then

@@ -2,6 +2,7 @@
 // lapokra rajzolt réteg. A réteg a lap `div`-jébe kerül, százalékos téglalapokkal (a nagyítás nem rajzolja újra).
 
 import { kerdez } from '../../lib/core/api';
+import { t } from '../../lib/i18n';
 import type { Teglalap } from './kijeloles';
 
 export interface Kiemeles {
@@ -61,7 +62,7 @@ export function retegRajzol(lapDiv: HTMLElement, lista: Kiemeles[], valaszt: (k:
       d.dataset.id = k.id;
       if (d instanceof HTMLButtonElement) {
         d.type = 'button';
-        d.setAttribute('aria-label', `Kiemelés: ${k.szoveg.slice(0, 80)}`);
+        d.setAttribute('aria-label', t('Kiemelés: {szoveg}', { szoveg: k.szoveg.slice(0, 80) }));
       }
       d.addEventListener('click', (e) => {
         e.stopPropagation();

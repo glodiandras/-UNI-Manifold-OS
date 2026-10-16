@@ -6,6 +6,7 @@
 // A formátum csak **adat**: a kifejezést nem értékeli (az `kifejezes.ts` dolga). Az ismeretlen vagy hibás sor hibát nem
 // okoz: megmarad (`ismeretlen`), a renderelő kihagyja, a `hibak` a sor számát jelzi; így a kézi szerkesztés biztonságos.
 
+import { t as tx } from '../../../lib/i18n';
 export const MAX_ELEM = 64; // ennél több rajzelemet a renderelő nem kap (a többi `ismeretlen`)
 export const MAX_SOR = 2000; // ennél hosszabb sor `ismeretlen`
 export const MAX_BLOKK = 100_000; // ennél nagyobb blokkot nem elemzünk
@@ -173,7 +174,7 @@ function elem(sor: string): Elem | Tartomany | null {
 /** A blokk tartalma (kerítés nélkül) → `Abra`; soronkénti hiba a `hibak`-ban, az ismeretlen sor megmarad. */
 export function elemez(szoveg: string): Abra {
   if ((szoveg ?? '').length > MAX_BLOKK) {
-    return { x_tartomany: null, y_tartomany: null, elemek: [], hibak: [[0, 'túl nagy blokk']] };
+    return { x_tartomany: null, y_tartomany: null, elemek: [], hibak: [[0, tx('túl nagy blokk')]] };
   }
   let xt: [string, string] | null = null;
   let yt: [string, string] | null = null;
@@ -189,23 +190,23 @@ export function elemez(szoveg: string): Abra {
     }
     if (sor.length > MAX_SOR) {
       elemek.push({ fajta: 'ismeretlen', sor });
-      hibak.push([n, `a sor hosszabb ${MAX_SOR} jelnél`]);
+      hibak.push([n, tx('a sor hosszabb {n} jelnél', { n: MAX_SOR })]);
       return;
     }
     const e = elem(tisztit(megjegyzesNelkul(sor)));
     if (e === null) {
       elemek.push({ fajta: 'ismeretlen', sor });
-      hibak.push([n, 'ismeretlen vagy hibás sor']);
+      hibak.push([n, tx('ismeretlen vagy hibás sor')]);
     } else if ('tartomany' in e && !('fajta' in e)) {
       if (e.tartomany === 'x' && xt === null) xt = e.ertek;
       else if (e.tartomany === 'y' && yt === null) yt = e.ertek;
       else {
         elemek.push({ fajta: 'ismeretlen', sor });
-        hibak.push([n, 'a tartomány már meg van adva']);
+        hibak.push([n, tx('a tartomány már meg van adva')]);
       }
     } else if (elemek.filter((k) => k.fajta !== 'megjegyzes' && k.fajta !== 'ismeretlen').length >= MAX_ELEM) {
       elemek.push({ fajta: 'ismeretlen', sor });
-      hibak.push([n, `legfeljebb ${MAX_ELEM} rajzelem`]);
+      hibak.push([n, tx('legfeljebb {n} rajzelem', { n: MAX_ELEM })]);
     } else {
       elemek.push(e as Elem);
     }

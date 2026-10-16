@@ -23,6 +23,7 @@ workert értesíti, hogy a leállított feladat folyó generálását szakítsa 
 from __future__ import annotations
 
 import datetime as _dt
+import contextlib
 import json
 import os
 import hmac
@@ -40,6 +41,9 @@ from typing import Callable
 
 from . import frame, lepes_kapu
 from .config import Config
+from .utvonalak import kodos
+from .hibakod import angol_uzenet, json_param
+from .hibauzenetek import FELADAT_SZOVEGEK
 
 PROG = re.compile(r"\[manifold-progress\]\s+([\d.]+)%")
 RIPORT = re.compile(r"^Riport:\s+(.+riport\.json)\s*$")
@@ -79,6 +83,11 @@ CREATE INDEX feladat_allapot ON feladat(allapot, prioritas DESC, sor);
 CREATE TABLE meta (kulcs TEXT PRIMARY KEY, ertek TEXT);
 """
 _JSON_MEZOK = ("parameterek", "figyelmeztetes", "lepesek", "eroforras")
+
+
+def _hiba_adat(kod: str, **param) -> dict:
+    p = json_param(param)
+    return {"hiba": angol_uzenet(kod, p), "hiba_kod": kod, "hiba_param": p}
 
 
 class Invalid(ValueError):
@@ -251,6 +260,11 @@ class Queue:
                                        "ALTER TABLE feladat ADD COLUMN lepes_inditva TEXT; "
                                        "ALTER TABLE feladat ADD COLUMN lepes_argv0 TEXT; "
                                        "PRAGMA user_version=2; COMMIT;")
+            if v < 3:       # F4: error metadata survives reopening and appears in history and WS events
+                oszlopok = {r[1] for r in self._db.execute("PRAGMA table_info(feladat)")}
+                modositas = "".join(f"ALTER TABLE feladat ADD COLUMN {nev} TEXT; "
+                                   for nev in ("hiba_kod", "hiba_param") if nev not in oszlopok)
+                self._db.executescript("BEGIN; " + modositas + "PRAGMA user_version=3; COMMIT;")
 
     def _recover(self) -> None:
         """Az előző munkamenet futó feladatai megszakadtak; a sorban állók megmaradnak (tartós sor). A futó
@@ -264,9 +278,9 @@ class Queue:
             futok = [dict(r) for r in self._db.execute("SELECT id, lepes_pid, lepes_inditva, lepes_argv0 FROM feladat "
                                                        "WHERE allapot='fut'").fetchall()]
             for r in futok:
-                self._db.execute("UPDATE feladat SET allapot='megszakadt', vegzett=?, hiba=?, lepes_pid=NULL, "
-                                 "lepes_inditva=NULL, lepes_argv0=NULL WHERE id=?",
-                                 (_most(), "a core leállt, mielőtt a feladat véget ért", r["id"]))
+                self._db.execute("UPDATE feladat SET allapot='megszakadt', vegzett=?, hiba=?, hiba_kod=?, hiba_param='{}', "
+                                 "lepes_pid=NULL, lepes_inditva=NULL, lepes_argv0=NULL WHERE id=?",
+                                 (_most(), angol_uzenet("feladat.core_megszakadt"), "feladat.core_megszakadt", r["id"]))
         if futok:
             self._arva_szal = threading.Thread(target=self._arvak_rendez, args=(futok,), name="feladat-arvak", daemon=True)
             self._arva_szal.start()
@@ -274,13 +288,16 @@ class Queue:
     def _arvak_rendez(self, futok: list[dict]) -> None:
         """Az `_recover` háttérrésze: az árván tovább futó lépések leállítása, a napló és a worker értesítése."""
         for r in futok:
-            hiba = "a core leállt, mielőtt a feladat véget ért"
+            hiba = angol_uzenet("feladat.core_megszakadt")
             try:
                 if r["lepes_pid"] and _arva_leallit(r["lepes_pid"], r["lepes_inditva"], r["lepes_argv0"]):
-                    hiba += f"; a lépés (pid {r['lepes_pid']}) árván tovább futott, leállítottam"
+                    param = {"pid": r["lepes_pid"]}
+                    hiba = angol_uzenet("feladat.arva_leallitva", param)
                     with self._lock:
                         if not self._db_zarva:
-                            self._db.execute("UPDATE feladat SET hiba=? WHERE id=? AND allapot='megszakadt'", (hiba, r["id"]))
+                            self._db.execute("UPDATE feladat SET hiba=?, hiba_kod=?, hiba_param=? "
+                                             "WHERE id=? AND allapot='megszakadt'",
+                                             (hiba, "feladat.arva_leallitva", json.dumps(param), r["id"]))
             except Exception as exc:  # noqa: BLE001 — a takarítás hibája nem akaszthatja a sort
                 print(f"[feladatsor] az árva lépés ({r['id']}) rendezése nem sikerült: {type(exc).__name__}: {exc}",
                       file=sys.stderr, flush=True)
@@ -316,6 +333,17 @@ class Queue:
         d = dict(r)
         for k in _JSON_MEZOK:
             d[k] = json.loads(d[k])
+        for k in ("cim", "osszegzes"):
+            d[k] = FELADAT_SZOVEGEK.get(d[k], d[k])
+        d["figyelmeztetes"] = [FELADAT_SZOVEGEK.get(u, u) for u in d["figyelmeztetes"]]
+        for lepes in d["lepesek"]:
+            lepes["cim"] = FELADAT_SZOVEGEK.get(lepes["cim"], lepes["cim"])
+        kod, param = d.pop("hiba_kod"), d.pop("hiba_param")
+        if d["hiba"]:
+            # Historic error text stays in the DB; its public fallback also follows the English contract.
+            d["kod"] = kod or "feladat.futtatas_hibas"
+            d["param"] = json.loads(param) if param else ({} if kod else {"tipus": d["tipus"]})
+            d["hiba"] = angol_uzenet(d["kod"], d["param"], d["hiba"])
         d["kulturalt_stop"] = bool(d["kulturalt_stop"])
         d["leallitas_kerve"] = bool(d["leallitas_kerve"])
         d["vault_ir"] = "vault" in d["eroforras"]
@@ -330,6 +358,11 @@ class Queue:
         with self._lock:
             if self._db_zarva:          # a `close()` után a még futó munkásszál nem ír (a sor `fut`-ban marad: a következő
                 return None             # indulás `megszakadt`-ra állítja)
+            if "hiba" in mezok and not mezok["hiba"]:
+                mezok.setdefault("hiba_kod", None)
+                mezok.setdefault("hiba_param", None)
+            if isinstance(mezok.get("hiba_param"), dict):
+                mezok["hiba_param"] = json.dumps(json_param(mezok["hiba_param"]), ensure_ascii=False)
             sets = ", ".join(f"{k}=?" for k in mezok)
             self._db.execute(f"UPDATE feladat SET {sets} WHERE id=?", (*mezok.values(), fid))
             return self._row(fid)
@@ -382,18 +415,18 @@ class Queue:
     def submit(self, type_id: str, params: dict | None = None, priority: int = 0) -> dict:
         t = REGISTRY.get(type_id)
         if not t:
-            raise Invalid(f"ismeretlen feladattípus: {type_id}")
+            raise kodos(Invalid(f"ismeretlen feladattípus: {type_id}"), "feladat.ismeretlen_tipus", tipus=type_id)
         if indok := self.tiltott(t):
             raise Invalid(indok if isinstance(indok, str) else "Ez a tartalomgenerálás csak kézi paranccsal indítható.")
         if not isinstance(priority, int) or isinstance(priority, bool):
-            raise Invalid("a prioritás egész szám legyen")
+            raise kodos(Invalid("a prioritás egész szám legyen"), "feladat.prioritas")
         params = dict(params or {})
         fid = frame.new_id("F")
         stop = str(self.logdir / f"{fid}.stop")
         lepesek, osszegzes, figy = t.plan(self.cfg, params, stop)
         with self._lock:
             if self.closed:
-                raise Closed("a core éppen leáll (az app kilépett) — nyisd meg újra, és indítsd újra a feladatot")
+                raise kodos(Closed("a core éppen leáll (az app kilépett) — nyisd meg újra, és indítsd újra a feladatot"), "feladat.core_leall")
             self._db.execute(
                 "INSERT INTO feladat (id, tipus, cim, osszegzes, parameterek, figyelmeztetes, lepesek, eroforras, "
                 "kulturalt_stop, prioritas, allapot, letrehozva) VALUES (?,?,?,?,?,?,?,?,?,?, 'sorban', ?)",
@@ -418,7 +451,7 @@ class Queue:
                 return {"allapot": "torolve"}
             run = self._running.get(fid)
             if d["allapot"] != "fut" or not run:
-                raise Invalid("a feladat már nem fut")
+                raise kodos(Invalid("a feladat már nem fut"), "feladat.nem_fut")
             run.stop_requested = True
             self._update(fid, leallitas_kerve=1)
             graceful = d["kulturalt_stop"] and not immediate
@@ -532,13 +565,13 @@ class Queue:
                                   "ORDER BY prioritas DESC, sor ASC").fetchall():
             t = REGISTRY.get(r["tipus"])
             if t is None:
-                d = self._update(r["id"], allapot="hiba", vegzett=_most(), hiba=f"ismeretlen feladattípus: {r['tipus']}")
+                d = self._update(r["id"], allapot="hiba", vegzett=_most(),
+                                 **_hiba_adat("feladat.ismeretlen_tipus", tipus=r["tipus"]))
                 self._event(d)
                 continue
             if indok := self.tiltott(t):
                 d = self._update(r["id"], allapot="torolve", vegzett=_most(),
-                                 hiba="Régi automatikus feladat, törölve. " + (indok if isinstance(indok, str)
-                                                                               else "Tartalomgenerálás csak kézi paranccsal indítható."))
+                                 **_hiba_adat("feladat.automatikus_tiltott"))
                 self._event(d)
                 continue
             if not (set(t.resources) & foglalt) and self.admit(t):
@@ -674,6 +707,7 @@ class Queue:
         d = self.get(fid)
         run = self._running[fid]
         allapot, hiba, kilepes = "kesz", None, None
+        hiba_kod, hiba_param = None, {}
         korlat = self.max_futas_mp(d["tipus"]) if d else 0.0
         orszem = threading.Timer(korlat, self._idotullepes, args=(fid, korlat)) if korlat > 0 else None
         if orszem is not None:
@@ -732,26 +766,32 @@ class Queue:
                     self._update(fid, kilepes=kilepes, lepes_pid=None, lepes_inditva=None, lepes_argv0=None)
                 if kilepes != 0:
                     if not run.stop_requested:
-                        allapot, hiba = "hiba", f"a(z) {i + 1}. lépés hibával ért véget (kilépési kód {kilepes})"
+                        hiba_kod, hiba_param = "feladat.lepes_hibas", {"lepes": i + 1, "kilepes": kilepes}
+                        allapot, hiba = "hiba", angol_uzenet(hiba_kod, hiba_param)
                     break
                 if stop.exists():
                     break
             if allapot == "kesz" and (run.stop_requested or stop.exists()):
                 allapot = "megallitva"
         except Exception as exc:  # noqa: BLE001 — a munkás szál nem halhat meg egy feladattól
-            allapot, hiba = "hiba", f"{type(exc).__name__}: {exc}"
+            with contextlib.suppress(OSError):
+                self._line(d, f"[core] {type(exc).__name__}: {exc}")
+            hiba_kod = getattr(exc, "hiba_kod", "feladat.futtatas_hibas")
+            hiba_param = getattr(exc, "hiba_param", {"tipus": type(exc).__name__})
+            allapot, hiba = "hiba", angol_uzenet(hiba_kod, hiba_param, "The task could not be completed. Open its log for details.")
         finally:
             if orszem is not None:
                 orszem.cancel()
             if run.idotullepes:
-                allapot, hiba = "hiba", (f"a feladat túllépte a legnagyobb futásidőt ({run.idotullepes:g} s), "
-                                         "a sor leállította")
+                hiba_kod, hiba_param = "feladat.idotullepes", {"mp": run.idotullepes}
+                allapot, hiba = "hiba", angol_uzenet(hiba_kod, hiba_param)
             stop.unlink(missing_ok=True)                       # a saját stop-fájlunk
             try:
                 self._line(d, f"[core] vége: {allapot}" + (f" — {hiba}" if hiba else ""))
             except OSError:
                 pass
-            mezok = {"allapot": allapot, "hiba": hiba, "vegzett": _most()}
+            mezok = {"allapot": allapot, "hiba": hiba, "hiba_kod": hiba_kod,
+                     "hiba_param": hiba_param if hiba_kod else None, "vegzett": _most()}
             if allapot == "kesz":
                 mezok["szazalek"] = 100.0
             if run.felfuggesztve and not run.idotullepes and allapot in ("megallitva", "hiba"):  # C21: vissza a sorba (az `admit` tartja)
@@ -772,7 +812,7 @@ def utvonalak(r) -> None:
     def reszlet(k):
         d = k.app.queue.detail(k.m.group(1), k.egesz("tol", 0, 0, 10**9))
         if d is None:
-            raise HttpError(404, "nincs ilyen feladat")
+            raise HttpError(404, "nincs ilyen feladat", kod="feladat.nincs")
         return d
 
     def uj(k):

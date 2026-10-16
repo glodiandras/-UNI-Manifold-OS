@@ -30,7 +30,7 @@ from datetime import datetime
 
 from . import rejtett
 from .index.maszk import FM_RE
-from .utvonalak import HttpError
+from .utvonalak import HttpError, kodos
 
 ALAP_DATUM = "YYYY-MM-DD"
 ALAP_IDO = "HH:mm"
@@ -231,11 +231,11 @@ def olvas(vault, ut) -> str:
     rp = norm_path(ut)
     mappa = beallitasok(vault.cfg)["mappa"]
     if not rp.lower().endswith(".md") or not (rp == mappa or rp.startswith(mappa + "/")):
-        raise Invalid(f"nem sablon (a sablonmappa: {mappa}): {rp}")
+        raise kodos(Invalid(f"nem sablon (a sablonmappa: {mappa}): {rp}"), "sablon.nem_sablon", mappa=mappa, ut=rp)
     try:
         return vault.read(rp)["tartalom"]
     except NotFound:
-        raise NotFound(f"nincs ilyen sablon: {rp}") from None
+        raise kodos(NotFound(f"nincs ilyen sablon: {rp}"), "sablon.nincs", ut=rp) from None
 
 
 def kiertekel_vault(vault, ut, cim, most: datetime | None = None) -> dict:

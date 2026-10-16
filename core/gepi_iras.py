@@ -70,6 +70,7 @@ from .tulajdonsagok import Tulajdonsagok
 from . import kiserok, utkapu
 from .utvonalak import HttpError
 from .vaultio import Conflict, Invalid, NotFound, nfc, sha1
+from .hibakod import kodol
 
 NAPLO = "gepi-iras"                      # a szándéknapló mappája a {run} alatt
 MAX_MUVELET = 50
@@ -121,27 +122,27 @@ def szakasz_beszur(txt: str, szakasz: str, szoveg: str, hova: str = "vege", letr
     alá. Több azonos nevű szakasz: 409; hiányzó: `letrehoz` esetén a fájl végére kerül a `## szakasz` (vagy a megadott
     szint) és alá a szöveg, különben 404. A sorvég a fájlé marad (CRLF-es fájl CRLF)."""
     if hova not in ("vege", "eleje"):
-        raise Invalid("a `hova` vege vagy eleje lehet")
+        raise kodol(Invalid("a `hova` vege vagy eleje lehet"), "gepi_iras.hova_vege_eleje_lehet")
     crlf = "\r\n" in txt
     if crlf and "\n" in txt.replace("\r\n", ""):
-        raise Invalid("a fájlban vegyes sorvégek állnak: gépi beszúrás nem írható bele bájthűen")
+        raise kodol(Invalid("a fájlban vegyes sorvégek állnak: gépi beszúrás nem írható bele bájthűen"), "gepi_iras.fajlban_vegyes_sorvegek_allnak_gepi")
     lf = txt.replace("\r\n", "\n") if crlf else txt
     uj = szoveg.replace("\r\n", "\n").strip("\n")
     if not uj.strip():
-        raise Invalid("üres a beszúrandó szöveg")
+        raise kodol(Invalid("üres a beszúrandó szöveg"), "gepi_iras.ures_beszurando_szoveg")
     cel, szint = szakasz.strip(), None
     m = _SZAKASZ.fullmatch(cel)
     if m:
         szint, cel = len(m.group(1)), re.sub(r"[ \t]+#+$", "", m.group(2)).strip()
     if not cel or "\n" in cel:
-        raise Invalid("a `szakasz` egy fejezet szövege legyen")
+        raise kodol(Invalid("a `szakasz` egy fejezet szövege legyen"), "gepi_iras.szakasz_fejezet_szovege_legyen")
     fejek = _fejezetek(lf)
     talalat = [i for i, f in enumerate(fejek) if nfc(f[3]) == nfc(cel) and (szint is None or f[2] == szint)]
     if len(talalat) > 1:
-        raise HttpError(409, f"több „{cel}” nevű szakasz van, a beszúrás helye nem egyértelmű", tobbertelmu=True)
+        raise HttpError(409, f"több „{cel}” nevű szakasz van, a beszúrás helye nem egyértelmű", kod="gepi_iras.tobbertelmu_szakasz", param={"cel": cel}, tobbertelmu=True)
     if not talalat:
         if not letrehoz:
-            raise NotFound(f"nincs „{cel}” nevű szakasz")
+            raise kodol(NotFound(f"nincs „{cel}” nevű szakasz"), "gepi_iras.nincs_cel_nevu_szakasz", {"cel": cel})
         alap = lf.rstrip("\n")
         ki = alap + ("\n\n" if alap else "") + f"{'#' * (szint or 2)} {cel}\n{uj}\n"
     else:
@@ -190,11 +191,11 @@ def _esemeny(d: dict, forras: str) -> dict | None:
         return None
     engedett = ESEMENYEK.get(forras, {})
     if not isinstance(e, dict) or e.get("tipus") not in engedett:
-        raise Invalid(f"a `{forras}` forrás tételéhez ilyen tracker-esemény nem küldhető")
+        raise kodol(Invalid(f"a `{forras}` forrás tételéhez ilyen tracker-esemény nem küldhető"), "gepi_iras.forras_forras_tetelehez_ilyen_tracker", {"forras": forras})
     ut = e.get("ut")
     adat = e.get("adat")
     if not isinstance(ut, str) or not ut or len(ut) > 1024 or not isinstance(adat, dict) or set(adat) - set(engedett[e["tipus"]]):
-        raise Invalid("az `esemeny` alakja: {tipus, ut, adat} a forrás engedett kulcsaival")
+        raise kodol(Invalid("az `esemeny` alakja: {tipus, ut, adat} a forrás engedett kulcsaival"), "gepi_iras.esemeny_alakja_tipus_ut_adat")
     return {"tipus": e["tipus"], "ut": vaultio.norm_path(ut), "adat": dict(adat)}
 
 
@@ -223,7 +224,7 @@ def _egysoros(d: dict, kulcs: str, max_hossz: int, kotelezo: bool = True) -> str
     if v is None and not kotelezo:
         return None
     if not isinstance(v, str) or not v.strip() or len(v) > max_hossz or re.search(r"[\r\n\x00]", v):
-        raise Invalid(f"a `{kulcs}` egysoros, legfeljebb {max_hossz} karakteres szöveg legyen")
+        raise kodol(Invalid(f"a `{kulcs}` egysoros, legfeljebb {max_hossz} karakteres szöveg legyen"), "gepi_iras.kulcs_egysoros_legfeljebb_max_hossz", {"kulcs": kulcs, "max_hossz": max_hossz})
     return v.strip()
 
 
@@ -231,61 +232,61 @@ def _keres(d: dict) -> _Keres:
     """A kérés alaki ellenőrzése (400): itt még semmi nem olvas a lemezről."""
     kor = _egysoros(d, "kor", 80)
     if not frame.KOR_MINTA.fullmatch(kor) or kor.split("-", 1)[0] in _GAZDAI_ELOTAG:
-        raise Invalid(f"érvénytelen kör-azonosító: {kor} (alak: ELŐTAG-ÉÉÉÉHHNN-ÓÓPPMM)")
+        raise kodol(Invalid(f"érvénytelen kör-azonosító: {kor} (alak: ELŐTAG-ÉÉÉÉHHNN-ÓÓPPMM)"), "gepi_iras.ervenytelen_kor_azonosito_kor_alak", {"kor": kor})
     forras = _egysoros(d, "forras", 40)
     if not _FORRAS.fullmatch(forras):
-        raise Invalid(f"érvénytelen forrás (Mos-Forras): {forras} (alak: mos-<lánc>, kisbetű, szám, kötőjel, legfeljebb 40 karakter)")
+        raise kodol(Invalid(f"érvénytelen forrás (Mos-Forras): {forras} (alak: mos-<lánc>, kisbetű, szám, kötőjel, legfeljebb 40 karakter)"), "gepi_iras.ervenytelen_forras_mos_forras_forras", {"forras": forras})
     tetel = _egysoros(d, "tetel", 500)
     proba = d.get("proba", False)
     if not isinstance(proba, bool):
-        raise Invalid("a `proba` igaz vagy hamis lehet")
+        raise kodol(Invalid("a `proba` igaz vagy hamis lehet"), "gepi_iras.proba_igaz_hamis_lehet")
     feladat = _egysoros(d, "feladat", 40, kotelezo=False)
     if feladat is not None and not _FELADAT.fullmatch(feladat):
-        raise Invalid(f"érvénytelen feladat-azonosító: {feladat}")
+        raise kodol(Invalid(f"érvénytelen feladat-azonosító: {feladat}"), "gepi_iras.ervenytelen_feladat_azonosito_feladat", {"feladat": feladat})
     # D9 (C29.8, T043; a 28(g) pontosítása): a `modell` kulcs KÖTELEZŐ — AI-funkció kimenetére `{feladat, modell[, proba]}`, determinisztikus
     # írásra kifejezetten `null`. A kapu így nem a kérés önkéntes mezőjén múlik: aki nem mond semmit, az nem ír.
     if "modell" not in d:
-        raise Invalid("a `modell` kulcs kötelező: AI-funkció kimenetére {feladat, modell}, determinisztikus írásra kifejezetten null")
+        raise kodol(Invalid("a `modell` kulcs kötelező: AI-funkció kimenetére {feladat, modell}, determinisztikus írásra kifejezetten null"), "gepi_iras.modell_kulcs_kotelezo_ai_funkcio")
     modell = d["modell"]
     if modell is not None and not (isinstance(modell, dict) and all(
             isinstance(modell.get(k), str) and modell[k].strip() for k in ("feladat", "modell"))
             and isinstance(modell.get("proba", False), bool)):
-        raise Invalid("a `modell` alakja: {feladat, modell[, proba]} vagy null")
+        raise kodol(Invalid("a `modell` alakja: {feladat, modell[, proba]} vagy null"), "gepi_iras.modell_alakja_feladat_modell_proba")
     muveletek = d.get("muveletek")
     if not isinstance(muveletek, list) or not 1 <= len(muveletek) <= MAX_MUVELET + MAX_BEHOZ or \
             not all(isinstance(m, dict) for m in muveletek):
-        raise Invalid(f"a `muveletek` 1–{MAX_MUVELET} elemű lista legyen (plusz legfeljebb {MAX_BEHOZ} `behoz`)")
+        raise kodol(Invalid(f"a `muveletek` 1–{MAX_MUVELET} elemű lista legyen (plusz legfeljebb {MAX_BEHOZ} `behoz`)"), "gepi_iras.muveletek_1_max_muvelet_elemu", {"MAX_MUVELET": MAX_MUVELET, "MAX_BEHOZ": MAX_BEHOZ})
     muveletek, utak = [dict(m) for m in muveletek], set()
     behoz_db = sum(1 for m in muveletek if m.get("tipus") == "behoz")
     if behoz_db > MAX_BEHOZ or len(muveletek) - behoz_db > MAX_MUVELET:
-        raise Invalid(f"a `muveletek` legfeljebb {MAX_MUVELET} szöveges/mozgató és {MAX_BEHOZ} `behoz` műveletet tartalmazhat")
+        raise kodol(Invalid(f"a `muveletek` legfeljebb {MAX_MUVELET} szöveges/mozgató és {MAX_BEHOZ} `behoz` műveletet tartalmazhat"), "gepi_iras.muveletek_legfeljebb_max_muvelet_szoveges", {"MAX_MUVELET": MAX_MUVELET, "MAX_BEHOZ": MAX_BEHOZ})
     if behoz_db and forras not in BEHOZ_FORRASOK:
-        raise Invalid(f"a `behoz` csak az `.apkg`-import forrásával ({', '.join(BEHOZ_FORRASOK)}) kérhető, nem: {forras}")
+        raise kodol(Invalid(f"a `behoz` csak az `.apkg`-import forrásával ({', '.join(BEHOZ_FORRASOK)}) kérhető, nem: {forras}"), "gepi_iras.behoz_csak_apkg_import_forrasaval", {"join": ', '.join(BEHOZ_FORRASOK), "forras": forras})
     for m in muveletek:
         if m.get("tipus") not in ("uj", "csere", "beszuras", "mozgat", "behoz"):
-            raise Invalid("a művelet `tipus`-a uj, csere, beszuras, mozgat vagy behoz lehet")
+            raise kodol(Invalid("a művelet `tipus`-a uj, csere, beszuras, mozgat vagy behoz lehet"), "gepi_iras.muvelet_tipus_uj_csere_beszuras")
         m["ut"] = vaultio.norm_path(m.get("ut"))
         if m["tipus"] == "behoz":
             if mediatipus.kiterjesztes(m["ut"]) not in mediatipus.APKG_MEDIA:
-                raise Invalid(f"a `behoz` csak a fehérlistás médiát viszi a vaultba ({' '.join(mediatipus.APKG_MEDIA)}): {m['ut']}")
+                raise kodol(Invalid(f"a `behoz` csak a fehérlistás médiát viszi a vaultba ({' '.join(mediatipus.APKG_MEDIA)}): {m['ut']}"), "gepi_iras.behoz_csak_feherlistas_mediat_viszi", {"join": ' '.join(mediatipus.APKG_MEDIA), "m": m['ut']})
             f = m.get("forras")
             if not isinstance(f, str) or not os.path.isabs(f) or "\x00" in f or len(f) > 1024:
-                raise Invalid("a `behoz` forrása abszolút út legyen")
+                raise kodol(Invalid("a `behoz` forrása abszolút út legyen"), "gepi_iras.behoz_forrasa_abszolut_ut_legyen")
             if not isinstance(m.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", m["sha256"]):
-                raise Invalid("a `behoz` kéri a forrás sha256-ját (64 hex jegy)")
+                raise kodol(Invalid("a `behoz` kéri a forrás sha256-ját (64 hex jegy)"), "gepi_iras.behoz_keri_forras_sha256_jat")
         elif m["tipus"] == "mozgat":
             if not m["ut"].lower().endswith(fuzet.KEP_KITERJESZTESEK) and not _video_e(m["ut"]):
-                raise Invalid(f"a `mozgat` csak füzetfotót (kép) vagy a videólánc videóját viszi a vaultba: {m['ut']}")
+                raise kodol(Invalid(f"a `mozgat` csak füzetfotót (kép) vagy a videólánc videóját viszi a vaultba: {m['ut']}"), "gepi_iras.mozgat_csak_fuzetfotot_kep_videolanc", {"m": m['ut']})
             f = m.get("forras")
             if not isinstance(f, str) or not os.path.isabs(f) or "\x00" in f or len(f) > 1024:
-                raise Invalid("a `mozgat` forrása abszolút út legyen")
+                raise kodol(Invalid("a `mozgat` forrása abszolút út legyen"), "gepi_iras.mozgat_forrasa_abszolut_ut_legyen")
             if not isinstance(m.get("sha256"), str) or not re.fullmatch(r"[0-9a-f]{64}", m["sha256"]):
-                raise Invalid("a `mozgat` kéri a forrás sha256-ját (64 hex jegy)")
+                raise kodol(Invalid("a `mozgat` kéri a forrás sha256-ját (64 hex jegy)"), "gepi_iras.mozgat_keri_forras_sha256_jat")
         elif not m["ut"].lower().endswith(vaultio.SZOVEGES):
-            raise Invalid(f"gép csak a pillanatképben követett szöveges fájlt írhat: {m['ut']}")
+            raise kodol(Invalid(f"gép csak a pillanatképben követett szöveges fájlt írhat: {m['ut']}"), "gepi_iras.gep_csak_pillanatkepben_kovetett_szoveges", {"m": m['ut']})
         kulcs = m["ut"].lower()
         if kulcs in utak:
-            raise Invalid(f"egy út egy tételben egyszer szerepelhet: {m['ut']}")
+            raise kodol(Invalid(f"egy út egy tételben egyszer szerepelhet: {m['ut']}"), "gepi_iras.ut_tetelben_egyszer_szerepelhet_m", {"m": m['ut']})
         utak.add(kulcs)
     uzenet = _egysoros(d, "uzenet", 200, kotelezo=False) or f"gépi írás: {tetel}"[:200]
     dontes = _egysoros(d, "dontes", 200, kotelezo=False)
@@ -412,18 +413,18 @@ def helyreallit(cfg) -> list[str]:
             utkozo.append(mz["ut"])
     if repo is not None and repo.live():
         repo.index_frissit()                # a visszaírt fájlok stat-adata ne zajoljon a git-indexben (T101)
-    elso = f"Egy gépi írás megszakadt ({n['kor']} · {n['tetel']}; a core az írások közben leállt). "
+    elso = f"A machine write was interrupted ({n['kor']} · {n['tetel']}) when the core stopped during writing. "
     if visszaallt:
-        uzenet = elso + "A vault visszaállt az írás előtti állapotra; a tétel újra futtatható."
+        uzenet = elso + "The vault was restored to its state before the write. You can run the task again."
     elif utkozo:
-        uzenet = elso + "Semmit nem tudtam visszaállítani."
+        uzenet = elso + "No files could be restored."
     else:
-        uzenet = elso + "A vault még érintetlen volt: nem kellett visszaállítani semmit; a tétel újra futtatható."
+        uzenet = elso + "The vault had not changed, so no restoration was needed. You can run the task again."
     if utkozo:
         megtartva = d.with_name(f"{NAPLO}-megtartva-{time.strftime('%Y%m%d-%H%M%S')}")
         os.rename(d, megtartva)
-        uzenet += (f" Ezeket a fájlokat közben más is átírta, ezért nem írtam vissza: {', '.join(utkozo[:10])}. "
-                   f"Az eredeti bájtjaik itt vannak: {megtartva}.")
+        uzenet += (f" These files were changed by another writer and were left untouched: {', '.join(utkozo[:10])}. "
+                   f"Their original bytes are preserved at: {megtartva}.")
     else:
         _naplo_torol(cfg)
     return [uzenet]
@@ -483,7 +484,7 @@ class GepiIras:
                 k.kor += "-proba"
             return self._klon(k.kor)._vegrehajt(k)
         if "proba" in k.kor:
-            raise Invalid(f"a `-proba` kör élesben nem írhat: {k.kor}")
+            raise kodol(Invalid(f"a `-proba` kör élesben nem írhat: {k.kor}"), "gepi_iras.proba_kor_elesben_irhat_kor", {"kor": k.kor})
         self._d9(k)
         return self._vegrehajt(k)
 
@@ -494,8 +495,8 @@ class GepiIras:
             return
         feladatok = list(self.cfg.section("router").get("feladatok", []))
         if k.modell["feladat"] not in feladatok:
-            raise Invalid(f"a(z) „{k.modell['feladat']}” nem router-feladat ({', '.join(feladatok)}): a `modell.feladat` a "
-                          "`[router] feladatok` eleme lehet")
+            raise kodol(Invalid(f"a(z) „{k.modell['feladat']}” nem router-feladat ({', '.join(feladatok)}): a `modell.feladat` a "
+                          "`[router] feladatok` eleme lehet"), "gepi_iras.modell_router_feladat_join_modell", {"modell": k.modell['feladat'], "join": ', '.join(feladatok)})
 
     def _d9(self, k: _Keres) -> None:
         """D9: kalibrálatlan modell kimenete élesben nem írható, csak próbában. A worker `proba: true` jelzésű válasza (a modell
@@ -504,7 +505,7 @@ class GepiIras:
             return
         if k.modell.get("proba"):
             raise HttpError(400, f"a(z) {k.modell['modell']} modell próbaként futott (kifejezett kérésre, nem a router választotta): "
-                                 "a kimenete csak próbában (`proba: true`, a klónon) írható", kalibralatlan=True)
+                                 "a kimenete csak próbában (`proba: true`, a klónon) írható", kod="gepi_iras.modell_probakent_futott", param={"modell": k.modell['modell']}, kalibralatlan=True)
         t = kalibracio.megnyit(self.cfg)
         try:
             # csak az aranyhalmaz aktuális verzióján kalibrált sor (mint a routernél): az elavult verziójú nem írhat élesben
@@ -513,7 +514,7 @@ class GepiIras:
             t.close()
         if k.modell["modell"] not in kalibralt:
             raise HttpError(400, f"a(z) {k.modell['modell']} modell a(z) „{k.modell['feladat']}” feladatra nincs "
-                                 "kalibrálva: a kimenete csak próbában (`proba: true`, a klónon) írható",
+                                 "kalibrálva: a kimenete csak próbában (`proba: true`, a klónon) írható", kod="gepi_iras.modell_nincs_kalibralva", param={"modell": k.modell['modell'], "feladat": k.modell['feladat']},
                             kalibralatlan=True)
 
     def _klon(self, kor: str) -> "GepiIras":
@@ -524,14 +525,14 @@ class GepiIras:
                 vault, git = d / self.cfg.path("vault").name, d / "vault.git"
                 if not (vault.is_dir() and (git / "HEAD").is_file()):
                     if snapshot.repos(self.cfg)["vault"].live() is False:
-                        raise HttpError(503, "Nincs élő pillanatkép-tároló: próbaklón sem készíthető.", pillanat_hiba=True)
+                        raise HttpError(503, "Nincs élő pillanatkép-tároló: próbaklón sem készíthető.", kod="gepi_iras.nincs_pillanatkep_tarolo_proba", pillanat_hiba=True)
                     # a régi (`[vault] proba_klon_max_nap`) gépi próbaklónok előbb: egy-egy a vault teljes APFS-klónja
                     frame.proba_klon_takaritas(self.cfg, kiveve=[self.cfg.path("tmp") / "proba" / k for k in self._klonok])
                     try:
                         frame.trial_clone(self.cfg, d)
                         frame.proba_jelol(d, kor)        # a doctor látja, a takarítás csak jelölt klónt töröl
                     except (RuntimeError, OSError) as e:
-                        raise HttpError(503, f"A próbaklón nem készült el: {e}") from e
+                        raise HttpError(503, f"A próbaklón nem készült el: {e}", kod="gepi_iras.probaklon_hiba", param={"e": e}) from e
                 # F3 (§2.6): a klón a FELOLDOTT utakat kapja (nem a sablonokat), így a `{vault}`-ból számolt kulcsok (termékben a
                 # `{workspace}`, a `{var}` és családja) a valódi helyükön maradnak; csak a négy klón-kulcs mutat a próbamappába.
                 # Az egyesített adatból épül (a rétegek nem olvasódnak újra), az elrendezés és a munkatér-azonosító marad.
@@ -552,7 +553,7 @@ class GepiIras:
     def _vegrehajt(self, k: _Keres) -> dict:
         repo = self.v.repo()
         if repo is None:
-            raise HttpError(503, "Nincs élő pillanatkép-tároló: pillanatkép nélkül gép nem ír a vaultba.",
+            raise HttpError(503, "Nincs élő pillanatkép-tároló: pillanatkép nélkül gép nem ír a vaultba.", kod="gepi_iras.nincs_pillanatkep_tarolo",
                             pillanat_hiba=True)
         hatarido = time.monotonic() + self.varakozas_mp
         zarak = [vaultio._ut_zar(m["ut"]) for m in sorted(k.muveletek, key=lambda m: nfc(m["ut"]).lower())]
@@ -564,7 +565,7 @@ class GepiIras:
                     return self._zarban(repo, k)
             except frame.Busy as e:
                 if time.monotonic() >= hatarido:
-                    raise HttpError(409, str(e), foglalt=True) from e
+                    raise HttpError(409, str(e), kod="pillanatkep.foglalt", foglalt=True) from e
             time.sleep(0.05)
 
     def _regi_naplo(self) -> None:
@@ -579,9 +580,9 @@ class GepiIras:
                 print(f"[gépi írás] {u}", file=sys.stderr, flush=True)
         except (OSError, ValueError, KeyError, snapshot.SnapshotError) as e:
             raise HttpError(409, f"Egy megszakadt gépi írás naplója áll ({d}), és nem sikerült feldolgozni: {e}. "
-                                 "Addig új gépi írás nem indulhat.", naplo=True) from e
+                                 "Addig új gépi írás nem indulhat.", kod="gepi_iras.megszakadt_naplo_hibas", param={"d": d, "e": e}, naplo=True) from e
         if d.exists():
-            raise HttpError(409, f"Egy megszakadt gépi írás naplója áll ({d}); addig új gépi írás nem indulhat.", naplo=True)
+            raise HttpError(409, f"Egy megszakadt gépi írás naplója áll ({d}); addig új gépi írás nem indulhat.", kod="gepi_iras.megszakadt_naplo", param={"d": d}, naplo=True)
 
     def _zarban(self, repo: snapshot.Repo, k: _Keres) -> dict:
         with frame.run_lock(self.cfg, wait=False):      # a kör-zár alatt (Busy → a hívó újrapróbál / 409)
@@ -605,7 +606,7 @@ class GepiIras:
                     regi_hash = mar.trailers.get("Mos-Keres")       # (a régi commitoknak nincs: azok egyezőnek számítanak)
                     if regi_hash and regi_hash != k.hash:
                         raise HttpError(409, f"a(z) {k.kor} · {k.tetel} tétel már lefutott, de MÁS tartalommal: ugyanezen a "
-                                             "kör- és tétel-azonosítón más írás nem ismételhető (új tétel-azonosító kell)",
+                                             "kör- és tétel-azonosítón más írás nem ismételhető (új tétel-azonosító kell)", kod="gepi_iras.tetel_mas_tartalommal", param={"kor": k.kor, "tetel": k.tetel},
                                         utkozes=True, ismetles_eltero=True)
                     return self._valasz(k, mar.sha, repo.changed_files(mar.sha), {}, ismetles=True)
                 terv = self._terv(k)
@@ -613,7 +614,7 @@ class GepiIras:
                 mozgasok = [f for f in terv if isinstance(f, _Mozgas)]
                 if not fajlok:              # a fotó egyedül nem mozog: a beágyazás nélküli kép bekötetlen volna (I40)
                     if mozgasok:
-                        raise Invalid("a `mozgat` csak szöveges írással (a beágyazással) együtt kérhető")
+                        raise kodol(Invalid("a `mozgat` csak szöveges írással (a beágyazással) együtt kérhető"), "gepi_iras.mozgat_csak_szoveges_irassal_beagyazassal")
                     return self._valasz(k, None, [], {})
                 self._naplo_ir(k, fajlok, mozgasok)
                 naplo = True
@@ -633,7 +634,7 @@ class GepiIras:
                 if self._visszaallit(lepesek):
                     _naplo_torol(self.cfg)  # különben a napló marad: a következő induláskor ismét próbálkozik
             if isinstance(exc, snapshot.SnapshotError):
-                raise HttpError(503, f"A pillanatkép-tároló (git) hibát jelzett, a gépi írás nem történt meg: {exc}",
+                raise HttpError(503, f"A pillanatkép-tároló (git) hibát jelzett, a gépi írás nem történt meg: {exc}", kod="gepi_iras.pillanatkep_tarolo_hiba", param={"exc": exc},
                                 pillanat_hiba=True) from exc
             raise
         osszeomlas.pont("gepi.commit_utan")
@@ -690,7 +691,7 @@ class GepiIras:
             fajlok.append(f)
         if nyitott:
             raise HttpError(409, "a dokumentum nyitva van, mentetlen változással — a gép nem ír bele: "
-                                 + ", ".join(nyitott), nyitott=True, utak=nyitott)
+                                 + ", ".join(nyitott), kod="gepi_iras.dokumentum_nyitva", param={"utak": ", ".join(nyitott)}, nyitott=True, utak=nyitott)
         self._behoz_kotes(fajlok)
         return fajlok
 
@@ -706,41 +707,41 @@ class GepiIras:
             try:
                 engedett.add(nfc(csatolmany.mappa(self.v.root, f.ut)).casefold())
             except Invalid as e:
-                raise Invalid(f"a csatolmány-mappa nem használható: {e}") from None
+                raise kodol(Invalid(f"a csatolmány-mappa nem használható: {e}"), "gepi_iras.csatolmany_mappa_hasznalhato_e", {"e": e}) from None
         szovegek = [f.uj.decode("utf-8", errors="replace") for f in jegyzetek]
         for b in behozok:
             mappa_, nev = b.ut.rpartition("/")[0], b.ut.rpartition("/")[2]
             if nfc(mappa_).casefold() not in engedett:
-                raise Invalid(f"a `behoz` célja a tétel jegyzetének csatolmány-mappája (attachmentFolderPath) lehet, nem: {b.ut}")
+                raise kodol(Invalid(f"a `behoz` célja a tétel jegyzetének csatolmány-mappája (attachmentFolderPath) lehet, nem: {b.ut}"), "gepi_iras.behoz_celja_tetel_jegyzetenek_csatolmany", {"ut": b.ut})
             if not any(f"![[{nev}]]" in s or f"![[{nev}|" in s for s in szovegek):
-                raise Invalid(f"a `behoz` fájlját a tétel egy jegyzete `![[{nev}]]`-ként be kell ágyazza (bekötetlen média nem kerül a vaultba)")
+                raise kodol(Invalid(f"a `behoz` fájlját a tétel egy jegyzete `![[{nev}]]`-ként be kell ágyazza (bekötetlen média nem kerül a vaultba)"), "gepi_iras.behoz_fajljat_tetel_jegyzete_nev", {"nev": nev})
 
     def _szoveg(self, m: dict, kulcs: str) -> str:
         v = m.get(kulcs)
         if not isinstance(v, str):
-            raise Invalid(f"hiányzik a művelet `{kulcs}` mezője ({m['ut']})")
+            raise kodol(Invalid(f"hiányzik a művelet `{kulcs}` mezője ({m['ut']})"), "gepi_iras.hianyzik_muvelet_kulcs_mezoje_m", {"kulcs": kulcs, "m": m['ut']})
         return v
 
     def _bajt(self, rp: str, szoveg: str) -> bytes:
         b = szoveg.encode("utf-8")
         if len(b) > vaultio.MAX_SZOVEG:
-            raise Invalid(f"túl nagy fájl: {rp}")
+            raise kodol(Invalid(f"túl nagy fájl: {rp}"), "gepi_iras.tul_nagy_fajl_rp", {"rp": rp})
         if rp.lower().endswith(".canvas"):
             _, hiba = canvas_bajtbol(b)
             if hiba:
-                raise Invalid(f"a canvas nem érvényes JSON Canvas ({rp}): {hiba}")
+                raise kodol(Invalid(f"a canvas nem érvényes JSON Canvas ({rp}): {hiba}"), "gepi_iras.canvas_ervenyes_json_canvas_rp", {"rp": rp, "hiba": hiba})
         return b
 
     def _meglevo(self, m: dict) -> tuple[str, Path, bytes]:
         rp = m["ut"]
         p = self.v._abs(rp)
         if not p.is_file():
-            raise NotFound(f"nincs ilyen fájl: {rp}")
+            raise kodol(NotFound(f"nincs ilyen fájl: {rp}"), "gepi_iras.nincs_ilyen_fajl_rp", {"rp": rp})
         p = self.v.lemezen(rp)
         regi = p.read_bytes()
         alap = m.get("alap")
         if alap is not None and (not isinstance(alap, str) or sha1(regi) != alap):
-            raise Conflict(f"a fájl a gép olvasása óta megváltozott: {rp}", ut=rp, hash=sha1(regi))
+            raise kodol(Conflict(f"a fájl a gép olvasása óta megváltozott: {rp}", ut=rp, hash=sha1(regi)), "gepi_iras.fajl_gep_olvasasa_ota_megvaltozott", {"rp": rp})
         return rp, p, regi
 
     def _fm(self, rp: str, szoveg: str) -> dict:
@@ -757,7 +758,7 @@ class GepiIras:
 
     def _sema_tiltas(self, rp: str) -> None:
         if rp.lower().endswith(".md") and self.tul.sema.osztaly(rp)["sema_nelkul"]:
-            raise Invalid(f"séma nélküli (ügynök-hordozó) fájlba gép nem ír: {rp}")
+            raise kodol(Invalid(f"séma nélküli (ügynök-hordozó) fájlba gép nem ír: {rp}"), "gepi_iras.sema_nelkuli_ugynok_hordozo_fajlba", {"rp": rp})
 
     def _m_uj(self, m: dict) -> _Fajl:
         rp = m["ut"]
@@ -770,34 +771,35 @@ class GepiIras:
             d = d / r
             if not d.is_dir():
                 if d.exists() or vaultio._TILTOTT_NEV.search(r):
-                    raise Invalid(f"érvénytelen mappa az új fájl útjában: {'/'.join(reszek[:i + 1])}")
+                    raise kodol(Invalid(f"érvénytelen mappa az új fájl útjában: {'/'.join(reszek[:i + 1])}"), "gepi_iras.ervenytelen_mappa_uj_fajl_utjaban", {"join": '/'.join(reszek[:i + 1])})
                 mappak.append(d)
         torzs = reszek[-1].rsplit(".", 1)[0]
         if not torzs.strip() or vaultio._TILTOTT_NEV.search(reszek[-1]) or len(reszek[-1].encode("utf-8")) > 240:
-            raise Invalid(f'érvénytelen fájlnév: {reszek[-1]} — tilos benne: \\ / : * ? " < > | # ^ [ ]')
+            raise kodol(Invalid(f'érvénytelen fájlnév: {reszek[-1]} — tilos benne: \\ / : * ? " < > | # ^ [ ]'), "gepi_iras.ervenytelen_fajlnev_reszek_tilos_benne", {"reszek": reszek[-1]})
         if not mappak and (os.path.lexists(p) or any(nfc(n).lower() == nfc(reszek[-1]).lower()
                                                      for n in os.listdir(p.parent))):
-            raise Conflict(f"már van ilyen nevű fájl: {rp}", ut=rp, letezik=True)
+            raise kodol(Conflict(f"már van ilyen nevű fájl: {rp}", ut=rp, letezik=True), "gepi_iras.mar_van_ilyen_nevu_fajl", {"rp": rp})
         if rp.lower().endswith(".md"):
             osztaly = m.get("osztaly")
             e = self._fm(rp, szoveg)
             if osztaly != e["osztaly"]:
                 raise HttpError(400, f"az új jegyzet sémaosztálya az útja szerint „{e['osztaly']}”, a kérésben "
                                      f"„{osztaly}” áll: új gépi jegyzetfajta csak bejegyzett sémaosztállyal "
-                                     "írható (a vault-séma kivételosztályai)", sema=True)
+                                     "írható (a vault-séma kivételosztályai)", kod="gepi_iras.semaosztaly_elter", param={"varhato": e["osztaly"], "kert": osztaly}, sema=True)
             problemak = [*e["problemak"], *self.tul.h1_problemak(rp, szoveg)]        # a H1-szabály is (L33/L34, T044)
             if problemak:
                 raise HttpError(400, f"az új jegyzet sérti a vault sémáját ({rp}): "
-                                     + " ".join(x["uzenet"] for x in problemak), sema=True, problemak=problemak)
+                                     + " ".join(x["uzenet"] for x in problemak), kod="gepi_iras.sema_uj_jegyzet",
+                                param={"ut": rp, "problemak": " ".join(x["uzenet"] for x in problemak)}, sema=True, problemak=problemak)
             if self.tul.sema.status_gazdai and self._status(e) is not None:
-                raise HttpError(400, "A Status mezőt csak a felhasználó tölti, gép nem.", sema=True)
+                raise HttpError(400, "A Status mezőt csak a felhasználó tölti, gép nem.", kod="gepi_iras.status_felhasznaloe", sema=True)
         return _Fajl(rp, p, None, self._bajt(rp, szoveg), mappak)
 
     def _m_csere(self, m: dict) -> _Fajl | None:
         self._sema_tiltas(m["ut"])
         szoveg = self._szoveg(m, "tartalom")
         if not isinstance(m.get("alap"), str) or not m["alap"]:
-            raise Invalid("hiányzik az alapváltozat (alap) — vakon nem írunk felül")
+            raise kodol(Invalid("hiányzik az alapváltozat (alap) — vakon nem írunk felül"), "gepi_iras.hianyzik_alapvaltozat_alap_vakon_irunk")
         rp, p, regi = self._meglevo(m)
         if b"\r\n" in regi and "\r\n" not in szoveg:
             szoveg = szoveg.replace("\n", "\r\n")
@@ -812,10 +814,10 @@ class GepiIras:
                                         [*utana["problemak"], *self.tul.h1_problemak(rp, szoveg)])
             if uj_p:
                 raise HttpError(400, f"a csere sérti a vault sémáját ({rp}): " + " ".join(x["uzenet"] for x in uj_p),
-                                sema=True, problemak=uj_p)
+                                kod="gepi_iras.sema_csere", param={"ut": rp, "problemak": " ".join(x["uzenet"] for x in uj_p)}, sema=True, problemak=uj_p)
             van_status = any(t["kulcs"].casefold() == "status" for t in elotte["tulajdonsagok"])
             if self.tul.sema.status_vedett(van_status) and self._status(elotte) != self._status(utana):
-                raise HttpError(400, "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.", sema=True)
+                raise HttpError(400, "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.", kod="gepi_iras.status_felhasznaloe_csere", sema=True)
         return _Fajl(rp, p, regi, b)
 
     def _m_mozgat(self, m: dict) -> _Mozgas:
@@ -831,27 +833,27 @@ class GepiIras:
             hiba_hely = f"a füzetfotó helye a `{cel_mappa}` mappa, nem: {rp}"
         reszek = rp.split("/")
         if "/".join(reszek[:-1]) != cel_mappa:
-            raise Invalid(hiba_hely)
+            raise kodol(Invalid(hiba_hely), "gepi_iras.media_celmappa", {"cel_mappa": cel_mappa})
         src = Path(m["forras"])
         if os.path.islink(src) or not src.is_file():
-            raise NotFound(f"nincs ilyen {'videó a stagingben' if video else 'fotó a figyelt mappában'}: {src}")
+            raise kodol(NotFound(f"nincs ilyen {'videó a stagingben' if video else 'fotó a figyelt mappában'}: {src}"), "gepi_iras.media_nincs", {"src": src})
         src = Path(os.path.realpath(src))
         if video:
             if not utkapu.alatta(self.cfg.path("staging"), src) or utkapu.alatta(self.v.root, src):
-                raise Invalid(f"a `mozgat` videót csak a videólánc stagingje (a vaulton kívül) alól visz a vaultba: {src}")
+                raise kodol(Invalid(f"a `mozgat` videót csak a videólánc stagingje (a vaulton kívül) alól visz a vaultba: {src}"), "gepi_iras.mozgat_videot_csak_videolanc_stagingje", {"src": src})
         elif fuzet.figyelt_alatt(self.cfg, src) is None or utkapu.alatta(self.v.root, src):
-            raise Invalid(f"a `mozgat` csak a figyelt mappák (a vaulton kívül) új fotóját viszi a vaultba: {src}")
+            raise kodol(Invalid(f"a `mozgat` csak a figyelt mappák (a vaulton kívül) új fotóját viszi a vaultba: {src}"), "gepi_iras.mozgat_csak_figyelt_mappak_vaulton", {"src": src})
         if binaris_naplo.kivonat(src) != m["sha256"]:
-            raise Conflict(f"a {'videó' if video else 'fotó'} a gép olvasása óta megváltozott: {src.name}", ut=rp)
+            raise kodol(Conflict(f"a {'videó' if video else 'fotó'} a gép olvasása óta megváltozott: {src.name}", ut=rp), "gepi_iras.media_valtozott", {"nev": src.name})
         if vaultio._TILTOTT_NEV.search(reszek[-1]) or len(reszek[-1].encode("utf-8")) > 240:
-            raise Invalid(f"érvénytelen fájlnév: {reszek[-1]}")
+            raise kodol(Invalid(f"érvénytelen fájlnév: {reszek[-1]}"), "gepi_iras.ervenytelen_fajlnev_reszek", {"reszek": reszek[-1]})
         p = self.v._abs(rp)
         mappak = [] if p.parent.is_dir() else [p.parent]
         if p.parent.exists() and not p.parent.is_dir():
-            raise Invalid(f"érvénytelen célmappa: {cel_mappa}")
+            raise kodol(Invalid(f"érvénytelen célmappa: {cel_mappa}"), "gepi_iras.ervenytelen_celmappa_cel_mappa", {"cel_mappa": cel_mappa})
         if os.path.lexists(p) or (p.parent.is_dir() and any(nfc(n).casefold() == nfc(reszek[-1]).casefold()
                                                           for n in os.listdir(p.parent))):
-            raise Conflict(f"már van ilyen nevű fájl (nem írunk felül; új név kell): {rp}", ut=rp, letezik=True)
+            raise kodol(Conflict(f"már van ilyen nevű fájl (nem írunk felül; új név kell): {rp}", ut=rp, letezik=True), "gepi_iras.mar_van_ilyen_nevu_fajl_2", {"rp": rp})
         return _Mozgas(rp, p, src, m["sha256"], mappak, klon=video)
 
     def _m_behoz(self, m: dict) -> _Mozgas:
@@ -861,27 +863,27 @@ class GepiIras:
         reszek = rp.split("/")
         if vaultio._TILTOTT_NEV.search(reszek[-1]) or len(reszek[-1].encode("utf-8")) > 240 or \
                 not os.path.splitext(reszek[-1])[0].strip():
-            raise Invalid(f"érvénytelen fájlnév: {reszek[-1]}")
+            raise kodol(Invalid(f"érvénytelen fájlnév: {reszek[-1]}"), "gepi_iras.ervenytelen_fajlnev_reszek", {"reszek": reszek[-1]})
         if any(vaultio._TILTOTT_NEV.search(r) for r in reszek[:-1]):
-            raise Invalid(f"érvénytelen célmappa: {'/'.join(reszek[:-1])}")
+            raise kodol(Invalid(f"érvénytelen célmappa: {'/'.join(reszek[:-1])}"), "gepi_iras.ervenytelen_celmappa_join", {"join": '/'.join(reszek[:-1])})
         src = Path(m["forras"])
         if os.path.islink(src) or not src.is_file():
-            raise NotFound(f"nincs ilyen kicsomagolt fájl: {src}")
+            raise kodol(NotFound(f"nincs ilyen kicsomagolt fájl: {src}"), "gepi_iras.nincs_ilyen_kicsomagolt_fajl_src", {"src": src})
         src = Path(os.path.realpath(src))
         if not utkapu.alatta(behoz_gyoker(self.cfg), src) or utkapu.alatta(self.v.root, src):
-            raise Invalid(f"a `behoz` csak az importáló saját kicsomagoló mappájából (a `{{tmp}}` alól) visz a vaultba: {src}")
+            raise kodol(Invalid(f"a `behoz` csak az importáló saját kicsomagoló mappájából (a `{{tmp}}` alól) visz a vaultba: {src}"), "gepi_iras.import_mappa")
         if binaris_naplo.kivonat(src) != m["sha256"]:
-            raise Conflict(f"a kicsomagolt fájl az ellenőrzés óta megváltozott: {src.name}", ut=rp)
+            raise kodol(Conflict(f"a kicsomagolt fájl az ellenőrzés óta megváltozott: {src.name}", ut=rp), "gepi_iras.kicsomagolt_fajl_ellenorzes_ota_megvaltozott", {"name": src.name})
         p = self.v._abs(rp)
         mappak, d = [], p.parent
         while d != self.v.root and not d.is_dir():
             if os.path.lexists(d):
-                raise Invalid(f"érvénytelen célmappa: {os.path.relpath(d, self.v.root)}")
+                raise kodol(Invalid(f"érvénytelen célmappa: {os.path.relpath(d, self.v.root)}"), "gepi_iras.ervenytelen_celmappa_relpath", {"relpath": os.path.relpath(d, self.v.root)})
             mappak.insert(0, d)
             d = d.parent
         if os.path.lexists(p) or (p.parent.is_dir() and any(nfc(n).casefold() == nfc(reszek[-1]).casefold()
                                                           for n in os.listdir(p.parent))):
-            raise Conflict(f"már van ilyen nevű fájl (nem írunk felül; új név kell): {rp}", ut=rp, letezik=True)
+            raise kodol(Conflict(f"már van ilyen nevű fájl (nem írunk felül; új név kell): {rp}", ut=rp, letezik=True), "gepi_iras.mar_van_ilyen_nevu_fajl_2", {"rp": rp})
         return _Mozgas(rp, p, src, m["sha256"], mappak, behoz=True)
 
     def _mozgat(self, mz: _Mozgas, lepesek: list[tuple]) -> None:
@@ -906,7 +908,7 @@ class GepiIras:
                 tartos.rename_excl(tmp, mz.p)
             except FileExistsError:
                 tmp.unlink(missing_ok=True)
-                raise Conflict(f"a fájl közben létrejött: {mz.ut}", ut=mz.ut, letezik=True) from None
+                raise kodol(Conflict(f"a fájl közben létrejött: {mz.ut}", ut=mz.ut, letezik=True), "gepi_iras.fajl_kozben_letrejott_ut", {"ut": mz.ut}) from None
             except OSError:
                 tmp.unlink(missing_ok=True)
                 raise
@@ -926,7 +928,7 @@ class GepiIras:
         try:
             binaris_naplo._mozgat(mz.forras, mz.p, letrehoz=False)
         except FileExistsError:
-            raise Conflict(f"a fájl közben létrejött: {mz.ut}", ut=mz.ut, letezik=True) from None
+            raise kodol(Conflict(f"a fájl közben létrejött: {mz.ut}", ut=mz.ut, letezik=True), "gepi_iras.fajl_kozben_letrejott_ut", {"ut": mz.ut}) from None
         lepesek.append(("mozgatva", mz.forras, mz.p))
 
     def _binaris_rekord(self, k: _Keres, sha: str, mozgasok: list[_Mozgas]) -> None:
@@ -959,21 +961,21 @@ class GepiIras:
 
     def _m_beszuras(self, m: dict) -> _Fajl | None:
         if not m["ut"].lower().endswith(".md"):
-            raise Invalid("szakasz alá beszúrni csak jegyzetbe (.md) lehet")
+            raise kodol(Invalid("szakasz alá beszúrni csak jegyzetbe (.md) lehet"), "gepi_iras.szakasz_ala_beszurni_csak_jegyzetbe")
         self._sema_tiltas(m["ut"])
         szoveg, szakasz = self._szoveg(m, "szoveg"), self._szoveg(m, "szakasz")
         rp, p, regi = self._meglevo(m)
         try:
             txt = regi.decode("utf-8")
         except UnicodeDecodeError:
-            raise Invalid(f"a fájl nem érvényes UTF-8, gép nem ír bele: {rp}") from None
+            raise kodol(Invalid(f"a fájl nem érvényes UTF-8, gép nem ír bele: {rp}"), "gepi_iras.fajl_ervenyes_utf_8_gep", {"rp": rp}) from None
         b = self._bajt(rp, szakasz_beszur(txt, szakasz, szoveg, m.get("hova") or "vege", bool(m.get("letrehoz"))))
         if b == regi:
             return None
         uj_h1 = self.tul.uj_sertesek(self.tul.h1_problemak(rp, txt), self.tul.h1_problemak(rp, b.decode("utf-8")))
         if uj_h1:                       # a beszúrt szöveg (pl. egy `# …` sor) a H1-szabályt nem sértheti új módon (T044)
             raise HttpError(400, f"a beszúrás sérti a vault H1-szabályát ({rp}): " + " ".join(x["uzenet"] for x in uj_h1),
-                            sema=True, problemak=uj_h1)
+                            kod="gepi_iras.h1_szabaly", param={"ut": rp, "problemak": " ".join(x["uzenet"] for x in uj_h1)}, sema=True, problemak=uj_h1)
         return _Fajl(rp, p, regi, b)
 
     # -------------------------------------------------- írás, napló, visszaállítás
@@ -983,7 +985,7 @@ class GepiIras:
         a helyére (atomi csere), a napló csak vele érvényes."""
         root, d = self.v.root, _naplo_mappa(self.cfg)
         if d.exists():          # a `_regi_naplo` már feldolgozta; ide csak egy versenyhelyzet juthat — némán nem törlünk (T016)
-            raise HttpError(409, f"Egy szándéknapló áll ({d}); addig új gépi írás nem indulhat.", naplo=True)
+            raise HttpError(409, f"Egy szándéknapló áll ({d}); addig új gépi írás nem indulhat.", kod="gepi_iras.szandeknaplo_all", param={"d": d}, naplo=True)
         (d / "eredeti").mkdir(parents=True)
         lista = []
         for i, f in enumerate(fajlok):
@@ -1019,7 +1021,7 @@ class GepiIras:
             try:
                 fh = open(f.p, "xb")
             except FileExistsError:
-                raise Conflict(f"a fájl közben létrejött: {f.ut}", ut=f.ut, letezik=True) from None
+                raise kodol(Conflict(f"a fájl közben létrejött: {f.ut}", ut=f.ut, letezik=True), "gepi_iras.fajl_kozben_letrejott_ut", {"ut": f.ut}) from None
             lepesek.append(("uj", f.p, f.uj))
             with fh:
                 fh.write(f.uj)
@@ -1030,7 +1032,7 @@ class GepiIras:
         def ellenoriz():
             most = f.p.read_bytes()
             if most != f.regi:              # az írás közben is változhatott (Obsidian, szinkron)
-                raise Conflict(f"a fájl írás közben megváltozott: {f.ut}", ut=f.ut, hash=sha1(most))
+                raise kodol(Conflict(f"a fájl írás közben megváltozott: {f.ut}", ut=f.ut, hash=sha1(most)), "gepi_iras.fajl_iras_kozben_megvaltozott_ut", {"ut": f.ut})
             self.sajat(f.ut, h)
         vaultio.atomi_csere(f.p, f.uj, ellenoriz)
         lepesek.append(("irva", f.p, f.regi))
@@ -1067,6 +1069,6 @@ def utvonalak(r) -> None:
         m = d.get("muveletek") if isinstance(d, dict) else None
         if isinstance(m, list) and any(isinstance(x, dict) and x.get("tipus") == "behoz" for x in m):
             # 83: a `behoz` csak a core saját `.apkg`-importjából (in-process) jöhet, a HTTP-n (lépés-folyamat, felület) nem
-            raise Invalid("a `behoz` műveletet csak a core `.apkg`-importja kérheti, a gépi-írás végponton át nem")
+            raise kodol(Invalid("a `behoz` műveletet csak a core `.apkg`-importja kérheti, a gépi-írás végponton át nem"), "gepi_iras.behoz_muveletet_csak_core_apkg")
         return k.app.gepi.ir(d)
     r.post("/api/gepi-iras", ir)

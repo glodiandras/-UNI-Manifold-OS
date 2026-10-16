@@ -5,6 +5,7 @@
 //
 // A könyvtárat a hívó adja (lusta `import('jsxgraph')` az `index.ts`-ben), így a tesztekben hamis példány megy.
 
+import { t as tx } from '../../../lib/i18n';
 import { temaFigyelo, tokenSzin } from '../tema';
 import type { RenderKornyezet, Takarito } from '../regiszter';
 import { elemez } from './forras';
@@ -49,8 +50,8 @@ function rajzSzin(s: string): string { return /^#[a-fA-F0-9]{3}(?:[a-fA-F0-9]{3}
 function cssSzin(s: string): string { return s.startsWith('--') ? `var(${s})` : rajzSzin(s); }
 
 /** A blokk nem rajzolható: az ok az első hiba (a teljesen hibás vagy üres blokk a blokkban jelenik meg). */
-function nemRajzolhato(t: Rajzterv): Error {
-  return new Error(t.figyelmeztetesek[0] ?? 'a blokk üres (nincs rajzolható sor)');
+function nemRajzolhato(terv: Rajzterv): Error {
+  return new Error(terv.figyelmeztetesek[0] ?? tx('a blokk üres (nincs rajzolható sor)'));
 }
 
 export async function rajzol(
@@ -159,7 +160,7 @@ class Rajz {
     const e = document.createElement('div');
     e.className = 'plot-eszkoztar';
     e.setAttribute('role', 'toolbar');
-    e.setAttribute('aria-label', 'Grafikon');
+    e.setAttribute('aria-label', tx('Grafikon'));
     const gomb = (felirat: string, cimke: string, fv: () => void): void => {
       const b = document.createElement('button');
       b.type = 'button';
@@ -172,10 +173,10 @@ class Rajz {
       });
       e.append(b);
     };
-    gomb('+', 'Nagyítás (+)', () => this.billentyuRendel('+'));
-    gomb('−', 'Kicsinyítés (−)', () => this.billentyuRendel('-'));
-    gomb('↺', 'Alaphelyzet (0)', () => this.billentyuRendel('0'));
-    if (this.k.blokk) gomb('</>', 'A blokk forrása', () => this.k.blokk!.forrasba());
+    gomb('+', tx('Nagyítás (+)'), () => this.billentyuRendel('+'));
+    gomb('−', tx('Kicsinyítés (−)'), () => this.billentyuRendel('-'));
+    gomb('↺', tx('Alaphelyzet (0)'), () => this.billentyuRendel('0'));
+    if (this.k.blokk) gomb('</>', tx('A blokk forrása'), () => this.k.blokk!.forrasba());
     return e;
   }
 

@@ -61,8 +61,8 @@ class TervTeszt(unittest.TestCase):
         (l,) = lepesek
         self.assertEqual(l.argv, [sys.executable, "-B", "-m", "modulok.ytdlp", "lepes", "letoltes", "--url", URL, "--url", "https://youtu.be/x",
                                   "--ki", str(videolanc.letoltes_eredmeny("/", "stop"))])         # F4: a letöltött mappák listája
-        self.assertEqual(l.cwd, str(self.root))
-        self.assertIn("2 videólink", osszegzes)
+        self.assertEqual(Path(l.cwd).resolve(), self.root.resolve())
+        self.assertIn("2 video links", osszegzes)
         self.assertEqual(fig, [])
         self.assertTrue(ff.is_file())
 
@@ -71,7 +71,7 @@ class TervTeszt(unittest.TestCase):
         (l,), _, fig = self.terv({"urlek": [URL], "proba": True})
         i = l.argv.index("--proba-gyoker")
         self.assertTrue(l.argv[i + 1].startswith(str(self.cfg.path("tmp") / "video-proba")))
-        self.assertTrue(fig and "Próbamód" in fig[0])
+        self.assertTrue(fig and "Trial mode" in fig[0])
         self.assertNotIn("--ki", l.argv)                    # próbában nincs bevitel, eredményfájl sem
 
     def test_hianyzo_ffmpeg_magyar_hiba(self):

@@ -5,6 +5,7 @@
 // annak szomszédságában rajzolódnak; a távoli lap vászna felszabadul (memória). A doboz végén a görgetés a jegyzetnek adódik át.
 // A dokumentumot a doboz élete alatt tartja (a közös gyorsítótár a lezárás után még 30 s-ig őrzi).
 
+import { t } from '../../lib/i18n';
 import type { BeagyazasAdat } from '../../lib/vault/linkek.svelte';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
 import type { BeagyazasOpciok, BeagyazasRenderelo } from '../../szerkeszto/beagyazas/regiszter';
@@ -137,19 +138,19 @@ function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Beagy
   mezo.type = 'text';
   mezo.inputMode = 'numeric';
   mezo.value = String(oldal);
-  mezo.setAttribute('aria-label', 'Oldalszám');
+  mezo.setAttribute('aria-label', t('Oldalszám'));
   const osszesJel = el('span', 'pdf-be-osszes');
-  const elozo = gomb('‹', 'Előző oldal', () => ugrik(oldal - 1));
-  const kov = gomb('›', 'Következő oldal', () => ugrik(oldal + 1));
-  fej.append(cim, el('span', 'pdf-be-hely'), elozo, mezo, osszesJel, kov, gomb('Megnyitás', 'Megnyitás a teljes olvasóban ezen az oldalon', megnyit));
+  const elozo = gomb('‹', t('Előző oldal'), () => ugrik(oldal - 1));
+  const kov = gomb('›', t('Következő oldal'), () => ugrik(oldal + 1));
+  fej.append(cim, el('span', 'pdf-be-hely'), elozo, mezo, osszesJel, kov, gomb(t('Megnyitás'), t('Megnyitás a teljes olvasóban ezen az oldalon'), megnyit));
 
   const test = el('div', 'pdf-be-test');
   test.style.height = `${meret?.szelesseg ?? (o.kompakt ? KOMPAKT_MAGASSAG : PDF_MAGASSAG)}px`;
   test.tabIndex = 0;
   test.setAttribute('role', 'group');
-  test.setAttribute('aria-label', `${fajlNev(ut)}, görgethető lapok`);
+  test.setAttribute('aria-label', t('{nev}, görgethető lapok', { nev: fajlNev(ut) }));
   const uzenet = el('span', 'beagyazas-uzenet');
-  uzenet.textContent = 'A PDF betöltése…';
+  uzenet.textContent = t('A PDF betöltése…');
   test.appendChild(uzenet);
   kont.append(fej, test);
 
@@ -164,8 +165,8 @@ function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Beagy
   const hiba = (e: unknown) => {
     kont.className = 'beagyazas beagyazas-hiba';
     const u = el('span', 'beagyazas-uzenet');
-    u.textContent = `A PDF nem tölthető be: ${e instanceof Error ? e.message : String(e)} `;
-    kont.replaceChildren(u, gomb('Megnyitás', 'Megnyitás a teljes olvasóban', megnyit));
+    u.textContent = t('A PDF nem tölthető be: {hiba}', { hiba: e instanceof Error ? e.message : String(e) }) + ' ';
+    kont.replaceChildren(u, gomb(t('Megnyitás'), t('Megnyitás a teljes olvasóban'), megnyit));
     o.kesz?.();
   };
 
@@ -207,7 +208,7 @@ function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Beagy
     lap.megszakit?.();
     const vaszon = el('canvas', 'pdf-be-lap');
     vaszon.setAttribute('role', 'img');
-    vaszon.setAttribute('aria-label', `${fajlNev(ut)}, ${lap.n}. oldal`);
+    vaszon.setAttribute('aria-label', t('{nev}, {n}. oldal', { nev: fajlNev(ut), n: lap.n }));
     const sor = rajzoloSor(async (sajat, tarto) => {
       try {
         await lapRajzol(ut, lap.n, vaszon, szel, tarto);
@@ -223,7 +224,7 @@ function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Beagy
       } catch (e) {
         if (megszakitva(e) || sajat !== sor.fut || o.jel?.aborted) return;
         const u = el('span', 'beagyazas-uzenet');
-        u.textContent = `A(z) ${lap.n}. oldal nem rajzolható.`;
+        u.textContent = t('A(z) {n}. oldal nem rajzolható.', { n: lap.n });
         lap.doboz.replaceChildren(u);
       }
     });

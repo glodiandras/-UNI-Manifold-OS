@@ -236,7 +236,7 @@ class TenyekEsVegpont(Alap):
         kereses_api.kotes(app, modell=m, kalibralt=True)
         r = api.ertekeles_valasz(app, {"azon": t.adatok().dolgozatok()[0]["azon"], "datum": "2026-10-03"})
         self.assertEqual((r["allapot"], r["szoveg"], m.hivasok), ("nincs_mert_adat", None, []))
-        self.assertIn("mért tudás", r["uzenet"])
+        self.assertIn("no measured card or quiz data", r["uzenet"])
 
     def test_hamis_szam_ketszer_a_szoveg_nem_jut_ki(self):
         m = self.modell("Biztosan 97%-os leszel.")
@@ -245,7 +245,7 @@ class TenyekEsVegpont(Alap):
         self.assertEqual((r["allapot"], r["szoveg"], r["probalkozas"]), ("kapu_bukott", None, 2))
         self.assertIn("97", r["tiltott_szamok"])
         self.assertEqual(len(m.hivasok), 2)
-        self.assertIn("nem mutatom", r["uzenet"])
+        self.assertIn("assessment is hidden", r["uzenet"])
 
     def test_hibas_kerdesek(self):
         kereses_api.kotes(self.app, modell=self.modell(self.jo), kalibralt=True)

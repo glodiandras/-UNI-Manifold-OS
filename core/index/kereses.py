@@ -34,6 +34,7 @@ from ..vaultio import Invalid
 from .elemzo import FM_RE, _Sorok
 from .feloldas import MD_RE
 from .maszk import link_maszk
+from ..hibakod import kodol
 
 OPERATOROK = ("path", "file", "tag", "line")
 MEDIA_TIPUSOK = ("pdf", "felirat")
@@ -128,7 +129,7 @@ class _Parser:
         while self.kov()[0] not in (None, ")", "vagy"):
             tagok.append(self.egy())
         if not tagok:
-            raise Invalid("üres keresési kifejezés")
+            raise kodol(Invalid("üres keresési kifejezés"), "index.kereses.ures_keresesi_kifejezes")
         return tagok[0] if len(tagok) == 1 else ("es", tagok)
 
     def egy(self):
@@ -138,7 +139,7 @@ class _Parser:
         if f == "(":
             e = self.kifejezes()
             if self.vesz()[0] != ")":
-                raise Invalid("hiányzó záró zárójel")
+                raise kodol(Invalid("hiányzó záró zárójel"), "index.kereses.hianyzo_zaro_zarojel")
             return e
         if f == "op":
             if v == "line":
@@ -150,7 +151,7 @@ class _Parser:
             return ("regex", _regex(v))
         if f in ("szo", "kif"):
             return (f, v)
-        raise Invalid(f"váratlan elem a keresésben: {v}")
+        raise kodol(Invalid(f"váratlan elem a keresésben: {v}"), "index.kereses.varatlan_elem_keresesben_v", {"v": v})
 
     def _ertek(self):
         f, v = self.vesz()
@@ -158,7 +159,7 @@ class _Parser:
             return ("regex", _regex(v))
         if f in ("szo", "kif"):
             return (f, v)
-        raise Invalid("az operátor után érték kell")
+        raise kodol(Invalid("az operátor után érték kell"), "index.kereses.operator_utan_ertek_kell")
 
 
 REGEX_IDOKORLAT_MP = 2.0
@@ -173,7 +174,7 @@ class _Rx:
         try:
             self.rx = regex.compile(minta, regex.M)
         except regex.error as e:
-            raise Invalid(f"hibás regex: {e}") from e
+            raise kodol(Invalid(f"hibás regex: {e}"), "index.kereses.hibas_regex_e", {"e": e}) from e
 
     @staticmethod
     def _hatra() -> float:
@@ -198,11 +199,11 @@ def _regex(minta: str) -> _Rx:
 
 def elemez(q: str):
     if not isinstance(q, str) or not q.strip():
-        raise Invalid("üres keresés")
+        raise kodol(Invalid("üres keresés"), "index.kereses.ures_kereses")
     p = _Parser(_lex(q))
     e = p.kifejezes()
     if p.kov()[0] is not None:
-        raise Invalid("fölösleges záró zárójel")
+        raise kodol(Invalid("fölösleges záró zárójel"), "index.kereses.folosleges_zaro_zarojel")
     return e
 
 
@@ -328,7 +329,7 @@ def _kiertekel(e, d: _Dok, minták: dict) -> tuple[bool, list]:
                     spanok += [(a + off, b + off) for a, b in sp] or [(off, off + len(s))]
                 off += len(s) + 1
             return bool(spanok), spanok
-    raise Invalid(f"ismeretlen keresési elem: {f}")
+    raise kodol(Invalid(f"ismeretlen keresési elem: {f}"), "index.kereses.ismeretlen_keresesi_elem_f", {"f": f})
 
 
 def _van(e, fajta: str) -> bool:
@@ -373,8 +374,8 @@ def keres(c, q: str, limit: int = 200, idokorlat: float = REGEX_IDOKORLAT_MP, ko
     try:
         return _keres(c, q, e, limit, kornyezet)
     except TimeoutError:
-        raise Invalid(f"A regex túl sokáig futott ({idokorlat:g} s alatt nem végzett) — egyszerűsítsd a mintát "
-                      "(pl. az egymásba ágyazott ismétlést, mint az „(a|aa)+”).") from None
+        raise kodol(Invalid(f"A regex túl sokáig futott ({idokorlat:g} s alatt nem végzett) — egyszerűsítsd a mintát "
+                      "(pl. az egymásba ágyazott ismétlést, mint az „(a|aa)+”)."), "index.kereses.regex_tul_sokaig_futott_idokorlat", {"idokorlat": idokorlat}) from None
     finally:
         _hatar.ertek = None
 

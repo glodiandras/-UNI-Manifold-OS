@@ -4,6 +4,7 @@
 // egyetlen írási útján (egy tranzakció: a ⌘Z egy lépés). A ⌘⇧L a CodeMirror `searchKeymap`-jében foglalt (`selectSelectionMatches`),
 // ezért a parancs billentyűje a szabad ⌥⌘L (a regiszter ütközés-próbája a szerkesztő keymapjeit is nézi).
 
+import { t } from '../lib/i18n';
 import type { EditorView } from '@codemirror/view';
 import { ApiHiba, kerdez } from '../lib/core/api';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -35,15 +36,15 @@ export function kepletBeszur(v: EditorView, latex: string): string {
 
 export async function kepletOcr(v: EditorView, keres = kerdez): Promise<boolean> {
   const kulcs = 'keplet-ocr';
-  ertesitesek.ertesit({ kulcs, cim: 'Képlet olvasása a vágólapról…', idotartam: 0 });
+  ertesitesek.ertesit({ kulcs, cim: t('Képlet olvasása a vágólapról…'), idotartam: 0 });
   try {
     const r = await keres<KepletOcrValasz>('/api/keplet-ocr', { metodus: 'POST', torzs: {}, idokorlat: 180_000 });
     kepletBeszur(v, r.latex);
     v.focus();
     ertesitesek.ertesit(
       r.proba
-        ? { kulcs, szint: 'figyelmeztetes', cim: 'Képlet beszúrva — próba-modellel', szoveg: `${r.modell ?? ''}: nem kalibrált, ellenőrizd.` }
-        : { kulcs, szint: 'siker', cim: 'Képlet beszúrva', szoveg: r.modell ? `Olvasta: ${r.modell}` : undefined },
+        ? { kulcs, szint: 'figyelmeztetes', cim: t('Képlet beszúrva — próba-modellel'), szoveg: t('{modell}: nem kalibrált, ellenőrizd.', { modell: r.modell ?? '' }) }
+        : { kulcs, szint: 'siker', cim: t('Képlet beszúrva'), szoveg: r.modell ? t('Olvasta: {modell}', { modell: r.modell }) : undefined },
     );
     return true;
   } catch (e) {
@@ -51,7 +52,7 @@ export async function kepletOcr(v: EditorView, keres = kerdez): Promise<boolean>
     ertesitesek.ertesit({
       kulcs,
       szint: nincs ? 'figyelmeztetes' : 'hiba',
-      cim: nincs ? 'A vágólapon nincs kép' : 'A képlet nem olvasható',
+      cim: nincs ? t('A vágólapon nincs kép') : t('A képlet nem olvasható'),
       szoveg: e instanceof Error ? e.message : String(e),
     });
     return false;

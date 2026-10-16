@@ -1,6 +1,7 @@
 <!-- Egy feladat sora a „Most” szakaszban (C17): cím, állapot, haladássáv; kattintásra a részlet nyílik. -->
 <script lang="ts">
-  import { allapotCimke, haladasSzoveg, idoRovid, idotartam } from '../../lib/vezerlo/megjelenites';
+  import { t } from '../../lib/i18n';
+  import { allapotCimke, feladatSzoveg, haladasSzoveg, idoRovid, idotartam } from '../../lib/vezerlo/megjelenites';
   import type { Feladat } from '../../lib/vezerlo/tipusok';
 
   let { feladat, onnyit }: { feladat: Feladat; onnyit: (id: string) => void } = $props();
@@ -9,18 +10,18 @@
   const kozben = $derived(fut || feladat.allapot === 'sorban');
   const meta = $derived(
     kozben
-      ? [haladasSzoveg(feladat), feladat.indult ? `indult ${idoRovid(feladat.indult)}` : ''].filter(Boolean).join(' · ')
+      ? [haladasSzoveg(feladat), feladat.indult ? t('indult {ido}', { ido: idoRovid(feladat.indult) }) : ''].filter(Boolean).join(' · ')
       : [idoRovid(feladat.vegzett), idotartam(feladat)].filter(Boolean).join(' · '),
   );
 </script>
 
 <button type="button" class="sor" data-allapot={feladat.allapot} onclick={() => onnyit(feladat.id)}>
   <span class="fej">
-    <span class="cim">{feladat.cim}</span>
+    <span class="cim">{feladatSzoveg(feladat.cim)}</span>
     <span class="allapot">{allapotCimke(feladat.allapot)}</span>
   </span>
   {#if fut}
-    <span class="sav" role="progressbar" aria-label="Haladás" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(feladat.szazalek)}>
+    <span class="sav" role="progressbar" aria-label={t('Haladás')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(feladat.szazalek)}>
       <span class="toltes" style:width="{Math.max(2, feladat.szazalek)}%"></span>
     </span>
   {/if}

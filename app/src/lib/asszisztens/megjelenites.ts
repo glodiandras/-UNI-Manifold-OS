@@ -1,22 +1,24 @@
 // Az Asszisztens megjelenítési segédei (C30a): magyar feliratok, arány és küszöb szövege, idő.
 
+import { t, tk, locale } from '../i18n';
+
 import type { HigieniaFajta, Kuszob, StatisztikaFajta } from './tipusok';
 
 export const FAJTA_CIM: Record<HigieniaFajta, string> = {
-  torott_link: 'Törött link',
-  tobbertelmu_link: 'Többértelmű link',
-  arva_jegyzet: 'Árva jegyzet',
-  hibas_keplet: 'Hibás képlet',
-  hibas_frontmatter: 'Hibás tulajdonság',
-  sema_sertes: 'Séma-sértés',
-  hianyzo_forrashorgony: 'Hiányzó forráshorgony',
-  hianyzo_media: 'Hiányzó média',
+  get torott_link() { return t('Törött link'); },
+  get tobbertelmu_link() { return t('Többértelmű link'); },
+  get arva_jegyzet() { return t('Árva jegyzet'); },
+  get hibas_keplet() { return t('Hibás képlet'); },
+  get hibas_frontmatter() { return t('Hibás tulajdonság'); },
+  get sema_sertes() { return t('Séma-sértés'); },
+  get hianyzo_forrashorgony() { return t('Hiányzó forráshorgony'); },
+  get hianyzo_media() { return t('Hiányzó média'); },
 };
 
 export const STATISZTIKA_CIM: Record<StatisztikaFajta, string> = {
-  emlites: 'Linkjavaslat',
-  szokas: 'Szokás-javaslat',
-  higienia: 'Higiénia',
+  get emlites() { return t('Linkjavaslat'); },
+  get szokas() { return t('Szokás-javaslat'); },
+  get higienia() { return t('Higiénia'); },
 };
 
 export function fajtaCim(fajta: string): string {
@@ -28,9 +30,9 @@ export function aranySzoveg(arany: number | null): string {
 }
 
 export function kuszobSzoveg(k: Kuszob): string {
-  if (k.szint === 'nema') return 'néma (nem javasol)';
-  if (k.szint === 'szigoru') return `szigorúbb (×${String(k.szorzo ?? 1).replace('.', ',')})`;
-  return 'alap';
+  if (k.szint === 'nema') return t('néma (nem javasol)');
+  if (k.szint === 'szigoru') return t('szigorúbb (×{szorzo})', { szorzo: String(k.szorzo ?? 1).replace('.', locale() === 'hu-HU' ? ',' : '.') });
+  return t('alap');
 }
 
 /** A riport elkészültének ideje magyarul, rövid alakban; érvénytelen vagy hiányzó érték: üres szöveg. */
@@ -38,23 +40,23 @@ export function szamolvaSzoveg(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return new Intl.DateTimeFormat('hu', { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  return new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(d);
 }
 
 // ---------------------------------------------------------------- J1: a „Mit tanult az asszisztens” lista
 
 const HELYZET_RESZ: Record<string, string> = {
-  folytat: 'folytatás', kifejt: 'kifejtés', osszefoglal: 'összefoglalás', szoveg: 'szövegben',
-  szunet: 'gépelési szünetben', megnyitas: 'megnyitáskor', rovid: 'rövid jegyzet', kozepes: 'közepes jegyzet', hosszu: 'hosszú jegyzet',
+  folytat: tk('folytatás'), kifejt: tk('kifejtés'), osszefoglal: tk('összefoglalás'), szoveg: tk('szövegben'),
+  szunet: tk('gépelési szünetben'), megnyitas: tk('megnyitáskor'), rovid: tk('rövid jegyzet'), kozepes: tk('közepes jegyzet'), hosszu: tk('hosszú jegyzet'),
 };
 
 /** A hangolás helyzet-kódja magyarul (`szunet_rovid` → „gépelési szünetben, rövid jegyzet”). */
 export function helyzetSzoveg(h: string): string {
-  return h.split('_').map((r) => HELYZET_RESZ[r] ?? r).join(', ');
+  return h.split('_').map((r) => (HELYZET_RESZ[r] ? t(HELYZET_RESZ[r]) : r)).join(', ');
 }
 
-const HANGOLAS: Record<string, string> = { batrabb: 'gyakrabban javasol', alap: 'alap gyakoriság', ritkabb: 'ritkábban javasol', nema: 'néma (nem javasol)' };
+const HANGOLAS: Record<string, string> = { batrabb: tk('gyakrabban javasol'), alap: tk('alap gyakoriság'), ritkabb: tk('ritkábban javasol'), nema: tk('néma (nem javasol)') };
 
 export function hangolasSzoveg(szint: string): string {
-  return HANGOLAS[szint] ?? szint;
+  return HANGOLAS[szint] ? t(HANGOLAS[szint]) : szint;
 }

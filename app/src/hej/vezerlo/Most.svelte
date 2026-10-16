@@ -1,5 +1,6 @@
 <!-- A „Most” szakasz (C17): a futó és várakozó feladatok, alattuk a legutóbbiak. -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { feladatsor } from '../../lib/vezerlo/feladatsor.svelte';
   import FeladatSor from './FeladatSor.svelte';
   import Ures from './Ures.svelte';
@@ -10,20 +11,20 @@
 </script>
 
 {#if feladatsor.hiba}
-  <p class="hiba" role="alert">A feladatsor nem érhető el: {feladatsor.hiba}</p>
+  <p class="hiba" role="alert">{t('A feladatsor nem érhető el: {hiba}', { hiba: feladatsor.hiba })}</p>
 {:else if feladatsor.betoltve && !elo.length && !legutobbi.length}
-  <Ures szoveg="Nem fut és nem vár feladat. Amit a Manifold a háttérben csinál, itt látszik." />
+  <Ures szoveg={t('Nem fut és nem vár feladat. Amit a Manifold a háttérben csinál, itt látszik.')} />
 {:else}
   {#if elo.length}
-    <ul class="lista" aria-label="Futó és várakozó feladatok">
+    <ul class="lista" aria-label={t('Futó és várakozó feladatok')}>
       {#each elo as f (f.id)}<li><FeladatSor feladat={f} {onnyit} /></li>{/each}
     </ul>
   {:else if feladatsor.betoltve}
-    <Ures szoveg="Most nem fut feladat." />
+    <Ures szoveg={t('Most nem fut feladat.')} />
   {/if}
   {#if legutobbi.length}
-    <h3 class="alcim">Legutóbbi</h3>
-    <ul class="lista" aria-label="Legutóbbi feladatok">
+    <h3 class="alcim">{t('Legutóbbi')}</h3>
+    <ul class="lista" aria-label={t('Legutóbbi feladatok')}>
       {#each legutobbi as f (f.id)}<li><FeladatSor feladat={f} {onnyit} /></li>{/each}
     </ul>
   {/if}

@@ -12,6 +12,7 @@
 
 import { egyenlo, elemez, ertekbol, type JErtek, type JObj, type JTomb } from './json';
 import type { JsonObj, Vaszon } from './modell';
+import { t } from '../lib/i18n';
 
 export class IroHiba extends Error {}
 
@@ -77,8 +78,8 @@ function stilusFelismer(s: string, gy: JErtek): Stilus {
 /** Egy új érték a stílus szerint. `behuz`: annak a sornak a behúzása, ahol az érték kezdődik. */
 function kiir(v: unknown, st: Stilus, behuz: string): string {
   if (v === null || typeof v !== 'object') {
-    if (typeof v === 'number' && !Number.isFinite(v)) throw new IroHiba('nem véges szám nem írható JSON-ba');
-    if (v === undefined) throw new IroHiba('hiányzó érték nem írható JSON-ba');
+    if (typeof v === 'number' && !Number.isFinite(v)) throw new IroHiba(t('nem véges szám nem írható JSON-ba'));
+    if (v === undefined) throw new IroHiba(t('hiányzó érték nem írható JSON-ba'));
     return JSON.stringify(v);
   }
   const tomb = Array.isArray(v);
@@ -128,7 +129,7 @@ export function foltoz(szoveg: string, uj: Vaszon): string {
   const gy = elemez(szoveg);
   const regi = ertekbol(gy);
   if (egyenlo(normal(regi), normal(uj))) return szoveg;
-  if (gy.t !== 'obj' || !objektum(regi)) throw new IroHiba('a canvas gyökere nem objektum');
+  if (gy.t !== 'obj' || !objektum(regi)) throw new IroHiba(t('a canvas gyökere nem objektum'));
   if (!gy.tagok.length) return ellenoriz(obsidianKiir(uj), uj);
 
   // a gyökérben a hiányzó `nodes`/`edges` az üres tömb (a spec szerint opcionális): a fájlban nem álló és üresen
@@ -150,9 +151,9 @@ function ellenoriz(kimenet: string, uj: Vaszon): string {
   try {
     vissza = JSON.parse(kimenet);
   } catch (e) {
-    throw new IroHiba(`a foltozott canvas nem érvényes JSON (${e instanceof Error ? e.message : e})`);
+    throw new IroHiba(t('a foltozott canvas nem érvényes JSON ({hiba})', { hiba: e instanceof Error ? e.message : String(e) }));
   }
-  if (!egyenlo(normal(vissza), normal(uj))) throw new IroHiba('a foltozott canvas nem a várt tartalmat adja');
+  if (!egyenlo(normal(vissza), normal(uj))) throw new IroHiba(t('a foltozott canvas nem a várt tartalmat adja'));
   return kimenet;
 }
 
@@ -162,7 +163,7 @@ function alkalmaz(s: string, cserek: Csere[]): string {
   let ki = '';
   let hely = 0;
   for (const c of rend) {
-    if (c.kezd < hely) throw new IroHiba('egymást fedő cserék (belső hiba)');
+    if (c.kezd < hely) throw new IroHiba(t('egymást fedő cserék (belső hiba)'));
     ki += s.slice(hely, c.kezd) + c.uj;
     hely = c.veg;
   }

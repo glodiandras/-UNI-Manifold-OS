@@ -7,6 +7,7 @@
 
 import { ApiHiba } from '../lib/core/api';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+import { t } from '../lib/i18n';
 import { linkek } from '../lib/vault/linkek.svelte';
 import { fajlNev } from '../lib/vault/fajlok.svelte';
 import { irhato } from '../szerkeszto/beallitas';
@@ -75,9 +76,9 @@ function hibaSzoveg(e: unknown): string {
 async function vagolapra(szoveg: string, cim: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(szoveg);
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim, szoveg: 'Nincs nyitott jegyzet: a szöveg a vágólapra került.' });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim, szoveg: t('Nincs nyitott jegyzet: a szöveg a vágólapra került.') });
   } catch {
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim, szoveg: 'Nyiss meg egy jegyzetet (például osztásban), és próbáld újra.' });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim, szoveg: t('Nyiss meg egy jegyzetet (például osztásban), és próbáld újra.') });
   }
 }
 
@@ -94,13 +95,13 @@ interface SourceEredmeny {
 async function sourceFm(p: SzerkesztoPeldany, fm: string | null, horgony: string): Promise<SourceEredmeny> {
   const api = tulajdonsagApi();
   const el = await api.elemez(p.ut, fm);
-  const t = el.tulajdonsagok.find((x) => x.kulcs === 'Source');
-  const regi = Array.isArray(t?.ertek) ? (t.ertek as unknown[]).filter((x): x is string => typeof x === 'string') : typeof t?.ertek === 'string' && t.ertek ? [t.ertek] : [];
+  const forras = el.tulajdonsagok.find((x) => x.kulcs === 'Source');
+  const regi = Array.isArray(forras?.ertek) ? (forras.ertek as unknown[]).filter((x): x is string => typeof x === 'string') : typeof forras?.ertek === 'string' && forras.ertek ? [forras.ertek] : [];
   const kis = horgony.toLowerCase();
   if (regi.some((x) => x.trim().toLowerCase() === kis)) return { fm: null, kihagyva: null };
   const e = await api.modosit(p.ut, fm, { muvelet: 'beallit', kulcs: 'Source', ertek: [...regi, horgony], tipus: 'multitext' }, false);
   if (!e.ok || e.fm_uj === null) {
-    return { fm: null, kihagyva: e.problemak.map((x) => x.uzenet).join(' ') || 'a Source mező nem írható' };
+    return { fm: null, kihagyva: e.problemak.map((x) => x.uzenet).join(' ') || t('a Source mező nem írható') };
   }
   return { fm: e.fm_uj, kihagyva: null };
 }
@@ -120,7 +121,7 @@ export async function idezetBeszur(pdf: string, oldal: number, szoveg: string): 
     } catch {
       /* a fájlnév marad */
     }
-    await vagolapra(idezetBlokk(szoveg, cel, oldal), 'Az idézet nem került jegyzetbe');
+    await vagolapra(idezetBlokk(szoveg, cel, oldal), t('Az idézet nem került jegyzetbe'));
     return null;
   }
   try {
@@ -130,7 +131,7 @@ export async function idezetBeszur(pdf: string, oldal: number, szoveg: string): 
     const { fm: ujFm, kihagyva } = await sourceFm(p, fm0?.szoveg ?? null, `[[${cel}#page=${oldal}]]`);
     const v = p.nezet();
     const fm = v ? fmBlokk(v.state.doc) : null;
-    if (!v || (fm?.szoveg ?? null) !== (fm0?.szoveg ?? null)) throw new Error('a jegyzet közben megváltozott; próbáld újra');
+    if (!v || (fm?.szoveg ?? null) !== (fm0?.szoveg ?? null)) throw new Error(t('a jegyzet közben megváltozott; próbáld újra'));
     const doc = v.state.doc.toString();
     const fmCsere = ujFm !== null ? blokkCsere(fm, ujFm) : null;
     const blokk = blokkHely(doc, v.state.selection.main.head, idezetBlokk(szoveg, cel, oldal), fm?.ig ?? 0);
@@ -141,13 +142,13 @@ export async function idezetBeszur(pdf: string, oldal: number, szoveg: string): 
     if (kihagyva) {
       ertesitesek.ertesit({
         szint: 'figyelmeztetes',
-        cim: 'Az idézet Source nélkül került be',
-        szoveg: `A jegyzet sémája nem engedi a forrás-hivatkozás beírását (${kihagyva}) — az idézet a Source mező nélkül került a jegyzetbe.`,
+        cim: t('Az idézet Source nélkül került be'),
+        szoveg: t('A jegyzet sémája nem engedi a forrás-hivatkozás beírását ({ok}) — az idézet a Source mező nélkül került a jegyzetbe.', { ok: kihagyva }),
       });
     }
     return { ut: p.ut, source: fmCsere !== null };
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'Az idézet nem került be', szoveg: hibaSzoveg(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('Az idézet nem került be'), szoveg: hibaSzoveg(e) });
     return null;
   }
 }
@@ -163,7 +164,7 @@ export async function idokodBeszur(media: string, mp: number): Promise<BeszurasE
   }
   const link = idokodLink(cel, mp);
   if (!p) {
-    await vagolapra(link, 'Az időkód nem került jegyzetbe');
+    await vagolapra(link, t('Az időkód nem került jegyzetbe'));
     return null;
   }
   const v = p.nezet();

@@ -69,23 +69,23 @@ class Elemzo:
     @staticmethod
     def ervenyes(torzs) -> tuple[list[str], list[float]]:
         if not isinstance(torzs, dict):
-            raise HttpError(400, "a törzs JSON-objektum legyen")
+            raise HttpError(400, "a törzs JSON-objektum legyen", kod="grafikon_api.torzs_objektum")
         f, ablak = torzs.get("fuggvenyek"), torzs.get("ablak")
         if not isinstance(f, list) or not 1 <= len(f) <= MAX_FUGGVENY:
-            raise HttpError(400, f"a `fuggvenyek` 1–{MAX_FUGGVENY} szövegből álló lista legyen")
+            raise HttpError(400, f"a `fuggvenyek` 1–{MAX_FUGGVENY} szövegből álló lista legyen", kod="grafikon_api.fuggvenyek_lista", param={"MAX_FUGGVENY": MAX_FUGGVENY})
         ki = []
         for kif in f:
             if not isinstance(kif, str) or not kif.strip() or len(kif) > MAX_KIF or not _KARAKTER.match(kif):
                 raise HttpError(400, "a kifejezés legfeljebb %d jel, és csak számot, betűt, `+-*/^().,!_` jelet és "
-                                     "szóközt tartalmazhat" % MAX_KIF)
+                                     "szóközt tartalmazhat" % MAX_KIF, kod="grafikon_api.kifejezes_jelek", param={"max": MAX_KIF})
             ki.append(kif.strip())
         if not isinstance(ablak, list) or len(ablak) != 2 or not all(_szam(v) for v in ablak):
-            raise HttpError(400, "az `ablak` két véges szám legyen: [alsó, felső]")
+            raise HttpError(400, "az `ablak` két véges szám legyen: [alsó, felső]", kod="grafikon_api.ablak_ket_szam")
         lo, hi = float(ablak[0]), float(ablak[1])
         if not lo < hi:
-            raise HttpError(400, "az ablak alsó határa kisebb legyen a felsőnél")
+            raise HttpError(400, "az ablak alsó határa kisebb legyen a felsőnél", kod="grafikon_api.ablak_hatarok")
         if max(abs(lo), abs(hi)) > MAX_ERTEK or hi - lo > MAX_SZELESSEG:
-            raise HttpError(400, "az ablak túl nagy")
+            raise HttpError(400, "az ablak túl nagy", kod="grafikon_api.ablak_tul_nagy")
         return ki, [_kerek(lo), _kerek(hi)]
 
     # ------------------------------------------------------------------ gyorsítótár
@@ -118,7 +118,7 @@ class Elemzo:
         minden_gyorsitotarbol = all(t is not None for t in talalt)
         if not minden_gyorsitotarbol:
             if not self._futas.acquire(timeout=max(0.0, float(self.beall["varakozas_s"]))):
-                raise HttpError(503, "az elemző foglalt (a homokozó másik kérést szolgál ki); próbáld újra")
+                raise HttpError(503, "az elemző foglalt (a homokozó másik kérést szolgál ki); próbáld újra", kod="grafikon_api.elemzo_foglalt")
             try:                                                 # egyszerre egy homokozó; az azonos kérések egyszer futnak
                 talalt = [self._olvas(k) for k in kulcsok]
                 hianyzo = list(dict.fromkeys(f for f, t in zip(fuggvenyek, talalt) if t is None))
@@ -126,9 +126,10 @@ class Elemzo:
                 if hianyzo:
                     ered = self.futtato(hianyzo, ablak)
                     if len(ered) != len(hianyzo):
-                        raise HttpError(503, "az elemző hibás választ adott (a tételek száma eltér)")
+                        raise HttpError(503, "az elemző hibás választ adott (a tételek száma eltér)", kod="grafikon_api.elemzo_tetelszam")
                     if all(e.get("allapot") == "homokozo_hiba" for e in ered):
-                        raise HttpError(503, "A CAS-homokozó nem érhető el: " + str(ered[0].get("uzenet", "")))
+                        raise HttpError(503, "A CAS-homokozó nem érhető el: " + str(ered[0].get("uzenet", "")),
+                                        kod="grafikon_api.cas_homokozo", param={"uzenet": str(ered[0].get("uzenet", ""))})
                     for f, e in zip(hianyzo, ered):
                         if e.get("allapot") != "homokozo_hiba":      # az átmeneti hiba nem gyorsítótárazott
                             self._ir(self._kulcs(f, ablak), e)
@@ -149,7 +150,7 @@ class Elemzo:
             p = subprocess.Popen(self.parancs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  env=env, cwd=str(self.cfg.root), text=True, start_new_session=True)
         except OSError as exc:
-            raise HttpError(503, f"az elemző nem indult el: {exc}") from None
+            raise HttpError(503, f"az elemző nem indult el: {exc}", kod="grafikon_api.elemzo_nem_indult", param={"exc": exc}) from None
         idokorlat = float(self.beall["elemzes_idokorlat_s"])
         try:
             ki, hiba = p.communicate(json.dumps({"fuggvenyek": fuggvenyek, "ablak": ablak}), timeout=idokorlat)
@@ -159,17 +160,18 @@ class Elemzo:
             except (ProcessLookupError, PermissionError):
                 p.kill()
             p.communicate()
-            raise HttpError(503, f"az elemzés időkorlátba ütközött ({idokorlat:g} s)") from None
+            raise HttpError(503, f"az elemzés időkorlátba ütközött ({idokorlat:g} s)", kod="grafikon_api.elemzes_idokorlat", param={"idokorlat": idokorlat}) from None
         if p.returncode == KERES_HIBA:
-            raise HttpError(500, "az elemző elutasította a kérést: " + ki.strip()[:300])
+            raise HttpError(500, "az elemző elutasította a kérést: " + ki.strip()[:300],
+                            kod="grafikon_api.elemzo_elutasitotta", param={"uzenet": ki.strip()[:300]})
         if p.returncode != 0:
-            raise HttpError(503, f"az elemző hibásan lépett ki ({p.returncode}): {hiba.strip()[-300:]}")
+            raise HttpError(503, f"az elemző hibásan lépett ki ({p.returncode}): {hiba.strip()[-300:]}", kod="grafikon_api.elemzo_hibas_kilepes", param={"kod": p.returncode, "hiba": hiba.strip()[-300:]})
         try:
             v = json.loads(ki)["fuggvenyek"]
             if not isinstance(v, list) or not all(isinstance(e, dict) for e in v):
                 raise ValueError("nem tételek listája")
         except (ValueError, KeyError, TypeError):
-            raise HttpError(503, "az elemző értelmezhetetlen választ adott") from None
+            raise HttpError(503, "az elemző értelmezhetetlen választ adott", kod="grafikon_api.elemzo_ertelmezhetetlen") from None
         return v
 
 
@@ -188,19 +190,19 @@ def tiltolista(app) -> dict:
     try:
         return {"ok": True, "tiltott": plot_allapot.Tiltolista(app.cfg).lista()}
     except plot_allapot.AllapotHiba as e:
-        raise HttpError(500, f"a tiltólista nem olvasható: {e}") from None
+        raise HttpError(500, f"a tiltólista nem olvasható: {e}", kod="grafikon_api.tiltolista_nem_olvashato", param={"e": e}) from None
 
 
 def tiltolista_levesz(app, torzs) -> dict:
     kulcs = torzs.get("kulcs") if isinstance(torzs, dict) else None
     if not isinstance(kulcs, str) or not plot_allapot.KULCS_MINTA.fullmatch(kulcs):
-        raise HttpError(400, "a `kulcs` 16 hexa jegyű szöveg legyen")
+        raise HttpError(400, "a `kulcs` 16 hexa jegyű szöveg legyen", kod="grafikon_api.kulcs_hexa")
     try:
         volt = plot_allapot.Tiltolista(app.cfg).levesz(kulcs)
     except plot_allapot.AllapotHiba as e:
-        raise HttpError(500, f"a tiltólista nem olvasható: {e}") from None
+        raise HttpError(500, f"a tiltólista nem olvasható: {e}", kod="grafikon_api.tiltolista_nem_olvashato", param={"e": e}) from None
     if not volt:
-        raise HttpError(404, "nincs ilyen kulcs a tiltólistán")
+        raise HttpError(404, "nincs ilyen kulcs a tiltólistán", kod="grafikon_api.nincs_kulcs_tiltolistan")
     return {"ok": True, "kulcs": kulcs}
 
 

@@ -4,6 +4,8 @@
 // `data-csend-gepeles` (gépelés közben) — a hozzájuk tartozó szabályok egy helyen, az `alap.css` „Csend és elérés”
 // blokkjában. A hiba, a megszakadt kapcsolat és a mentetlen állapot jelzése soha nem rejtett és nem halványul.
 
+import { t, tk } from '../i18n';
+
 import { flushSync } from 'svelte';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
 import type { Felulet } from './felulet.svelte';
@@ -113,7 +115,7 @@ export function kivul(el: HTMLElement | undefined, kovetkezo: EventTarget | null
 }
 
 /** A bemutató értesítés: az első C38-as indulás után egyszer (tartósan), hogy a rejtés ne legyen rejtély. */
-export const BEMUTATO = { cim: 'Csend mód', szoveg: 'A panelek ⌥⌘1/⌥⌘2-vel és a ⌘P-ből érhetők el.' } as const;
+export const BEMUTATO = { cim: tk('Csend mód'), szoveg: tk('A panelek ⌥⌘1/⌥⌘2-vel és a ⌘P-ből érhetők el.') } as const;
 
 /** A csend bekötése (az App csatolásakor): a mód tükre és a `<html data-csend>`, a bemutató értesítés, a gépelés,
  *  az egér és a szélek figyelése. A leiratkozót adja vissza. */
@@ -143,7 +145,7 @@ export function csendTelepit(f: Felulet, bemutatoKesleltetes = 1500): () => void
   if (f.csend.be && !f.csend.bemutatva) {
     bemutatoIdozito = setTimeout(() => {
       bemutatoIdozito = null;
-      ertesitesek.ertesit({ szint: 'info', cim: BEMUTATO.cim, szoveg: BEMUTATO.szoveg, idotartam: 8000 });
+      ertesitesek.ertesit({ szint: 'info', cim: t(BEMUTATO.cim), szoveg: t(BEMUTATO.szoveg), idotartam: 8000 });
       f.csend.bemutatva = true;
     }, bemutatoKesleltetes);
   }

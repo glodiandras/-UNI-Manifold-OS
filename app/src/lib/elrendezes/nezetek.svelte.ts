@@ -4,6 +4,7 @@
 //   nezetek.regisztral({ id: 'szerkeszto.md', illeszkedik: (ful, info) => info?.tipus === 'md',
 //                        komponens: Szerkeszto, prioritas: 10 });
 
+
 import type { Component } from 'svelte';
 import type { FajlInfo } from '../vault/fajlok.svelte';
 import type { Ful } from './munkaterulet.svelte';
@@ -28,7 +29,7 @@ export class NezetRegiszter {
   private valtozat = $state(0);
 
   regisztral(n: Nezet): () => void {
-    if (this.nezetek.some((x) => x.id === n.id)) throw new Error(`már regisztrált nézet: ${n.id}`);
+    if (this.nezetek.some((x) => x.id === n.id)) throw new Error(`már regisztrált nézet: ${n.id}`); // i18n-ignore: programozói hiba
     this.nezetek.push(n);
     this.nezetek.sort((a, b) => (b.prioritas ?? 0) - (a.prioritas ?? 0));
     this.valtozat++;

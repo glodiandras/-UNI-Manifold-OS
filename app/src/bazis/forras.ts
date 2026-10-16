@@ -8,6 +8,7 @@ import { ChangeSet } from '@codemirror/state';
 import type { Csatolt, Dokumentumok } from '../szerkeszto/dokumentum/dokumentum.svelte';
 import { csere } from '../szerkeszto/dokumentum/kulonbseg';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
+import { t } from '../lib/i18n';
 
 export interface BazisForras {
   /** a `this` fájlja: a `.base` útja (fülön), vagy a befoglaló jegyzeté (blokkban, beágyazva) */
@@ -57,9 +58,9 @@ export async function fajlForras(
   const ok = (): string | null =>
     dok.csakOlvashato ??
     (dok.allapot === 'utkozes'
-      ? 'A fájl közben megváltozott a lemezen; az ütközést előbb a szerkesztőben kell feloldani.'
+      ? t('A fájl közben megváltozott a lemezen; az ütközést előbb a szerkesztőben kell feloldani.')
       : dok.allapot === 'eltunt'
-        ? 'A fájl közben eltűnt (törölték vagy áthelyezték).'
+        ? t('A fájl közben eltűnt (törölték vagy áthelyezték).')
         : null);
   return {
     ez: o.ez === undefined ? ut : o.ez, // beágyazva: a befoglaló jegyzet a `this`
@@ -122,7 +123,7 @@ export function blokkForras(
   return {
     ez,
     szoveg: () => jelenlegi,
-    csakOlvashato: () => (blokk?.csakOlvashato ? 'A jegyzet csak olvasható.' : null),
+    csakOlvashato: () => (blokk?.csakOlvashato ? t('A jegyzet csak olvasható.') : null),
     cellaIras: () => !!blokk && !blokk.csakOlvashato,
     async ir(uj) {
       const kod = uj.replace(/\n$/, '');

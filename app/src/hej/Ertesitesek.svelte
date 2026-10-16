@@ -3,6 +3,7 @@
   időzítőt. A hiba role="alert", a többi role="status" (élő régió).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { flip } from 'svelte/animate';
   import { fly } from 'svelte/transition';
   import { ertesitesek, type Szint } from '../lib/ertesites/ertesites.svelte';
@@ -16,7 +17,7 @@
   >;
 </script>
 
-<section class="ertesitesek" aria-label="Értesítések">
+<section class="ertesitesek" aria-label={t('Értesítések')}>
   {#each ertesitesek.lathato as e (e.id)}
     <div
       class="ertesites {e.szint}"
@@ -43,7 +44,7 @@
           >
         {/if}
       </div>
-      <button type="button" class="bezar" aria-label="Értesítés bezárása" onclick={() => ertesitesek.elvet(e.id)}>
+      <button type="button" class="bezar" aria-label={t('Értesítés bezárása')} onclick={() => ertesitesek.elvet(e.id)}>
         <Ikon ikon={X} meret={14} />
       </button>
     </div>

@@ -8,6 +8,7 @@
 import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
+import { t, tk } from '../lib/i18n';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
@@ -51,7 +52,7 @@ function aktivNezet(): { view: EditorView; ut: string } | null {
   const p = szerkesztok.aktiv;
   const view = p?.nezet();
   if (!p || !view || !p.ut.toLowerCase().endsWith('.md')) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy jegyzetet', szoveg: 'A parancs a szerkesztő kijelölt sorain fut.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Nyiss meg egy jegyzetet'), szoveg: t('A parancs a szerkesztő kijelölt sorain fut.') });
     return null;
   }
   return { view, ut: p.ut };
@@ -60,11 +61,11 @@ function aktivNezet(): { view: EditorView; ut: string } | null {
 export async function levezetesEllenorzese(view: EditorView): Promise<void> {
   const tart = parancsSorai(view.state);
   if (!tart) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Jelöld ki a levezetést', szoveg: 'A kijelölt sorok (vagy a kurzor bekezdése) kerülnek ellenőrzésre.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Jelöld ki a levezetést'), szoveg: t('A kijelölt sorok (vagy a kurzor bekezdése) kerülnek ellenőrzésre.') });
     return;
   }
   if (tart.ig - tart.tol + 1 > MAX_SOR) {
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Túl hosszú kijelölés', szoveg: `Legfeljebb ${MAX_SOR} sort ellenőriz egyszerre.` });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Túl hosszú kijelölés'), szoveg: t('Legfeljebb {n} sort ellenőriz egyszerre.', { n: MAX_SOR }) });
     return;
   }
   view.dispatch({ effects: margoUrit.of(null) });
@@ -72,7 +73,7 @@ export async function levezetesEllenorzese(view: EditorView): Promise<void> {
   try {
     v = await matekApi.levezetes(sorok(view.state, tart.tol, tart.ig));
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A levezetés nem ellenőrizhető', szoveg: hibaSzoveg(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A levezetés nem ellenőrizhető'), szoveg: hibaSzoveg(e) });
     return;
   }
   view.dispatch({ effects: margoBeallit.of(jelekValaszbol(v)) });
@@ -80,20 +81,20 @@ export async function levezetesEllenorzese(view: EditorView): Promise<void> {
   if (v.allapot === 'hiba' && h)
     ertesitesek.ertesit({
       szint: 'figyelmeztetes',
-      cim: `Hiba a(z) ${h.jegyzet_sor ?? h.sor}. sorban`,
-      szoveg: h.uzenet + (h.bizonytalan ? ' (a hiba az előző elemezhető sor óta bármelyik lépésben lehet)' : ''),
+      cim: t('Hiba a(z) {n}. sorban', { n: h.jegyzet_sor ?? h.sor }),
+      szoveg: h.uzenet + (h.bizonytalan ? ' ' + t('(a hiba az előző elemezhető sor óta bármelyik lépésben lehet)') : ''),
     });
   else if (v.allapot === 'rendben')
-    ertesitesek.ertesit({ szint: 'siker', cim: 'A levezetés rendben', szoveg: v.megjegyzes ?? 'Minden átmenet helyes (CAS-ellenőrzés).' });
+    ertesitesek.ertesit({ szint: 'siker', cim: t('A levezetés rendben'), szoveg: v.megjegyzes ?? t('Minden átmenet helyes (CAS-ellenőrzés).') });
   else if (v.allapot === 'reszben_ellenorizve')
-    ertesitesek.ertesit({ szint: 'info', cim: 'Hibát nem talált, de nem minden sor ellenőrizhető', szoveg: 'A „–” jelű sorokat a CAS nem tudta eldönteni.' });
-  else ertesitesek.ertesit({ szint: 'info', cim: 'A levezetés nem ellenőrizhető', szoveg: v.indok ?? 'A sorok nem elemezhetők.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Hibát nem talált, de nem minden sor ellenőrizhető'), szoveg: t('A „–” jelű sorokat a CAS nem tudta eldönteni.') });
+  else ertesitesek.ertesit({ szint: 'info', cim: t('A levezetés nem ellenőrizhető'), szoveg: v.indok ?? t('A sorok nem elemezhetők.') });
 }
 
 export async function megoldasInditas(view: EditorView, ut: string, mentes: () => Promise<void>): Promise<void> {
   const tart = parancsSorai(view.state);
   if (!tart) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Jelöld ki a feladatot', szoveg: 'A kijelölt sorok (vagy a kurzor bekezdése) a megoldandó feladat.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Jelöld ki a feladatot'), szoveg: t('A kijelölt sorok (vagy a kurzor bekezdése) a megoldandó feladat.') });
     return;
   }
   const feladat = sorok(view.state, tart.tol, tart.ig).map((s) => s.szoveg).join('\n');
@@ -101,13 +102,13 @@ export async function megoldasInditas(view: EditorView, ut: string, mentes: () =
     await mentes(); // a gépi írás nyitott, mentetlen dokumentumba nem ír (28(c))
     await matekApi.megoldas({ ut, tol: tart.tol, ig: tart.ig, feladat });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A megoldás nem indult el', szoveg: hibaSzoveg(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A megoldás nem indult el'), szoveg: hibaSzoveg(e) });
     return;
   }
   ertesitesek.ertesit({
     szint: 'info',
-    cim: 'A megoldás készül',
-    szoveg: 'A modell megoldja, a CAS ellenőrzi; a megoldás a feladat alá kerül (visszavonható). Ez percekig tarthat.',
+    cim: t('A megoldás készül'),
+    szoveg: t('A modell megoldja, a CAS ellenőrzi; a megoldás a feladat alá kerül (visszavonható). Ez percekig tarthat.'),
   });
 }
 
@@ -116,8 +117,8 @@ export function matekTelepit(reg: Regiszter, felulet: Felulet): () => void {
   return reg.regisztralMind([
     {
       id: 'matek.levezetes',
-      nev: 'Levezetés ellenőrzése',
-      kategoria: 'Jegyzet',
+      nev: tk('Levezetés ellenőrzése'),
+      kategoria: tk('Jegyzet'),
       elerheto: jegyzetNyitva,
       futtat: async () => {
         const a = aktivNezet();
@@ -126,8 +127,8 @@ export function matekTelepit(reg: Regiszter, felulet: Felulet): () => void {
     },
     {
       id: 'matek.megoldas',
-      nev: 'Megoldás',
-      kategoria: 'Jegyzet',
+      nev: tk('Megoldás'),
+      kategoria: tk('Jegyzet'),
       elerheto: jegyzetNyitva,
       futtat: async () => {
         const a = aktivNezet();

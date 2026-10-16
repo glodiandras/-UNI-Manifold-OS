@@ -13,6 +13,7 @@ import threading
 from pathlib import Path
 
 from .config import Config
+from .hibakod import kodol
 
 MAX_MERET = 256 * 1024
 _zar = threading.Lock()
@@ -37,10 +38,10 @@ def olvas(cfg: Config) -> dict:
 
 def ir(cfg: Config, allapot) -> None:
     if not isinstance(allapot, dict):
-        raise Hibas("az állapot JSON-objektum kell legyen")
+        raise kodol(Hibas("az állapot JSON-objektum kell legyen"), "felulet.allapot_json_objektum_kell_legyen")
     adat = json.dumps(allapot, ensure_ascii=False, indent=1).encode("utf-8")
     if len(adat) > MAX_MERET:
-        raise Hibas(f"túl nagy állapot ({len(adat)} bájt, legfeljebb {MAX_MERET})")
+        raise kodol(Hibas(f"túl nagy állapot ({len(adat)} bájt, legfeljebb {MAX_MERET})"), "felulet.tul_nagy_allapot_len_bajt", {"len": len(adat), "MAX_MERET": MAX_MERET})
     cel = _ut(cfg)
     with _zar:
         cel.parent.mkdir(parents=True, exist_ok=True)

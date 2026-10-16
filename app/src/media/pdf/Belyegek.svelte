@@ -4,6 +4,7 @@
   nagy fájlból csak a látszó lapok bájtjai töltődnek (Range). Kattintás vagy ↩ a lapra ugrik; ↑↓ léptet.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
   import { onMount, tick } from 'svelte';
 
@@ -105,7 +106,7 @@
   }
 </script>
 
-<nav class="belyegek" bind:this={lista} aria-label="Oldalbélyegek">
+<nav class="belyegek" bind:this={lista} aria-label={t('Oldalbélyegek')}>
   <ol>
     {#each oldalak as n (n)}
       <li data-n={n} use:figyel>
@@ -113,7 +114,7 @@
           type="button"
           class:aktualis={n === oldal}
           aria-current={n === oldal ? 'page' : undefined}
-          aria-label={`${n}. oldal`}
+          aria-label={t('{n}. oldal', { n })}
           tabindex={n === oldal ? 0 : -1}
           onclick={() => onvalaszt(n)}
           onkeydown={(e) => billentyu(e, n)}

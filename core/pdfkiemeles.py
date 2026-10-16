@@ -364,7 +364,7 @@ def utvonalak(r) -> None:
 
     def lista(k):
         if not k.q.get("ut"):
-            raise HttpError(400, "hiányzik az `ut`")
+            raise HttpError(400, "hiányzik az `ut`", kod="pdf.ut_hianyzik")
         return kezelo(k).lista(k.q.get("ut"))
 
     r.get("/api/pdf/kiemelesek", lista)

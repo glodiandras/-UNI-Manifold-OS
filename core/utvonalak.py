@@ -20,6 +20,8 @@ from __future__ import annotations
 import re
 from typing import Callable
 
+from .hibakod import angol_uzenet, json_param, kodol
+
 
 FRAME_ANCESTORS = "frame-ancestors 'self'"
 
@@ -33,10 +35,47 @@ def biztonsagi_fejlecek(h, csp: str = "") -> None:
     h.send_header("Content-Security-Policy", f"{csp}; {FRAME_ANCESTORS}" if csp else FRAME_ANCESTORS)
 
 
+def _json_param(param: dict) -> dict:
+    """A `param` JSON-ba tehető alakja: szöveg, szám, logikai és None marad, minden más (Path, kivétel, …) szöveggé alakul."""
+    return json_param(param)
+
+
 class HttpError(Exception):
-    def __init__(self, code: int, message: str, **data):
+    """HTTP status, stable translation metadata and an English wire fallback.
+
+    Existing Python callers keep the original exception text and data. Known
+    codes use the core catalog in the public body; clients may translate again.
+    """
+
+    def __init__(self, code: int, message: str, kod: str | None = None, param: dict | None = None, **data):
         super().__init__(message)
-        self.code, self.data = code, data
+        extra = {}
+        if kod is not None:
+            extra["kod"] = kod
+        if param is not None:
+            extra["param"] = _json_param(param)
+        self.code, self.kod, self.param = code, kod, (extra["param"] if param is not None else None)
+        self.data = {**extra, **data}       # a régi olvasók (`e.data.get("foglalt")`, …) változatlanul működnek
+
+    def torzs(self) -> dict:
+        """A public error body, preserving the status and every extra data field."""
+        return {"hiba": angol_uzenet(self.kod, self.param, str(self)), **self.data}
+
+
+def kodos(kivetel, kod: str, **param):
+    """Keyword-parameter alias for `kodol`, retaining the exception type and text."""
+    return kodol(kivetel, kod, param)
+
+
+def hiba_torzs(kivetel, *, alap_kod: str | None = None, **extra) -> dict:
+    """Translate at the public boundary; an untagged Python caller stays compatible."""
+    torzs = {"hiba": str(kivetel), **extra}
+    kod = getattr(kivetel, "hiba_kod", None) or alap_kod
+    if isinstance(kod, str):
+        param = json_param(getattr(kivetel, "hiba_param", {}))
+        torzs["hiba"] = angol_uzenet(kod, param, str(kivetel))
+        torzs["kod"], torzs["param"] = kod, param
+    return torzs
 
 
 class UtkozoUtvonal(ValueError):

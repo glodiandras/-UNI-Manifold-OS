@@ -1,20 +1,32 @@
-// A Bases-értékek magyar megjelenítése (C12): szám, dátum, lista, link, címke. A core a típusos JSON-alakot adja
+// A Bases-értékek megjelenítése (C12): szám, dátum, lista, link, címke. A core a típusos JSON-alakot adja
 // (`Ertek`); itt készül belőle a cella szövege. A formázás nem módosít értéket (a cellaszerkesztés a nyers értékhez nyúl).
 
 import type { Ertek } from './tipusok';
+import { locale, t } from '../lib/i18n';
 
-const szamFormatum = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 6 });
-const datumFormatum = new Intl.DateTimeFormat('hu-HU', { year: 'numeric', month: '2-digit', day: '2-digit' });
-const datumIdoFormatum = new Intl.DateTimeFormat('hu-HU', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-});
+const FORMATUMOK = new Map<string, { szam: Intl.NumberFormat; datum: Intl.DateTimeFormat; datumIdo: Intl.DateTimeFormat }>();
+
+function formatumok() {
+  const nyelv = locale();
+  let f = FORMATUMOK.get(nyelv);
+  if (f) return f;
+  f = {
+    szam: new Intl.NumberFormat(nyelv, { maximumFractionDigits: 6 }),
+    datum: new Intl.DateTimeFormat(nyelv, { year: 'numeric', month: '2-digit', day: '2-digit' }),
+    datumIdo: new Intl.DateTimeFormat(nyelv, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+  };
+  FORMATUMOK.set(nyelv, f);
+  return f;
+}
 
 export function szamSzoveg(n: number): string {
-  return Number.isInteger(n) && Math.abs(n) >= 10_000 ? String(n) : szamFormatum.format(n);
+  return Number.isInteger(n) && Math.abs(n) >= 10_000 ? String(n) : formatumok().szam.format(n);
 }
 
 /** A `YYYY-MM-DD[THH:mm:ss]` ISO-szöveg helyi időként (a core naiv, helyi időt ad). */
@@ -22,7 +34,8 @@ export function datumSzoveg(iso: string, ido: boolean): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(iso);
   if (!m) return iso;
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0));
-  return (ido ? datumIdoFormatum : datumFormatum).format(d);
+  const f = formatumok();
+  return (ido ? f.datumIdo : f.datum).format(d);
 }
 
 export type ErtekFajta =
@@ -64,7 +77,7 @@ export function fajta(e: Ertek): ErtekFajta {
 /** Az érték egyszerű szövege (a cella `title`-je, a szűréshez és a kimásoláshoz). */
 export function ertekSzoveg(e: Ertek): string {
   if (e === null || e === undefined) return '';
-  if (typeof e === 'boolean') return e ? 'igen' : 'nem';
+  if (typeof e === 'boolean') return e ? t('igen') : t('nem');
   if (typeof e === 'number') return szamSzoveg(e);
   if (typeof e === 'string') return e;
   switch (e.t) {
@@ -93,7 +106,7 @@ export function ertekSzoveg(e: Ertek): string {
     case 'html':
       return e.v;
     case 'hiba':
-      return `Hiba: ${e.u}`;
+      return t('Hiba: {nev}', { nev: e.u });
   }
 }
 

@@ -223,7 +223,7 @@ class OsszesitTest(Alap):
         self.assertEqual(r["asszisztens"], {"kapcsolo": True, "higienia": {"kesz": True, "ossz": 7, "uj": 2}})
         self.app.asszisztens = Homlokzat(RuntimeError("elromlott"))
         r = ma.osszesit(self.app, "2026-10-02")
-        self.assertEqual(r["asszisztens"], {"hiba": "elromlott"})                    # a hibás szakasz a többit nem viszi el
+        self.assertEqual(r["asszisztens"], {"hiba": "This section could not be loaded. Try again.", "kod": "ma.szakasz_hiba", "param": {}})                    # a hibás szakasz a többit nem viszi el
         self.assertEqual(r["feladatok"]["osszes_ma"], 2)
 
     def test_a_napi_jegyzet_kivonata(self):
@@ -245,7 +245,7 @@ class HianyzoAdatTest(Alap):
         r = ma.osszesit(self.app, "2026-10-02")
         self.assertIn("hiba", r["naptar"])
         self.assertIn("hiba", r["dolgozatok"])
-        self.assertIn("még nincs naptáradat", r["naptar"]["hiba"])      # a felületre megy: fájlnév nélkül (C32)
+        self.assertIn("No calendar data", r["naptar"]["hiba"])      # a felületre megy: fájlnév nélkül (C32)
         self.assertNotIn("pos.sqlite", r["naptar"]["hiba"])
         self.assertNotIn("hiba", r["napi"])
         self.assertEqual(r["feladatok"]["osszes_ma"], 2)               # a többi szakasz él

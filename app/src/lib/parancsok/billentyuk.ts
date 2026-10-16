@@ -4,6 +4,7 @@
 // ha az Option a betűt átírja (⌥P → π), az `event.code` betűje. Számoknál mindig az `event.code`.
 // Kerüljük a magyar kiosztáson csak AltGr/Option-nel elérhető jeleket (\ [ ] { }).
 
+import { t } from '../i18n';
 export interface Akkord {
   mod: boolean;
   ctrl: boolean;
@@ -39,7 +40,7 @@ function kulcsNev(k: string): string {
   if (NEVEK[kis]) return NEVEK[kis];
   if (/^f\d{1,2}$/.test(kis)) return kis.toUpperCase();
   if (kis.length === 1) return kis;
-  throw new Error(`ismeretlen billentyű: ${k}`);
+  throw new Error(`ismeretlen billentyű: ${k}`); // i18n-ignore: programozói hiba
 }
 
 export function elemez(leiras: string): Akkord {
@@ -51,7 +52,7 @@ export function elemez(leiras: string): Akkord {
     else if (k === 'ctrl') a.ctrl = true;
     else if (k === 'alt' || k === 'opt') a.alt = true;
     else if (k === 'shift') a.shift = true;
-    else throw new Error(`ismeretlen módosító: ${r} (${leiras})`);
+    else throw new Error(`ismeretlen módosító: ${r} (${leiras})`); // i18n-ignore: programozói hiba
   }
   a.kulcs = kulcsNev(reszek[reszek.length - 1]);
   return a;
@@ -94,7 +95,7 @@ const JEL: Record<string, string> = {
   Enter: '↩',
   Tab: '⇥',
   Escape: 'esc',
-  Space: 'Szóköz',
+  get Space() { return t('Szóköz'); },
   Backspace: '⌫',
   Delete: '⌦',
 };

@@ -540,7 +540,7 @@ class MegszakadtTest(Alap):
         with frame.indulasi_zar(self.cfg) as van:
             self.assertTrue(van)
             (uzenet,) = gepi_iras.helyreallit(self.cfg)
-        self.assertIn("megszakadt", uzenet)
+        self.assertIn("interrupted", uzenet)
         self.assertEqual(lenyomat(self.v), elotte)                      # bájtra, az új fájl és mappái nélkül
         self.assertFalse((self.cfg.path("run") / gepi_iras.NAPLO).exists())
         self.assertEqual(gepi_iras.helyreallit(self.cfg), [])
@@ -572,7 +572,7 @@ class MegszakadtTest(Alap):
         self.assertTrue((self.cfg.path("run") / gepi_iras.NAPLO / "terv.json").is_file())
         elmozgatva.rename(self.v)
         (uzenet,) = gepi_iras.helyreallit(self.cfg)
-        self.assertIn("visszaállt", uzenet)
+        self.assertIn("was restored", uzenet)
         self.assertEqual(lenyomat(self.v), elotte)
 
     def test_az_uzenet_nem_allit_visszaallast_ha_semmi_nem_allt_vissza(self):
@@ -588,8 +588,8 @@ class MegszakadtTest(Alap):
         elotte = lenyomat(self.v)
         (uzenet,) = gepi_iras.helyreallit(self.cfg)
         self.assertEqual(lenyomat(self.v), elotte)
-        self.assertNotIn("visszaállt", uzenet)
-        self.assertIn("nem kellett", uzenet)
+        self.assertNotIn("was restored", uzenet)
+        self.assertIn("no restoration was needed", uzenet)
         self.assertFalse(d.exists())
 
     def test_commit_utan_maradt_naplo_csak_torlodik(self):

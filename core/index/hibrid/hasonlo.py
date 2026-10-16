@@ -20,6 +20,7 @@ import unicodedata
 
 from ... import kiserok
 from ...vaultio import Invalid, NotFound
+from ...hibakod import kodol
 
 MAX_CEL = 500
 
@@ -36,12 +37,12 @@ def kisero(ut: str, elotag: str = kiserok.ALAP_ELOTAG) -> bool:
 def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | None]:
     """(válasz-alap, pontok, élő jegyzetek, fájl-azonosító)."""
     if not isinstance(ut, str) or not ut.strip():
-        raise Invalid("hiányzik az `ut`")
+        raise kodol(Invalid("hiányzik az `ut`"), "hibrid.hasonlo.hianyzik_ut")
     ut = _nfc(ut.strip())
     with index_olvaso() as c:
         r = c.execute("SELECT id, hash, tipus FROM fajl WHERE ut = ? AND torolve IS NULL", (ut,)).fetchone()
         if r is None:
-            raise NotFound(f"nincs ilyen fájl: {ut}")
+            raise kodol(NotFound(f"nincs ilyen fájl: {ut}"), "hibrid.hasonlo.nincs_ilyen_fajl_ut", {"ut": ut})
         fid, h, tipus = r[0], r[1], r[2]
         elo = {x[0] for x in c.execute("SELECT ut FROM fajl WHERE torolve IS NULL AND tipus = 'md'")}
     alap = {"ut": ut, "allapot": "ok", "elavult": False}
@@ -72,9 +73,9 @@ def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = kiserok.ALAP
 
 def hasonlosag(index_olvaso, tar, ut: str, celok) -> dict:
     if not isinstance(celok, list) or not all(isinstance(x, str) for x in celok):
-        raise Invalid("a `celok` utak listája")
+        raise kodol(Invalid("a `celok` utak listája"), "hibrid.hasonlo.celok_utak_listaja")
     if len(celok) > MAX_CEL:
-        raise Invalid(f"legfeljebb {MAX_CEL} cél kérdezhető egyszerre")
+        raise kodol(Invalid(f"legfeljebb {MAX_CEL} cél kérdezhető egyszerre"), "hibrid.hasonlo.legfeljebb_max_cel_cel_kerdezheto", {"MAX_CEL": MAX_CEL})
     alap, pontok, elo, _ = _alap(index_olvaso, tar, ut)
     pontok = pontok or {}
     return {**alap, "pontok": {c: (pontok.get(_nfc(c)) if _nfc(c) in elo else None) for c in celok}}

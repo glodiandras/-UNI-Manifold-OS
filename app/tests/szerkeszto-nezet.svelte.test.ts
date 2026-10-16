@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
 import { Felulet } from '../src/lib/elrendezes/felulet.svelte';
 import { KORNYEZET_KULCS } from '../src/lib/kornyezet';
+import { nyelv } from '../src/lib/i18n';
+import { tartalmiNyelv } from '../src/lib/munkater/nyelv.svelte';
+import { undoDepth } from '@codemirror/commands';
 import { VaultFajlok } from '../src/lib/vault/fajlok.svelte';
 import Szerkeszto from '../src/szerkeszto/Szerkeszto.svelte';
 import { szerkesztok } from '../src/szerkeszto/szerkesztok.svelte';
@@ -21,6 +24,7 @@ interface Iras {
 
 let lemez: Map<string, string>;
 let irasok: Iras[];
+let fulSorszam = 0;
 
 const hash = (s: string) => `h${s.length}:${[...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)}`;
 
@@ -53,12 +57,14 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  nyelv.beallit('hu');
+  tartalmiNyelv.beallit('');
   vi.unstubAllGlobals();
 });
 
 function megjelenit() {
   const felulet = new Felulet({});
-  const ful = $state({ id: 'f1', ut: 'Matek/Mértani.md' as string | null, nezet: undefined as Record<string, unknown> | undefined });
+  const ful = $state({ id: `f${++fulSorszam}`, ut: 'Matek/Mértani.md' as string | null, nezet: undefined as Record<string, unknown> | undefined });
   const context = new Map<unknown, unknown>([
     [KORNYEZET_KULCS, { felulet, fajlok: new VaultFajlok(), kapcsolat: new CoreKapcsolat('ws://127.0.0.1:1/ws') }],
   ]);
@@ -104,5 +110,48 @@ describe('a szerkesztő nézete', () => {
     lemez.clear();
     const { container } = megjelenit();
     await waitFor(() => expect(container.querySelector('.betoltes-hiba')?.textContent).toContain('nincs meg'));
+  });
+
+  it('angol felületen is megőrzi a jegyzet nyelvét: szerkeszt, ment és olvasó nézetre vált', async () => {
+    nyelv.beallit('en');
+    vi.stubGlobal('webkit', { messageHandlers: { nyelv: { postMessage: async () => ({ nyelv: 'hu', bizalom: 0.99 }) } } });
+    const { container, getByRole, ful } = megjelenit();
+    await waitFor(() => expect(getByRole('textbox', { name: 'Note: Mértani' })).toBeTruthy());
+    await waitFor(() => expect(getByRole('textbox', { name: 'Note: Mértani' }).getAttribute('lang')).toBe('hu'));
+    expect(getByRole('button', { name: 'Reading view' })).toBeTruthy();
+    const v = szerkesztok.aktiv!.nezet()!;
+    const eredeti = '# Mértani sorozat\n\nA $q$ hányados.\n';
+    expect(v.state.doc.toString()).toBe(eredeti);
+    v.dispatch({ changes: { from: v.state.doc.length, insert: 'Saját jegyzet: ő és ű.\n' }, userEvent: 'input.type' });
+    await waitFor(() => expect(irasok).toHaveLength(1), { timeout: 3000 });
+    expect(lemez.get('Matek/Mértani.md')).toBe(eredeti + 'Saját jegyzet: ő és ű.\n');
+    await waitFor(() => expect(container.querySelector('[data-mentes-jelzes]')?.getAttribute('aria-label')).toContain('Saved'));
+    szerkesztok.aktiv!.olvasoValt();
+    await waitFor(() => expect(container.querySelector('.olvaso')?.textContent).toContain('Saját jegyzet: ő és ű.'));
+    expect(container.querySelector('.olvaso')?.getAttribute('lang')).toBe('hu');
+    expect(ful.nezet?.mod).toBe('olvaso');
+  });
+
+  it('az automatikus nyelvfelismerés megőrzi a szöveget, kurzort és visszavonást', async () => {
+    nyelv.beallit('en');
+    const hivasok: ((v: { nyelv: string; bizalom: number }) => void)[] = [];
+    vi.stubGlobal('webkit', { messageHandlers: { nyelv: { postMessage: () => new Promise((kesz) => { hivasok.push(kesz); }) } } });
+    const { container } = megjelenit();
+    await waitFor(() => expect(container.querySelector('.cm-content')).not.toBeNull());
+    await waitFor(() => expect(hivasok).toHaveLength(1));
+    const v = szerkesztok.aktiv!.nezet()!;
+    v.dispatch({ changes: { from: v.state.doc.length, insert: 'Új szöveg.' }, userEvent: 'input.type' });
+    const szoveg = v.state.doc.toString();
+    const kurzor = v.state.selection.toJSON();
+    const vissza = undoDepth(v.state);
+    hivasok[0]({ nyelv: 'en', bizalom: 0.99 }); // a gépelés előtti válasz elavult
+    await waitFor(() => expect(hivasok).toHaveLength(2), { timeout: 3000 });
+    expect(v.contentDOM.lang).toBe('');
+    hivasok[1]({ nyelv: 'hu', bizalom: 0.99 });
+    await waitFor(() => expect(v.contentDOM.lang).toBe('hu'));
+    expect(v.state.doc.toString()).toBe(szoveg);
+    expect(v.state.selection.toJSON()).toEqual(kurzor);
+    expect(undoDepth(v.state)).toBe(vissza);
+    expect(nyelv.kod).toBe('en');
   });
 });

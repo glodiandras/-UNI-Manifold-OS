@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { t } from '../lib/i18n';
   import { kornyezet } from '../lib/kornyezet';
   import Atfedes from '../lib/ui/Atfedes.svelte';
   import { mappa as mappaja } from '../lib/vault/fajlok.svelte';
@@ -32,7 +33,7 @@
     if (!n || folyik) return;
     const m = hely.trim().replace(/^\/+|\/+$/g, '');
     if (m && !fajlok.mappak.includes(m)) {
-      hiba = `Nincs ilyen mappa: ${m}`;
+      hiba = t('Nincs ilyen mappa: {mappa}', { mappa: m });
       return;
     }
     folyik = true;
@@ -51,26 +52,26 @@
   }
 </script>
 
-<Atfedes cimke="Új C++ feladat" nev="cpp-feladat" onbezar={bezar}>
+<Atfedes cimke={t('Új C++ feladat')} nev="cpp-feladat" onbezar={bezar}>
   <div class="doboz">
-    <h2 class="cim">Új C++ feladat</h2>
+    <h2 class="cim">{t('Új C++ feladat')}</h2>
     <label class="mezo">
-      <span>Név</span>
-      <input bind:this={bevitel} bind:value={nev} onkeydown={billentyu} spellcheck="false" autocomplete="off" placeholder="pl. Két szám összege" />
+      <span>{t('Név')}</span>
+      <input bind:this={bevitel} bind:value={nev} onkeydown={billentyu} spellcheck="false" autocomplete="off" placeholder={t('pl. Két szám összege')} />
     </label>
     <label class="mezo">
-      <span>Mappa</span>
-      <input bind:value={hely} onkeydown={billentyu} list="cpp-feladat-mappak" spellcheck="false" autocomplete="off" placeholder="(a vault gyökere)" />
+      <span>{t('Mappa')}</span>
+      <input bind:value={hely} onkeydown={billentyu} list="cpp-feladat-mappak" spellcheck="false" autocomplete="off" placeholder={t('(a vault gyökere)')} />
       <datalist id="cpp-feladat-mappak">
         {#each fajlok.mappak as m (m)}<option value={m}></option>{/each}
       </datalist>
     </label>
-    <p class="seg">Elkészül a feladat-jegyzet (leírás, `teszt` blokkok) és a kísérő <code>.cpp</code>; a ⌘R a teszteken futtatja.</p>
+    <p class="seg">{t('Elkészül a feladat-jegyzet (leírás, `teszt` blokkok) és a kísérő')} <code>.cpp</code>{t('; a ⌘R a teszteken futtatja.')}</p>
     {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
     <div class="gombok">
-      <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>Mégse</button>
+      <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>{t('Mégse')}</button>
       <button type="button" class="m-gomb elso" disabled={!nev.trim() || folyik} onclick={() => void letrehoz()}>
-        {folyik ? 'Létrehozás…' : 'Létrehozás'}
+        {folyik ? t('Létrehozás…') : t('Létrehozás')}
       </button>
     </div>
   </div>

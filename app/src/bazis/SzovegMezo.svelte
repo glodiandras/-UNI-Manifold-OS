@@ -5,6 +5,7 @@
   szerkesztésből) felülírja a mezőt, ha nincs benne befejezetlen szerkesztés.
 -->
 <script lang="ts">
+  import { t, tk } from '../lib/i18n';
   import { onDestroy, untrack } from 'svelte';
   import type { BazisHiba } from './tipusok';
 
@@ -23,7 +24,7 @@
     /** üres szöveg is alkalmazható (a szűrő törlése) */
     uresEngedett?: boolean;
   }
-  let { ertek, cimke, ellenorzes, alkalmaz, sorok = 3, mono = true, helyorzo = '', gomb = 'Alkalmaz', uresEngedett = true }: Props = $props();
+  let { ertek, cimke, ellenorzes, alkalmaz, sorok = 3, mono = true, helyorzo = '', gomb = tk('Alkalmaz'), uresEngedett = true }: Props = $props();
 
   let szoveg = $state(untrack(() => ertek));
   let mentett = $state(untrack(() => ertek));
@@ -115,16 +116,16 @@
   {/each}
   {#if valtozott}
     <div class="sor">
-      <button type="button" class="m-gomb suru alkalmaz" disabled={!alkalmazhato} onclick={() => void ment()}>{dolgozik ? '…' : gomb}</button>
+      <button type="button" class="m-gomb suru alkalmaz" disabled={!alkalmazhato} onclick={() => void ment()}>{dolgozik ? '…' : t(gomb)}</button>
       <button
         type="button"
         class="m-gomb semleges suru masodlagos"
         onclick={() => {
           szoveg = mentett;
           ellenoriz();
-        }}>Elvet</button
+        }}>{t('Elvet')}</button
       >
-      {#if !ellenorzott && !hibak.length}<span class="jelzes">ellenőrzés…</span>{/if}
+      {#if !ellenorzott && !hibak.length}<span class="jelzes">{t('ellenőrzés…')}</span>{/if}
     </div>
   {/if}
 </div>

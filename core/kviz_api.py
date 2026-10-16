@@ -33,6 +33,7 @@ from . import frame
 from . import kiserok
 from .utvonalak import HttpError
 from .vaultio import Conflict, Invalid, NotFound, nfc, norm_path
+from .hibakod import kodol
 
 MAPPA_ALAP = kiserok.alap_mappa("kviz")             # a szállított alap; a mappát a `kiserok.kisero_mappa` adja
 KULCS_MINTA = re.compile(r"[A-Za-z0-9_-]{8,80}")
@@ -164,7 +165,7 @@ class KvizApi:
         megváltozott kvíz 409."""
         token = d.get("token")
         if not isinstance(token, str) or not token:
-            raise Invalid("hiányzik a `token` (a `GET /api/kviz/kviz` adja)")
+            raise kodol(Invalid("hiányzik a `token` (a `GET /api/kviz/kviz` adja)"), "kviz_api.hianyzik_token_get_api_kviz")
         with self._zar:
             x = self._kitoltesek.pop(token, None)
             if x is not None and time.monotonic() - x.mikor <= TOKEN_ELET_S:
@@ -173,11 +174,11 @@ class KvizApi:
             else:
                 x = None
         if x is None:
-            raise HttpError(410, "a kitöltés lejárt vagy ismeretlen: nyisd meg újra a kvízt")
+            raise HttpError(410, "a kitöltés lejárt vagy ismeretlen: nyisd meg újra a kvízt", kod="kviz_api.kitoltes_lejart")
         if x.ut != ut or x.azon != k.azon:
-            raise HttpError(409, "ez a kitöltés egy másik kvízé")
+            raise HttpError(409, "ez a kitöltés egy másik kvízé", kod="kviz_api.masik_kviz")
         if x.hash != _m().formatum.tartalom_hash(k):
-            raise HttpError(409, "a kvíz közben megváltozott: nyisd meg újra")
+            raise HttpError(409, "a kvíz közben megváltozott: nyisd meg újra", kod="kviz_api.kviz_megvaltozott")
         return x
 
     @property
@@ -190,12 +191,12 @@ class KvizApi:
         """(kvíz, hibák, a kvízjegyzet kanonikus útja). Csak a kvízmappa alatti `.md`."""
         m = _m()
         if not isinstance(ut, str) or not ut.strip():
-            raise Invalid("hiányzik az `ut`")
+            raise kodol(Invalid("hiányzik az `ut`"), "kviz_api.hianyzik_ut")
         rp = norm_path(ut)
         if not rp.lower().endswith(".md"):
-            raise Invalid(f"nem jegyzet: {rp}")
+            raise kodol(Invalid(f"nem jegyzet: {rp}"), "kviz_api.jegyzet_rp", {"rp": rp})
         if not nfc(rp).startswith(mappa(self.cfg) + "/"):
-            raise Invalid(f"kvízjegyzet csak a „{mappa(self.cfg)}” mappából tölthető: {rp}")
+            raise kodol(Invalid(f"kvízjegyzet csak a „{mappa(self.cfg)}” mappából tölthető: {rp}"), "kviz_api.kvizjegyzet_csak_mappa_mappabol_toltheto", {"mappa": mappa(self.cfg), "rp": rp})
         f = self.app.vault.read(rp)
         rp = f["ut"]
         tartalek = "KVIZ-00000000-000000-" + hashlib.sha1(nfc(rp).encode("utf-8")).hexdigest()[:8]
@@ -239,15 +240,15 @@ class KvizApi:
         k, _, rp = self._betolt(d.get("ut"))
         x = self._tokenes(d, rp, k)
         if "valasz" not in d:
-            raise Invalid("hiányzik a `valasz` (a válasz sorszáma, vagy null a „nem tudom”-hoz): válasz nélkül nincs megoldás")
+            raise kodol(Invalid("hiányzik a `valasz` (a válasz sorszáma, vagy null a „nem tudom”-hoz): válasz nélkül nincs megoldás"), "kviz_api.hianyzik_valasz_valasz_sorszama_null")
         valasz = d["valasz"]
         if valasz is not None and (isinstance(valasz, bool) or not isinstance(valasz, int)):
-            raise Invalid("a `valasz` a válasz sorszáma (egész) vagy null")
+            raise kodol(Invalid("a `valasz` a válasz sorszáma (egész) vagy null"), "kviz_api.valasz_valasz_sorszama_egesz_null")
         kid = d.get("kerdes")
         if not isinstance(kid, str):
-            raise Invalid("hiányzik a `kerdes`")
+            raise kodol(Invalid("hiányzik a `kerdes`"), "kviz_api.hianyzik_kerdes")
         if kid not in {q.id for q in k.kerdesek}:
-            raise Invalid(f"nincs ilyen kérdés: {kid}")
+            raise kodol(Invalid(f"nincs ilyen kérdés: {kid}"), "kviz_api.nincs_ilyen_kerdes_kid", {"kid": kid})
         ms = d.get("ms")
         with self._zar:
             if kid not in x.valaszok:                                   # az első válasz végleges
@@ -267,12 +268,12 @@ class KvizApi:
         k, _, rp = self._betolt(d.get("ut"))
         kulcs, mod = d.get("kulcs"), d.get("mod", "teljes")
         if not isinstance(kulcs, str) or not KULCS_MINTA.fullmatch(kulcs):
-            raise Invalid("a `kulcs` 8–80 karakteres azonosító legyen (betű, szám, `_`, `-`)")
+            raise kodol(Invalid("a `kulcs` 8–80 karakteres azonosító legyen (betű, szám, `_`, `-`)"), "kviz_api.kulcs_8_80_karakteres_azonosito")
         if mod not in MODOK:
-            raise Invalid("a `mod` teljes vagy hibasak lehet")
+            raise kodol(Invalid("a `mod` teljes vagy hibasak lehet"), "kviz_api.mod_teljes_hibasak_lehet")
         ido_ms = d.get("ido_ms")
         if ido_ms is not None and (isinstance(ido_ms, bool) or not isinstance(ido_ms, int) or not 0 <= ido_ms <= 86_400_000):
-            raise Invalid("az `ido_ms` nem negatív egész (ms) legyen")
+            raise kodol(Invalid("az `ido_ms` nem negatív egész (ms) legyen"), "kviz_api.ido_ms_negativ_egesz_ms")
         try:
             kesz = m.tar.kitoltes_kulccsal(self.cfg, kulcs, k.azon)
             uj = kesz is None
@@ -281,7 +282,7 @@ class KvizApi:
                 with self._zar:
                     valaszok = list(x.valaszok.values())
                 if not valaszok:
-                    raise Invalid("nincs értékelhető válasz: egy érvényes kérdésre sem érkezett válasz")
+                    raise kodol(Invalid("nincs értékelhető válasz: egy érvényes kérdésre sem érkezett válasz"), "kviz_api.nincs_ertekelheto_valasz_ervenyes_kerdesre")
                 kesz = m.ertekeles.kitoltes_ertekel(
                     k, valaszok, mod, m.tar.kitoltesek(self.cfg, k.azon), set(m.tar.jelolesek(self.cfg, k.azon)), ido_ms,
                     self._forras_szakaszok(k), teljes_halmaz=True)
@@ -291,9 +292,9 @@ class KvizApi:
                 if uj:
                     self.kitoltes_utemez(rp)
         except m.tar.KulcsFoglalt as e:
-            raise HttpError(409, str(e)) from e
+            raise HttpError(409, str(e), kod="kviz_api.kulcs_foglalt") from e
         except (sqlite3.Error, OSError) as e:
-            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}") from e
+            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}", kod="kviz_api.tanulasi_adatbazis", param={"e": e}) from e
         return {"ok": True, "uj": uj, "ertekeles": kesz, "token": self._nyit(rp, k),         # a következő körhöz
                 "tracker": {"ut": k.forras + ".md", "adat": m.esemeny.adat(kesz, k.azon)}}
 
@@ -304,22 +305,22 @@ class KvizApi:
         x = self._tokenes(d, rp, k)
         kid, hibas = d.get("kerdes"), d.get("hibas")
         if not isinstance(hibas, bool):
-            raise Invalid("a `hibas` igaz vagy hamis legyen")
+            raise kodol(Invalid("a `hibas` igaz vagy hamis legyen"), "kviz_api.hibas_igaz_hamis_legyen")
         if kid not in {q.id for q in k.kerdesek}:
-            raise Invalid(f"nincs ilyen kérdés: {kid}")
+            raise kodol(Invalid(f"nincs ilyen kérdés: {kid}"), "kviz_api.nincs_ilyen_kerdes_kid", {"kid": kid})
         with self._zar:
             megvalaszolt = kid in x.valaszok
         if not megvalaszolt:
-            raise Invalid("a kérdést előbb meg kell válaszolni a kitöltésben, utána jelölhető hibásnak")
+            raise kodol(Invalid("a kérdést előbb meg kell válaszolni a kitöltésben, utána jelölhető hibásnak"), "kviz_api.kerdest_elobb_meg_kell_valaszolni")
         megj = d.get("megjegyzes", "")
         if not isinstance(megj, str):
-            raise Invalid("a `megjegyzes` szöveg legyen")
+            raise kodol(Invalid("a `megjegyzes` szöveg legyen"), "kviz_api.megjegyzes_szoveg_legyen")
         try:
             m.tar.jelol(self.cfg, k.azon, kid, hibas, megj)
             self.kitoltes_utemez(rp)
             return {"ok": True, "jelolesek": sorted(m.tar.jelolesek(self.cfg, k.azon), key=lambda x: int(x[1:]) if x[1:].isdigit() else 0)}
         except (sqlite3.Error, OSError) as e:
-            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}") from e
+            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}", kod="kviz_api.tanulasi_adatbazis", param={"e": e}) from e
 
 
 def utvonalak(r) -> None:

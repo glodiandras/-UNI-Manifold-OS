@@ -566,6 +566,8 @@ class KozbenEltuntTest(Alap):
             self.A.vegrehajt("Cél.md", "Új név.md", t["terv_hash"])
         self.assertEqual(cm.exception.kod, 503)
         self.assertTrue(cm.exception.adat.get("lemez_hiba"))
+        self.assertEqual(cm.exception.adat["kod"], "lemez.eacces")
+        self.assertEqual((cm.exception.hiba_kod, cm.exception.hiba_param), ("lemez.eacces", {"errno": "EACCES"}))
         self.assertNotIn(str(self.v), str(cm.exception))
         self.assertTrue((self.v / "Cél.md").exists())
 
@@ -661,7 +663,7 @@ class SzandeknaploTest(Alap):
         elmozgatva.rename(self.v)
         self.assertEqual(lenyomat(self.v), felig)
         uzenetek = atnevezes.helyreallit(self.cfg)                       # a valódi vaulton már visszaáll
-        self.assertTrue(uzenetek and "visszaállt" in uzenetek[0])
+        self.assertTrue(uzenetek and "was restored" in uzenetek[0])
         self.assertEqual(lenyomat(self.v), elotte)
         self.assertFalse(self.naplo.exists())
 
@@ -680,8 +682,8 @@ class SzandeknaploTest(Alap):
         elotte = lenyomat(self.v)
         (uzenet,) = atnevezes.helyreallit(self.cfg)
         self.assertEqual(lenyomat(self.v), elotte)
-        self.assertNotIn("visszaállt", uzenet)
-        self.assertIn("nem kellett", uzenet)
+        self.assertNotIn("was restored", uzenet)
+        self.assertIn("no restoration was needed", uzenet)
         self.assertFalse(self.naplo.exists())
 
 

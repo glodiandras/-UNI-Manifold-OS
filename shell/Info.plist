@@ -3,6 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDevelopmentRegion</key><string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array><string>en</string></array>
 	<key>CFBundleName</key><string>Manifold</string>
 	<key>CFBundleDisplayName</key><string>Manifold</string>
 	<key>CFBundleExecutable</key><string>Manifold</string>
@@ -23,15 +25,15 @@
 	<key>NSAppTransportSecurity</key>
 	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>NSRemovableVolumesUsageDescription</key>
-	<string>A Manifold a külső köteten lévő alkalmazásmappát indítja, és a vaultot olvassa és írja.</string>
+	<string>Manifold accesses its application folder and reads and writes your workspace on removable drives.</string>
 	<!-- naptár és emlékeztetők: az EventKit-engedély szövegei -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>A Manifold a Naptár eseményeit olvassa: a tervezett tanulást, az órarendet és a dolgozatok határidejét, hogy a Ma oldalon és a tanulási tervben látszódjanak. Naptáresemény csak a te jóváhagyásodra íródik. Az adat a gépen marad.</string>
+	<string>Manifold reads calendar events, including study sessions, classes and deadlines, to show them on Today and in your study plan. Calendar events are written only with your approval. Manifold processes this data on your Mac.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>A Manifold a Naptár eseményeit olvassa: a tervezett tanulást, az órarendet és a dolgozatok határidejét. Naptáresemény csak a te jóváhagyásodra íródik. Az adat a gépen marad.</string>
+	<string>Manifold reads calendar events, including study sessions, classes and deadlines. Calendar events are written only with your approval. Manifold processes this data on your Mac.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>A Manifold az Emlékeztetők közül csak a saját „Manifold” listáját kezeli: a jegyzeteid 📅 határidős feladataiból készít és tart naprakészen emlékeztetőket, hogy a telefonodon is megjelenjenek. A többi listádhoz nem nyúl. Az adat a gépen marad; a szinkron az iCloud-fiókodon át csak a saját eszközeidre megy.</string>
+	<string>Manifold creates and updates reminders from dated tasks in your notes in its selected reminders list (Manifold by default). Your reminders account may sync them to your other devices. Manifold processes this data on your Mac.</string>
 	<key>NSRemindersUsageDescription</key>
-	<string>A Manifold az Emlékeztetők közül csak a saját „Manifold” listáját kezeli: a jegyzeteid 📅 határidős feladataiból készít emlékeztetőket. A többi listádhoz nem nyúl. Az adat a gépen marad; a szinkron az iCloud-fiókodon át csak a saját eszközeidre megy.</string>
+	<string>Manifold creates reminders from dated tasks in your notes in its selected reminders list (Manifold by default). Your reminders account may sync them to your other devices. Manifold processes this data on your Mac.</string>
 </dict>
 </plist>

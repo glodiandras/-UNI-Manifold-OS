@@ -4,6 +4,7 @@
   rajz idejét mutatja. Csak írható `.base`-nél jelennek meg a szerkesztő elemek.
 -->
 <script lang="ts">
+  import { t, tp, tk } from '../lib/i18n';
   import { tick } from 'svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { CodeXml, Columns3, Funnel, Plus, SlidersHorizontal } from '../lib/ikon/ikonok';
@@ -41,16 +42,16 @@
 
   // ------------------------------------------------------------------ új nézet
 
-  const TIPUS_NEV: Record<NezetTipus, string> = { table: 'Táblázat', cards: 'Kártyák', kanban: 'Kanban' };
+  const TIPUS_NEV: Record<NezetTipus, string> = { table: tk('Táblázat'), cards: tk('Kártyák'), kanban: tk('Kanban') };
 
   function ujNezetMenu(e: MouseEvent) {
     const el = e.currentTarget as HTMLElement;
     const r = el.getBoundingClientRect();
-    const elemek: MenuElem[] = (['table', 'cards', 'kanban'] as const).map((t) => ({ id: t, nev: `Új nézet: ${TIPUS_NEV[t]}` }));
+    const elemek: MenuElem[] = (['table', 'cards', 'kanban'] as const).map((ty) => ({ id: ty, nev: t('Új nézet: {tipus}', { tipus: t(TIPUS_NEV[ty]) }) }));
     const akciok = new Map<string, () => void>();
-    for (const t of ['table', 'cards', 'kanban'] as const)
-      akciok.set(t, () => void muvelet({ fajta: 'nezet_uj', tipus: t }, v.nezetek.length));
-    lebegoMenu({ focus: () => el.focus() }, r.left, r.bottom + 2, elemek, akciok, 'Új nézet');
+    for (const ty of ['table', 'cards', 'kanban'] as const)
+      akciok.set(ty, () => void muvelet({ fajta: 'nezet_uj', tipus: ty }, v.nezetek.length));
+    lebegoMenu({ focus: () => el.focus() }, r.left, r.bottom + 2, elemek, akciok, t('Új nézet'));
   }
 
   // ------------------------------------------------------------------ fül menü és átnevezés
@@ -80,30 +81,30 @@
       elemek.push({ id, nev, ...extra });
       akciok.set(id, fn);
     };
-    hozzaad('atnevez', 'Átnevezés…', () => atnevezKezd(i));
-    hozzaad('tipus', 'Típus', () => {}, {
-      almenu: () => (['table', 'cards', 'kanban'] as const).map((t) => ({ id: `t-${t}`, nev: TIPUS_NEV[t], kijelolt: v.nezetek[i].tipus === t })),
+    hozzaad('atnevez', t('Átnevezés…'), () => atnevezKezd(i));
+    hozzaad('tipus', t('Típus'), () => {}, {
+      almenu: () => (['table', 'cards', 'kanban'] as const).map((ty) => ({ id: `t-${ty}`, nev: t(TIPUS_NEV[ty]), kijelolt: v.nezetek[i].tipus === ty })),
     });
-    for (const t of ['table', 'cards', 'kanban'] as const)
-      akciok.set(`t-${t}`, () => void muvelet({ fajta: 'nezet_beallit', nezet: i, kulcs: 'type', ertek: t }));
-    if (i > 0) hozzaad('balra', 'Mozgatás balra', () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i - 1 }, aktiv === i ? i - 1 : undefined));
+    for (const ty of ['table', 'cards', 'kanban'] as const)
+      akciok.set(`t-${ty}`, () => void muvelet({ fajta: 'nezet_beallit', nezet: i, kulcs: 'type', ertek: ty }));
+    if (i > 0) hozzaad('balra', t('Mozgatás balra'), () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i - 1 }, aktiv === i ? i - 1 : undefined));
     if (i < v.nezetek.length - 1)
-      hozzaad('jobbra', 'Mozgatás jobbra', () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i + 1 }, aktiv === i ? i + 1 : undefined));
+      hozzaad('jobbra', t('Mozgatás jobbra'), () => void muvelet({ fajta: 'nezet_mozgat', nezet: i, ujindex: i + 1 }, aktiv === i ? i + 1 : undefined));
     if (v.nezetek.length > 1)
-      hozzaad('torol', 'Nézet törlése', () => void muvelet({ fajta: 'nezet_torol', nezet: i }, Math.min(aktiv > i ? aktiv - 1 : aktiv === i ? Math.max(0, i - 1) : aktiv, v.nezetek.length - 2)), { veszely: true });
-    lebegoMenu({ focus: () => el.focus() }, e.clientX, e.clientY, elemek, akciok, `${v.nezetek[i].nev} nézet`);
+      hozzaad('torol', t('Nézet törlése'), () => void muvelet({ fajta: 'nezet_torol', nezet: i }, Math.min(aktiv > i ? aktiv - 1 : aktiv === i ? Math.max(0, i - 1) : aktiv, v.nezetek.length - 2)), { veszely: true });
+    lebegoMenu({ focus: () => el.focus() }, e.clientX, e.clientY, elemek, akciok, t('{nev} nézet', { nev: v.nezetek[i].nev }));
   }
 </script>
 
 <div class="eszkoztar">
   {#if v.ok}
-    <div class="nezetek" role="tablist" aria-label="Nézetek">
+    <div class="nezetek" role="tablist" aria-label={t('Nézetek')}>
       {#each v.nezetek as n, i (i)}
         {#if atnevezett?.index === i}
           <input
             class="fulatnevezo"
             type="text"
-            aria-label="{n.nev} új neve"
+            aria-label={t('{nev} új neve', { nev: n.nev })}
             bind:value={atnevezett.nev}
             onkeydown={(e) => {
               if (e.key === 'Enter') atnevezKesz(true);
@@ -118,7 +119,7 @@
             role="tab"
             class="nezet-gomb"
             aria-selected={aktiv === i}
-            title={irhato ? 'Dupla kattintás: átnevezés · jobb gomb: menü' : undefined}
+            title={irhato ? t('Dupla kattintás: átnevezés · jobb gomb: menü') : undefined}
             onclick={() => valt(i)}
             ondblclick={() => irhato && atnevezKezd(i)}
             oncontextmenu={(e) => fulMenu(e, i)}>{n.nev}</button
@@ -126,29 +127,29 @@
         {/if}
       {/each}
       {#if irhato}
-        <button type="button" class="nezet-gomb ikon" aria-label="Új nézet" title="Új nézet" onclick={ujNezetMenu}>
+        <button type="button" class="nezet-gomb ikon" aria-label={t('Új nézet')} title={t('Új nézet')} onclick={ujNezetMenu}>
           <Ikon ikon={Plus} meret={14} />
         </button>
       {/if}
     </div>
     <span class="talalat" title={idoSzoveg}>
-      {v.osszes} találat{v.levagva ? ' (a lista levágva)' : ''}
+      {tp('{n} találat', v.osszes)}{v.levagva ? ` ${t('(a lista levágva)')}` : ''}
     </span>
     {#if irhato}
       <div class="panelek">
-        <Popover felirat="Oszlopok" ikon={Columns3} cimke="Oszlopok kijelölése és sorrendje">
+        <Popover felirat={t('Oszlopok')} ikon={Columns3} cimke={t('Oszlopok kijelölése és sorrendje')}>
           <OszlopPanel {modell} {v} />
         </Popover>
-        <Popover felirat="Szűrők" ikon={Funnel} jelzo={szuroDb ? String(szuroDb) : null} cimke="Szűrők és képletek" szeles>
+        <Popover felirat={t('Szűrők')} ikon={Funnel} jelzo={szuroDb ? String(szuroDb) : null} cimke={t('Szűrők és képletek')} szeles>
           <SzuroPanel {modell} {v} />
         </Popover>
-        <Popover felirat="Nézet" ikon={SlidersHorizontal} cimke="A nézet beállításai">
+        <Popover felirat={t('Nézet')} ikon={SlidersHorizontal} cimke={t('A nézet beállításai')}>
           <BeallitasPanel {modell} {v} />
         </Popover>
       </div>
     {/if}
   {:else}
-    <span class="nezet-nev">A fájl nem értelmezhető</span>
+    <span class="nezet-nev">{t('A fájl nem értelmezhető')}</span>
   {/if}
   {#if irhato}
     <button
@@ -156,14 +157,14 @@
       class="nezet-gomb forras"
       class:bekapcsolva={modell.forrasMod}
       aria-pressed={modell.forrasMod}
-      title="A teljes .base fájl YAML-forrása"
+      title={t('A teljes .base fájl YAML-forrása')}
       onclick={() => (modell.forrasMod = !modell.forrasMod)}
     >
       <Ikon ikon={CodeXml} meret={14} /> YAML
     </button>
   {/if}
   {#if forrasGomb}
-    <button type="button" class="nezet-gomb forras forras-gomb" onclick={forrasGomb} title="A blokk forrásának szerkesztése">Forrás</button>
+    <button type="button" class="nezet-gomb forras forras-gomb" onclick={forrasGomb} title={t('A blokk forrásának szerkesztése')}>{t('Forrás')}</button>
   {/if}
 </div>
 

@@ -69,7 +69,7 @@ class PontonkentTest(unittest.TestCase):
             self.assertEqual(len(a.tmp_maradek()), 1, "a kill után a tmp fájl ott marad")
             self.assertEqual({k: v for k, v in o.lenyomat(a.v).items() if not k.endswith(".manifold-tmp")}, a.elotte)
             uzenetek = a.indulas()
-            self.assertTrue(any("ideiglenes fájl" in u for u in uzenetek), uzenetek)
+            self.assertTrue(any("temporary files" in u for u in uzenetek), uzenetek)
             a.invariansok(self, a.elotte)
         with tmpdir() as t:
             a = o.Allvany(t)

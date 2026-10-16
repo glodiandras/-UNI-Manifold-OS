@@ -9,6 +9,7 @@
   szerkesztés / megnyitás, élen a címke.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { EditorView, keymap, tooltips } from '@codemirror/view';
   import { onMount, untrack } from 'svelte';
   import type { CoreKapcsolat } from '../lib/core/ws.svelte';
@@ -205,7 +206,7 @@
     if (uj === vaszon && elotte === vaszon) return true;
     const r = forras.ir(uj);
     if (!r.ok) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A canvas nem módosítható', szoveg: r.hiba });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A canvas nem módosítható'), szoveg: r.hiba });
       irhatoJel++;
       return false;
     }
@@ -221,7 +222,7 @@
     const v = elozmeny.visszavon(vaszon);
     if (!v) return;
     const r = forras.ir(v);
-    if (!r.ok) return void ertesitesek.ertesit({ szint: 'hiba', cim: 'A visszavonás nem írható', szoveg: r.hiba });
+    if (!r.ok) return void ertesitesek.ertesit({ szint: 'hiba', cim: t('A visszavonás nem írható'), szoveg: r.hiba });
     vaszon = v;
     kijeloltSzur();
     elozmenyJel++;
@@ -231,7 +232,7 @@
     const v = elozmeny.ujra(vaszon);
     if (!v) return;
     const r = forras.ir(v);
-    if (!r.ok) return void ertesitesek.ertesit({ szint: 'hiba', cim: 'Az újra nem írható', szoveg: r.hiba });
+    if (!r.ok) return void ertesitesek.ertesit({ szint: 'hiba', cim: t('Az újra nem írható'), szoveg: r.hiba });
     vaszon = v;
     kijeloltSzur();
     elozmenyJel++;
@@ -364,7 +365,7 @@
           mod: 'elo',
           csakOlvashato: false,
           ut,
-          cimke: 'Szövegkártya szerkesztése',
+          cimke: t('Szövegkártya szerkesztése'),
           kiegeszites: { fajlok: () => fajlok.lista, legutobbi: () => felulet.legutobbiFajlok },
         }),
         // az Esc a kiegészítés és a keresés után jön (azok bezárása az első Esc)
@@ -885,7 +886,7 @@
   bind:clientHeight={mag}
   style={racs ? racsStilus : ''}
   role="application"
-  aria-label="Canvas: {ut.slice(ut.lastIndexOf('/') + 1)}"
+  aria-label={t('Canvas: {nev}', { nev: ut.slice(ut.lastIndexOf('/') + 1) })}
   aria-roledescription="canvas"
   tabindex="0"
   data-fokusz-cel
@@ -946,7 +947,7 @@
   {/if}
 
   {#if irhato && kijeloltDoboz && !szerkesztett && !mezo}
-    <div class="kijeloles-sav" style:left="{kijeloltDoboz.x}px" style:top="{kijeloltDoboz.y}px" role="toolbar" aria-label="A kijelölés műveletei">
+    <div class="kijeloles-sav" style:left="{kijeloltDoboz.x}px" style:top="{kijeloltDoboz.y}px" role="toolbar" aria-label={t('A kijelölés műveletei')}>
       <Eszkoztar
         fajta="kijeloles"
         szin={kijeloltNodek.length === 1 ? (kijeloltNodek[0].color ?? null) : null}
@@ -963,7 +964,7 @@
       />
     </div>
   {:else if irhato && kijeloltElDoboz && !mezo}
-    <div class="kijeloles-sav el-sav" style:left="{kijeloltElDoboz.x}px" style:top="{kijeloltElDoboz.y - 24}px" role="toolbar" aria-label="Az él műveletei">
+    <div class="kijeloles-sav el-sav" style:left="{kijeloltElDoboz.x}px" style:top="{kijeloltElDoboz.y - 24}px" role="toolbar" aria-label={t('Az él műveletei')}>
       <Eszkoztar
         fajta="el"
         szin={kijeloltElek[0].color ?? null}
@@ -982,8 +983,8 @@
         bind:this={mezoElem}
         type={mezo.kulcs === 'url' ? 'url' : 'text'}
         bind:value={mezo.ertek}
-        aria-label={mezo.kulcs === 'url' ? 'A link címe (URL)' : 'Címke'}
-        placeholder={mezo.kulcs === 'url' ? 'https://…' : 'Címke'}
+        aria-label={mezo.kulcs === 'url' ? t('A link címe (URL)') : t('Címke')}
+        placeholder={mezo.kulcs === 'url' ? 'https://…' : t('Címke')}
         onkeydown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();

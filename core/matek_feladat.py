@@ -65,10 +65,9 @@ def _terv(cfg: Config, p: dict, stop: str):
         argv.append("--nincs-masodik")
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód: a megoldás a vault APFS-klónjára kerül, a jegyzetbe nem.")
+        figy.append('Trial mode: the solution is written to an APFS clone of the workspace. The note is unchanged.')
     return ([tasks.Step("Megoldás modellel és CAS-ellenőrzéssel", argv, str(cfg.root))],
-            "A modell megoldja a kijelölt feladatot; a kódja a CAS-homokozóban fut, és a megoldás `[!solution]` calloutként "
-            "a feladat alá kerül (gépi írás, visszavonható).", figy)
+            'The model solves the selected problem and runs its code in the CAS sandbox. The solution is placed below the problem in a `[!solution]` callout (machine write, undoable).', figy)
 
 
 def regisztral() -> None:

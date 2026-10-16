@@ -30,6 +30,7 @@ from .. import atirat
 from ..vaultio import Invalid, NotFound
 from . import elemzo, kereses, linkek, tar
 from .feloldas import nfc
+from ..hibakod import kodol
 
 VALTOZAS_NAPLO = 256            # ennyi generáció változásait őrzi a napló (a Bases inkrementális frissítéséhez)
 POOL_MAX = 8                    # ennyi olvasó kapcsolat marad nyitva a készletben
@@ -184,16 +185,16 @@ class IndexOlvaso:
     @staticmethod
     def _ut(rp) -> str:
         if not isinstance(rp, str) or not rp.strip():
-            raise Invalid("hiányzó út")
+            raise kodol(Invalid("hiányzó út"), "index.olvaso.hianyzo_ut")
         rp = nfc(rp).replace("\\", "/").strip().strip("/")
         if "\x00" in rp or any(r in ("", ".", "..") for r in rp.split("/")):
-            raise Invalid(f"érvénytelen út: {rp}")
+            raise kodol(Invalid(f"érvénytelen út: {rp}"), "index.olvaso.ervenytelen_ut_rp", {"rp": rp})
         return rp
 
     def _sor(self, c, rp: str):
         r = c.execute("SELECT * FROM fajl WHERE ut = ? AND torolve IS NULL", (rp,)).fetchone()
         if r is None:
-            raise NotFound(f"nincs ilyen fájl az indexben: {rp}")
+            raise kodol(NotFound(f"nincs ilyen fájl az indexben: {rp}"), "index.olvaso.nincs_ilyen_fajl_indexben_rp", {"rp": rp})
         return r
 
     def jegyzet(self, rp) -> dict:
@@ -292,7 +293,7 @@ class IndexOlvaso:
         self._kesz_vagy_hiba()
         forras = self._ut(forras)
         if not isinstance(celok, list) or len(celok) > 500 or not all(isinstance(c, str) for c in celok):
-            raise Invalid("a celok legfeljebb 500 szöveg listája")
+            raise kodol(Invalid("a celok legfeljebb 500 szöveg listája"), "index.olvaso.celok_legfeljebb_500_szoveg_listaja")
         ki = []
         with self._fl_lock:
             for cel in celok:
@@ -306,7 +307,7 @@ class IndexOlvaso:
         ut, forras = self._ut(ut), self._ut(forras)
         with self._fl_lock:
             if ut not in self.feloldo.fileset:
-                raise NotFound(f"nincs ilyen fájl az indexben: {ut}")
+                raise kodol(NotFound(f"nincs ilyen fájl az indexben: {ut}"), "index.olvaso.nincs_ilyen_fajl_indexben_ut", {"ut": ut})
             return {"ut": ut, "cel": linkek.rovid_cel(self.feloldo, ut, forras)}
 
     def aliasok(self) -> dict:
@@ -422,7 +423,7 @@ class IndexOlvaso:
         `limit` elem."""
         self._kesz_vagy_hiba()
         if not isinstance(kulcs, str) or not kulcs.strip():
-            raise Invalid("hiányzó kulcs")
+            raise kodol(Invalid("hiányzó kulcs"), "index.olvaso.hianyzo_kulcs")
         cel = nfc(kulcs.strip()).casefold()             # az SQLite `lower()`-je csak ASCII: az összevetés itt történik
         szam: dict[str, set[int]] = {}
         with self.olvaso() as c:
@@ -454,7 +455,7 @@ class IndexOlvaso:
         self._kesz_vagy_hiba()
         forras = self._ut(forras)
         if not isinstance(cel, str) or not cel.strip():
-            raise Invalid("hiányzó cél")
+            raise kodol(Invalid("hiányzó cél"), "index.olvaso.hianyzo_cel")
         with self._fl_lock:
             hit, _, tobb = self.feloldo.resolve(cel, forras)
         if not hit:

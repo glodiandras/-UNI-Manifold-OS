@@ -146,7 +146,7 @@ class VideoMozgatTest(unittest.TestCase):
         (d / "terv.json").write_text(json.dumps({"kor": "VIDEO-20261008-120000", "tetel": "t9", "feladat": None, "fajlok": [],
                                                  "mozgasok": [mz]}), encoding="utf-8")
         uz = gepi_iras.helyreallit(self.cfg)
-        self.assertIn("visszaállt", uz[0])
+        self.assertIn("was restored", uz[0])
         self.assertTrue(p.is_file() and not self.cel().exists())
 
     def test_proba_a_klonba_klonoz(self):

@@ -3,6 +3,7 @@
 // már a fizika előtt is együtt vannak. Frissítéskor a régi pozíciók megmaradnak, az új csúcsok a szomszédaik
 // átlagába kerülnek (`pozicioFrissites`).
 
+import { locale } from '../i18n';
 export interface KezdoBemenet {
   n: number;
   felsoMappa: readonly string[];
@@ -21,7 +22,7 @@ export function kezdoAllas(g: KezdoBemenet): Float32Array {
     if (!l) csoport.set(k, (l = []));
     l.push(i);
   }
-  const kulcsok = [...csoport.keys()].sort((a, b) => a.localeCompare(b, 'hu'));
+  const kulcsok = [...csoport.keys()].sort((a, b) => a.localeCompare(b, locale()));
   const R = 9 * Math.sqrt(n);
   let sz = 0;
   for (const k of kulcsok) {

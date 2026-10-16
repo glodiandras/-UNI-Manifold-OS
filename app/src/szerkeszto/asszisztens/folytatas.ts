@@ -3,6 +3,7 @@
 // helyére). Tab elfogadja — egyetlen tranzakció, a ⌘Z egy lépés —, Esc eldobja. A nem mért (próba) javaslat „próba” jelet kap
 // (D9), és ugyanúgy csak elfogadásra kerül a jegyzetbe. A gyakoriságot a core hangolása (`allas`) szabja: néma helyzetben a
 // szünet nem kér javaslatot (a kézi hívás igen).
+import { t, tk } from '../../lib/i18n';
 import { Facet, Prec, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { isolateHistory } from '@codemirror/commands';
 import { Decoration, EditorView, ViewPlugin, WidgetType, type ViewUpdate } from '@codemirror/view';
@@ -49,7 +50,7 @@ export const folytatasAllapot = StateField.define<FolytatasEredmeny | null>({
   }),
 });
 
-const MOD_NEV: Record<FolytatasMod, string> = { folytat: 'Folytatás', kifejt: 'Kifejtés', osszefoglal: 'Összefoglalás' };
+const MOD_NEV: Record<FolytatasMod, string> = { folytat: tk('Folytatás'), kifejt: tk('Kifejtés'), osszefoglal: tk('Összefoglalás') };
 
 class Szellem extends WidgetType {
   constructor(readonly szoveg: string, readonly mod: FolytatasMod, readonly proba: boolean, readonly forras?: string) { super(); }
@@ -58,13 +59,13 @@ class Szellem extends WidgetType {
     const s = document.createElement('span');
     s.className = 'cm-folytatas';
     s.contentEditable = 'false';
-    const mit = this.mod === 'osszefoglal' ? 'Tab: csere' : 'Tab: elfogad';
-    s.title = `${MOD_NEV[this.mod]} · ${this.forras ?? 'Asszisztens'}${this.proba ? ' · próba (nem mért modell)' : ''} · ${mit} · Esc: elvet`;
+    const mit = this.mod === 'osszefoglal' ? t('Tab: csere') : t('Tab: elfogad');
+    s.title = t('{mod} · {forras}{proba} · {mit} · Esc: elvet', { mod: t(MOD_NEV[this.mod]), forras: this.forras ?? t('Asszisztens'), proba: this.proba ? ' · ' + t('próba (nem mért modell)') : '', mit });
     s.setAttribute('aria-label', s.title);
     if (this.proba || this.mod !== 'folytat') {
       const j = s.appendChild(document.createElement('span'));
       j.className = 'cm-folytatas-jel';
-      j.textContent = [this.mod !== 'folytat' ? MOD_NEV[this.mod].toLowerCase() : '', this.proba ? 'próba' : ''].filter(Boolean).join(' · ');
+      j.textContent = [this.mod !== 'folytat' ? t(MOD_NEV[this.mod]).toLowerCase() : '', this.proba ? t('próba') : ''].filter(Boolean).join(' · ');
     }
     s.appendChild(document.createTextNode(this.mod === 'folytat' ? this.szoveg : ` ${this.szoveg}`));
     return s;
@@ -117,7 +118,7 @@ const utemezo = ViewPlugin.fromClass(class {
     if (kiegeszitesNyitva(v.state) || perjelNyitva(v.state) || aktivJavaslatAllapot(v.state)) return;
     const doc = v.state.doc, gen = this.generacio, sel = s.main;
     if (mod === 'folytat' ? !sel.empty || doc.lineAt(sel.head).to !== sel.head : sel.empty) {
-      if (kezi) b.jelzes?.(mod === 'folytat' ? 'A folytatás a sor végén, kijelölés nélkül kérhető.' : 'Jelöld ki a szöveget.');
+      if (kezi) b.jelzes?.(mod === 'folytat' ? t('A folytatás a sor végén, kijelölés nélkül kérhető.') : t('Jelöld ki a szöveget.'));
       return;
     }
     const hely = mod === 'folytat' ? sel.head : sel.to;
@@ -136,7 +137,7 @@ const utemezo = ViewPlugin.fromClass(class {
         this.szunet = Date.now() + (r.nema ? NEMA_SZUNET_MS : 60_000);
         if (kezi && r.ok) b.jelzes?.(r.ok);
       }
-    } catch { this.szunet = Date.now() + 60_000; if (kezi && !vezerlo.signal.aborted) b.jelzes?.('A kiegészítés most nem érhető el.'); }
+    } catch { this.szunet = Date.now() + 60_000; if (kezi && !vezerlo.signal.aborted) b.jelzes?.(t('A kiegészítés most nem érhető el.')); }
     finally { if (this.keres?.azon === azon) this.keres = null; }
   }
   destroy() { this.halott = true; this.megszakit(); }

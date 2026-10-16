@@ -4,6 +4,7 @@
   kicsinyített változatban jön (`?w=`); a külső URL a CSP miatt nem tölthető be (halvány jelzés).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import type { Snippet } from 'svelte';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import { linkek } from '../lib/vault/linkek.svelte';
@@ -58,7 +59,7 @@
       {#if sor.kep.t === 'ut' && src}
         <img {src} alt="" decoding="async" loading="lazy" style:object-fit={illesztes === 'contain' ? 'contain' : 'cover'} />
       {:else if sor.kep.t === 'kulso'}
-        <span class="kulso" title={sor.kep.url}>külső kép — nem tölthető be</span>
+        <span class="kulso" title={sor.kep.url}>{t('külső kép — nem tölthető be')}</span>
       {/if}
     </div>
   {/if}

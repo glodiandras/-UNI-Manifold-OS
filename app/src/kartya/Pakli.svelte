@@ -4,7 +4,9 @@
   A szöveg a vault aktuális fájljából, az állapot a core-ból; csak tokenekből rajzol (25. döntés).
 -->
 <script lang="ts">
+  import { tartalmiNyelv } from '../lib/munkater/nyelv.svelte';
   import { tick } from 'svelte';
+  import { nyelv, t, tp } from '../lib/i18n';
   import { md } from '../kviz/megjelenites';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import { GOMBOK, intervallum } from './allando';
@@ -43,36 +45,36 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (a blokk saját billentyűit kezeli: szóköz, Enter, 1–4, ⌘Z) -->
-<div class="pakli" bind:this={gyoker} tabindex="-1" role="group" aria-label={cim ? `Kártyák: ${cim}` : 'Kártyák'} lang="hu" onkeydown={billentyu}>
+<div class="pakli" bind:this={gyoker} tabindex="-1" role="group" aria-label={cim ? t('Kártyák: {cim}', { cim }) : t('Kártyák')} lang={nyelv.kod} onkeydown={billentyu}>
   {#if menet.fazis === 'betolt'}
-    <p class="pakli-al">Kártyák betöltése…</p>
+    <p class="pakli-al">{t('Kártyák betöltése…')}</p>
   {:else if menet.fazis === 'hiba'}
-    <p class="pakli-hiba">A kártyák nem tölthetők be: {menet.hiba}</p>
-    <button class="m-gomb semleges suru" type="button" onclick={() => menet.betolt()}>Újra</button>
+    <p class="pakli-hiba">{t('A kártyák nem tölthetők be: {hiba}', { hiba: menet.hiba ?? '' })}</p>
+    <button class="m-gomb semleges suru" type="button" onclick={() => menet.betolt()}>{t('Újra')}</button>
   {:else if menet.fazis === 'ures'}
     <p class="pakli-al">
-      Ma nincs esedékes kártya{menet.osszes ? ` · ${menet.osszes} kártya összesen` : ''}.
+      {t('Ma nincs esedékes kártya')}{menet.osszes ? ' · ' + tp('{n} kártya összesen', menet.osszes) : ''}.
     </p>
   {:else if menet.fazis === 'kesz'}
-    <p class="pakli-al">Kész: {menet.kesz} kártya ismételve. <span class="halvany">⌘Z: az utolsó értékelés visszavonása</span></p>
+    <p class="pakli-al">{tp('Kész: {n} kártya ismételve.', menet.kesz)} <span class="halvany">{t('⌘Z: az utolsó értékelés visszavonása')}</span></p>
   {:else if k}
     <div class="pakli-fej">
-      {#if cim}<span class="pakli-cim">{cim}</span>{/if}
-      <span class="halvany szam">{menet.hatra} hátra{k.uj ? ' · új' : ''}</span>
+      {#if cim}<span class="pakli-cim" lang={tartalmiNyelv.kod}>{cim}</span>{/if}
+      <span class="halvany szam">{t('{n} hátra', { n: menet.hatra })}{k.uj ? ' · ' + t('új') : ''}</span>
     </div>
-    <div class="pakli-kerdes" use:md={{ szoveg: k.kerdes, ut: k.jegyzet }}></div>
+    <div class="pakli-kerdes" lang={tartalmiNyelv.kod} use:md={{ szoveg: k.kerdes, ut: k.jegyzet }}></div>
     {#if menet.fazis === 'kerdes'}
-      <button class="m-gomb semleges suru" type="button" data-fokusz onclick={() => menet.fordit()}>Válasz <kbd>szóköz</kbd></button>
+      <button class="m-gomb semleges suru" type="button" data-fokusz onclick={() => menet.fordit()}>{t('Válasz')} <kbd>{t('szóköz')}</kbd></button>
     {:else}
-      <div class="pakli-valasz" use:md={{ szoveg: k.valasz, ut: k.jegyzet }}></div>
+      <div class="pakli-valasz" lang={tartalmiNyelv.kod} use:md={{ szoveg: k.valasz, ut: k.jegyzet }}></div>
       {#if k.forras}
-        <a class="pakli-forras" href={`#${k.forras}`} onclick={(e) => forrasNyit(e, k.forras!)}>— {forrasNev(k.forras)}</a>
+        <a class="pakli-forras" lang={tartalmiNyelv.kod} href={`#${k.forras}`} onclick={(e) => forrasNyit(e, k.forras!)}>— {forrasNev(k.forras)}</a>
       {/if}
-      <div class="pakli-gombok" role="group" aria-label="Értékelés">
+      <div class="pakli-gombok" role="group" aria-label={t('Értékelés')}>
         {#each GOMBOK as g (g.jegy)}
           <button class="m-gomb semleges suru" type="button" disabled={menet.kuld} data-fokusz={g.jegy === 3 ? '' : undefined}
                   onclick={() => menet.ertekel(g.jegy)}>
-            <span>{g.nev}</span>
+            <span>{t(g.nev)}</span>
             <span class="halvany szam">{intervallum(k.elorejelzes?.[String(g.jegy)])}</span>
             <kbd>{g.jegy}</kbd>
           </button>

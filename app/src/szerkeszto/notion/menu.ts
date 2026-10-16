@@ -5,6 +5,7 @@
 // Almenü: az elem `almenu` függvénye új szintet nyit ugyanabban a listában (→ vagy ↩ belép, ← vagy esc
 // visszalép), így nincs külön lebegő panel, és minden billentyűzetről járható.
 
+import { t } from '../../lib/i18n';
 import type { IconNode } from 'lucide';
 import { ikonElem } from '../../lib/ikon/ikonElem';
 import { ChevronRight } from '../../lib/ikon/ikonok';
@@ -135,7 +136,7 @@ export class Menu {
       const u = document.createElement('div');
       u.className = 'nt-menu-ures';
       u.setAttribute('role', 'status');
-      u.textContent = this.o.ures ?? 'Nincs találat';
+      u.textContent = this.o.ures ?? t('Nincs találat');
       this.lista.appendChild(u);
       return;
     }

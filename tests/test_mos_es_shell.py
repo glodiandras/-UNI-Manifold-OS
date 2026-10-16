@@ -221,8 +221,8 @@ class ShellTeszt(unittest.TestCase):
                 elso.wait(timeout=30)
                 elso.stdout.close()
 
-    def test_kuka_hibaja_magyar_szoveggel(self):
-        """A `--kuka` segéd hibánál `{"ok": false, "kod", "hiba"}` választ ad, a `hiba` magyar szöveg (a core továbbadhatja);
+    def test_kuka_hibaja_angol_szoveggel(self):
+        """A `--kuka` segéd hibánál `{"ok": false, "kod", "hiba"}` választ ad, a `hiba` angol szöveg (a core továbbadhatja);
         a próba csak tiltott és érvénytelen kérést küld, a valódi Kukához nem nyúl."""
         exe = str(APP / "Contents" / "MacOS" / "Manifold")
         with tmpdir() as t:
@@ -241,7 +241,7 @@ class ShellTeszt(unittest.TestCase):
                 v = json.loads(p.stdout)
                 self.assertIs(v["ok"], False)
                 self.assertEqual(v["kod"], gepi)
-                self.assertIn("Kuk", v["hiba"])
+                self.assertIn("Trash", v["hiba"])
                 self.assertNotIn(str(t), v["hiba"], "a hibaszövegben nincs abszolút út")
 
     def _selftest(self, forgatokonyv: str, root: Path, timeout=90, **extra):

@@ -4,6 +4,7 @@
   és egy modális jelző mondja meg az okot. A „Kényszerített kilépés” a héjnak szól (a második ⌘Q megfelelője).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import type { Snippet } from 'svelte';
   import { hejnek } from '../lib/core/hej';
   import { leall } from '../lib/core/leall.svelte';
@@ -26,10 +27,10 @@
 {#if leall.aktiv}
   <div class="hatter">
     <div class="leall" role="alertdialog" aria-modal="true" aria-labelledby="leall-cim" aria-describedby="leall-szoveg">
-      <h2 id="leall-cim">A Manifold leáll</h2>
+      <h2 id="leall-cim">{t('A Manifold leáll')}</h2>
       <p id="leall-szoveg">{leall.szoveg}</p>
-      <p class="mellek">A szerkesztés ilyenkor szünetel, hogy ami elmentődött, az maradjon is.</p>
-      <button bind:this={gomb} type="button" onclick={() => hejnek({ tipus: 'kenyszeritett-kilepes' })}>Kényszerített kilépés</button>
+      <p class="mellek">{t('A szerkesztés ilyenkor szünetel, hogy ami elmentődött, az maradjon is.')}</p>
+      <button bind:this={gomb} type="button" onclick={() => hejnek({ tipus: 'kenyszeritett-kilepes' })}>{t('Kényszerített kilépés')}</button>
     </div>
   </div>
 {/if}

@@ -43,9 +43,9 @@ def kulcs(tipus: str, helyzet: str) -> str:
 
 def ervenyes(tipus, helyzet) -> None:
     if tipus not in TIPUSOK:
-        raise HttpError(400, f"ismeretlen javaslat-fajta: {tipus!r}")
+        raise HttpError(400, f"ismeretlen javaslat-fajta: {tipus!r}", kod="asszisztens.hangolo.ismeretlen_fajta", param={"tipus": tipus})
     if not isinstance(helyzet, str) or not _HELYZET.match(helyzet):
-        raise HttpError(400, "a helyzet rövid, kisbetűs azonosító (a–z, 0–9, _)")
+        raise HttpError(400, "a helyzet rövid, kisbetűs azonosító (a–z, 0–9, _)", kod="asszisztens.hangolo.helyzet_azonosito")
 
 
 class Hangolo:
@@ -84,7 +84,7 @@ class Hangolo:
         """Egy döntés: `elfogad`, `elutasit` vagy `figyelmen_kivul` (az utóbbi az elutasítás kis súllyal). → az új állás."""
         ervenyes(tipus, helyzet)
         if dontes not in DONTESEK:
-            raise HttpError(400, "a döntés elfogad, elutasit vagy figyelmen_kivul lehet")
+            raise HttpError(400, "a döntés elfogad, elutasit vagy figyelmen_kivul lehet", kod="asszisztens.hangolo.dontes_ertek")
         suly = 1.0 if (kifejezett and dontes != "figyelmen_kivul") else IMPLICIT_SULY
         k = kulcs(tipus, helyzet)
         most = self.ido()

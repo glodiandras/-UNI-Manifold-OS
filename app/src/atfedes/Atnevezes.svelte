@@ -5,6 +5,7 @@
   próba a core dolga. A fájlfa húzása a célmappával nyitja: ilyenkor azonnal a terv látszik (a húzás nem ír).
 -->
 <script lang="ts">
+  import { t, tp } from '../lib/i18n';
   import { onMount, untrack } from 'svelte';
   import { ApiHiba } from '../lib/core/api';
   import { FuzzyIndex } from '../lib/kereses/fuzzy';
@@ -22,7 +23,9 @@
   const mappaMod = cel.mappa === true; // egy mappa (a részfájával együtt) mozog
   const kiterjesztes = mappaMod ? '' : (/\.[^./]+$/.exec(regi)?.[0] ?? '');
   const alapNev = regi.slice(regi.lastIndexOf('/') + 1);
-  const targy = mappaMod ? 'Mappa' : 'Jegyzet';
+  const cimSzoveg = $derived(
+    nevMod ? (mappaMod ? t('Mappa átnevezése') : t('Jegyzet átnevezése')) : mappaMod ? t('Mappa áthelyezése') : t('Jegyzet áthelyezése'),
+  );
 
   let nev = $state('');
   let mappaKereso = $state('');
@@ -45,7 +48,7 @@
   });
 
   const mappak = $derived(['', ...fajlok.mappak].filter((m) => !mappaMod || athelyezheto(regi, true, m) || m === mappa(regi)));
-  const mappaIndex = $derived(new FuzzyIndex(mappak.map((m) => ({ ertek: m, nev: m || '(a vault gyökere)', ut: '' }))));
+  const mappaIndex = $derived(new FuzzyIndex(mappak.map((m) => ({ ertek: m, nev: m || t('(a vault gyökere)'), ut: '' }))));
   const mappaTalalatok = $derived.by(() => {
     const q = mappaKereso.trim();
     if (!q) return mappak.slice(0, 30);
@@ -102,7 +105,7 @@
       folyamat = '';
       if (e instanceof ApiHiba && e.adat.valtozott) {
         await terveznel(nevMod ? null : mappa(terv.uj));
-        hiba = 'A vault közben megváltozott — az új terv alább látható, nézd át.';
+        hiba = t('A vault közben megváltozott — az új terv alább látható, nézd át.');
       } else hiba = hibaSzoveg(e) + (e instanceof ApiHiba && Array.isArray(e.adat.proba_hibak) ? `\n${(e.adat.proba_hibak as string[]).join('\n')}` : '');
     } finally {
       folyamat = '';
@@ -129,29 +132,29 @@
   }
 </script>
 
-<Atfedes cimke={nevMod ? `${targy} átnevezése` : `${targy} áthelyezése`} nev="atnevezes" onbezar={bezar}>
+<Atfedes cimke={cimSzoveg} nev="atnevezes" onbezar={bezar}>
   <div class="doboz" bind:this={doboz} tabindex="-1">
-    <h2 class="cim">{nevMod ? `${targy} átnevezése` : `${targy} áthelyezése`}</h2>
+    <h2 class="cim">{cimSzoveg}</h2>
     <p class="regi" title={regi}>{regi}</p>
 
     {#if !terv}
       {#if nevMod}
         <label class="mezo">
-          <span>Új név</span>
+          <span>{t('Új név')}</span>
           <input bind:this={bevitel} bind:value={nev} onkeydown={nevBillentyu} spellcheck="false" autocomplete="off" aria-describedby="atn-seg" />
         </label>
         <p id="atn-seg" class="seg">
-          A linkek a vaultban átíródnak; előtte lista a módosuló fájlokról.{mappaMod ? ' A mappa a jegyzeteivel együtt mozog.' : ''}
+          {t('A linkek a vaultban átíródnak; előtte lista a módosuló fájlokról.')}{mappaMod ? ` ${t('A mappa a jegyzeteivel együtt mozog.')}` : ''}
         </p>
         <div class="gombok">
-          <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>Mégse</button>
+          <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>{t('Mégse')}</button>
           <button type="button" class="m-gomb elso" disabled={!nev.trim() || folyamat !== ''} onclick={() => terveznel()}>
-            {folyamat === 'terv' ? 'Tervezés…' : 'Tovább'}
+            {folyamat === 'terv' ? t('Tervezés…') : t('Tovább')}
           </button>
         </div>
       {:else}
         <label class="mezo">
-          <span>Új mappa</span>
+          <span>{t('Új mappa')}</span>
           <input
             bind:this={bevitel}
             bind:value={mappaKereso}
@@ -160,12 +163,12 @@
             aria-expanded="true"
             aria-controls="atn-mappak"
             aria-activedescendant={`atn-m${mappaAktiv}`}
-            placeholder="Mappa keresése…"
+            placeholder={t('Mappa keresése…')}
             spellcheck="false"
             autocomplete="off"
           />
         </label>
-        <ul id="atn-mappak" class="mappak gorgeto" role="listbox" aria-label="Mappák">
+        <ul id="atn-mappak" class="mappak gorgeto" role="listbox" aria-label={t('Mappák')}>
           {#each mappaTalalatok as m, i (m)}
             <li
               id={`atn-m${i}`}
@@ -174,10 +177,10 @@
               class:aktiv={i === mappaAktiv}
               class:jelenlegi={m === mappa(regi)}
             >
-              <button type="button" tabindex="-1" onclick={() => terveznel(m)}>{m || '(a vault gyökere)'}</button>
+              <button type="button" tabindex="-1" onclick={() => terveznel(m)}>{m || t('(a vault gyökere)')}</button>
             </li>
           {:else}
-            <li class="ures">Nincs ilyen mappa.</li>
+            <li class="ures">{t('Nincs ilyen mappa.')}</li>
           {/each}
         </ul>
       {/if}
@@ -189,20 +192,20 @@
         </ul>
       {:else}
         <p class="osszegzes" aria-live="polite">
-          {#if terv.mappa}
-            <strong>{terv.mozgo_fajlok} jegyzet</strong> mozog a mappával.
+          {#if terv.mappa && terv.mozgo_fajlok !== undefined}
+            <strong>{tp('{n} jegyzet', terv.mozgo_fajlok)}</strong> {t('mozog a mappával.')}
           {/if}
           {#if terv.fajlok.length}
-            <strong>{terv.fajlok.length} fájlban {terv.modositott_linkek} link</strong> módosul (a vault {terv.osszes_link} linkjéből).
+            <strong>{t('{n} fájlban {db} link', { n: terv.fajlok.length, db: terv.modositott_linkek })}</strong> {t('módosul (a vault {osszes} linkjéből).', { osszes: terv.osszes_link })}
           {:else}
-            Nincs link, amely átírást igényelne.
+            {t('Nincs link, amely átírást igényelne.')}
           {/if}
           {#if terv.uj_feloldott}
-            {terv.uj_feloldott} eddig feloldatlan link mostantól erre a fájlra mutat.
+            {tp('{n} eddig feloldatlan link mostantól erre a fájlra mutat.', terv.uj_feloldott)}
           {/if}
         </p>
         {#if terv.figyelmeztetesek?.length}
-          <ul class="figyelmeztetesek" role="status" aria-label="Átnézendő adatbázis-kifejezések">
+          <ul class="figyelmeztetesek" role="status" aria-label={t('Átnézendő adatbázis-kifejezések')}>
             {#each terv.figyelmeztetesek as w, i (i)}
               <li>
                 <strong>{w.ut}</strong> · <code>{w.hely}</code>: {w.uzenet}
@@ -222,18 +225,18 @@
                     <span class="uj-sor">{l.uj.trim()}</span>
                   </li>
                 {/each}
-                {#if f.linkek.length >= 200}<li class="tobb">… a további sorok nem látszanak</li>{/if}
+                {#if f.linkek.length >= 200}<li class="tobb">{t('… a további sorok nem látszanak')}</li>{/if}
               </ul>
             </details>
           {/each}
         </div>
-        <p class="seg">Egy pillanatkép készül, utána a teljes vault minden linkjét újra ellenőrzöm; hiba esetén minden visszaáll.</p>
+        <p class="seg">{t('Egy pillanatkép készül, utána a teljes vault minden linkjét újra ellenőrzöm; hiba esetén minden visszaáll.')}</p>
       {/if}
       {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
       <div class="gombok">
-        <button type="button" class="m-gomb semleges masodlagos" disabled={folyamat !== ''} onclick={() => ((terv = null), (hiba = null))}>Vissza</button>
+        <button type="button" class="m-gomb semleges masodlagos" disabled={folyamat !== ''} onclick={() => ((terv = null), (hiba = null))}>{t('Vissza')}</button>
         <button type="button" class="m-gomb elso" disabled={!terv.ok || folyamat !== ''} onclick={vegrehajt}>
-          {folyamat === 'vegrehajtas' ? (nevMod ? 'Átnevezés…' : 'Áthelyezés…') : nevMod ? 'Átnevezés' : 'Áthelyezés'}
+          {folyamat === 'vegrehajtas' ? (nevMod ? t('Átnevezés…') : t('Áthelyezés…|folyamat')) : nevMod ? t('Átnevezés') : t('Áthelyezés')}
         </button>
       </div>
     {/if}

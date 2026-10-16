@@ -3,11 +3,12 @@
   a képernyőolvasó a „feladat fut” szöveget kapja.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { feladatsor } from '../../lib/vezerlo/feladatsor.svelte';
 </script>
 
 {#if feladatsor.aktiv}
-  <span class="jelenlet" title="Feladat fut"><span class="pont" aria-hidden="true"></span><span class="sr-only">, feladat fut</span></span>
+  <span class="jelenlet" title={t('Feladat fut')}><span class="pont" aria-hidden="true"></span><span class="sr-only">{t(', feladat fut')}</span></span>
 {/if}
 
 <style>

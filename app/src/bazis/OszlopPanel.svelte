@@ -3,6 +3,7 @@
   tulajdonsága (file.*, a frontmatter kulcsai, a képletek). A kijelölés a nézet `order` listáját írja.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { ArrowDown, ArrowUp } from '../lib/ikon/ikonok';
   import type { BazisModell } from './modell.svelte';
@@ -41,8 +42,8 @@
 </script>
 
 <div class="oszlopok">
-  <input class="kereso" type="search" placeholder="Tulajdonság keresése" aria-label="Tulajdonság keresése" bind:value={kereso} />
-  <h4>Megjelenített</h4>
+  <input class="kereso" type="search" placeholder={t('Tulajdonság keresése')} aria-label={t('Tulajdonság keresése')} bind:value={kereso} />
+  <h4>{t('Megjelenített')}</h4>
   <ul>
     {#each megjelenitett as o, i (o.id)}
       <li>
@@ -61,11 +62,11 @@
         {/if}
       </li>
     {:else}
-      <li class="ures">Nincs megjelenített oszlop.</li>
+      <li class="ures">{t('Nincs megjelenített oszlop.')}</li>
     {/each}
   </ul>
   {#if tobbi.length}
-    <h4>További tulajdonságok</h4>
+    <h4>{t('További tulajdonságok')}</h4>
     <ul>
       {#each tobbi as e (e.id)}
         <li>

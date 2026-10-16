@@ -15,7 +15,7 @@ def olvas(cfg, alap=45):
 def ir(cfg, d):
     v = d.get('napi_perc') if isinstance(d, dict) else None
     if type(v) is not int or not 15 <= v <= 480:
-        raise HttpError(400, 'A napi keret 15 és 480 közötti egész perc legyen.')
+        raise HttpError(400, 'A napi keret 15 és 480 közötti egész perc legyen.', kod="felkeszultseg.keret.tartomany")
     p = cfg.path('state') / 'tanulasi-keret.json'
     p.parent.mkdir(parents=True, exist_ok=True)
     tartos.atomi_ir(p, json.dumps({'napi_perc': v}).encode())

@@ -10,6 +10,7 @@
   (30-asával, a görgetéssel és a lépkedéssel), így a 200 találat sem akasztja a rajzot.
 -->
 <script lang="ts">
+  import { t, tp } from '../lib/i18n';
   import { openSearchPanel, SearchQuery, setSearchQuery } from '@codemirror/search';
   import { onMount, tick } from 'svelte';
   import { Search, X } from '../lib/ikon/ikonok';
@@ -133,7 +134,7 @@
   async function linkBeszur(f: KeresesFajl, h: SorTalalat | undefined) {
     const p = szerkesztok.aktiv ?? szerkesztok.utolso;
     if (!p || p.mod() === 'olvaso' || !p.nezet()) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Nincs hova linket szúrni', szoveg: 'Nyiss meg egy jegyzetet a szerkesztőben.', idotartam: 4000 });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Nincs hova linket szúrni'), szoveg: t('Nyiss meg egy jegyzetet a szerkesztőben.'), idotartam: 4000 });
       return;
     }
     const cel = talalatCel(f, h);
@@ -147,7 +148,7 @@
       await tick();
       v.focus();
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A link nem szúrható be', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A link nem szúrható be'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -214,7 +215,7 @@
   {#each szoKiemeles(szoveg, szavak) as d, i (i)}{#if d.jelolt}<mark>{d.t}</mark>{:else}{d.t}{/if}{/each}
 {/snippet}
 
-<Atfedes cimke="Keresés a vaultban" nev="kereso" szeles onbezar={bezar}>
+<Atfedes cimke={t('Keresés a vaultban')} nev="kereso" szeles onbezar={bezar}>
   <div class="kereso">
     <div class="mezo-sor">
       <span class="lupe"><Ikon ikon={Search} meret={16} /></span>
@@ -227,9 +228,9 @@
         aria-controls="{id}-lista"
         aria-autocomplete="list"
         aria-activedescendant={elemek.length ? `${id}-${aktiv}` : undefined}
-        aria-label="Keresés"
+        aria-label={t('Keresés')}
         aria-describedby="{id}-allapot"
-        placeholder="Keresés a vaultban…"
+        placeholder={t('Keresés a vaultban…')}
         spellcheck="false"
         autocomplete="off"
         autocapitalize="off"
@@ -243,33 +244,33 @@
         }}
       />
       {#if allapot.q}
-        <button type="button" class="torles" aria-label="Keresés törlése" title="Keresés törlése" onclick={() => (allapot.beallit('', true), mezo?.focus())}>
+        <button type="button" class="torles" aria-label={t('Keresés törlése')} title={t('Keresés törlése')} onclick={() => (allapot.beallit('', true), mezo?.focus())}>
           <Ikon ikon={X} meret={14} />
         </button>
       {/if}
       <span id="{id}-allapot" class="allapot" role="status" aria-live="polite">
         {#if allapot.jelentes && allapot.betoltes && !allapot.hiba}
-          A jelentés szerinti rész betöltés alatt — addig a szó szerinti találatok látszanak.
+          {t('A jelentés szerinti rész betöltés alatt — addig a szó szerinti találatok látszanak.')}
         {:else if allapot.hiba}
           <!-- a hibát külön, rendelkező régióban mutatjuk -->
         {:else if allapot.rovid}
-          Legalább {MIN_HOSSZ} karakter kell a kereséshez.
+          {t('Legalább {n} karakter kell a kereséshez.', { n: MIN_HOSSZ })}
         {:else if allapot.indexEpul}
-          Az index még épül — a keresés hamarosan elérhető.
+          {t('Az index még épül — a keresés hamarosan elérhető.')}
         {:else if allapot.folyamat && !allapot.eredmeny}
-          Keresés…
+          {t('Keresés…')}
         {:else if allapot.eredmeny}
-          {#if pdfFolyamat}PDF-szöveg indexelése: {pdfFolyamat.kesz}/{pdfFolyamat.osszes}.{' '}{/if}
+          {#if pdfFolyamat}{t('PDF-szöveg indexelése: {kesz}/{osszes}.', { kesz: pdfFolyamat.kesz, osszes: pdfFolyamat.osszes })}{' '}{/if}
           {#if allapot.eredmeny.osszes === 0}
-            Nincs találat: „{allapot.eredmeny.q}”.
+            {t('Nincs találat: „{kif}”.', { kif: allapot.eredmeny.q })}
           {:else}
-            {allapot.eredmeny.legalabb ? 'legalább ' : ''}{allapot.eredmeny.osszes} találó fájl{cap ? ` (az első ${KERESES_LIMIT} látszik)` : ''}
+            {allapot.eredmeny.legalabb ? tp('legalább {n} találó fájl', allapot.eredmeny.osszes) : tp('{n} találó fájl', allapot.eredmeny.osszes)}{cap ? ` ${t('(az első {n} látszik)', { n: KERESES_LIMIT })}` : ''}
           {/if}
         {/if}
       </span>
-      <label class="jelentes" title="Szó szerinti és jelentés szerinti (vektoros) találatok együtt, rerankerrel">
+      <label class="jelentes" title={t('Szó szerinti és jelentés szerinti (vektoros) találatok együtt, rerankerrel')}>
         <input type="checkbox" checked={allapot.jelentes} onchange={(e) => allapot.jelentesValt(e.currentTarget.checked)} />
-        Jelentés szerint
+        {t('Jelentés szerint')}
       </label>
     </div>
 
@@ -280,21 +281,21 @@
     <div class="eredmenyek gorgeto" bind:this={lista} onscroll={gorges}>
       {#if !allapot.q.trim()}
         <div class="sugo">
-          <p class="sugo-cim">Keresőnyelv</p>
+          <p class="sugo-cim">{t('Keresőnyelv')}</p>
           <dl>
-            <dt>szó szó</dt><dd>mindkettő szerepel (ékezet- és kis-nagybetű-független)</dd>
-            <dt>"pontos kifejezés"</dt><dd>egymás után, ebben a sorrendben</dd>
-            <dt>a OR b</dt><dd>bármelyik</dd>
-            <dt>-szó</dt><dd>ne szerepeljen</dd>
-            <dt>(a OR b) c</dt><dd>csoportosítás zárójellel</dd>
-            <dt>path:mappa</dt><dd>az útban; <code>file:név</code> a fájlnévben</dd>
-            <dt>tag:#címke</dt><dd>címkével (az alcímkék is)</dd>
-            <dt>line:(a b)</dt><dd>ugyanabban a sorban</dd>
-            <dt>/regex/</dt><dd>reguláris kifejezés a tartalomban</dd>
+            <dt>{t('szó szó')}</dt><dd>{t('mindkettő szerepel (ékezet- és kis-nagybetű-független)')}</dd>
+            <dt>{t('"pontos kifejezés"')}</dt><dd>{t('egymás után, ebben a sorrendben')}</dd>
+            <dt>a OR b</dt><dd>{t('bármelyik')}</dd>
+            <dt>{t('-szó')}</dt><dd>{t('ne szerepeljen')}</dd>
+            <dt>(a OR b) c</dt><dd>{t('csoportosítás zárójellel')}</dd>
+            <dt>{t('path:mappa')}</dt><dd>{t('az útban;')} <code>{t('file:név')}</code> {t('a fájlnévben')}</dd>
+            <dt>{t('tag:#címke')}</dt><dd>{t('címkével (az alcímkék is)')}</dd>
+            <dt>line:(a b)</dt><dd>{t('ugyanabban a sorban')}</dd>
+            <dt>/regex/</dt><dd>{t('reguláris kifejezés a tartalomban')}</dd>
           </dl>
         </div>
       {:else if elemek.length}
-        <div id="{id}-lista" class="lista" role="listbox" aria-label="Találatok">
+        <div id="{id}-lista" class="lista" role="listbox" aria-label={t('Találatok')}>
           {#each modell as k (k.fajl.ut)}
             {@const fej = fejSor(k.fajl)}
             {@const fi = sorszamok.get(`f:${k.fajl.ut}`) ?? 0}
@@ -315,8 +316,8 @@
               >
                 <span class="ikon"><JegyzetIkon ut={fej.ut} tipus={tipusOf(fej.ut)} meret={14} /></span>
                 <span class="nev">{@render kiemelt(fej.nev)}</span>
-                {#if egyezes(k.fajl)}<span class="db">{egyezes(k.fajl)} egyezés</span>{:else if k.fajl.darab}<span class="db">jelentés szerint</span>{/if}
-                {#if fej.felirat}<span class="db">átirat</span>{/if}
+                {#if egyezes(k.fajl)}<span class="db">{tp('{n} egyezés', egyezes(k.fajl))}</span>{:else if k.fajl.darab}<span class="db">{t('jelentés szerint')}</span>{/if}
+                {#if fej.felirat}<span class="db">{t('átirat')}</span>{/if}
               </div>
               {#if fej.mappa}<div class="mappa">{@render kiemelt(fej.mappa)}</div>{/if}
               {#if kivagasok}
@@ -339,7 +340,7 @@
                     <span class="sor">{#each darabok(h, 60, 150) as d, di (di)}{#if d.jelolt}<mark>{d.t}</mark>{:else}{d.t}{/if}{/each}</span>
                   </div>
                 {/each}
-                {#if k.tobb}<div class="tobb">+{k.tobb} további sor</div>{/if}
+                {#if k.tobb}<div class="tobb">{t('+{n} további sor', { n: k.tobb })}</div>{/if}
               {/if}
             </div>
           {/each}
@@ -348,14 +349,14 @@
     </div>
 
     <div class="lablec">
-      <span><kbd>↑↓</kbd> lépés</span>
-      <span><kbd>↵</kbd> megnyitás</span>
-      <span><Billentyu akkord="Mod+Enter" /> új fülben</span>
-      <span><Billentyu akkord="Mod+Alt+Enter" /> osztásban</span>
-      <span><kbd>Tab</kbd> keresés a fájlban</span>
-      <span><Billentyu akkord="Mod+G" /> kivágások {kivagasok ? 'elrejtése' : 'mutatása'}</span>
-      <span><Billentyu akkord="Alt+Enter" /> link beszúrása</span>
-      <span><kbd>esc</kbd> bezárás</span>
+      <span><kbd>↑↓</kbd> {t('lépés|lablec')}</span>
+      <span><kbd>↵</kbd> {t('megnyitás')}</span>
+      <span><Billentyu akkord="Mod+Enter" /> {t('új fülben')}</span>
+      <span><Billentyu akkord="Mod+Alt+Enter" /> {t('osztásban')}</span>
+      <span><kbd>Tab</kbd> {t('keresés a fájlban')}</span>
+      <span><Billentyu akkord="Mod+G" /> {kivagasok ? t('kivágások elrejtése') : t('kivágások mutatása')}</span>
+      <span><Billentyu akkord="Alt+Enter" /> {t('link beszúrása')}</span>
+      <span><kbd>esc</kbd> {t('bezárás')}</span>
     </div>
   </div>
 </Atfedes>

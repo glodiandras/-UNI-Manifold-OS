@@ -3,6 +3,7 @@
   újak a napi limitig, egy menetben (szóköz fordít, 1–4 értékel, ⌘Z visszavon); a kártya forrására egy kattintás ugrik.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { trackerKuld } from '../../kartya/beagyazas';
   import { IsmetlesMenet } from '../../kartya/menet.svelte';
@@ -17,13 +18,13 @@
 <div class="vezerlo-tanulas">
   {#if menet.fazis !== 'betolt' && menet.fazis !== 'hiba'}
     <p class="osszeg">
-      Ma: <b>{menet.esedekes}</b> esedékes · <b>{menet.uj}</b> új
+      {t('Ma:')} <b>{menet.esedekes}</b> {t('esedékes')} · <b>{menet.uj}</b> {t('új')}
       {#if menet.fazis === 'kesz' || menet.fazis === 'ures'}
-        <button class="m-gomb link" type="button" onclick={() => menet.betolt()}>Frissítés</button>
+        <button class="m-gomb link" type="button" onclick={() => menet.betolt()}>{t('Frissítés')}</button>
       {/if}
     </p>
   {/if}
-  <Pakli {menet} cim="Mai ismétlés" />
+  <Pakli {menet} cim={t('Mai ismétlés')} />
 </div>
 
 <style>

@@ -3,6 +3,8 @@
 // A munkatér saját mappáját a core adja (`GET /api/vault/sema` → `kisero.kartya`): a kapcsolat felépülésekor a felület
 // `beallitKiserok`-ot (osszefoglalas/allando.ts) hívja, ami ide is átírja.
 
+import { locale, t, tk } from '../lib/i18n';
+
 export let KARTYA_MAPPA = 'Manifold - Cards';
 
 /** A munkatér kártyamappája (üres vagy hiányzó érték: marad az alap). */
@@ -17,21 +19,21 @@ export function kartyaUt(ut: string | undefined | null): boolean {
 
 /** Az Anki válaszgombjai (`docs/C23-TERV.md` 3.): 1 Again · 2 Hard · 3 Good · 4 Easy. */
 export const GOMBOK = [
-  { jegy: 1, nev: 'Újra' },
-  { jegy: 2, nev: 'Nehéz' },
-  { jegy: 3, nev: 'Jó' },
-  { jegy: 4, nev: 'Könnyű' },
+  { jegy: 1, nev: tk('Újra') },
+  { jegy: 2, nev: tk('Nehéz') },
+  { jegy: 3, nev: tk('Jó') },
+  { jegy: 4, nev: tk('Könnyű') },
 ] as const;
 
 /** Az intervallum rövid felirata a gombon (másodpercből): „1 p”, „10 p”, „2 ó”, „3 n”, „2 hó”, „1,5 év”. */
 export function intervallum(mp: number | null | undefined): string {
   if (mp == null || !Number.isFinite(mp)) return '';
   const s = Math.max(0, Math.round(mp));
-  if (s < 60) return `${s} mp`;
-  if (s < 3600) return `${Math.round(s / 60)} p`;
-  if (s < 86400) return `${Math.round(s / 3600)} ó`;
+  if (s < 60) return t('{n} mp', { n: s });
+  if (s < 3600) return t('{n} p', { n: Math.round(s / 60) });
+  if (s < 86400) return t('{n} ó', { n: Math.round(s / 3600) });
   const nap = s / 86400;
-  if (nap < 30) return `${Math.round(nap)} n`;
-  if (nap < 365) return `${Math.round(nap / 30)} hó`;
-  return `${(Math.round((nap / 365) * 10) / 10).toString().replace('.', ',')} év`;
+  if (nap < 30) return t('{n} n', { n: Math.round(nap) });
+  if (nap < 365) return t('{n} hó', { n: Math.round(nap / 30) });
+  return t('{n} év', { n: (Math.round((nap / 365) * 10) / 10).toString().replace('.', locale() === 'hu-HU' ? ',' : '.') });
 }

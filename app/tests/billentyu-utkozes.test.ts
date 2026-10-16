@@ -51,7 +51,10 @@ function cmKulcsok(): Map<string, string> {
 
 /** A regiszter billentyű-leírásai a forrásban: a `billentyu: '…'` kulcs és a pozicionális alak (a szerkesztő
  *  `formaz(id, név, jel, 'Mod+B')` segédje) — különben a ⌘I ütközése a CM-mel láthatatlan maradna. */
-const BILLENTYU_MINTAK = [/billentyu:\s*'([^'$]+)'/g, /formaz\(\s*'[^']*',\s*'[^']*',\s*'[^']*',\s*'([^'$]+)'\s*\)/g];
+const BILLENTYU_MINTAK = [
+  /billentyu:\s*'([^'$]+)'/g,
+  /formaz\(\s*'[^']*',\s*(?:tk\(\s*'[^']*'\s*\)|'[^']*'),\s*'[^']*',\s*'([^'$]+)'\s*\)/g,
+];
 function* billentyuLeirasok(forras: string): Generator<string> {
   for (const minta of BILLENTYU_MINTAK) for (const m of forras.matchAll(minta)) yield m[1];
 }
@@ -83,6 +86,11 @@ const KIVETELEK: Record<string, string> = {
 };
 
 describe('billentyű-ütközés a CodeMirror keymapjeivel (C21, T148)', () => {
+  it('a fordítási jelölő nem rejtheti el a formázó gyorsbillentyűjét', () => {
+    expect([...billentyuLeirasok("formaz('dolt', tk('Dőlt'), '*', 'Mod+I')")]).toEqual(['Mod+I']);
+    expect([...billentyuLeirasok("formaz('dolt', 'Dőlt', '*', 'Mod+I')")]).toEqual(['Mod+I']);
+  });
+
   it('a CM-leírás átalakítása', () => {
     expect(cmAkkord('Mod-Shift-l')).toBe('Mod+Shift+l');
     expect(cmAkkord('Shift-Mod-k')).toBe('Mod+Shift+k');

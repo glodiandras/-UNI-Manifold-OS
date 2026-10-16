@@ -4,6 +4,7 @@
   Az adatot a `JobbPanel` kéri (`lib/kereses/hasonlo.svelte.ts`), ez a komponens csak megjeleníti.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import Ikon from '../../lib/ikon/Ikon.svelte';
   import { ArrowRight, Link2 } from '../../lib/ikon/ikonok';
   import { allapotSzoveg, pontSzazalek, type HasonloValasz } from '../../lib/kereses/hasonlo.svelte';
@@ -20,27 +21,27 @@
 {#if hiba}
   <p class="hiba" role="alert">{hiba}</p>
 {:else if !valasz}
-  <p class="ures" role="status">{betolt ? 'Betöltés…' : ''}</p>
+  <p class="ures" role="status">{betolt ? t('Betöltés…') : ''}</p>
 {:else if valasz.allapot !== 'ok'}
   <p class="ures" role="status">{allapotSzoveg(valasz.allapot)}</p>
 {:else if !valasz.talalatok.length}
-  <p class="ures" role="status">Nincs hasonló jegyzet.</p>
+  <p class="ures" role="status">{t('Nincs hasonló jegyzet.')}</p>
 {:else}
-  {#if valasz.elavult}<p class="ures">A jegyzet vektora egy korábbi változatáé — a vektorindex hamarosan frissíti.</p>{/if}
-  <ul class="lista" aria-label="Hasonló jegyzetek">
-    {#each valasz.talalatok as t (t.ut)}
+  {#if valasz.elavult}<p class="ures">{t('A jegyzet vektora egy korábbi változatáé — a vektorindex hamarosan frissíti.')}</p>{/if}
+  <ul class="lista" aria-label={t('Hasonló jegyzetek')}>
+    {#each valasz.talalatok as h (h.ut)}
       <li>
-        <button type="button" class="elem" title={t.ut} onclick={(e) => onnyit(t.ut, e)}>
+        <button type="button" class="elem" title={h.ut} onclick={(e) => onnyit(h.ut, e)}>
           <span class="szoveg">
-            <span class="nev">{fajlNev(t.ut).replace(/\.md$/i, '')}</span>
-            {#if mappa(t.ut)}<span class="mappa">{mappa(t.ut)}</span>{/if}
+            <span class="nev">{fajlNev(h.ut).replace(/\.md$/i, '')}</span>
+            {#if mappa(h.ut)}<span class="mappa">{mappa(h.ut)}</span>{/if}
           </span>
-          {#if t.kimeno || t.bejovo}
-            <span class="jel" title={t.kimeno ? 'A megnyitott jegyzet már linkeli' : 'Ez linkeli a megnyitott jegyzetet'}>
-              <Ikon ikon={t.kimeno ? ArrowRight : Link2} meret={14} />
+          {#if h.kimeno || h.bejovo}
+            <span class="jel" title={h.kimeno ? t('A megnyitott jegyzet már linkeli') : t('Ez linkeli a megnyitott jegyzetet')}>
+              <Ikon ikon={h.kimeno ? ArrowRight : Link2} meret={14} />
             </span>
           {/if}
-          <span class="pont" title="hasonlóság">{pontSzazalek(t.pont)}</span>
+          <span class="pont" title={t('hasonlóság')}>{pontSzazalek(h.pont)}</span>
         </button>
       </li>
     {/each}

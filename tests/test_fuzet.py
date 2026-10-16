@@ -231,7 +231,7 @@ class MozgatTest(_Core):
                                                                "lemez": "ATTCHMNTS - photos/IMG_1.jpg", "forras": str(p),
                                                                "sha256": sha, "masolat": False}]}), encoding="utf-8")
         uz = gepi_iras.helyreallit(self.cfg)
-        self.assertIn("visszaállt", uz[0])
+        self.assertIn("was restored", uz[0])
         self.assertTrue(p.is_file() and not cel.exists())
 
     @csak_darwin

@@ -5,6 +5,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { ApiHiba, kerdez } from '../lib/core/api';
+  import { t } from '../lib/i18n';
   import { csend } from '../lib/elrendezes/csend.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { FileText } from '../lib/ikon/ikonok';
@@ -33,7 +34,7 @@
   });
 
   const ures = $derived(
-    hiba ?? (lista === null ? 'Betöltés…' : lista.sablonok.length ? `Nincs találat erre: „${lekerdezes.trim()}”` : `A sablonmappa (${lista.mappa}) még üres.`),
+    hiba ?? (lista === null ? t('Betöltés…') : lista.sablonok.length ? t('Nincs találat erre: „{kereses}”', { kereses: lekerdezes.trim() }) : t('A sablonmappa ({mappa}) még üres.', { mappa: lista.mappa })),
   );
 
   const ujMod = felulet.sablonUj !== null;
@@ -56,13 +57,13 @@
   }
 </script>
 
-<Atfedes cimke={ujMod ? "Új jegyzet sablonból" : "Sablon beszúrása"} nev="sablon" onbezar={bezar}>
+<Atfedes cimke={ujMod ? t('Új jegyzet sablonból') : t('Sablon beszúrása')} nev="sablon" onbezar={bezar}>
   <ListaValaszto
     elemek={talalatok}
     kulcs={(s) => s.ut}
     bind:lekerdezes
-    helyorzo="Sablon keresése…"
-    cimke="Sablon keresése"
+    helyorzo={t('Sablon keresése…')}
+    cimke={t('Sablon keresése')}
     {ures}
     onvalaszt={valaszt}
     onbezar={bezar}
@@ -72,9 +73,9 @@
       <span class="nev">{s.nev}</span>
     {/snippet}
     {#snippet lablec()}
-      <span><kbd>↑↓</kbd> választás</span>
-      <span><kbd>↩</kbd> {ujMod ? 'új jegyzet ebből' : 'beszúrás a kurzornál'}</span>
-      <span><kbd>esc</kbd> bezárás</span>
+      <span><kbd>↑↓</kbd> {t('választás')}</span>
+      <span><kbd>↩</kbd> {ujMod ? t('új jegyzet ebből') : t('beszúrás a kurzornál')}</span>
+      <span><kbd>esc</kbd> {t('bezárás')}</span>
     {/snippet}
   </ListaValaszto>
 </Atfedes>

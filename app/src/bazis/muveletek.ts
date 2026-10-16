@@ -3,6 +3,7 @@
 // ezért a nézet `beallitas`-a (a nyers kulcsok) az igazság, nem a válasz oszlopai.
 
 import type { Muvelet, Valasz } from './tipusok';
+import { tk } from '../lib/i18n';
 
 export type Irany = 'ASC' | 'DESC';
 export interface Rendezes {
@@ -15,20 +16,20 @@ export const MAX_SZELESSEG = 900;
 
 /** A beépített összesítők (Obsidian) magyar névvel; a kulcs a `.base`-ben álló név. */
 export const OSSZESITOK: ReadonlyArray<{ nev: string; felirat: string }> = [
-  { nev: 'Average', felirat: 'Átlag' },
-  { nev: 'Min', felirat: 'Minimum' },
-  { nev: 'Max', felirat: 'Maximum' },
-  { nev: 'Sum', felirat: 'Összeg' },
-  { nev: 'Range', felirat: 'Terjedelem' },
-  { nev: 'Median', felirat: 'Medián' },
-  { nev: 'Stddev', felirat: 'Szórás' },
-  { nev: 'Earliest', felirat: 'Legkorábbi' },
-  { nev: 'Latest', felirat: 'Legkésőbbi' },
-  { nev: 'Checked', felirat: 'Bejelölt' },
-  { nev: 'Unchecked', felirat: 'Üres jelölő' },
-  { nev: 'Empty', felirat: 'Üres' },
-  { nev: 'Filled', felirat: 'Kitöltött' },
-  { nev: 'Unique', felirat: 'Egyedi' },
+  { nev: 'Average', felirat: tk('Átlag') },
+  { nev: 'Min', felirat: tk('Minimum') },
+  { nev: 'Max', felirat: tk('Maximum') },
+  { nev: 'Sum', felirat: tk('Összeg') },
+  { nev: 'Range', felirat: tk('Terjedelem') },
+  { nev: 'Median', felirat: tk('Medián') },
+  { nev: 'Stddev', felirat: tk('Szórás') },
+  { nev: 'Earliest', felirat: tk('Legkorábbi') },
+  { nev: 'Latest', felirat: tk('Legkésőbbi') },
+  { nev: 'Checked', felirat: tk('Bejelölt') },
+  { nev: 'Unchecked', felirat: tk('Üres jelölő') },
+  { nev: 'Empty', felirat: tk('Üres') },
+  { nev: 'Filled', felirat: tk('Kitöltött') },
+  { nev: 'Unique', felirat: tk('Egyedi') },
 ];
 
 function nyers(v: Valasz): Record<string, unknown> {

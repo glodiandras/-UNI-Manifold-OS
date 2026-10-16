@@ -24,13 +24,17 @@ def start() -> int:
     import json
     import os
     from . import config, gyokerek, server
+    from .hibakod import angol_uzenet, json_param
     # 35./54./56. döntés: a felületi API-titok csak a core-é — olvasás után kikerül a környezetből, így a gyermekfolyamatok
     # (modell-worker, EventKit-segéd, ffmpeg, git, lépések) nem öröklik
     titok = os.environ.pop("MOS_API_TITOK", None)
     try:
         cfg = config.load()
     except config.ConfigError as e:
-        print(json.dumps({"hiba": e.kod, "param": e.param, "uzenet": str(e)}, ensure_ascii=False), flush=True)
+        param = json_param(e.param)
+        print(json.dumps({"hiba": e.kod, "param": param,
+                          "uzenet": angol_uzenet(e.kod, param, "The core could not start. Check its configuration.")},
+                         ensure_ascii=False), flush=True)
         print(f"[core] a konfiguráció nem tölthető be ({e.kod}): {e}", file=sys.stderr, flush=True)
         return KONFIG_HIBA_KILEPES
     gyokerek.rogzit(cfg, os.environ)

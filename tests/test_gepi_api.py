@@ -269,7 +269,7 @@ class GepiIndulasTest(_Szerver):
         self.assertFalse((self.cfg.path("run") / gepi_iras.NAPLO).exists())
         with ws_csatlakozik(self.port) as ws:
             hello = json.loads(ws.recv(timeout=5))
-        self.assertTrue(any("gépi írás megszakadt" in u for u in hello["figyelmeztetesek"]), hello)
+        self.assertTrue(any("A machine write was interrupted" in u for u in hello["figyelmeztetesek"]), hello)
 
 
 if __name__ == "__main__":

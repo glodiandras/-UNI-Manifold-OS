@@ -3,6 +3,7 @@
   jegyzetnél), a nézet a `BazisNezet`. Az aktív nézet sorszáma a fül tartós állapotában marad.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { onMount, untrack } from 'svelte';
   import { ApiHiba } from '../lib/core/api';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
@@ -34,8 +35,8 @@
         if (!el) return;
         hiba =
           e instanceof ApiHiba && e.statusz === 404
-            ? 'Az adatbázis-nézet nincs meg (törölték vagy áthelyezték).'
-            : `Az adatbázis-nézet nem tölthető be: ${e instanceof Error ? e.message : e}`;
+            ? t('Az adatbázis-nézet nincs meg (törölték vagy áthelyezték).')
+            : t('Az adatbázis-nézet nem tölthető be: {hiba}', { hiba: e instanceof Error ? e.message : String(e) });
       },
     );
     return () => {
@@ -61,7 +62,7 @@
   {:else if hiba}
     <p class="hiba" role="alert">{hiba}</p>
   {:else}
-    <p class="betoltes" role="status">Betöltés…</p>
+    <p class="betoltes" role="status">{t('Betöltés…')}</p>
   {/if}
 </article>
 

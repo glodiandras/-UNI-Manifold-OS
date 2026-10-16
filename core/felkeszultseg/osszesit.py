@@ -114,7 +114,8 @@ def lista(a: Adatok, nap: date) -> dict:
         dolgozatok = a.dolgozatok()
         ki["naptar"] = _naptar_adat(a)
     except Hiany as e:
-        ki["hiba"] = str(e)
+        ki.update({"hiba": "The calendar source is not available. Sync the calendar and try again.",
+                   "kod": "felkeszultseg.forras_hianyzik", "param": {}})
         dolgozatok = []
     for d in dolgozatok:
         try:
@@ -124,7 +125,8 @@ def lista(a: Adatok, nap: date) -> dict:
                                                        "esedekes_kartya", "uj_kartya")} | {"temak_db": len(e["temak"])})
         except Exception as x:                    # noqa: BLE001 — egy dolgozat hibája nem viszi el a többit
             ki["dolgozatok"].append({"azon": d["azon"], "cim": d["cim"], "nap": d["nap"], "napok": d["napok"],
-                                     "lezart": d["lezart"], "hiba": str(x) or x.__class__.__name__})
+                                     "lezart": d["lezart"], "hiba": "This assessment could not be loaded. Try again.",
+                                     "kod": "felkeszultseg.ertekeles_hiba", "param": {}})
     ki["adatok"] = a.adatok
     ki["figyelmeztetesek"] = a.figyelmeztetesek
     return ki
@@ -220,10 +222,10 @@ def reszlet(a: Adatok, azon: str) -> dict:
     try:
         dolgozatok = a.dolgozatok()
     except Hiany as e:
-        raise HttpError(404, str(e)) from None
+        raise HttpError(404, str(e), kod="felkeszultseg.forras_hianyzik") from None
     d = next((x for x in dolgozatok if x["azon"] == azon), None)
     if d is None:
-        raise HttpError(404, "nincs ilyen dolgozat a naptárban (vagy már kívül esik az ablakon)")
+        raise HttpError(404, "nincs ilyen dolgozat a naptárban (vagy már kívül esik az ablakon)", kod="felkeszultseg.osszesit.nincs_dolgozat")
     a.forrasok_betolt()
     e = ertekel(a, d)
     if d["kotes"] is None:

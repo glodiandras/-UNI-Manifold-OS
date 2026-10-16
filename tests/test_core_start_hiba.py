@@ -79,7 +79,8 @@ class CoreStartHibaTest(unittest.TestCase):
         with mock.patch.object(workspace, "nyit", side_effect=hiba):
             self.assertEqual(server.start(cfg, out=out), server.KONFIG_HIBA_KILEPES)
         self.assertEqual(json.loads(out.getvalue().splitlines()[0]),
-                         {"hiba": "workspace_csere", "param": {"x": "/p"}, "uzenet": "próba"})
+                         {"hiba": "workspace_csere", "param": {"x": "/p"},
+                          "uzenet": "A different workspace is now at this location. Reopen the intended workspace."})
         self.assertIsNone(server.zar_foglalt(cfg.path("run") / "core.lock"))
         self.assertIsNone(server.zar_foglalt(server.vault_or_ut(cfg)))
 

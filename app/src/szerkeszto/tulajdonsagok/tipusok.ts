@@ -60,6 +60,8 @@ export interface Sema {
   /** a munkatér kísérőmappái (`core/kiserok.py`) és közös előtagjuk; a felület állandói ebből igazodnak (`beallitKiserok`) */
   kisero?: Record<string, string>;
   kisero_elotag?: string;
+  /** A jegyzetek nyelve; nem a felület nyelve. */
+  nyelv?: string;
   /** a séma szigora: `ki` | `tanacsado` | `szigoru` */
   mod?: string;
 }

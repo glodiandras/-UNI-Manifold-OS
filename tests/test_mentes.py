@@ -323,9 +323,11 @@ class HibaKezelesTest(Alap):
         self.addCleanup(app.queue.close, 0)
         self.addCleanup(app.index.leallit)
         app.indulas()
-        uz = [u for u in app.indulasi_uzenetek if "belső lemezes mentés nem sikerült" in u]
+        uz = [u for u in app.indulasi_uzenetek if "previous local backup failed" in u]
         self.assertEqual(len(uz), 1, app.indulasi_uzenetek)
-        self.assertIn("tele van", uz[0])
+        self.assertIn("vault", uz[0])
+        self.assertIn(str(self.cfg.path("state") / mentes.HIBA_FAJL), uz[0])
+        self.assertEqual(mentes.hiba_olvas(self.cfg)["hibak"]["vault"], "a belső lemez tele van")
 
     def test_a_doctor_kulon_sorban_jelzi_a_hibas_mentest(self):
         home = Path(self._t.name) / "home"

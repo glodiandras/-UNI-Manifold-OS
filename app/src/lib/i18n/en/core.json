@@ -1,0 +1,17 @@
+{
+  "A core elutasította a kérést (400).": "The core rejected the request (400).",
+  "A core megtagadta a kérést (403).": "The core refused the request (403).",
+  "Nem található (404).": "Not found (404).",
+  "A core nem válaszolt időben (408).": "The core did not respond in time (408).",
+  "A kérés túl nagy (413).": "The request is too large (413).",
+  "Az erőforrás foglalt (423).": "The resource is busy (423).",
+  "A core belső hibája (500).": "The core hit an internal error (500).",
+  "A core nem érhető el (502).": "The core is not reachable (502).",
+  "A core most nem tudja kiszolgálni a kérést (503).": "The core cannot handle the request right now (503).",
+  "A core nem válaszolt időben (504).": "The core did not respond in time (504).",
+  "Nincs elég hely a lemezen (507).": "There is not enough space on the disk (507).",
+  "A core hibát adott ({statusz}).": "The core returned an error ({statusz}).",
+  "A core nem érhető el (megszakadt a kapcsolat).": "The core is not reachable (the connection was lost).",
+  "A core válasza nem értelmezhető.": "The core's response could not be read.",
+  "időtúllépés": "timed out"
+}

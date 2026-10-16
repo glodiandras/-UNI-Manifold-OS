@@ -3,6 +3,8 @@
 // (`POST /api/feladatok {csoport}`) staging-forrást készít belőle, és a vaultba viszi (gépi írás, tételenként visszavonható).
 // A vaultba a felület nem ír.
 
+import { t } from '../i18n';
+
 import { kerdez } from '../core/api';
 import type { Feladat } from './tipusok';
 
@@ -35,7 +37,7 @@ export async function videoFeltolt(
   keres = kerdez,
 ): Promise<Feladat> {
   const videok = fajlok.filter(videoFajl);
-  if (!videok.length) throw new Error('Nincs videófájl (mp4, m4v, mov, mkv, webm, avi).');
+  if (!videok.length) throw new Error(t('Nincs videófájl (mp4, m4v, mov, mkv, webm, avi).'));
   let csoport: string | undefined;
   for (const [i, f] of videok.entries()) {
     let offset = 0;

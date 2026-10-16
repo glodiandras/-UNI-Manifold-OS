@@ -117,12 +117,12 @@ final class CoreProcess {
                 // a `{"hiba"}` sor a kilépés után is beérkezhet a stdout kezelőjébe: a stderr `(kod)`-ja ugyanazt mondja
                 pending?(.failure(.konfig(kod: CoreProcess.stderrKod(err) ?? "konfig_hiba", uzenet: Eletciklus.farok(err))))
             }
-            else { pending?(.failure(.failed(err.isEmpty ? "a core kilépett az indulás előtt" : Eletciklus.farok(err)))) }
+            else { pending?(.failure(.failed(err.isEmpty ? L("a core kilépett az indulás előtt") : Eletciklus.farok(err)))) }
             DispatchQueue.main.async { self.onExit?() }
         }
         do { try process.run() } catch {
             handshake = nil
-            completion(.failure(.failed("a core nem indítható: \(error.localizedDescription)")))
+            completion(.failure(.failed(L("a core nem indítható: %@", error.localizedDescription))))
         }
     }
 
@@ -144,7 +144,7 @@ final class CoreProcess {
     /// minden más → hiba.
     static func kezfogas(_ sor: Data) -> Result<Kezfogas, StartError> {
         guard let obj = try? JSONSerialization.jsonObject(with: sor) as? [String: Any] else {
-            return .failure(.failed("érvénytelen kézfogás: \(String(decoding: sor, as: UTF8.self))"))
+            return .failure(.failed(L("érvénytelen kézfogás: %@", String(decoding: sor, as: UTF8.self))))
         }
         if obj["foglalt"] as? Bool == true {
             return .failure(.foglalt(pid: obj["pid"] as? Int, vault: obj["vault"] as? String))
@@ -157,7 +157,7 @@ final class CoreProcess {
             return .success(Kezfogas(port: port, titok: obj["titok"] as? String, vault: vault,
                                      munkaterId: obj["munkater_id"] as? String, elrendezes: obj["elrendezes"] as? String))
         }
-        return .failure(.failed("érvénytelen kézfogás: \(String(decoding: sor, as: UTF8.self))"))
+        return .failure(.failed(L("érvénytelen kézfogás: %@", String(decoding: sor, as: UTF8.self))))
     }
 
     /// A stderr `[core] … (<kod>): …` sorából a hibakód (a 78-as kilépésnél, ha a kézfogás-sor nem ért be).
@@ -175,19 +175,19 @@ final class CoreProcess {
         let reszlet = uzenet.isEmpty ? "" : "\n\n\(uzenet)"
         switch kod {
         case "nincs_vault":
-            return "Nincs megadva a vault (a jegyzetek mappája). Fejlesztői checkoutban: bin/mos portable init --vault <mappa>." + reszlet
+            return L("Nincs megadva a vault (a jegyzetek mappája). Fejlesztői checkoutban: bin/mos portable init --vault <mappa>.") + reszlet
         case "nem_workspace", "nincs_workspace":
-            return "A mappa még nem Manifold-munkatér. Létrehozása: mos workspace letrehoz <mappa>." + reszlet
+            return L("A mappa még nem Manifold-munkatér. Létrehozása: mos workspace letrehoz <mappa>.") + reszlet
         case "vault_nem_elerheto":
-            return "A munkatér mappája nem érhető el. Csatlakoztatva van a kötet?" + reszlet
+            return L("A munkatér mappája nem érhető el. Csatlakoztatva van a kötet?") + reszlet
         case "workspace_ujabb":
-            return "Ezt a munkateret a Manifold egy újabb változata hozta létre. Frissítsd az alkalmazást." + reszlet
+            return L("Ezt a munkateret a Manifold egy újabb változata hozta létre. Frissítsd az alkalmazást.") + reszlet
         case "settings_toml_hibas", "workspace_toml_hibas", "config_toml_hibas":
-            return "Egy beállításfájl hibás, ezért a Manifold nem indul (\(kod))." + reszlet
+            return L("Egy beállításfájl hibás, ezért a Manifold nem indul (%@).", kod) + reszlet
         case "iras_a_kodba":
-            return "A beállítások az alkalmazás csak olvasható mappájába írnának (\(kod))." + reszlet
+            return L("A beállítások az alkalmazás csak olvasható mappájába írnának (%@).", kod) + reszlet
         default:
-            return "A konfiguráció nem tölthető be (\(kod))." + reszlet
+            return L("A konfiguráció nem tölthető be (%@).", kod) + reszlet
         }
     }
 

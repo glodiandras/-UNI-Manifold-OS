@@ -4,6 +4,7 @@
   után a Ma oldal adata frissül; hiba esetén az üzenet a kártyán áll.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { javaslatIdo, napKulcs } from './datum';
   import { javaslatKezelo } from './javaslat.svelte';
   import type { Hiba, JavaslatSzakasz } from './tipusok';
@@ -17,9 +18,9 @@
 
 {#if szakasz && hibas(szakasz)}
   <!-- a javaslat-forrás hibája nem csendes (C32; NAPLO Ötletek, C29), de nem is riaszt: a dolgozat-szakasz él -->
-  <p class="javaslat-hiba" role="status">A tanulásiblokk-javaslatok most nem tölthetők be: {szakasz.hiba}</p>
+  <p class="javaslat-hiba" role="status">{t('A tanulásiblokk-javaslatok most nem tölthetők be:')} {szakasz.hiba}</p>
 {:else if lista.length}
-  <h3 id="ma-javaslat">Tanulási blokk javaslata</h3>
+  <h3 id="ma-javaslat">{t('Tanulási blokk javaslata')}</h3>
   {#each lista as j (j.id)}
     {@const foglalt = javaslatKezelo.foglalt.includes(j.id)}
     <div class="javaslat" role="group" aria-label={j.cim}>
@@ -28,8 +29,8 @@
       {#if j.indok}<p class="indok">{j.indok}</p>{/if}
       {#if javaslatKezelo.hibak[j.id]}<p class="hiba" role="alert">{javaslatKezelo.hibak[j.id]}</p>{/if}
       <div class="gombok">
-        <button type="button" class="m-gomb semleges gomb" disabled={foglalt} onclick={() => void javaslatKezelo.dont(j.id, 'jovahagy')}>Beírom a naptárba</button>
-        <button type="button" class="m-gomb semleges gomb" disabled={foglalt} onclick={() => void javaslatKezelo.dont(j.id, 'elvet')}>Elvetem</button>
+        <button type="button" class="m-gomb semleges gomb" disabled={foglalt} onclick={() => void javaslatKezelo.dont(j.id, 'jovahagy')}>{t('Beírom a naptárba')}</button>
+        <button type="button" class="m-gomb semleges gomb" disabled={foglalt} onclick={() => void javaslatKezelo.dont(j.id, 'elvet')}>{t('Elvetem')}</button>
       </div>
     </div>
   {/each}

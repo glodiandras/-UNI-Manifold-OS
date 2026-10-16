@@ -1,6 +1,8 @@
 // A címkefa adata (C11b): `/api/vault/cimkek` — minden címke és minden szülője a `/` mentén, számlálóval. A felület
 // a fát ebből építi (`cimkeFa`); a szűrt lista a keresés `tag:` operátorából jön (a gyerekeket is hozza).
 
+import { locale } from '../i18n';
+
 import { ApiHiba, kerdez } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 
@@ -24,7 +26,7 @@ export interface CimkeFaElem extends CimkeCsucs {
 
 /** A lapos listából a fa sorai megjelenítési sorrendben (a szülők előtt a gyerekeik), a `nyitott` kulcsokig lenyitva. */
 export function cimkeFa(lista: CimkeCsucs[], nyitott: ReadonlySet<string>): CimkeFaElem[] {
-  const rendezett = [...lista].sort((a, b) => a.kis.localeCompare(b.kis, 'hu', { numeric: true }));
+  const rendezett = [...lista].sort((a, b) => a.kis.localeCompare(b.kis, locale(), { numeric: true }));
   const szulok = new Set(rendezett.map((c) => c.kis));
   const gyerekes = new Set<string>();
   for (const c of rendezett) {

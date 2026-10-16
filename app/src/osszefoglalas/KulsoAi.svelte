@@ -7,6 +7,7 @@
   import { onMount } from 'svelte';
   import { ApiHiba } from '../lib/core/api';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+  import { t, tk } from '../lib/i18n';
   import { kornyezet } from '../lib/kornyezet';
   import Atfedes from '../lib/ui/Atfedes.svelte';
   import { vagolapra } from '../szerkeszto/vagolap';
@@ -17,17 +18,17 @@
   const { felulet } = kornyezet();
   const PELDA = '[{"allitas": "…", "forras": "J1", "idezet": "…"}]';
   const OK_NEV: Record<string, string> = {
-    forras_nelkul: 'forrás (idézet) nélkül',
-    ismeretlen_forras: 'ismeretlen jegyzet-azonosító',
-    kotott: 'az idézet nincs a jegyzetben',
-    hossz: 'az idézet hossza nem megfelelő',
-    tamogatas: 'az idézet nem támasztja alá',
-    kenyes: 'szám vagy név nem szerepel az idézetben',
-    tagadas: 'tagadás eltér',
-    duplikatum: 'ismétlés',
-    ugyanaz_a_hely: 'ugyanarra a helyre épül',
-    allitas_hossz: 'túl rövid vagy hosszú állítás',
-    tiltott_jeloles: 'tiltott jelölés',
+    forras_nelkul: tk('forrás (idézet) nélkül'),
+    ismeretlen_forras: tk('ismeretlen jegyzet-azonosító'),
+    kotott: tk('az idézet nincs a jegyzetben'),
+    hossz: tk('az idézet hossza nem megfelelő'),
+    tamogatas: tk('az idézet nem támasztja alá'),
+    kenyes: tk('szám vagy név nem szerepel az idézetben'),
+    tagadas: tk('tagadás eltér'),
+    duplikatum: tk('ismétlés'),
+    ugyanaz_a_hely: tk('ugyanarra a helyre épül'),
+    allitas_hossz: tk('túl rövid vagy hosszú állítás'),
+    tiltott_jeloles: tk('tiltott jelölés'),
   };
 
   let valasz = $state('');
@@ -60,15 +61,15 @@
     if (!eredmeny?.torzs) return;
     const r = torzsBeszur(eredmeny.torzs);
     if (!r.ok) {
-      hiba = r.hiba ?? 'A beillesztés nem sikerült.';
+      hiba = r.hiba ?? t('A beillesztés nem sikerült.');
       return;
     }
-    ertesitesek.ertesit({ szint: 'siker', cim: 'Az állítások bekerültek', szoveg: `${eredmeny.allitasok} állítás a kurzornál (⌘Z visszavonja); a mentés a szokásos úton megy.` });
+    ertesitesek.ertesit({ szint: 'siker', cim: t('Az állítások bekerültek'), szoveg: t('{n} állítás a kurzornál (⌘Z visszavonja); a mentés a szokásos úton megy.', { n: eredmeny.allitasok }) });
     bezar();
   }
 
   async function masol() {
-    if (eredmeny?.torzs && (await vagolapra(eredmeny.torzs))) ertesitesek.ertesit({ szint: 'siker', cim: 'Az állítások a vágólapon vannak' });
+    if (eredmeny?.torzs && (await vagolapra(eredmeny.torzs))) ertesitesek.ertesit({ szint: 'siker', cim: t('Az állítások a vágólapon vannak') });
   }
 
   function billentyu(e: KeyboardEvent) {
@@ -79,13 +80,13 @@
   }
 </script>
 
-<Atfedes cimke="Külső AI válasza" nev="kulso-ai" onbezar={bezar} szeles>
+<Atfedes cimke={t('Külső AI válasza')} nev="kulso-ai" onbezar={bezar} szeles>
   <div class="doboz">
-    <h2 class="cim">Külső AI válasza</h2>
+    <h2 class="cim">{t('Külső AI válasza')}</h2>
     <p class="seg">
-      Jegyzetek: {kulsoAi.utak.map(jegyzetNev).join(', ')}.
-      {#if !kulsoAi.csomagKesz}A kontextus-csomagot előbb a „Kontextus-csomag a vágólapra” paranccsal tudod a külső AI elé vinni.{/if}
-      Illeszd ide a válaszát (JSON); a forráshűség-kapu csak azt engedi át, ami a jegyzet szó szerinti mondatával alátámasztott.
+      {t('Jegyzetek: {lista}.', { lista: kulsoAi.utak.map(jegyzetNev).join(', ') })}
+      {#if !kulsoAi.csomagKesz}{t('A kontextus-csomagot előbb a „Kontextus-csomag a vágólapra” paranccsal tudod a külső AI elé vinni.')}{/if}
+      {t('Illeszd ide a válaszát (JSON); a forráshűség-kapu csak azt engedi át, ami a jegyzet szó szerinti mondatával alátámasztott.')}
     </p>
     <textarea
       bind:this={bevitel}
@@ -95,17 +96,17 @@
       rows="8"
       spellcheck="false"
       placeholder={PELDA}
-      aria-label="A külső AI válasza"
+      aria-label={t('A külső AI válasza')}
     ></textarea>
     {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
     {#if eredmeny}
       <div class="eredmeny" role="status" aria-live="polite">
-        <b>{eredmeny.allitasok} állítás ment át a kapun</b>{eredmeny.elvetett.length ? `, ${eredmeny.elvetett.length} kiesett` : ''}.
-        {#if eredmeny.statisztika.nem_ertelmezheto}A válasz nem értelmezhető JSON-listaként.{/if}
+        <b>{t('{n} állítás ment át a kapun', { n: eredmeny.allitasok })}</b>{eredmeny.elvetett.length ? ', ' + t('{n} kiesett', { n: eredmeny.elvetett.length }) : ''}.
+        {#if eredmeny.statisztika.nem_ertelmezheto}{t('A válasz nem értelmezhető JSON-listaként.')}{/if}
         {#if eredmeny.elvetett.length}
           <ul class="elvetett">
             {#each eredmeny.elvetett.slice(0, 8) as x, i (i)}
-              <li><span>{x.allitas.slice(0, 90)}</span> <small>— {OK_NEV[x.ok] ?? x.ok}</small></li>
+              <li><span>{x.allitas.slice(0, 90)}</span> <small>— {OK_NEV[x.ok] ? t(OK_NEV[x.ok]) : x.ok}</small></li>
             {/each}
           </ul>
         {/if}
@@ -113,13 +114,13 @@
       </div>
     {/if}
     <div class="gombok">
-      <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>Bezár</button>
+      <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>{t('Bezár')}</button>
       {#if eredmeny?.torzs}
-        <button type="button" class="m-gomb semleges masodlagos" onclick={() => void masol()}>Másolás</button>
-        <button type="button" class="m-gomb elso" onclick={beszur}>Beillesztés a kurzornál</button>
+        <button type="button" class="m-gomb semleges masodlagos" onclick={() => void masol()}>{t('Másolás')}</button>
+        <button type="button" class="m-gomb elso" onclick={beszur}>{t('Beillesztés a kurzornál')}</button>
       {:else}
         <button type="button" class="m-gomb elso" disabled={!valasz.trim() || folyik} onclick={() => void feldolgoz()}>
-          {folyik ? 'Ellenőrzés…' : 'Ellenőrzés a kapun'} <kbd>⌘↵</kbd>
+          {folyik ? t('Ellenőrzés…') : t('Ellenőrzés a kapun')} <kbd>⌘↵</kbd>
         </button>
       {/if}
     </div>

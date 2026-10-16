@@ -5,6 +5,7 @@
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { nezetek } from '../lib/elrendezes/nezetek.svelte';
 import { ChartNoAxesColumn, Gauge } from '../lib/ikon/ikonok';
+import { tk } from '../lib/i18n';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import { mediaNezetek } from '../media/aktiv.svelte';
 import { aktivUtKulcs } from '../lib/tracker/aktivFul';
@@ -35,8 +36,8 @@ export function trackerTelepit(reg: Regiszter, felulet: Felulet): () => void {
     }),
   ];
   const leParancsok = reg.regisztralMind([
-    { id: 'manifold.statisztika', nev: 'Statisztika megnyitása', kategoria: 'Manifold', ikon: ChartNoAxesColumn, futtat: nyit('statisztika') },
-    { id: 'manifold.hasznalat', nev: 'Használat megnyitása', kategoria: 'Manifold', ikon: Gauge, futtat: nyit('hasznalat') },
+    { id: 'manifold.statisztika', nev: tk('Statisztika megnyitása'), kategoria: tk('Manifold'), ikon: ChartNoAxesColumn, futtat: nyit('statisztika') },
+    { id: 'manifold.hasznalat', nev: tk('Használat megnyitása'), kategoria: tk('Manifold'), ikon: Gauge, futtat: nyit('hasznalat') },
   ]);
   // parancsonkénti használat: egyetlen megfigyelő a regiszter végrehajtási pontján (azonosító + forrás)
   const leMegfigyelo = reg.megfigyel((id, forras) => trackerKliens.parancs(id, forras));

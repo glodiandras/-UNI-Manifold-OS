@@ -4,6 +4,7 @@
   kattintás a dokumentumot írja; a lábjegyzet-hivatkozás a lap aljára ugrik, a ↩ vissza.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { ensureSyntaxTree } from '@codemirror/language';
   import type { EditorView } from '@codemirror/view';
   import { onDestroy, onMount } from 'svelte';
@@ -15,7 +16,7 @@
   import { dokumentumRenderel } from './olvaso/html';
   import { LustaRajzolo } from './olvaso/lusta';
 
-  let { view, dok, ut, valtozat }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number } = $props();
+  let { view, dok, ut, valtozat, nyelv = '' }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string } = $props();
 
   let gorgeto: HTMLDivElement | undefined = $state();
   let tartalom: HTMLElement | undefined = $state();
@@ -132,8 +133,9 @@
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
   <article
     class="olvaso tipo olvasas md"
+    lang={nyelv}
     bind:this={tartalom}
-    aria-label="Olvasó nézet"
+    aria-label={t('Olvasó nézet')}
     onclick={kattintas}
     onkeydown={billentyu}
     onchange={valtas}

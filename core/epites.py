@@ -19,7 +19,7 @@ RESZEK = {
     "felulet": ("app/src", "app/index.html", "app/package.json", "app/package-lock.json", "app/vite.config.ts",
                 "app/svelte.config.js", "app/tsconfig.json"),
     "mag": ("core", "modulok"),
-    "hej": ("shell/Sources", "shell/Info.plist", "shell/build.sh"),
+    "hej": ("shell/Sources", "shell/Resources", "shell/Info.plist", "shell/build.sh"),
 }
 
 # A tartalék bejárás (git nélkül) ezeket a mappákat kihagyja: nem forrás, és lehet óriási (a staging videói)

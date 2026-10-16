@@ -12,6 +12,7 @@
 //     beszúrást és törlést végez a látható rész közepén, a valódi bővítménykészlettel és szélességgel.
 // Az eredmény értesítésben, a konzolban és a `window.__manifoldMeres`-ben.
 
+import { t } from '../lib/i18n';
 import { StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -57,10 +58,10 @@ function kozzetesz(r: MeresRiport) {
   const f = r.feldolgozas;
   ertesitesek.ertesit({
     szint: f.p95 < 16 ? 'siker' : 'figyelmeztetes',
-    cim: `Gépelés (${r.mod === 'valodi' ? 'valódi' : 'szintetikus'}): p95 ${f.p95} ms`,
+    cim: t('Gépelés ({mod}): p95 {p95} ms', { mod: r.mod === 'valodi' ? t('valódi') : t('szintetikus'), p95: f.p95 }),
     szoveg:
-      `${r.n} leütés, ${r.sorok} sor · feldolgozás medián ${f.p50} ms, p99 ${f.p99} ms, max ${f.max} ms` +
-      (r.kepig ? ` · képig (a kijelzőre várással) medián ${r.kepig.p50} ms, p95 ${r.kepig.p95} ms` : ''),
+      t('{n} leütés, {sorok} sor · feldolgozás medián {p50} ms, p99 {p99} ms, max {max} ms', { n: r.n, sorok: r.sorok, p50: f.p50, p99: f.p99, max: f.max }) +
+      (r.kepig ? ' · ' + t('képig (a kijelzőre várással) medián {p50} ms, p95 {p95} ms', { p50: r.kepig.p50, p95: r.kepig.p95 }) : ''),
     idotartam: 0,
   });
 }
@@ -123,7 +124,7 @@ export function gepelesMeresKapcsol(view: EditorView): void {
     });
   };
   fut = { leall };
-  ertesitesek.ertesit({ szint: 'info', cim: 'Gépelési mérés indul', szoveg: `${MINTA} leütésig, vagy amíg újra ki nem kapcsolod.` });
+  ertesitesek.ertesit({ szint: 'info', cim: t('Gépelési mérés indul'), szoveg: t('{n} leütésig, vagy amíg újra ki nem kapcsolod.', { n: MINTA }) });
 }
 
 // ---------------------------------------------------------------------- szintetikus (leválasztott másolat)

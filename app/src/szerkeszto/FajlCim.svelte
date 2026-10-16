@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { fajlNev, mappa } from '../lib/vault/fajlok.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { szerkesztok } from './szerkesztok.svelte';
@@ -29,7 +30,7 @@
 </script>
 
 <div class="fajlcim">
-  <input aria-label="Jegyzet fájlneve" title="Fájlnév szerkesztése — a tartalom címsora ettől független"
+  <input aria-label={t('Jegyzet fájlneve')} title={t('Fájlnév szerkesztése — a tartalom címsora ettől független')}
     value={fajlNev(ut)} disabled={!irhato || dolgozik} spellcheck="false"
     onblur={(e) => void ment(e.currentTarget)}
     onkeydown={(e) => {

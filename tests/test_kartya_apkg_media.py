@@ -316,7 +316,7 @@ class BehozTest(unittest.TestCase):
                               "sha256": hashlib.sha256(PNG).hexdigest(), "masolat": False, "klon": False, "behoz": True}]}
         (d / "terv.json").write_text(json.dumps(terv), encoding="utf-8")
         uzenetek = gepi_iras.helyreallit(self.cfg)
-        self.assertIn("visszaállt", uzenetek[0])
+        self.assertIn("was restored", uzenetek[0])
         self.assertFalse((self.v / "kep.png").exists())
         self.assertFalse((self.v / self.KISERO).exists())
         archivalt = list((self.cfg.path("apkg_visszavont") / "KARTYA-20261014-120000").iterdir())

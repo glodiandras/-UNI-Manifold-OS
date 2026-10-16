@@ -8,6 +8,8 @@
 // negatív oldalon is valós (D-5: `root(x,3)`, `x^(1/3)`), de csak ha az alap változót tartalmaz — állandó alapon a főág
 // marad, mint a CAS-ban. Ami nincs a valós értelmezési tartományban, az `NaN` (nem hiba): a rajz itt szakít.
 
+import { t as tx } from '../../../lib/i18n';
+
 export class KifejezesHiba extends Error {
   constructor(
     uzenet: string,
@@ -85,8 +87,8 @@ function tokenek(s: string): Token[] {
       i++;
       continue;
     }
-    if (c === '!') throw new KifejezesHiba('a faktoriális (!) nem rajzolható', i);
-    throw new KifejezesHiba(`nem megengedett jel: ${c}`, i);
+    if (c === '!') throw new KifejezesHiba(tx('a faktoriális (!) nem rajzolható'), i);
+    throw new KifejezesHiba(tx('nem megengedett jel: {jel}', { jel: c }), i);
   }
   ki.push({ t: 'vege', poz: s.length });
   return ki;
@@ -136,8 +138,8 @@ class Elemzo {
     const c = this.osszeg();
     const t = this.most;
     if (t.t !== 'vege') {
-      if (t.t === 'jel' && t.v === ')') throw new KifejezesHiba('páratlan zárójel: felesleges `)`', t.poz);
-      throw new KifejezesHiba('váratlan jel', t.poz);
+      if (t.t === 'jel' && t.v === ')') throw new KifejezesHiba(tx('páratlan zárójel: felesleges `)`'), t.poz);
+      throw new KifejezesHiba(tx('váratlan jel'), t.poz);
     }
     return c;
   }
@@ -161,7 +163,7 @@ class Elemzo {
         this.i++;
         a = { t: 'bin', op: t.v, a, b: this.tenyezo(), poz: t.poz };
       } else if (t.t === 'szam') {
-        throw new KifejezesHiba('hiányzó művelet a szám előtt (`2 3`, `x2`)', t.poz);
+        throw new KifejezesHiba(tx('hiányzó művelet a szám előtt (`2 3`, `x2`)'), t.poz);
       } else if (t.t === 'nev' || (t.t === 'jel' && t.v === '(')) {
         a = { t: 'bin', op: '*', a, b: this.tenyezo(), poz: t.poz }; // implicit szorzás: beszúrt `*`
       } else return a;
@@ -190,7 +192,7 @@ class Elemzo {
 
   private elsodleges(): Csucs {
     const t = this.most;
-    if (t.t === 'vege') throw new KifejezesHiba('csonka kifejezés: hiányzik a művelet jobb oldala', t.poz);
+    if (t.t === 'vege') throw new KifejezesHiba(tx('csonka kifejezés: hiányzik a művelet jobb oldala'), t.poz);
     if (t.t === 'szam') {
       this.i++;
       return { t: 'szam', v: t.v };
@@ -202,7 +204,7 @@ class Elemzo {
         this.zarojelZar(t.poz);
         return c;
       }
-      throw new KifejezesHiba(`váratlan jel: ${t.v}`, t.poz);
+      throw new KifejezesHiba(tx('váratlan jel: {jel}', { jel: t.v }), t.poz);
     }
     return this.nev(t);
   }
@@ -213,7 +215,7 @@ class Elemzo {
       this.i++;
       return;
     }
-    throw new KifejezesHiba('páratlan zárójel: hiányzik a záró `)`', nyitoPoz);
+    throw new KifejezesHiba(tx('páratlan zárójel: hiányzik a záró `)`'), nyitoPoz);
   }
 
   private nev(t: Token & { t: 'nev' }): Csucs {
@@ -221,11 +223,11 @@ class Elemzo {
     if (FUGGVENYEK.has(t.v)) {
       const nyito = this.most;
       if (!(nyito.t === 'jel' && nyito.v === '(')) {
-        throw new KifejezesHiba(`a függvény neve után zárójel kell, pl. ${t.v}(x)`, t.poz);
+        throw new KifejezesHiba(tx('a függvény neve után zárójel kell, pl. {nev}(x)', { nev: t.v }), t.poz);
       }
       this.i++;
       const args: Csucs[] = [];
-      if (this.jel(')')) throw new KifejezesHiba(`a ${t.v} argumentuma hiányzik`, nyito.poz);
+      if (this.jel(')')) throw new KifejezesHiba(tx('a {nev} argumentuma hiányzik', { nev: t.v }), nyito.poz);
       for (;;) {
         args.push(this.osszeg());
         if (this.jel(',')) {
@@ -237,11 +239,11 @@ class Elemzo {
       this.zarojelZar(nyito.poz);
       return this.fuggveny(t, args);
     }
-    if (NEM_RAJZOLHATO.has(t.v)) throw new KifejezesHiba(`a ${t.v} nem rajzolható (nem folytonos függvény)`, t.poz);
+    if (NEM_RAJZOLHATO.has(t.v)) throw new KifejezesHiba(tx('a {nev} nem rajzolható (nem folytonos függvény)', { nev: t.v }), t.poz);
     const allando = ALLANDOK.get(t.v);
     if (allando !== undefined) return { t: 'szam', v: allando };
     if (this.valtozo !== null && t.v === this.valtozo) return { t: 'valt' };
-    throw new KifejezesHiba(`ismeretlen név: ${t.v}`, t.poz);
+    throw new KifejezesHiba(tx('ismeretlen név: {nev}', { nev: t.v }), t.poz);
   }
 
   private fuggveny(t: Token & { t: 'nev' }, args: Csucs[]): Csucs {
@@ -250,15 +252,15 @@ class Elemzo {
     if (!kell.includes(args.length)) {
       throw new KifejezesHiba(
         v === 'root'
-          ? 'a root két argumentumot kér: root(x, n)'
+          ? tx('a root két argumentumot kér: root(x, n)')
           : v === 'log'
-            ? 'a log egy vagy két argumentumot kér: log(x) vagy log(x, alap)'
-            : `a ${v} egy argumentumot kér`,
+            ? tx('a log egy vagy két argumentumot kér: log(x) vagy log(x, alap)')
+            : tx('a {nev} egy argumentumot kér', { nev: v }),
         t.poz,
       );
     }
     if (v === 'root') {
-      if (!allando(args[1])) throw new KifejezesHiba('a gyökkitevő állandó legyen: root(x, 3)', t.poz);
+      if (!allando(args[1])) throw new KifejezesHiba(tx('a gyökkitevő állandó legyen: root(x, 3)'), t.poz);
       // root(a, n) ≡ a^(1/n): ugyanaz a hatvány-szemantika (páratlan gyök a negatív oldalon is valós)
       return { t: 'bin', op: '^', a: args[0], b: { t: 'bin', op: '/', a: { t: 'szam', v: 1 }, b: args[1], poz: t.poz }, poz: t.poz };
     }
@@ -366,11 +368,11 @@ function forditCsucs(c: Csucs): Ertek {
 }
 
 function elofeldolgoz(forras: string): string {
-  if (typeof forras !== 'string' || !forras.trim()) throw new KifejezesHiba('üres kifejezés');
-  if (forras.length > MAX_HOSSZ) throw new KifejezesHiba(`a kifejezés túl hosszú (legfeljebb ${MAX_HOSSZ} jel)`);
+  if (typeof forras !== 'string' || !forras.trim()) throw new KifejezesHiba(tx('üres kifejezés'));
+  if (forras.length > MAX_HOSSZ) throw new KifejezesHiba(tx('a kifejezés túl hosszú (legfeljebb {n} jel)', { n: MAX_HOSSZ }));
   const hely = [...forras].findIndex((ch) => !MEGENGEDETT.test(ch));
-  if (hely >= 0) throw new KifejezesHiba(`nem megengedett jel: ${[...forras][hely]}`, hely);
-  if (TUL_NAGY.some((r) => r.test(forras))) throw new KifejezesHiba('túl nagy szám vagy hatványtorony');
+  if (hely >= 0) throw new KifejezesHiba(tx('nem megengedett jel: {jel}', { jel: [...forras][hely] }), hely);
+  if (TUL_NAGY.some((r) => r.test(forras))) throw new KifejezesHiba(tx('túl nagy szám vagy hatványtorony'));
   return forras;
 }
 
@@ -384,6 +386,6 @@ export function fordit(forras: string, valtozo: string | null = 'x'): Ertek {
 /** Egy állandó kifejezés (tartományhatár, pont koordinátája) értéke; nem véges érték hiba. */
 export function konstans(forras: string): number {
   const v = fordit(forras, null)(0);
-  if (!Number.isFinite(v)) throw new KifejezesHiba('az állandó kifejezés értéke nem véges szám');
+  if (!Number.isFinite(v)) throw new KifejezesHiba(tx('az állandó kifejezés értéke nem véges szám'));
   return v;
 }

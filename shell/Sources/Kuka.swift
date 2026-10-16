@@ -1,7 +1,7 @@
 import Foundation
 
 /// `Manifold --kuka` (CX-004, 80(c)): egy vaultbeli fájl vagy mappa a macOS Kukába. stdin: `{"ut": "<abszolút>", "gyoker": "<a vault gyökere>"}`;
-/// stdout: `{"ok": true}`, vagy hibánál `{"ok": false, "kod": …, "hiba": "<magyar szöveg>"}` (`valasz`).
+/// stdout: `{"ok": true}`, vagy hibánál `{"ok": false, "kod": …, "hiba": "<angol szöveg>"}` (`valasz`).
 /// A core már ellenőrizte az utat; a segéd ettől függetlenül is csak a megadott vault gyökerén BELÜLI elemet mozgat:
 /// nem `/`, nem a home, nem kötet-gyökér, nem maga a vault, nincs `..` szegmens, és a szülőmappa szimbolikus linkjei
 /// feloldva is a gyökér alatt maradnak (maga az elem lehet link: akkor a link kerül a Kukába, nem a célja).
@@ -10,12 +10,11 @@ enum Kuka {
         let adat = FileHandle.standardInput.readDataToEndOfFile()
         guard let d = (try? JSONSerialization.jsonObject(with: adat)) as? [String: Any],
               let ut = d["ut"] as? String, let gyoker = d["gyoker"] as? String else {
-            print(valasz(kod: "ervenytelen_keres", hiba: "A Kuka-segéd érvénytelen kérést kapott (hiányzó út vagy gyökér)."))
+            print(valasz(kod: "ervenytelen_keres", hiba: L("A Kuka-segéd érvénytelen kérést kapott (hiányzó út vagy gyökér).")))
             return 2
         }
         guard let elem = ellenoriz(ut: ut, gyoker: gyoker) else {
-            print(valasz(kod: "tiltott_ut", hiba: "Ez az elem nem tehető a Kukába: csak a vaulton belüli, létező fájl vagy mappa "
-                         + "mehet (maga a vault, egy kötet gyökere vagy a vaulton kívüli út nem)."))
+            print(valasz(kod: "tiltott_ut", hiba: L("Ez az elem nem tehető a Kukába: csak a vaulton belüli, létező fájl vagy mappa mehet (maga a vault, egy kötet gyökere vagy a vaulton kívüli út nem).")))
             return 2
         }
         do {
@@ -28,34 +27,34 @@ enum Kuka {
         }
     }
 
-    /// A segéd egysoros JSON-válasza: `{"ok": true}`, vagy `{"ok": false, "kod": "<gépi>", "hiba": "<magyar szöveg>"}` — a core a
+    /// A segéd egysoros JSON-válasza: `{"ok": true}`, vagy `{"ok": false, "kod": "<gépi>", "hiba": "<angol szöveg>"}` — a core a
     /// `hiba` szövegét adhatja tovább a felületnek. A szerializálót a rendszer adja: idézőjel, sortörés a szövegben sem töri a JSON-t.
     static func valasz(kod: String?, hiba: String?) -> String {
         var adat: [String: Any] = ["ok": kod == nil]
-        if let kod { adat["kod"] = kod; adat["hiba"] = hiba ?? "A Kukába helyezés nem sikerült." }
+        if let kod { adat["kod"] = kod; adat["hiba"] = hiba ?? L("A Kukába helyezés nem sikerült.") }
         guard let json = try? JSONSerialization.data(withJSONObject: adat, options: [.sortedKeys]),
               let s = String(data: json, encoding: .utf8) else { return "{\"ok\":false,\"kod\":\"kuka_hiba\"}" }
         return s
     }
 
-    /// A `trashItem` hibájának szövege a felhasználónak: a rendszer (lokalizált) leírása, az ismert esetekre magyar magyarázattal.
+    /// A `trashItem` hibájának szövege a felhasználónak: a rendszer leírása, az ismert esetekre angol magyarázattal.
     /// Abszolút utat nem tesz bele (a rendszer leírása csak a fájl nevét idézi).
     static func hibaSzoveg(_ error: Error) -> String {
         let e = error as NSError
         let ok: String
         switch (e.domain, e.code) {
         case (NSCocoaErrorDomain, NSFileNoSuchFileError), (NSCocoaErrorDomain, NSFileReadNoSuchFileError):
-            ok = "a fájl vagy mappa már nincs a helyén"
+            ok = L("a fájl vagy mappa már nincs a helyén")
         case (NSCocoaErrorDomain, NSFileWriteNoPermissionError), (NSCocoaErrorDomain, NSFileReadNoPermissionError):
-            ok = "nincs hozzá jogosultság"
+            ok = L("nincs hozzá jogosultság")
         case (NSCocoaErrorDomain, NSFileWriteVolumeReadOnlyError):
-            ok = "a kötet csak olvasható"
+            ok = L("a kötet csak olvasható")
         case (NSCocoaErrorDomain, NSFeatureUnsupportedError):
-            ok = "ezen a köteten nincs Kuka"
+            ok = L("ezen a köteten nincs Kuka")
         default:
             ok = e.localizedDescription
         }
-        return "A macOS nem tette a Kukába: \(ok)."
+        return L("A macOS nem tette a Kukába: %@.", ok)
     }
 
 #if MOS_DEVELOPER

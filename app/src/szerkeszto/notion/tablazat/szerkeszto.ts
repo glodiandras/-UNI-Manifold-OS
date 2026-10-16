@@ -8,6 +8,7 @@
 // olvassa be; a dokumentum helyét a `posAtDOM` adja, és az írás előtt ellenőrzi, hogy a szöveg még
 // ugyanaz-e (egyébként nem ír).
 
+import { t as tx, tk } from '../../../lib/i18n';
 import { syntaxTree } from '@codemirror/language';
 import { EditorState, type Extension, Prec, Transaction } from '@codemirror/state';
 import { EditorView, WidgetType } from '@codemirror/view';
@@ -64,7 +65,7 @@ function elemez(forras: string): Elemzes | null {
 const nezetek = new WeakMap<HTMLElement, TablaNezet>();
 const KUSZOB = 4;
 
-const LEIRAS: Record<string, string> = { '': 'Nincs', bal: 'Balra', kozep: 'Középre', jobb: 'Jobbra' };
+const LEIRAS: Record<string, string> = { '': tk('Nincs|igazitas'), bal: tk('Balra|igazitas'), kozep: tk('Középre|igazitas'), jobb: tk('Jobbra|igazitas') };
 
 class TablaNezet {
   readonly dom = document.createElement('div');
@@ -139,14 +140,14 @@ class TablaNezet {
     for (let o = 0; o < oszlopok; o++) {
       const td = this.cella(0, o);
       if (!td) continue;
-      td.appendChild(this.fogo('oszlop', o, `${o + 1}. oszlop: húzás vagy menü`));
+      td.appendChild(this.fogo('oszlop', o, tx('{n}. oszlop: húzás vagy menü', { n: o + 1 })));
     }
     for (let s = 1; s < t.sorok.length; s++) {
       const td = this.cella(s, 0);
-      if (td) td.appendChild(this.fogo('sor', s, `${s}. sor: húzás vagy menü`));
+      if (td) td.appendChild(this.fogo('sor', s, tx('{n}. sor: húzás vagy menü', { n: s })));
     }
-    const plusO = this.plusz('Oszlop hozzáadása', 'nt-plusz-oszlop', () => this.alkalmaz(oszlopBeszur(t, oszlopok), { sor: 0, oszlop: oszlopok }));
-    const plusS = this.plusz('Sor hozzáadása', 'nt-plusz-sor', () => this.alkalmaz(sorBeszur(t, t.sorok.length), { sor: t.sorok.length, oszlop: 0 }));
+    const plusO = this.plusz(tx('Oszlop hozzáadása'), 'nt-plusz-oszlop', () => this.alkalmaz(oszlopBeszur(t, oszlopok), { sor: 0, oszlop: oszlopok }));
+    const plusS = this.plusz(tx('Sor hozzáadása'), 'nt-plusz-sor', () => this.alkalmaz(sorBeszur(t, t.sorok.length), { sor: t.sorok.length, oszlop: 0 }));
     this.wrap.append(plusO, plusS);
   }
 
@@ -166,7 +167,7 @@ class TablaNezet {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = `nt-fogo-sav nt-${fajta}-fogo`;
-    b.title = 'Húzás: áthelyezés · kattintás: menü';
+    b.title = tx('Húzás: áthelyezés · kattintás: menü');
     b.setAttribute('aria-label', cimke);
     b.tabIndex = -1;
     b.appendChild(ikonElem(GripVertical, 14));
@@ -273,26 +274,26 @@ class TablaNezet {
     const elemek: MenuElem[] = [];
     if (fajta === 'sor') {
       elemek.push(
-        el('fole', 'Beszúrás fölé', ArrowUp, () => this.alkalmaz(sorBeszur(t, index), { sor: index, oszlop: 0 })),
-        el('alae', 'Beszúrás alá', ArrowDown, () => this.alkalmaz(sorBeszur(t, index + 1), { sor: index + 1, oszlop: 0 })),
-        el('dup', 'Duplikálás', CopyPlus, () => this.alkalmaz(sorDuplikal(t, index))),
-        el('fel', 'Mozgatás fel', ArrowUp, () => this.alkalmaz(sorMozgat(t, index, index - 1)), { letiltva: index <= 1 }),
-        el('le', 'Mozgatás le', ArrowDown, () => this.alkalmaz(sorMozgat(t, index, index + 2)), { letiltva: index >= t.sorok.length - 1 }),
-        el('torol', 'Sor törlése', Trash2, () => this.alkalmaz(sorTorol(t, index)), { veszely: true }),
+        el('fole', tx('Beszúrás fölé'), ArrowUp, () => this.alkalmaz(sorBeszur(t, index), { sor: index, oszlop: 0 })),
+        el('alae', tx('Beszúrás alá'), ArrowDown, () => this.alkalmaz(sorBeszur(t, index + 1), { sor: index + 1, oszlop: 0 })),
+        el('dup', tx('Duplikálás'), CopyPlus, () => this.alkalmaz(sorDuplikal(t, index))),
+        el('fel', tx('Mozgatás fel'), ArrowUp, () => this.alkalmaz(sorMozgat(t, index, index - 1)), { letiltva: index <= 1 }),
+        el('le', tx('Mozgatás le'), ArrowDown, () => this.alkalmaz(sorMozgat(t, index, index + 2)), { letiltva: index >= t.sorok.length - 1 }),
+        el('torol', tx('Sor törlése'), Trash2, () => this.alkalmaz(sorTorol(t, index)), { veszely: true }),
       );
     } else {
-      const igazitas = ([ ['', 'Nincs', AlignLeft], ['bal', 'Balra', AlignLeft], ['kozep', 'Középre', AlignCenter], ['jobb', 'Jobbra', AlignRight] ] as const).map(
+      const igazitas = ([ ['', tx('Nincs|igazitas'), AlignLeft], ['bal', tx('Balra|igazitas'), AlignLeft], ['kozep', tx('Középre|igazitas'), AlignCenter], ['jobb', tx('Jobbra|igazitas'), AlignRight] ] as const).map(
         ([ig, nev, ikon]) =>
           el(`ig-${ig || 'nincs'}`, nev, ikon, () => this.alkalmaz(oszlopIgazit(t, index, ig as Igazitas)), { kijelolt: t.igazitas[index] === ig }),
       );
       elemek.push(
-        el('balra', 'Beszúrás balra', ArrowLeft, () => this.alkalmaz(oszlopBeszur(t, index), { sor: 0, oszlop: index })),
-        el('jobbra', 'Beszúrás jobbra', ArrowRight, () => this.alkalmaz(oszlopBeszur(t, index + 1), { sor: 0, oszlop: index + 1 })),
-        { id: 'igazitas', nev: 'Igazítás', ikon: AlignLeft, jelzo: LEIRAS[t.igazitas[index]], almenu: () => igazitas },
-        el('dup', 'Duplikálás', CopyPlus, () => this.alkalmaz(oszlopDuplikal(t, index))),
-        el('bal', 'Mozgatás balra', ArrowLeft, () => this.alkalmaz(oszlopMozgat(t, index, index - 1)), { letiltva: index <= 0 }),
-        el('jobb', 'Mozgatás jobbra', ArrowRight, () => this.alkalmaz(oszlopMozgat(t, index, index + 2)), { letiltva: index >= oszlopSzam(t) - 1 }),
-        el('torol', 'Oszlop törlése', Trash2, () => this.alkalmaz(oszlopTorol(t, index)), { veszely: true, letiltva: oszlopSzam(t) <= 1 }),
+        el('balra', tx('Beszúrás balra'), ArrowLeft, () => this.alkalmaz(oszlopBeszur(t, index), { sor: 0, oszlop: index })),
+        el('jobbra', tx('Beszúrás jobbra'), ArrowRight, () => this.alkalmaz(oszlopBeszur(t, index + 1), { sor: 0, oszlop: index + 1 })),
+        { id: 'igazitas', nev: tx('Igazítás'), ikon: AlignLeft, jelzo: tx(LEIRAS[t.igazitas[index]]), almenu: () => igazitas },
+        el('dup', tx('Duplikálás'), CopyPlus, () => this.alkalmaz(oszlopDuplikal(t, index))),
+        el('bal', tx('Mozgatás balra'), ArrowLeft, () => this.alkalmaz(oszlopMozgat(t, index, index - 1)), { letiltva: index <= 0 }),
+        el('jobb', tx('Mozgatás jobbra'), ArrowRight, () => this.alkalmaz(oszlopMozgat(t, index, index + 2)), { letiltva: index >= oszlopSzam(t) - 1 }),
+        el('torol', tx('Oszlop törlése'), Trash2, () => this.alkalmaz(oszlopTorol(t, index)), { veszely: true, letiltva: oszlopSzam(t) <= 1 }),
       );
     }
     const r = gomb.getBoundingClientRect();
@@ -302,7 +303,7 @@ class TablaNezet {
       r.bottom + 4,
       elemek,
       akciok,
-      fajta === 'sor' ? 'Sor' : 'Oszlop',
+      fajta === 'sor' ? tx('Sor|menu') : tx('Oszlop|menu'),
     );
   }
 
@@ -365,8 +366,8 @@ class TablaNezet {
     input.className = 'nt-cella-mezo';
     input.value = this.tabla.sorok[sor][oszlop] ?? '';
     input.spellcheck = true;
-    input.setAttribute('lang', 'hu');
-    input.setAttribute('aria-label', sor === 0 ? `Fejléc, ${oszlop + 1}. oszlop` : `${sor}. sor, ${oszlop + 1}. oszlop`);
+    input.setAttribute('lang', this.view.contentDOM.lang);
+    input.setAttribute('aria-label', sor === 0 ? tx('Fejléc, {o}. oszlop', { o: oszlop + 1 }) : tx('{s}. sor, {o}. oszlop', { s: sor, o: oszlop + 1 }));
     const fogok = [...td.querySelectorAll(':scope > .nt-fogo-sav')];
     const regi = [...td.childNodes].filter((n) => !fogok.includes(n as Element));
     for (const n of regi) td.removeChild(n);

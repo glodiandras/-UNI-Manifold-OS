@@ -4,6 +4,7 @@
 // pointer-eseményekkel megy (a HTML5 húzás a WKWebView-ban megbízhatatlan); billentyűzetről Alt+↑/↓ és a
 // parancsok érik el ugyanezt. A logika a `muveletek.ts`-ben él, itt csak a geometria és a DOM van.
 
+import { t, tk } from '../../lib/i18n';
 import { isolateHistory } from '@codemirror/commands';
 import { type EditorState, type Extension, Facet, Prec } from '@codemirror/state';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
@@ -134,7 +135,7 @@ export async function blokkLinkMasol(view: EditorView, a?: BlokkAzon): Promise<b
   let id = b.id;
   if (b.idMod !== 'nincs' && !id) {
     if (view.state.readOnly) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A jegyzet csak olvasható', szoveg: 'A blokkazonosító nem írható be.' });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A jegyzet csak olvasható'), szoveg: t('A blokkazonosító nem írható be.') });
       return false;
     }
     const r = idBeir(view.state, b, ujBlokkId(view.state));
@@ -146,8 +147,8 @@ export async function blokkLinkMasol(view: EditorView, a?: BlokkAzon): Promise<b
   const ok = await vagolapra(link);
   ertesitesek.ertesit(
     ok
-      ? { szint: 'siker', cim: 'Link másolva', szoveg: link, idotartam: 3000 }
-      : { szint: 'hiba', cim: 'A vágólapra másolás nem sikerült', szoveg: link },
+      ? { szint: 'siker', cim: t('Link másolva'), szoveg: link, idotartam: 3000 }
+      : { szint: 'hiba', cim: t('A vágólapra másolás nem sikerült'), szoveg: link },
   );
   return ok;
 }
@@ -155,15 +156,15 @@ export async function blokkLinkMasol(view: EditorView, a?: BlokkAzon): Promise<b
 // ---------------------------------------------------------------------- menü
 
 const ATALAKITAS: { id: string; nev: string; ikon: MenuElem['ikon']; cel: AtalakitCel; jelzo?: string }[] = [
-  { id: 'szoveg', nev: 'Szöveg', ikon: Pilcrow, cel: { tipus: 'szoveg' } },
-  { id: 'h1', nev: 'Fejezet 1', ikon: Heading1, cel: { tipus: 'fejezet', szint: 1 }, jelzo: '#' },
-  { id: 'h2', nev: 'Fejezet 2', ikon: Heading2, cel: { tipus: 'fejezet', szint: 2 }, jelzo: '##' },
-  { id: 'h3', nev: 'Fejezet 3', ikon: Heading3, cel: { tipus: 'fejezet', szint: 3 }, jelzo: '###' },
-  { id: 'lista', nev: 'Felsorolás', ikon: List, cel: { tipus: 'lista' }, jelzo: '-' },
-  { id: 'szamozott', nev: 'Számozott lista', ikon: ListOrdered, cel: { tipus: 'szamozott' }, jelzo: '1.' },
-  { id: 'feladat', nev: 'Feladat', ikon: ListTodo, cel: { tipus: 'feladat' }, jelzo: '[ ]' },
-  { id: 'idezet', nev: 'Idézet', ikon: Quote, cel: { tipus: 'idezet' }, jelzo: '>' },
-  { id: 'kod', nev: 'Kódblokk', ikon: Code, cel: { tipus: 'kod' }, jelzo: '```' },
+  { id: 'szoveg', nev: tk('Szöveg|beszuras'), ikon: Pilcrow, cel: { tipus: 'szoveg' } },
+  { id: 'h1', nev: tk('Fejezet 1'), ikon: Heading1, cel: { tipus: 'fejezet', szint: 1 }, jelzo: '#' },
+  { id: 'h2', nev: tk('Fejezet 2'), ikon: Heading2, cel: { tipus: 'fejezet', szint: 2 }, jelzo: '##' },
+  { id: 'h3', nev: tk('Fejezet 3'), ikon: Heading3, cel: { tipus: 'fejezet', szint: 3 }, jelzo: '###' },
+  { id: 'lista', nev: tk('Felsorolás|beszuras'), ikon: List, cel: { tipus: 'lista' }, jelzo: '-' },
+  { id: 'szamozott', nev: tk('Számozott lista|beszuras'), ikon: ListOrdered, cel: { tipus: 'szamozott' }, jelzo: '1.' },
+  { id: 'feladat', nev: tk('Feladat|beszuras'), ikon: ListTodo, cel: { tipus: 'feladat' }, jelzo: '[ ]' },
+  { id: 'idezet', nev: tk('Idézet|beszuras'), ikon: Quote, cel: { tipus: 'idezet' }, jelzo: '>' },
+  { id: 'kod', nev: tk('Kódblokk|beszuras'), ikon: Code, cel: { tipus: 'kod' }, jelzo: '```' },
 ];
 
 function aktualis(b: Blokk, cel: AtalakitCel): boolean {
@@ -203,37 +204,37 @@ export function blokkMenuElemek(view: EditorView, b: Blokk, akciok: Map<string, 
   const elemek: MenuElem[] = [];
 
   const atalakitasElemek = (): MenuElem[] => {
-    const ki: MenuElem[] = ATALAKITAS.map((t) => {
-      const id = `atal-${t.id}`;
+    const ki: MenuElem[] = ATALAKITAS.map((at) => {
+      const id = `atal-${at.id}`;
       tevekenyseg(id, (v, x) => {
-        alkalmaz(v, atalakit(v.state, x, t.cel), 'input.atalakit');
+        alkalmaz(v, atalakit(v.state, x, at.cel), 'input.atalakit');
       });
       return {
         id,
-        nev: t.nev,
-        ikon: t.ikon,
-        jelzo: t.jelzo,
-        kijelolt: aktualis(b, t.cel),
-        letiltva: !iras || (!atalakithato(sorok, b, t.cel) && !aktualis(b, t.cel)),
+        nev: t(at.nev),
+        ikon: at.ikon,
+        jelzo: at.jelzo,
+        kijelolt: aktualis(b, at.cel),
+        letiltva: !iras || (!atalakithato(sorok, b, at.cel) && !aktualis(b, at.cel)),
       };
     });
     ki.push({
       id: 'atal-callout',
-      nev: 'Callout',
+      nev: t('Callout|beszuras'),
       ikon: Replace,
       kijelolt: b.tipus === 'callout',
       letiltva: !iras || !(atalakithato(sorok, b, { tipus: 'callout', callout: 'note' }) || b.tipus === 'callout'),
       almenu: () =>
-        calloutTipusok.lista().map((t) => {
-          const nev = t.nevek[0];
+        calloutTipusok.lista().map((tip) => {
+          const nev = tip.nevek[0];
           const id = `callout-${nev}`;
           tevekenyseg(id, (v, x) => {
             alkalmaz(v, atalakit(v.state, x, { tipus: 'callout', callout: nev }), 'input.atalakit');
           });
           return {
             id,
-            nev: t.cimek[nev] ?? nev,
-            ikon: t.ikon,
+            nev: tip.cimek[nev] ? t(tip.cimek[nev]) : nev,
+            ikon: tip.ikon,
             jelzo: `[!${nev}]`,
             kijelolt: b.tipus === 'callout' && b.calloutTipus?.toLowerCase() === nev,
             letiltva: b.tipus === 'callout' ? false : !atalakithato(sorok, b, { tipus: 'callout', callout: nev }),
@@ -246,13 +247,13 @@ export function blokkMenuElemek(view: EditorView, b: Blokk, akciok: Map<string, 
   const atalakithatoBarmi = ATALAKITAS.some((t) => atalakithato(sorok, b, t.cel)) || atalakithato(sorok, b, { tipus: 'callout', callout: 'note' }) || b.tipus === 'callout';
   elemek.push({
     id: 'atalakitas',
-    nev: 'Átalakítás',
+    nev: t('Átalakítás'),
     ikon: Replace,
     almenu: atalakitasElemek,
     letiltva: !iras || !atalakithatoBarmi,
   });
   tevekenyseg('duplikal', (v, x) => alkalmaz(v, duplikal(v.state, blokkok(v.state), x), 'input.blokk'));
-  elemek.push({ id: 'duplikal', nev: 'Duplikálás', ikon: CopyPlus, letiltva: !iras });
+  elemek.push({ id: 'duplikal', nev: t('Duplikálás'), ikon: CopyPlus, letiltva: !iras });
   akciok.set('fel', () => {
     const x = friss();
     const c = x && szomszedCel(blokkok(view.state), x, -1);
@@ -263,20 +264,20 @@ export function blokkMenuElemek(view: EditorView, b: Blokk, akciok: Map<string, 
     const c = x && szomszedCel(blokkok(view.state), x, 1);
     if (x && c) alkalmaz(view, mozgat(view.state, blokkok(view.state), x, c), 'move.blokk');
   });
-  elemek.push({ id: 'fel', nev: 'Mozgatás fel', ikon: ArrowUp, jelzo: '⌥↑', letiltva: !iras || !b.mozgathato || !szomszedCel(bl, b, -1) });
-  elemek.push({ id: 'le', nev: 'Mozgatás le', ikon: ArrowDown, jelzo: '⌥↓', letiltva: !iras || !b.mozgathato || !szomszedCel(bl, b, 1) });
+  elemek.push({ id: 'fel', nev: t('Mozgatás fel'), ikon: ArrowUp, jelzo: '⌥↑', letiltva: !iras || !b.mozgathato || !szomszedCel(bl, b, -1) });
+  elemek.push({ id: 'le', nev: t('Mozgatás le'), ikon: ArrowDown, jelzo: '⌥↓', letiltva: !iras || !b.mozgathato || !szomszedCel(bl, b, 1) });
   akciok.set('link', () => void blokkLinkMasol(view, a));
   elemek.push({
     id: 'link',
-    nev: 'Link másolása a blokkra',
+    nev: t('Link másolása a blokkra'),
     ikon: Link2,
-    leiras: b.tipus === 'fejezet' ? 'Fejezetlink: [[Név#Cím]]'
-      : b.idMod === 'nincs' ? 'A listaelem saját sora nem szöveg (pl. kódkerítés): ide nem kerülhet blokkazonosító'
-      : 'Blokkazonosító (^id) kerül a blokk végére, ha még nincs',
+    leiras: b.tipus === 'fejezet' ? t('Fejezetlink: [[Név#Cím]]')
+      : b.idMod === 'nincs' ? t('A listaelem saját sora nem szöveg (pl. kódkerítés): ide nem kerülhet blokkazonosító')
+      : t('Blokkazonosító (^id) kerül a blokk végére, ha még nincs'),
     letiltva: (b.idMod === 'nincs' && b.tipus !== 'fejezet') || (b.idMod !== 'nincs' && !b.id && !iras),
   });
   tevekenyseg('torol', (v, x) => alkalmaz(v, torol(v.state, blokkok(v.state), x), 'delete.blokk'));
-  elemek.push({ id: 'torol', nev: 'Törlés', ikon: Trash2, veszely: true, letiltva: !iras });
+  elemek.push({ id: 'torol', nev: t('Törlés'), ikon: Trash2, veszely: true, letiltva: !iras });
   return elemek;
 }
 
@@ -286,7 +287,7 @@ export function blokkMenuParancs(view: EditorView): boolean {
   if (!b) return false;
   const c = view.coordsAtPos(b.from) ?? view.contentDOM.getBoundingClientRect();
   const akciok = new Map<string, () => void>();
-  lebegoMenu(view, c.left, c.bottom + 4, blokkMenuElemek(view, b, akciok), akciok, 'Blokk');
+  lebegoMenu(view, c.left, c.bottom + 4, blokkMenuElemek(view, b, akciok), akciok, t('Blokk|menu'));
   return true;
 }
 
@@ -409,8 +410,8 @@ class BlokkFogo {
     f.className = 'nt-fogo';
     f.tabIndex = -1;
     f.hidden = true;
-    f.setAttribute('aria-label', 'Blokk: húzás vagy menü');
-    f.title = 'Húzás: áthelyezés · kattintás: menü';
+    f.setAttribute('aria-label', t('Blokk: húzás vagy menü'));
+    f.title = t('Húzás: áthelyezés · kattintás: menü');
     f.appendChild(ikonElem(GripVertical, 16));
     f.addEventListener('pointerdown', (e) => this.lenyom(e));
     f.addEventListener('pointermove', (e) => this.huz(e));
@@ -621,7 +622,7 @@ class BlokkFogo {
     const r = this.fogo.getBoundingClientRect();
     const akciok = new Map<string, () => void>();
     this.menuBezar?.();
-    const bezar = lebegoMenu(this.view, r.right + 4, r.top, blokkMenuElemek(this.view, b, akciok), akciok, 'Blokk');
+    const bezar = lebegoMenu(this.view, r.right + 4, r.top, blokkMenuElemek(this.view, b, akciok), akciok, t('Blokk|menu'));
     this.menuBezar = () => {
       bezar(false);
       this.menuBezar = null;

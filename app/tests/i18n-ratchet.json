@@ -1,0 +1,5 @@
+{
+  "_leiras": "Fájlonként a nyers (t()/tp()/tk() nélküli) magyar felületi szövegek engedélyezett száma; csak csökkenhet. Lásd tests/i18n-ratchet.test.ts.",
+  "forditasKotelezo": true,
+  "fajlok": {}
+}

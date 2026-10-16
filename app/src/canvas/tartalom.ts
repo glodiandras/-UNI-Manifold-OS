@@ -11,6 +11,7 @@ import { kepVodor } from '../szerkeszto/beagyazas/nagyito';
 import { obsidianElemzo } from '../szerkeszto/markdown/elemzo';
 import { dokumentumRenderel } from '../szerkeszto/olvaso/html';
 import { LustaRajzolo } from '../szerkeszto/olvaso/lusta';
+import { t } from '../lib/i18n';
 
 const KEP = /\.(png|jpe?g|gif|webp|avif|svg|heic|heif|bmp|tiff?)$/i;
 const VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
@@ -116,7 +117,7 @@ export function linkRajzol(kont: HTMLElement, url: string): () => void {
   try {
     domain.textContent = new URL(url).hostname || url;
   } catch {
-    domain.textContent = url || 'Üres link';
+    domain.textContent = url || t('Üres link');
   }
   teljes.textContent = url;
   d.append(domain, teljes);

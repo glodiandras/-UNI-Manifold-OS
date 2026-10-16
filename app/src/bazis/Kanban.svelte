@@ -5,6 +5,7 @@
   „Visszavonás” értesítés. A séma-sértő érték nem íródik csendben („Mégis beírom”). Csak `.md` sor és note-tulajdonság húzható.
 -->
 <script lang="ts">
+  import { t, tp } from '../lib/i18n';
   import { tick } from 'svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { Ellipsis } from '../lib/ikon/ikonok';
@@ -84,7 +85,7 @@
       athelyezett = { ...athelyezett, [sor.ut]: cel };
       cellaErtesites(sor.nev, iroKulcs, r.pillanat);
     } else if (r.fuggo) fuggo = { sor, oszlop: cel, ertek, problemak: r.fuggo };
-    else hiba = r.elutasitva ?? 'Az áthelyezés nem írható.';
+    else hiba = r.elutasitva ?? t('Az áthelyezés nem írható.');
   }
 
   // ------------------------------------------------------------------ húzás
@@ -132,26 +133,26 @@
     oszlopok.forEach((o, i) => {
       if (!o.fogad) return;
       const id = `o-${i}`;
-      elemek.push({ id, nev: `Áthelyezés ide: ${o.cimke}`, kijelolt: i === aktualis });
+      elemek.push({ id, nev: t('Áthelyezés ide: {cimke}', { cimke: o.cimke }), kijelolt: i === aktualis });
       akciok.set(id, () => void athelyez(sor, i));
     });
-    lebegoMenu({ focus: () => el.focus() }, r.left, r.bottom + 2, elemek, akciok, `${sor.nev} áthelyezése`);
+    lebegoMenu({ focus: () => el.focus() }, r.left, r.bottom + 2, elemek, akciok, t('{nev} áthelyezése', { nev: sor.nev }));
     void tick();
   }
 </script>
 
 <div class="kanban" aria-label="Kanban">
   {#if kulcs === null && valasz.csoportok}
-    <p class="uzenet" role="status">A Kanban oszlopai nem frontmatter-tulajdonságból állnak: az áthúzás nem írható.</p>
+    <p class="uzenet" role="status">{t('A Kanban oszlopai nem frontmatter-tulajdonságból állnak: az áthúzás nem írható.')}</p>
   {/if}
   {#if !valasz.csoportok}
-    <p class="uzenet" role="status">A Kanban-nézethez csoportosítás kell: a „Nézet” panelen válaszd ki azt a tulajdonságot (pl. Status), amely az oszlopokat adja.</p>
+    <p class="uzenet" role="status">{t('A Kanban-nézethez csoportosítás kell: a „Nézet” panelen válaszd ki azt a tulajdonságot (pl. Status), amely az oszlopokat adja.')}</p>
   {/if}
   {#if fuggo}
     <p class="uzenet figyelmeztetes" role="alert">
-      {fuggo.problemak[0]?.uzenet ?? 'A séma sérül.'}
-      <button type="button" class="m-gomb semleges gomb" onclick={() => fuggo && void athelyez(fuggo.sor, fuggo.oszlop, true)}>Mégis beírom</button>
-      <button type="button" class="m-gomb semleges gomb" onclick={() => (fuggo = null)}>Mégse</button>
+      {fuggo.problemak[0]?.uzenet ?? t('A séma sérül.')}
+      <button type="button" class="m-gomb semleges gomb" onclick={() => fuggo && void athelyez(fuggo.sor, fuggo.oszlop, true)}>{t('Mégis beírom')}</button>
+      <button type="button" class="m-gomb semleges gomb" onclick={() => (fuggo = null)}>{t('Mégse')}</button>
     </p>
   {/if}
   {#if hiba}<p class="uzenet hiba" role="alert">{hiba}</p>{/if}
@@ -162,7 +163,7 @@
         class="oszlop"
         class:cel={celOszlop === i}
         class:tiltott={huzott !== null && !o.fogad}
-        aria-label="{o.cimke}, {o.sorok.length} kártya"
+        aria-label={tp('{cimke}, {n} kártya', o.sorok.length, { cimke: o.cimke })}
         ondragover={(e) => oszlopFolott(e, i)}
         ondrop={(e) => ejtes(e, i)}
       >
@@ -184,7 +185,7 @@
               <Kartya {sor} oszlopok={valasz.oszlopok} {ez} kepSzel={560} {illesztes} {arany}>
                 {#snippet muvelet()}
                   {#if huzhato(sor)}
-                    <button type="button" class="menu-gomb" aria-label="{sor.nev} áthelyezése" onclick={(e) => menu(e, sor)}>
+                    <button type="button" class="menu-gomb" aria-label={t('{nev} áthelyezése', { nev: sor.nev })} onclick={(e) => menu(e, sor)}>
                       <Ikon ikon={Ellipsis} meret={14} />
                     </button>
                   {/if}

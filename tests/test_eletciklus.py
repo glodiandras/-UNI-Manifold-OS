@@ -293,7 +293,9 @@ class FeladatsorTest(unittest.TestCase):
         fid = q.submit("t_orok", {})["id"]
         d = self._var(q, fid)
         self.assertEqual(d["allapot"], "hiba")
-        self.assertIn("legnagyobb futásidő", d["hiba"])
+        self.assertIn("maximum run time", d["hiba"])
+        self.assertEqual(d["kod"], "feladat.idotullepes")
+        self.assertEqual(d["param"], {"mp": 0.5})
 
     def test_a_db_zarasa_a_futo_munkasszal_alatt_nem_dob_kivetelt(self):
         self._tipus("t_fut", "import time; print('indul', flush=True); time.sleep(1.5)")

@@ -3,6 +3,7 @@
 // szerkesztés, amely a `/szűrő` szöveget törli és a sablont a környezetnek megfelelően beírja. Minden sablon
 // közönséges Markdown (Obsidian-kompatibilis); új szintaxis nincs.
 
+import { t, tk } from '../../lib/i18n';
 import type { EditorState } from '@codemirror/state';
 import type { IconNode } from 'lucide';
 import {
@@ -78,9 +79,9 @@ function napEltolas(d: Date, nap: number): Date {
 function fejezet(szint: number, ikon: IconNode): SablonElem {
   return {
     id: `h${szint}`,
-    nev: `Fejezet ${szint}`,
-    kulcsszavak: `h${szint} heading cím fejezet fejléc`,
-    csoport: 'Szöveg',
+    nev: t('Fejezet {szint}', { szint }),
+    kulcsszavak: t('h{szint} heading cím fejezet fejléc', { szint }),
+    csoport: t('Szöveg|beszuras'),
     ikon,
     jelzo: '#'.repeat(szint),
     kontextusok: MIND_BLOKK,
@@ -88,15 +89,15 @@ function fejezet(szint: number, ikon: IconNode): SablonElem {
   };
 }
 
-function calloutElem(t: { nevek: readonly string[]; cimek: Readonly<Record<string, string>>; ikon: IconNode }): SablonElem {
-  const nev = t.nevek[0];
-  const cim = t.cimek[nev] ?? nev;
+function calloutElem(tip: { nevek: readonly string[]; cimek: Readonly<Record<string, string>>; ikon: IconNode }): SablonElem {
+  const nev = tip.nevek[0];
+  const cim = tip.cimek[nev] ? t(tip.cimek[nev]) : nev;
   return {
     id: `callout-${nev}`,
-    nev: `Callout: ${cim}`,
-    kulcsszavak: `callout kiemelés doboz ${t.nevek.join(' ')}`,
-    csoport: 'Callout',
-    ikon: t.ikon,
+    nev: t('Callout: {cim}', { cim }),
+    kulcsszavak: t('callout kiemelés doboz {nevek}', { nevek: tip.nevek.join(' ') }),
+    csoport: t('Callout|beszuras'),
+    ikon: tip.ikon,
     jelzo: `[!${nev}]`,
     kontextusok: MIND_BLOKK,
     sablon: () => ({ sorok: [`> [!${nev}]`, '> '], kurzor: { sor: 1 } }),
@@ -111,9 +112,9 @@ export function sablonElemek(): SablonElem[] {
     fejezet(3, Heading3),
     {
       id: 'idezet',
-      nev: 'Idézet',
-      kulcsszavak: 'idézet quote blokkidézet',
-      csoport: 'Szöveg',
+      nev: t('Idézet|beszuras'),
+      kulcsszavak: t('idézet quote blokkidézet'),
+      csoport: t('Szöveg|beszuras'),
       ikon: Quote,
       jelzo: '>',
       kontextusok: MIND_BLOKK,
@@ -121,9 +122,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'lista',
-      nev: 'Felsorolás',
-      kulcsszavak: 'lista felsorolás bullet pontos ul',
-      csoport: 'Lista',
+      nev: t('Felsorolás|beszuras'),
+      kulcsszavak: t('lista felsorolás bullet pontos ul'),
+      csoport: t('Lista|beszuras'),
       ikon: List,
       jelzo: '-',
       kontextusok: LISTA,
@@ -131,9 +132,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'szamozott',
-      nev: 'Számozott lista',
-      kulcsszavak: 'számozott lista ordered sorszám ol',
-      csoport: 'Lista',
+      nev: t('Számozott lista|beszuras'),
+      kulcsszavak: t('számozott lista ordered sorszám ol'),
+      csoport: t('Lista|beszuras'),
       ikon: ListOrdered,
       jelzo: '1.',
       kontextusok: LISTA,
@@ -141,9 +142,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'feladat',
-      nev: 'Feladat',
-      kulcsszavak: 'feladat todo teendő task checkbox jelölőnégyzet',
-      csoport: 'Lista',
+      nev: t('Feladat|beszuras'),
+      kulcsszavak: t('feladat todo teendő task checkbox jelölőnégyzet'),
+      csoport: t('Lista|beszuras'),
       ikon: ListTodo,
       jelzo: '[ ]',
       kontextusok: LISTA,
@@ -152,19 +153,19 @@ export function sablonElemek(): SablonElem[] {
     ...calloutTipusok.lista().map(calloutElem),
     {
       id: 'toggle',
-      nev: 'Összecsukható callout',
-      kulcsszavak: 'toggle összecsukható lenyíló callout hajtogatható',
-      csoport: 'Callout',
+      nev: t('Összecsukható callout'),
+      kulcsszavak: t('toggle összecsukható lenyíló callout hajtogatható'),
+      csoport: t('Callout|beszuras'),
       ikon: ListCollapse,
       jelzo: '[!note]-',
       kontextusok: MIND_BLOKK,
-      sablon: () => ({ sorok: ['> [!note]- Cím', '> '], kurzor: { sor: 0, oszlop: 11, veg: 14 } }),
+      sablon: () => ({ sorok: ['> [!note]- Cím', '> '] /* i18n-ignore: a jegyzetbe írt cím-helyőrző, a kurzor-oszlopok ehhez igazodnak */, kurzor: { sor: 0, oszlop: 11, veg: 14 } }),
     },
     {
       id: 'kod',
-      nev: 'Kódblokk',
-      kulcsszavak: 'kód code kódblokk snippet',
-      csoport: 'Blokk',
+      nev: t('Kódblokk|beszuras'),
+      kulcsszavak: t('kód code kódblokk snippet'),
+      csoport: t('Blokk|beszuras'),
       ikon: Code,
       jelzo: '```',
       kontextusok: MIND_BLOKK,
@@ -172,29 +173,29 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'matek',
-      nev: 'Matek',
-      kulcsszavak: 'matek math képlet latex katex egyenlet',
-      csoport: 'Blokk',
+      nev: t('Matek|beszuras'),
+      kulcsszavak: t('matek math képlet latex katex egyenlet'),
+      csoport: t('Blokk|beszuras'),
       ikon: Sigma,
       jelzo: '$$',
       kontextusok: MIND_BLOKK,
       sablon: () => ({ sorok: ['$$', '', '$$'], kurzor: { sor: 1 } }),
     },
     {
-      id: 'plot', nev: 'Függvénygrafikon', kulcsszavak: 'plot grafikon függvény parabola tengely szín',
-      csoport: 'Blokk', ikon: Sigma, jelzo: '```plot', kontextusok: MIND_BLOKK,
+      id: 'plot', nev: t('Függvénygrafikon'), kulcsszavak: t('plot grafikon függvény parabola tengely szín'),
+      csoport: t('Blokk|beszuras'), ikon: Sigma, jelzo: '```plot', kontextusok: MIND_BLOKK,
       sablon: () => ({ sorok: ['```plot', '# x-felirat "x"', '# y-felirat "f(x)"', '# szin 1 #b85470', 'x in [-5, 5]', 'y = x^2', '```'], kurzor: { sor: 5 } }),
     },
     {
-      id: 'plot-osszevetes', nev: 'Függvény összevetése y=x-szel', kulcsszavak: 'plot grafikon összehasonlítás lineáris y=x',
-      csoport: 'Blokk', ikon: Sigma, jelzo: 'y=x', kontextusok: MIND_BLOKK,
+      id: 'plot-osszevetes', nev: t('Függvény összevetése y=x-szel'), kulcsszavak: t('plot grafikon összehasonlítás lineáris y=x'),
+      csoport: t('Blokk|beszuras'), ikon: Sigma, jelzo: 'y=x', kontextusok: MIND_BLOKK,
       sablon: () => ({ sorok: ['```plot', 'x in [-5, 5]', 'y in [-5, 5]', 'y = x^2 "f(x)"', 'y = x "y=x"', '```'], kurzor: { sor: 3 } }),
     },
     {
       id: 'mermaid',
-      nev: 'Mermaid-diagram',
-      kulcsszavak: 'mermaid diagram folyamatábra gráf ábra',
-      csoport: 'Blokk',
+      nev: t('Mermaid-diagram'),
+      kulcsszavak: t('mermaid diagram folyamatábra gráf ábra'),
+      csoport: t('Blokk|beszuras'),
       ikon: Workflow,
       jelzo: '```mermaid',
       kontextusok: MIND_BLOKK,
@@ -202,9 +203,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'tablazat',
-      nev: 'Táblázat',
-      kulcsszavak: 'táblázat table rács sor oszlop',
-      csoport: 'Blokk',
+      nev: t('Táblázat|beszuras'),
+      kulcsszavak: t('táblázat table rács sor oszlop'),
+      csoport: t('Blokk|beszuras'),
       ikon: Table2,
       jelzo: '| |',
       kontextusok: MIND_BLOKK,
@@ -212,9 +213,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'elvalaszto',
-      nev: 'Elválasztó',
-      kulcsszavak: 'elválasztó vonal hr divider szeparátor',
-      csoport: 'Blokk',
+      nev: t('Elválasztó|beszuras'),
+      kulcsszavak: t('elválasztó vonal hr divider szeparátor'),
+      csoport: t('Blokk|beszuras'),
       ikon: Minus,
       jelzo: '---',
       kontextusok: MIND_BLOKK,
@@ -222,9 +223,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'sablon-valaszto',
-      nev: 'Sablon…',
-      kulcsszavak: 'sablon template jegyzetsablon napló tulajdonságok',
-      csoport: 'Beszúrás',
+      nev: t('Sablon…'),
+      kulcsszavak: t('sablon template jegyzetsablon napló tulajdonságok'),
+      csoport: t('Beszúrás|beszuras'),
       ikon: FileText,
       jelzo: '_Template',
       kontextusok: SORON_BELUL,
@@ -233,9 +234,9 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'beagyazas',
-      nev: 'Beágyazás',
-      kulcsszavak: 'beágyazás embed jegyzet átemel kép pdf ![[',
-      csoport: 'Beágyazás',
+      nev: t('Beágyazás|beszuras'),
+      kulcsszavak: t('beágyazás embed jegyzet átemel kép pdf ![['),
+      csoport: t('Beágyazás|beszuras'),
       ikon: Paperclip,
       jelzo: '![[',
       kontextusok: SORON_BELUL,
@@ -243,31 +244,32 @@ export function sablonElemek(): SablonElem[] {
     },
     {
       id: 'base',
-      nev: 'Bases-nézet',
-      kulcsszavak: 'bases base adatbázis nézet tábla lekérdezés',
-      csoport: 'Beágyazás',
+      nev: t('Bases-nézet'),
+      kulcsszavak: t('bases base adatbázis nézet tábla lekérdezés'),
+      csoport: t('Beágyazás|beszuras'),
       ikon: Database,
       jelzo: '```base',
       kontextusok: MIND_BLOKK,
       sablon: () => ({
+        // i18n-ignore: a jegyzetbe írt Bases-példa (adat)
         sorok: ['```base', 'views:', '  - type: table', '    name: Táblázat', '```'],
         kurzor: { sor: 3, oszlop: 10, veg: 18 },
       }),
     },
     ...(
       [
-        ['datum-ma', 'Dátum: ma', 0],
-        ['datum-holnap', 'Dátum: holnap', 1],
-        ['datum-tegnap', 'Dátum: tegnap', -1],
+        ['datum-ma', tk('Dátum: ma'), 0],
+        ['datum-holnap', tk('Dátum: holnap'), 1],
+        ['datum-tegnap', tk('Dátum: tegnap'), -1],
       ] as const
     ).map(
       ([id, nev, nap]): SablonElem => ({
         id,
-        nev,
-        kulcsszavak: 'dátum date nap idő naptár',
-        csoport: 'Beszúrás',
+        nev: t(nev),
+        kulcsszavak: t('dátum date nap idő naptár'),
+        csoport: t('Beszúrás|beszuras'),
         ikon: Calendar,
-        jelzo: 'ÉÉÉÉ-HH-NN',
+        jelzo: t('ÉÉÉÉ-HH-NN'),
         kontextusok: SORON_BELUL,
         sablon: (ma) => ({ sorok: [datumSzoveg(napEltolas(ma, nap))], kurzor: { sor: 0 }, beszurt: true }),
       }),

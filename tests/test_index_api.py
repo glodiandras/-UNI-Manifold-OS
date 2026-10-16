@@ -58,7 +58,7 @@ class IndexApiAlap(unittest.TestCase):
 class IndexApiTest(IndexApiAlap):
     @csak_darwin("FSEvents-figyelő (Linuxon a figyelő nem indul: `CFStringCreateWithCString`)")
     def test_lassu_regex_400_es_a_core_el(self):
-        """H5 (audit): a katasztrofális regex 400-at ad magyar üzenettel, közben a `/health` válaszol."""
+        """H5 (audit): a katasztrofális regex 400-at ad angol üzenettel, közben a `/health` válaszol."""
         import time
         (self.v / "Lassú.md").write_text("a" * 60 + "!\n", encoding="utf-8")
         self.assertTrue(var_ra(lambda: self.get("/api/vault/kereses", q="file:Lassú")[1].get("osszes") == 1, 10))
@@ -72,7 +72,7 @@ class IndexApiTest(IndexApiAlap):
         t.join(10)
         kod, d = eredmeny["r"]
         self.assertEqual(kod, 400)
-        self.assertIn("túl sokáig", d["hiba"])
+        self.assertIn("regex ran for too long", d["hiba"])
 
     @csak_darwin("FSEvents-figyelő (Linuxon a figyelő nem indul: `CFStringCreateWithCString`)")
     def test_vegpontok(self):

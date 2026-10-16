@@ -85,7 +85,7 @@ class EloErtekkeszlet(Alap):
         self.assertFalse(r["ok"])
         self.assertTrue(r["megerositheto"])
         self.assertEqual([(x["kod"], x["szint"]) for x in r["problemak"]], [("ertekkeszlet", tulajdonsagok.SERTES)])
-        self.assertIn("index még épül", r["problemak"][0]["uzenet"])
+        self.assertIn("index is still building", r["problemak"][0]["uzenet"])
         self.assertTrue(self.mod(fm_blokk(NORMAL), ertek=["Active-recall"], megerosit=True)["ok"])
 
     def test_generacionkent_egy_index_lekerdezes(self):
@@ -669,6 +669,48 @@ class Javaslatok(unittest.TestCase):
         self.assertEqual(([x["ertek"] for x in r["ertekek"]], r["index_kesz"]), (["Completed", "In progress", "Review"], False))
         r = t.kulcs_javaslatok("F01 - Fizika/J.md")
         self.assertEqual((len(r["kulcsok"]), r["index_kesz"]), (6, False))
+
+
+class AngolProblemaTest(Alap):
+    def test_a_sema_kodjai_es_felhasznaloi_ertekei_megmaradnak(self):
+        p = self.t.problemak("T01/Jegyzet.md", ["tags", "Tags", "Tags"], {"Tags": ["Saját címke"]})
+        duplikalt = next(x for x in p if x["kod"] == "duplikalt_kulcs")
+        self.assertEqual((duplikalt["kulcs"], duplikalt["ertek"], duplikalt["szint"]), ("Tags", None, tulajdonsagok.HIBA))
+        self.assertEqual(duplikalt["uzenet"], "The ‘Tags’ key appears more than once.")
+        nagybetu = next(x for x in p if x["kod"] == "kisbetus_kulcs")
+        self.assertIn("expects ‘Tags’", nagybetu["uzenet"])
+        ertek = next(x for x in p if x["kod"] == "ertekkeszlet")
+        self.assertEqual(ertek["ertek"], "Saját címke")
+        self.assertIn("‘Saját címke’ tag", ertek["uzenet"])
+        self.assertIn("index is still building", ertek["uzenet"])
+
+    def test_a_yaml_hiba_angol_de_a_kulcs_es_hely_megmarad(self):
+        fm = "---\nTags: &x [Mathematics]\nSource: *x\n---\n"
+        r = self.t.elemez("T01/Jegyzet.md", fm)
+        self.assertEqual(r["problemak"][0]["kod"], "yaml_hiba")
+        self.assertIn("YAML aliases (*x) are not allowed", r["hiba"])
+        self.assertIn("line 2", r["hiba"])
+        self.assertIn("Source: *x", r["hiba"])
+        self.assertIn(r["hiba"], r["problemak"][0]["uzenet"])
+        # The shared parser keeps its existing diagnostic contract; this is presentation only.
+        self.assertIn("nem megengedett", elemzo.frontmatter("Tags: &x [Mathematics]\nSource: *x")[1])
+
+    def test_az_ertekhiba_es_h1_angol_de_a_szabalyozas_valtozatlan(self):
+        r = self.mod(fm_blokk(NORMAL), kulcs="Status", tipus="number", ertek=float("inf"))
+        self.assertFalse(r["ok"])
+        self.assertFalse(r["megerositheto"])
+        self.assertEqual(r["problemak"][0]["kod"], "ertek_tipus")
+        self.assertEqual(r["problemak"][0]["uzenet"], "Enter a finite number.")
+        p = self.t.h1_problemak("T01/Jegyzet.md", "# Másik cím\n")[0]
+        self.assertEqual((p["kod"], p["ertek"]), ("h1", "Másik cím"))
+        self.assertIn("does not match the file name (‘Jegyzet’", p["uzenet"])
+
+    def test_a_sablon_osszefesules_hibaja_angol(self):
+        r = self.t.osszefesul("T01/Jegyzet.md", fm_blokk(NORMAL), "---\n- invalid\n---\n")
+        self.assertEqual(r["fm_uj"], fm_blokk(NORMAL))
+        self.assertFalse(r["valtozas"])
+        self.assertIn("template frontmatter has invalid syntax", r["kihagyva"][0]["uzenet"])
+        self.assertIn("key–value pairs", r["kihagyva"][0]["uzenet"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,6 @@
+/* macOS permission prompts. Keep the English Info.plist fallback in sync. */
+"NSRemovableVolumesUsageDescription" = "Manifold accesses its application folder and reads and writes your workspace on removable drives.";
+"NSCalendarsFullAccessUsageDescription" = "Manifold reads calendar events, including study sessions, classes and deadlines, to show them on Today and in your study plan. Calendar events are written only with your approval. Manifold processes this data on your Mac.";
+"NSCalendarsUsageDescription" = "Manifold reads calendar events, including study sessions, classes and deadlines. Calendar events are written only with your approval. Manifold processes this data on your Mac.";
+"NSRemindersFullAccessUsageDescription" = "Manifold creates and updates reminders from dated tasks in your notes in its selected reminders list (Manifold by default). Your reminders account may sync them to your other devices. Manifold processes this data on your Mac.";
+"NSRemindersUsageDescription" = "Manifold creates reminders from dated tasks in your notes in its selected reminders list (Manifold by default). Your reminders account may sync them to your other devices. Manifold processes this data on your Mac.";

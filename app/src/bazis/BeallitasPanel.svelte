@@ -4,6 +4,7 @@
   (az ismeretlen kulcsok érintetlenek maradnak); minden változás azonnal a fájlba megy.
 -->
 <script lang="ts">
+  import { t, tk } from '../lib/i18n';
   import type { BazisModell } from './modell.svelte';
   import { csoport, csoportBeallit, egeszBevitel, nezetKulcs, type Irany } from './muveletek';
   import type { Elerheto, NezetTipus, Valasz } from './tipusok';
@@ -31,15 +32,15 @@
   );
 
   const TIPUSOK: Array<{ id: NezetTipus; felirat: string }> = [
-    { id: 'table', felirat: 'Táblázat' },
-    { id: 'cards', felirat: 'Kártyák' },
-    { id: 'kanban', felirat: 'Kanban' },
+    { id: 'table', felirat: tk('Táblázat') },
+    { id: 'cards', felirat: tk('Kártyák') },
+    { id: 'kanban', felirat: tk('Kanban') },
   ];
   const SORMAGASSAG = [
-    { id: 'short', felirat: 'Alacsony' },
-    { id: 'medium', felirat: 'Közepes' },
-    { id: 'tall', felirat: 'Magas' },
-    { id: 'extra tall', felirat: 'Extra magas' },
+    { id: 'short', felirat: tk('Alacsony') },
+    { id: 'medium', felirat: tk('Közepes') },
+    { id: 'tall', felirat: tk('Magas') },
+    { id: 'extra tall', felirat: tk('Extra magas') },
   ];
 
   const ir = (kulcs: string, ertek: unknown) => void modell.alkalmaz(nezetKulcs(nezet, kulcs, ertek));
@@ -48,7 +49,7 @@
   function egesz(kulcs: string, szoveg: string, felirat: string) {
     const n = egeszBevitel(szoveg);
     if (n === undefined) {
-      hibasBevitel = `${felirat}: pozitív egész szám kell.`;
+      hibasBevitel = t('{felirat}: pozitív egész szám kell.', { felirat: t(felirat) });
       return;
     }
     hibasBevitel = null;
@@ -63,7 +64,7 @@
     }
     const n = Number(s);
     if (!Number.isFinite(n) || n <= 0) {
-      hibasBevitel = `${felirat}: pozitív szám kell.`;
+      hibasBevitel = t('{felirat}: pozitív szám kell.', { felirat: t(felirat) });
       return;
     }
     hibasBevitel = null;
@@ -83,7 +84,7 @@
 
 <div class="beallitas">
   <label class="sor">
-    <span>Név</span>
+    <span>{t('Név')}</span>
     <input
       type="text"
       bind:value={nev}
@@ -92,86 +93,86 @@
     />
   </label>
   <div class="sor">
-    <span id="nezet-tipus">Típus</span>
+    <span id="nezet-tipus">{t('Típus')}</span>
     <div class="szegmens" role="group" aria-labelledby="nezet-tipus">
-      {#each TIPUSOK as t (t.id)}
-        <button type="button" aria-pressed={tipus === t.id} onclick={() => tipus !== t.id && ir('type', t.id)}>{t.felirat}</button>
+      {#each TIPUSOK as ti (ti.id)}
+        <button type="button" aria-pressed={tipus === ti.id} onclick={() => tipus !== ti.id && ir('type', ti.id)}>{t(ti.felirat)}</button>
       {/each}
     </div>
   </div>
   <div class="sor">
-    <span id="csoport-cim">{tipus === 'kanban' ? 'Oszlopok (csoportosítás)' : 'Csoportosítás'}</span>
+    <span id="csoport-cim">{tipus === 'kanban' ? t('Oszlopok (csoportosítás)') : t('Csoportosítás')}</span>
     <div class="ketto">
       <select
         aria-labelledby="csoport-cim"
         value={cs?.property ?? ''}
         onchange={(e) => void modell.alkalmaz(csoportBeallit(nezet, e.currentTarget.value || null, cs?.direction ?? 'ASC'))}
       >
-        <option value="">(nincs)</option>
+        <option value="">{t('(nincs)')}</option>
         {#each csoportIdk as e (e.id)}<option value={e.id}>{e.nev}</option>{/each}
       </select>
       {#if cs}
         <select
-          aria-label="Csoportok sorrendje"
+          aria-label={t('Csoportok sorrendje')}
           value={cs.direction}
           onchange={(e) => void modell.alkalmaz(csoportBeallit(nezet, cs.property, e.currentTarget.value as Irany))}
         >
-          <option value="ASC">növekvő</option>
-          <option value="DESC">csökkenő</option>
+          <option value="ASC">{t('növekvő')}</option>
+          <option value="DESC">{t('csökkenő')}</option>
         </select>
       {/if}
     </div>
   </div>
   <label class="sor">
-    <span>Sorok száma legfeljebb</span>
+    <span>{t('Sorok száma legfeljebb')}</span>
     <input
       type="text"
       inputmode="numeric"
-      placeholder="korlát nélkül"
+      placeholder={t('korlát nélkül')}
       value={typeof beall.limit === 'number' ? String(beall.limit) : ''}
-      onchange={(e) => egesz('limit', e.currentTarget.value, 'Sorok száma')}
+      onchange={(e) => egesz('limit', e.currentTarget.value, tk('Sorok száma'))}
     />
   </label>
   {#if tipus === 'table'}
     <label class="sor">
-      <span>Sormagasság</span>
+      <span>{t('Sormagasság')}</span>
       <select value={String(beall.rowHeight ?? 'short')} onchange={(e) => ir('rowHeight', e.currentTarget.value === 'short' ? null : e.currentTarget.value)}>
-        {#each SORMAGASSAG as s (s.id)}<option value={s.id}>{s.felirat}</option>{/each}
+        {#each SORMAGASSAG as s (s.id)}<option value={s.id}>{t(s.felirat)}</option>{/each}
       </select>
     </label>
   {:else if tipus === 'cards'}
     <label class="sor">
-      <span>Borítókép</span>
+      <span>{t('Borítókép')}</span>
       <select value={typeof beall.image === 'string' ? beall.image : ''} onchange={(e) => ir('image', e.currentTarget.value || null)}>
-        <option value="">(nincs)</option>
+        <option value="">{t('(nincs)')}</option>
         {#each kepIdk as e (e.id)}<option value={e.id}>{e.nev}</option>{/each}
       </select>
     </label>
     <label class="sor">
-      <span>Kártya szélessége (px)</span>
+      <span>{t('Kártya szélessége (px)')}</span>
       <input
         type="text"
         inputmode="numeric"
-        placeholder="alap"
+        placeholder={t('alap')}
         value={typeof beall.cardSize === 'number' ? String(beall.cardSize) : ''}
-        onchange={(e) => egesz('cardSize', e.currentTarget.value, 'Kártya szélessége')}
+        onchange={(e) => egesz('cardSize', e.currentTarget.value, tk('Kártya szélessége'))}
       />
     </label>
     <label class="sor">
-      <span>Kép illesztése</span>
+      <span>{t('Kép illesztése')}</span>
       <select value={String(beall.imageFit ?? 'cover')} onchange={(e) => ir('imageFit', e.currentTarget.value === 'cover' ? null : e.currentTarget.value)}>
-        <option value="cover">kitölti</option>
-        <option value="contain">belefér</option>
+        <option value="cover">{t('kitölti')}</option>
+        <option value="contain">{t('belefér')}</option>
       </select>
     </label>
     <label class="sor">
-      <span>Képarány (szél. / mag.)</span>
+      <span>{t('Képarány (szél. / mag.)')}</span>
       <input
         type="text"
         inputmode="decimal"
-        placeholder="alap"
+        placeholder={t('alap')}
         value={typeof beall.imageAspectRatio === 'number' ? String(beall.imageAspectRatio) : ''}
-        onchange={(e) => szam('imageAspectRatio', e.currentTarget.value, 'Képarány')}
+        onchange={(e) => szam('imageAspectRatio', e.currentTarget.value, tk('Képarány'))}
       />
     </label>
   {/if}

@@ -125,13 +125,13 @@ class FoglaltKorZarTest(unittest.TestCase):
             with open(zar, "a+") as fh:
                 fcntl.flock(fh, fcntl.LOCK_EX)                                          # egy másik folyamat fogja a zárat
                 app.indulas()
-                self.assertTrue(any("kimaradt" in u and "kör-zár" in u for u in app.indulasi_uzenetek), app.indulasi_uzenetek)
+                self.assertTrue(any("waiting" in u and "operation lock" in u for u in app.indulasi_uzenetek), app.indulasi_uzenetek)
                 self.assertNotEqual(o.lenyomat(a.v), a.elotte, "a zár alatt a helyreállítás nem futhat")
                 fcntl.flock(fh, fcntl.LOCK_UN)
             app.helyreallitas_szal.join(20)
             self.assertFalse(app.helyreallitas_szal.is_alive())
             self.assertEqual(o.lenyomat(a.v), a.elotte)
-            self.assertTrue(any("visszaállt" in u for u in app.indulasi_uzenetek), app.indulasi_uzenetek)
+            self.assertTrue(any("was restored" in u for u in app.indulasi_uzenetek), app.indulasi_uzenetek)
 
     def test_szabad_zarnal_nincs_ujraprobalo_szal(self):
         with tmpdir() as t:
@@ -156,9 +156,9 @@ class TmpTakaritasTest(unittest.TestCase):
                      a.v / "T01" / ".a.md.deadbeef.txt"]
             for p in sajat + marad:
                 p.write_bytes(b"x")
-            self.assertEqual(sorted(frame.tmp_maradekok(a.cfg)), sorted(sajat))
+            self.assertEqual(sorted(p.resolve() for p in frame.tmp_maradekok(a.cfg)), sorted(p.resolve() for p in sajat))
             uzenetek = a.indulas()
-            self.assertTrue(any("3 ideiglenes fájl" in u for u in uzenetek), uzenetek)
+            self.assertTrue(any("3 temporary files" in u for u in uzenetek), uzenetek)
             for p in sajat:
                 self.assertFalse(p.exists(), p)
             for p in marad:

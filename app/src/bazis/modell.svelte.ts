@@ -8,6 +8,7 @@ import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import { bazisApi, type BazisApi } from './api';
 import type { BazisForras } from './forras';
 import type { ModositValasz, Muvelet, Valasz } from './tipusok';
+import { t } from '../lib/i18n';
 
 export const FRISSITES_KESLELTETES = 300;
 
@@ -130,13 +131,13 @@ export class BazisModell {
     try {
       const r = await this.modosit(muvelet);
       if (!r.ok) {
-        this.irasHiba = r.hibak[0]?.uzenet ?? 'A módosítás nem alkalmazható.';
+        this.irasHiba = r.hibak[0]?.uzenet ?? t('A módosítás nem alkalmazható.');
         return { ...r, irva: false };
       }
       if (r.szoveg_uj === this.forras.szoveg()) return { ...r, irva: true };
       if (ujNezet !== undefined) this.nezet = ujNezet; // a nézet-művelet után az új sorszám már a következő lekérdezésben él
       const irva = await this.forras.ir(r.szoveg_uj);
-      this.irasHiba = irva ? null : 'A módosítás nem íródott be.';
+      this.irasHiba = irva ? null : t('A módosítás nem íródott be.');
       return { ...r, irva };
     } catch (e) {
       const uzenet = e instanceof Error ? e.message : String(e);

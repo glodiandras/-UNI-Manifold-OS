@@ -2,6 +2,7 @@
 // megnyitás, a kurzor és a hibák felülete van.
 
 import { ApiHiba, kerdez } from '../lib/core/api';
+import { t } from '../lib/i18n';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import { asszisztensApi } from '../lib/asszisztens/api';
@@ -27,7 +28,7 @@ export async function napiJegyzetNyit(felulet: Felulet): Promise<void> {
   try {
     d = await kerdez<NaploValasz>('/api/naplo/ma', { metodus: 'POST', torzs: {}, idokorlat: 15000 });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A napi jegyzet nem nyitható meg', szoveg: uzenet(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A napi jegyzet nem nyitható meg'), szoveg: uzenet(e) });
     return;
   }
   felulet.atfedes = null;
@@ -36,8 +37,8 @@ export async function napiJegyzetNyit(felulet: Felulet): Promise<void> {
   const ful = m.aktivFul;
   if (d.letrejott && d.kurzor !== null && ful && ful.ut === d.ut && !ful.nezet) ful.nezet = { kurzor: d.kurzor };
   felulet.megmutatFaban(d.ut);
-  if (d.letrejott) ertesitesek.ertesit({ szint: 'siker', cim: 'Napi jegyzet létrehozva', szoveg: fajlNev(d.ut) });
-  if (d.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Pillanatkép nélkül mentve', szoveg: d.figyelmeztetes });
+  if (d.letrejott) ertesitesek.ertesit({ szint: 'siker', cim: t('Napi jegyzet létrehozva'), szoveg: fajlNev(d.ut) });
+  if (d.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Pillanatkép nélkül mentve'), szoveg: d.figyelmeztetes });
 }
 
 /** „Új jegyzet sablonból” (C32b): a sablon-választó megnyitása új-jegyzet módban; a választás után a fájlfa kéri be a nevet
@@ -62,8 +63,8 @@ export async function sablonBeszurasAktiv(sablonUt: string): Promise<void> {
   if (!p || p.mod() === 'olvaso' || (cel && !irhato(cel))) {
     ertesitesek.ertesit({
       szint: 'figyelmeztetes',
-      cim: 'Nincs hová beszúrni',
-      szoveg: cel && !irhato(cel) ? 'A jegyzet csak olvasható.' : 'Nyiss meg egy jegyzetet szerkesztésre.',
+      cim: t('Nincs hová beszúrni'),
+      szoveg: cel && !irhato(cel) ? t('A jegyzet csak olvasható.') : t('Nyiss meg egy jegyzetet szerkesztésre.'),
     });
     return;
   }
@@ -71,7 +72,7 @@ export async function sablonBeszurasAktiv(sablonUt: string): Promise<void> {
   try {
     k = await kerdez<SablonKimenet>('/api/sablon/kiertekel', { metodus: 'POST', torzs: { ut: sablonUt, cim: fajlNev(p.ut) }, idokorlat: 10000 });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A sablon nem értékelhető ki', szoveg: uzenet(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A sablon nem értékelhető ki'), szoveg: uzenet(e) });
     return;
   }
   const aktivE = () => {
@@ -80,7 +81,7 @@ export async function sablonBeszurasAktiv(sablonUt: string): Promise<void> {
   };
   let v = aktivE();
   if (!v) {                                                // közben másik jegyzetre váltott (vagy csak olvasható lett)
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A sablon nem került be', szoveg: 'Közben másik jegyzet lett az aktív.' });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A sablon nem került be'), szoveg: t('Közben másik jegyzet lett az aktív.') });
     return;
   }
   // C32b: mindkettőnek van frontmatterje → a core összefésüli (a számolás nem ír; az írás a dokumentumon át megy)
@@ -95,7 +96,7 @@ export async function sablonBeszurasAktiv(sablonUt: string): Promise<void> {
     }
     v = aktivE();
     if (!v || (fmBlokk(v.state.doc.toString())?.szoveg ?? null) !== jegyzetFm) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A sablon nem került be', szoveg: 'Közben megváltozott a jegyzet tulajdonsága; próbáld újra.' });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A sablon nem került be'), szoveg: t('Közben megváltozott a jegyzet tulajdonsága; próbáld újra.') });
       return;
     }
   }
@@ -106,7 +107,7 @@ export async function sablonBeszurasAktiv(sablonUt: string): Promise<void> {
   // J1: a sablon beszúrása a tanuló magnak (ismétlődő művelet: ebben a mappában ezt a sablont használod)
   if (vezerloKapcsolok.ertek.asszisztens && p.ut.toLowerCase().endsWith('.md')) void asszisztensApi.tanul('sablon', p.ut, sablonUt).catch(() => undefined);
   if (terv.frontmatterKihagyva)
-    ertesitesek.ertesit({ szint: 'info', cim: 'A sablon tulajdonságai kimaradtak', szoveg: 'A jegyzetnek már van frontmatterje; a törzs bekerült.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('A sablon tulajdonságai kimaradtak'), szoveg: t('A jegyzetnek már van frontmatterje; a törzs bekerült.') });
   if (of) osszefesulesJelzes(p, of);
 }
 
@@ -119,19 +120,19 @@ function osszefesulesJelzes(p: SzerkesztoPeldany, of: OsszefesulesEredmeny): voi
   if (of.megmaradt.length || kihagyva.length)
     ertesitesek.ertesit({
       szint: 'info',
-      cim: 'A sablon tulajdonságai összefésülve',
-      szoveg: [of.megmaradt.length ? `A jegyzet értéke megmaradt: ${KULCSOK(of.megmaradt)}.` : '', kihagyva.length ? `Nem írható: ${KULCSOK(kihagyva)}.` : '']
+      cim: t('A sablon tulajdonságai összefésülve'),
+      szoveg: [of.megmaradt.length ? t('A jegyzet értéke megmaradt: {kulcsok}.', { kulcsok: KULCSOK(of.megmaradt) }) : '', kihagyva.length ? t('Nem írható: {kulcsok}.', { kulcsok: KULCSOK(kihagyva) }) : '']
         .filter(Boolean)
         .join(' '),
     });
   if (!of.fuggo.length) return;
   ertesitesek.ertesit({
     szint: 'figyelmeztetes',
-    cim: 'A sablon séma-sértő tulajdonságot kér',
-    szoveg: of.fuggo.map((f) => `${f.kulcs}: ${f.problemak[0]?.uzenet ?? 'a séma szerint nem szokásos'}`).join(' · '),
+    cim: t('A sablon séma-sértő tulajdonságot kér'),
+    szoveg: of.fuggo.map((f) => `${f.kulcs}: ${f.problemak[0]?.uzenet ?? t('a séma szerint nem szokásos')}`).join(' · '),
     idotartam: 0,
     kulcs: 'sablon-fuggo',
-    muvelet: { nev: 'Mégis beírom', futtat: () => void fuggoBeir(p, of.fuggo) },
+    muvelet: { nev: t('Mégis beírom'), futtat: () => void fuggoBeir(p, of.fuggo) },
   });
 }
 
@@ -142,19 +143,19 @@ async function fuggoBeir(p: SzerkesztoPeldany, fuggo: OsszefesulesEredmeny['fugg
   for (const f of fuggo) {
     const v = szerkesztok.aktiv === p ? p.nezet() : null;
     if (!v || !irhato(v)) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A tulajdonság nem került be', szoveg: 'Közben másik jegyzet lett az aktív.' });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A tulajdonság nem került be'), szoveg: t('Közben másik jegyzet lett az aktív.') });
       return;
     }
     const blokk = fmBlokk(v.state.doc.toString());
     try {
       const r = await api.modosit(p.ut, blokk?.szoveg ?? null, { muvelet: 'beallit', kulcs: f.kulcs, ertek: f.ertek, tipus: f.tipus }, true);
       const most = p.nezet();
-      if (!most || (fmBlokk(most.state.doc.toString())?.szoveg ?? null) !== (blokk?.szoveg ?? null)) throw new Error('Közben megváltozott a frontmatter.');
-      if (!r.ok || r.fm_uj === null) throw new Error(r.problemak[0]?.uzenet ?? 'A módosítás nem írható.');
+      if (!most || (fmBlokk(most.state.doc.toString())?.szoveg ?? null) !== (blokk?.szoveg ?? null)) throw new Error(t('Közben megváltozott a frontmatter.'));
+      if (!r.ok || r.fm_uj === null) throw new Error(r.problemak[0]?.uzenet ?? t('A módosítás nem írható.'));
       const c = blokkCsere(blokk, r.fm_uj);
       if (c) most.dispatch({ changes: c, userEvent: 'input.tulajdonsag' });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: `A(z) „${f.kulcs}” nem írható`, szoveg: uzenet(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A(z) „{kulcs}” nem írható', { kulcs: f.kulcs }), szoveg: uzenet(e) });
     }
   }
 }

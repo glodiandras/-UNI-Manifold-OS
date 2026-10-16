@@ -28,6 +28,7 @@ from urllib.parse import urlsplit
 
 from . import kiserok, lepes_kapu, tasks
 from .config import Config
+from .hibakod import kodol
 
 TIPUS = "video_letoltes"
 URL_MAX = 2000
@@ -109,25 +110,26 @@ def _helyi_cim(host: str) -> bool:
 def urlek_ellenoriz(urlek, max_link: int) -> list[str]:
     """A kérésben kapott linkek ellenőrzése és sorrendtartó deduplikálása (`tasks.Invalid`, magyar üzenettel)."""
     if not isinstance(urlek, list) or not urlek:
-        raise tasks.Invalid("Adj meg legalább egy videólinket.")
+        raise kodol(tasks.Invalid("Adj meg legalább egy videólinket."), "video.link_hianyzik")
     ki: list[str] = []
     for u in urlek:
         if not isinstance(u, str):
-            raise tasks.Invalid("A link szöveg kell legyen.")
+            raise kodol(tasks.Invalid("A link szöveg kell legyen."), "video.link_szoveg")
         u = u.strip()
         if not u or len(u) > URL_MAX or _VEZERLO.search(u):
-            raise tasks.Invalid(f"Érvénytelen link: {u[:60]!r}")
+            raise kodol(tasks.Invalid(f"Érvénytelen link: {u[:60]!r}"), "video.link_hibas")
         r = urlsplit(u)
         if r.scheme.lower() not in ("http", "https") or not r.hostname:
-            raise tasks.Invalid(f"Csak http(s) link adható meg: {u[:80]}")
+            raise kodol(tasks.Invalid(f"Csak http(s) link adható meg: {u[:80]}"), "video.link_http")
         if r.username or r.password:
-            raise tasks.Invalid("A link nem tartalmazhat felhasználónevet vagy jelszót.")
+            raise kodol(tasks.Invalid("A link nem tartalmazhat felhasználónevet vagy jelszót."), "video.link_hitelesites")
         if _helyi_cim(r.hostname):
-            raise tasks.Invalid(f"Helyi vagy privát címről nem töltök le: {r.hostname}")
+            raise kodol(tasks.Invalid(f"Helyi vagy privát címről nem töltök le: {r.hostname}"), "video.link_helyi")
         if u not in ki:
             ki.append(u)
     if len(ki) > max_link:
-        raise tasks.Invalid(f"Egy feladatban legfeljebb {max_link} link adható meg ({len(ki)} érkezett).")
+        raise kodol(tasks.Invalid(f"Egy feladatban legfeljebb {max_link} link adható meg ({len(ki)} érkezett)."),
+                    "video.link_sok", {"max": max_link, "n": len(ki)})
     return ki
 
 
@@ -155,20 +157,21 @@ def _terv(cfg: Config, p: dict, stop: str):
     urlek = urlek_ellenoriz(p.get("urlek"), _max_link(cfg, p))
     ff = cfg.path("ffmpeg")
     if not ff.is_file():
-        raise tasks.Invalid(f"Hiányzik az ffmpeg ({ff}): bin/mos runtime fetch ffmpeg — a home-beli és a PATH-os ffmpeg tiltott.")
+        raise kodol(tasks.Invalid(f"Hiányzik az ffmpeg ({ff}): bin/mos runtime fetch ffmpeg — a home-beli és a PATH-os ffmpeg tiltott."),
+                    "video.ffmpeg_hianyzik")
     argv = [sys.executable, "-B", "-m", "modulok.ytdlp", "lepes", "letoltes"]
     figyelmeztetes: list[str] = []
     if p.get("proba"):
         argv += ["--proba-gyoker", str(cfg.path("tmp") / "video-proba" / time.strftime("%Y%m%d-%H%M%S"))]
-        figyelmeztetes.append("Próbamód: a staging és az archívum a var/tmp alá kerül, pillanatkép nincs.")
+        figyelmeztetes.append('Trial mode: staging and archives use the temporary data folder; no snapshot is created.')
     for u in urlek:
         argv += ["--url", u]
     if stop and not p.get("proba"):
         argv += ["--ki", str(letoltes_eredmeny(Path(stop).parent, Path(stop).stem))]     # F4: a letöltött mappák listája
-    cim = f"Videó letöltése" if len(urlek) == 1 else f"Videók letöltése ({len(urlek)} link)"
+    cim = "Download video" if len(urlek) == 1 else f"Download videos ({len(urlek)} links)"
     # K149 (A3-12): a lépés távoli tartalmat futtat (yt-dlp, a JS-kihíváshoz node) és a core API-ját nem hívja (a lánc a vaultba nem ír,
     # 47(c); az ytdlp tárat a `core.frame` folyamatbeli zárával rögzíti) — nem kap lépés-tokent, és a core címét sem
-    return [tasks.Step(cim, argv, str(cfg.root), jogok=lepes_kapu.JOGOK_NINCS)], f"{len(urlek)} videólink letöltése a stagingbe (a vaultba nem ír).", figyelmeztetes
+    return [tasks.Step(cim, argv, str(cfg.root), jogok=lepes_kapu.JOGOK_NINCS)], f"Download {len(urlek)} video links to staging (the vault is unchanged).", figyelmeztetes
 
 
 # ------------------------------------------------------------------ 84. döntés (javasolt): egy oldal összes videója — a felfedezés
@@ -193,7 +196,7 @@ def _bejaras_terv(cfg: Config, p: dict, stop: str):
     (url,) = urlek_ellenoriz([p.get("url")] if isinstance(p.get("url"), str) else None, 1)
     argv = [sys.executable, "-B", "-m", "modulok.ytdlp", "lepes", "bejaras", "--url", url, "--ki", str(bejaras_fajl(cfg, url))]
     return ([tasks.Step("Az oldal videóinak felderítése", argv, str(cfg.root), jogok=lepes_kapu.JOGOK_NINCS)],
-            f"A {urlsplit(url).hostname} oldal bejárása: a videóoldalak listája (letöltés nélkül).", [])
+            f"Find video pages on {urlsplit(url).hostname} (without downloading).", [])
 
 
 # ------------------------------------------------------------------ C20b: a bevitel a vaultba
@@ -318,16 +321,16 @@ def _integralas_terv(cfg: Config, p: dict, stop: str):
     figyelm = []
     if p.get("proba"):
         argv.append("--proba")
-        figyelm.append("Próbamód: az írás a vault APFS-klónjára megy, a staging nem változik.")
+        figyelm.append('Trial mode: the write goes to an APFS clone of the workspace. Staging is unchanged.')
     video_mappa = kiserok.kisero_mappa(cfg, "video")
     reteg = cfg.section("media").get("reteg_mappa") or "Média"
-    osszeg = (f"A staging várakozó videói a vaultba kerülnek: a videó az „{video_mappa}” alá (APFS-klón), a felirat, a "
-              f"proveniencia és a forrásleíró jegyzet a téma „{reteg}” rétegébe, a kötések `#t=` horgonya a jegyzetek Source mezőjébe "
-              "(videónként egy gépi írás, visszavonható).")
+    osszeg = (f"Import staged videos into the vault: place the video under ‘{video_mappa}’ (APFS clone), its subtitles, "
+              f"provenance and source note in the topic's ‘{reteg}’ layer, and `#t=` links in the notes' Source fields "
+              "(one machine write per video, undoable).")
     if tm is not None:
-        osszeg = (f"A kijelölt staging-videók a(z) „{tm}” mappába kerülnek (a téma-modell nem fut): a videó az „{video_mappa}” "
-                  f"alá, a felirat, a proveniencia és a forrásleíró jegyzet a „{tm}/{reteg}” rétegbe (a hiányzó mappát a gépi írás hozza "
-                  "létre), kötés csak a mappa saját jegyzeteihez (videónként egy gépi írás, visszavonható).")
+        osszeg = (f"Import the selected staged videos into ‘{tm}’ without topic classification: place the video under ‘{video_mappa}’, "
+                  f"and its subtitles, provenance and source note in ‘{tm}/{reteg}’ (missing folders are created by the machine write). "
+                  "Link only the folder's own notes (one machine write per video, undoable).")
     return [tasks.Step("Videók bevitele a vaultba", argv, str(cfg.root))], osszeg, figyelm
 
 

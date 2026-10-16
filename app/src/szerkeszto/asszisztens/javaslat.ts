@@ -17,6 +17,7 @@
 // nincs nyitott `[[` / `/` menü; különben a Tab a megszokott behúzás, az Esc a megszokott. A döntés a statisztikába csak
 // a fajtával és a döntéssel megy (útvonal és szöveg nélkül; a core a Tracker- és az Asszisztens-kapcsoló alatt számolja).
 
+import { t } from '../../lib/i18n';
 import { type EditorState, type Extension, Facet, Prec, StateEffect, StateField, type Text } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, type PluginValue, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { asszisztensApi } from '../../lib/asszisztens/api';
@@ -91,7 +92,7 @@ export const javaslatUrit = StateEffect.define<null>();
 const KOZEPSO = Decoration.mark({ class: 'cm-javaslat' });
 const AKTIV = Decoration.mark({
   class: 'cm-javaslat cm-javaslat-aktiv',
-  attributes: { title: 'Tab: link beszúrása · Esc: elvet' },
+  attributes: { title: t('Tab: link beszúrása · Esc: elvet') },
 });
 
 function felepit(allapot: Allapot, doc: Text, fej: number): Allapot {

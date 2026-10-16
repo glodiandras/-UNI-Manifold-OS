@@ -3,6 +3,7 @@
 // fókusz végig a szerkesztőben marad, a menü a `aria-activedescendant`-tal követhető. A beszúrt sablonok
 // és a környezetek leírása: `sablonok.ts` (tiszta, tesztelt); itt csak az állapot és a DOM-ragasz van.
 
+import { t } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { type EditorState, type Extension, Prec, StateEffect, StateField } from '@codemirror/state';
 import { EditorView, showTooltip, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
@@ -149,8 +150,8 @@ function jelez(view: EditorView, id: string | null): void {
 
 function letrehoz(view: EditorView): TooltipView {
   const menu = new Menu({
-    cimke: 'Beszúrás',
-    ures: 'Nincs találat',
+    cimke: t('Beszúrás'),
+    ures: t('Nincs találat'),
     csoportok: true,
     onValaszt: (e) => alkalmaz(view, e.id),
     onAktiv: (id) => jelez(view, id),
@@ -236,7 +237,7 @@ export function perjelNyit(view: EditorView): boolean {
   if (view.state.readOnly || !r.empty) return false;
   const proba = view.state.update({ changes: { from: r.head, insert: '/' } }).state;
   if (!perjelNyithato(proba, r.head)) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'A beszúrás-menü itt nem nyílik meg', szoveg: 'Kódban, linkben, táblázatban vagy szó közepén a / szöveg marad.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('A beszúrás-menü itt nem nyílik meg'), szoveg: t('Kódban, linkben, táblázatban vagy szó közepén a / szöveg marad.') });
     return false;
   }
   view.dispatch({ changes: { from: r.head, insert: '/' }, selection: { anchor: r.head + 1 }, userEvent: 'input.type' });

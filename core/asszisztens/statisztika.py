@@ -43,7 +43,7 @@ class Statisztika:
         """Egy döntés (a javaslat elfogadva vagy elutasítva). Érvénytelen fajta/döntés: 400. Kikapcsolt kapcsolónál
         `{fogadva: false, ok}`, és semmi nem íródik."""
         if fajta not in FAJTAK or dontes not in DONTESEK:
-            raise HttpError(400, "a fajta emlites, szokas vagy higienia, a döntés elfogad vagy elutasit lehet")
+            raise HttpError(400, "a fajta emlites, szokas vagy higienia, a döntés elfogad vagy elutasit lehet", kod="asszisztens.statisztika.fajta_dontes")
         k = self.kapcsolok()
         if not k["asszisztens"]:
             return {"fogadva": False, "ok": "asszisztens_ki"}
@@ -138,7 +138,7 @@ class Statisztika:
                 db = c.execute("DELETE FROM has_asszisztens").rowcount
         except (sqlite3.Error, OSError) as e:
             self.tr._naploz("asszisztens.torles", e)
-            raise HttpError(503, "a statisztika adatbázisa nem írható") from e
+            raise HttpError(503, "a statisztika adatbázisa nem írható", kod="asszisztens.statisztika.adatbazis_nem_irhato") from e
         try:
             tisztitva = szemelyes_db.tisztit(self.cfg)
         except (sqlite3.Error, OSError) as e:

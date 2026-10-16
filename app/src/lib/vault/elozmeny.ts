@@ -2,6 +2,8 @@
 // (melyik kör, milyen forrás); a diffet a felület a két változat szövegéből rajzolja; a visszaállítás a core-é
 // (revert-commit, a kör-zár alatt) — a nyitott dokumentumot a hívó előbb menti, utána újratölti.
 
+import { t, locale } from '../i18n';
+
 import { kerdez } from '../core/api';
 
 export interface ElozmenyBejegyzes {
@@ -50,14 +52,14 @@ export const elozmenyApi = {
 export function elozmenyIdo(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return new Intl.DateTimeFormat('hu', { dateStyle: 'medium', timeStyle: 'short' }).format(d);
+  return new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(d);
 }
 
 /** Miért nem állítható vissza egy bejegyzés (a gomb tooltipje), vagy `null`, ha igen. */
 export function visszaallitasOka(b: ElozmenyBejegyzes, legujabb: boolean): string | null {
   if (b.visszaallithato) return null;
-  if (legujabb) return 'Ez a jelenlegi változat.';
-  if (b.statusz === 'D') return 'Ebben a pillanatképben a jegyzet törölve lett.';
+  if (legujabb) return t('Ez a jelenlegi változat.');
+  if (b.statusz === 'D') return t('Ebben a pillanatképben a jegyzet törölve lett.');
   // 39. döntés: a korábbi néven álló változat is visszaállítható (új tartalom-írásként) — a core adja a `visszaallithato` jelzőt
-  return 'Ez a változat nem állítható vissza.';
+  return t('Ez a változat nem állítható vissza.');
 }

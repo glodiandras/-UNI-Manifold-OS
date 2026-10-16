@@ -5,6 +5,7 @@
   kijelölés és a szerkesztés a `Vaszon`-é: a kártya csak jelöli a fogókat (`data-fogo`, `data-kapcs`).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { fajlIkon, TIPUS_NEV } from '../lib/ikon/fajlIkon';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
@@ -64,14 +65,14 @@
   );
   const cimke = $derived(
     c.type === 'file'
-      ? `${tipus ? TIPUS_NEV[tipus] : 'fájl'}: ${nev}`
+      ? t('{tipus}: {nev}', { tipus: tipus ? t(TIPUS_NEV[tipus]) : t('fájl'), nev })
       : c.type === 'text'
-        ? `Szövegkártya: ${nev || 'üres'}`
+        ? t('Szövegkártya: {nev}', { nev: nev || t('üres') })
         : c.type === 'link'
-          ? `Link: ${nev}`
+          ? t('Link: {nev}', { nev })
           : c.type === 'group'
-            ? `Csoport: ${nev || 'névtelen'}`
-            : `Ismeretlen kártya (${c.type})`,
+            ? t('Csoport: {nev}', { nev: nev || t('névtelen') })
+            : t('Ismeretlen kártya ({tipus})', { tipus: c.type }),
   );
   // a kép vödre a képernyőn mért szélességből: csak a vödör változására töltődik újra
   const vodor = $derived(tipus === 'kep' ? kepVodor(c.width * z, typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1) : 0);
@@ -117,7 +118,7 @@
   style:--szin={szin}
   style:--szin-hatter={szin && c.color && /^[1-6]$/.test(c.color) ? `var(--canvas-szin-${c.color}-hatter)` : null}
   role="group"
-  aria-label={kijelolt ? `${cimke} (kijelölve)` : cimke}
+  aria-label={kijelolt ? t('{cimke} (kijelölve)', { cimke }) : cimke}
   tabindex="0"
   onfocus={() => onfokusz?.(c.id)}
 >
@@ -137,7 +138,7 @@
   {/if}
 
   {#if c.type === 'file' && !letezik}
-    <div class="kartya-uzenet hiba">Nem található: {c.file}</div>
+    <div class="kartya-uzenet hiba">{t('Nem található: {fajl}', { fajl: String(c.file ?? '') })}</div>
   {:else if c.type === 'file' && reszletes && tipus !== 'md' && tipus !== 'kep' && tipus !== 'video' && tipus !== 'hang'}
     <div class="kartya-uzenet"><Ikon ikon={fajlIkon(tipus ?? 'egyeb')} meret={20} /><span>{nev}</span></div>
   {:else if !reszletes && c.type !== 'group'}
@@ -151,7 +152,7 @@
   {/if}
   {#if kapcsolhato}
     {#each OLDALAK as o (o)}
-      <span class="kapcs kapcs-{o}" data-kapcs={o} aria-hidden="true" title="Húzd egy másik kártyára: új él"></span>
+      <span class="kapcs kapcs-{o}" data-kapcs={o} aria-hidden="true" title={t('Húzd egy másik kártyára: új él')}></span>
     {/each}
   {/if}
 </div>

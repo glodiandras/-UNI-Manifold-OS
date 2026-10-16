@@ -5,6 +5,7 @@
   és oszlopként (`formula.név`) jelölhetők ki az Oszlopok panelen.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import type { BazisModell } from './modell.svelte';
   import SzovegMezo from './SzovegMezo.svelte';
   import type { BazisHiba, Muvelet, Valasz } from './tipusok';
@@ -31,40 +32,40 @@
 {#if fajl}
   <div class="szuro">
     <section>
-      <h4>Szűrő — minden nézetre</h4>
+      <h4>{t('Szűrő — minden nézetre')}</h4>
       <SzovegMezo
-        cimke="Szűrő minden nézetre"
+        cimke={t('Szűrő minden nézetre')}
         ertek={fajl.szuro}
-        helyorzo={'file.hasTag("könyv")'}
+        helyorzo={t('file.hasTag("könyv")')}
         sorok={3}
         ellenorzes={(s) => ellenorzes(szuroMuvelet('globalis', s))()}
         alkalmaz={(s) => alkalmaz(szuroMuvelet('globalis', s))}
       />
     </section>
     <section>
-      <h4>Szűrő — {v.nezet?.nev ?? 'ez a nézet'}</h4>
+      <h4>{t('Szűrő — {nev}', { nev: v.nezet?.nev ?? t('ez a nézet') })}</h4>
       <SzovegMezo
-        cimke="Szűrő erre a nézetre"
+        cimke={t('Szűrő erre a nézetre')}
         ertek={fajl.szuro_nezet}
-        helyorzo={'Status != "kész"'}
+        helyorzo={t('Status != "kész"')}
         sorok={3}
         ellenorzes={(s) => ellenorzes(szuroMuvelet(nezet, s))()}
         alkalmaz={(s) => alkalmaz(szuroMuvelet(nezet, s))}
       />
     </section>
     <p class="segito">
-      Egy kifejezés (<code>ar &gt; 100</code>), vagy and / or / not szerkezet YAML-ban. Üres mező: nincs szűrő.
+      {t('Egy kifejezés (')}<code>ar &gt; 100</code>{t('), vagy and / or / not szerkezet YAML-ban. Üres mező: nincs szűrő.')}
     </p>
     <section>
-      <h4>Képletek</h4>
+      <h4>{t('Képletek')}</h4>
       {#each Object.entries(fajl.kepletek) as [nev, kif] (nev)}
         <div class="keplet">
           <div class="keplet-fej">
             <code>formula.{nev}</code>
-            <button type="button" class="torol" onclick={() => void alkalmaz(kepletMuvelet(nev, null))}>Törlés</button>
+            <button type="button" class="torol" onclick={() => void alkalmaz(kepletMuvelet(nev, null))}>{t('Törlés')}</button>
           </div>
           <SzovegMezo
-            cimke="{nev} képlet"
+            cimke={t('{nev} képlet', { nev })}
             ertek={kif}
             sorok={2}
             uresEngedett={false}
@@ -77,8 +78,8 @@
         <input
           class="nev"
           type="text"
-          placeholder="Új képlet neve"
-          aria-label="Új képlet neve"
+          placeholder={t('Új képlet neve')}
+          aria-label={t('Új képlet neve')}
           autocapitalize="off"
           spellcheck="false"
           bind:value={ujNev}
@@ -86,12 +87,12 @@
         {#if ujNevErvenyes}
           {#key ujNev.trim()}
             <SzovegMezo
-              cimke="{ujNev.trim()} képlet"
+              cimke={t('{nev} képlet', { nev: ujNev.trim() })}
               ertek=""
               sorok={2}
               uresEngedett={false}
               helyorzo={'price * quantity'}
-              gomb="Létrehoz"
+              gomb={t('Létrehoz')}
               ellenorzes={(s) => ellenorzes(kepletMuvelet(ujNev.trim(), s))()}
               alkalmaz={async (s) => {
                 const ok = await alkalmaz(kepletMuvelet(ujNev.trim(), s));
@@ -101,7 +102,7 @@
             />
           {/key}
         {:else if ujNev.trim() !== ''}
-          <p class="segito">Ilyen nevű képlet már van.</p>
+          <p class="segito">{t('Ilyen nevű képlet már van.')}</p>
         {/if}
       </div>
     </section>

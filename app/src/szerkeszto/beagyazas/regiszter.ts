@@ -48,7 +48,7 @@ class JegyzetOsztalyRegiszter {
   private readonly lista: JegyzetOsztalyRenderelo[] = [];
 
   regisztral(r: JegyzetOsztalyRenderelo): () => void {
-    if (this.lista.some((x) => x.id === r.id)) throw new Error(`már regisztrált jegyzet-osztály renderelő: ${r.id}`);
+    if (this.lista.some((x) => x.id === r.id)) throw new Error(`már regisztrált jegyzet-osztály renderelő: ${r.id}`); // i18n-ignore: programozói hiba
     this.lista.push(r);
     return () => {
       const i = this.lista.indexOf(r);
@@ -67,7 +67,7 @@ class Regiszter {
   private readonly lista = new Map<BeagyazasTipus, BeagyazasRenderelo>();
 
   regisztral(r: BeagyazasRenderelo): () => void {
-    if (this.lista.has(r.tipus)) throw new Error(`már regisztrált beágyazás-renderelő: ${r.tipus}`);
+    if (this.lista.has(r.tipus)) throw new Error(`már regisztrált beágyazás-renderelő: ${r.tipus}`); // i18n-ignore: programozói hiba
     this.lista.set(r.tipus, r);
     return () => {
       if (this.lista.get(r.tipus) === r) this.lista.delete(r.tipus);

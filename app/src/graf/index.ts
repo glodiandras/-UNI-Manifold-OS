@@ -5,6 +5,7 @@ import { nezetek } from '../lib/elrendezes/nezetek.svelte';
 import { Network } from '../lib/ikon/ikonok';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import Graf from './Graf.svelte';
+import { tk } from '../lib/i18n';
 
 export function grafTelepit(reg: Regiszter, felulet: Felulet): () => void {
   const m = felulet.munkaterulet;
@@ -17,8 +18,8 @@ export function grafTelepit(reg: Regiszter, felulet: Felulet): () => void {
   const leParancsok = reg.regisztralMind([
     {
       id: 'graf.megnyit',
-      nev: 'Gráfnézet megnyitása',
-      kategoria: 'Gráf',
+      nev: tk('Gráfnézet megnyitása'),
+      kategoria: tk('Gráf'),
       ikon: Network,
       futtat: () => {
         felulet.atfedes = null;
@@ -27,8 +28,8 @@ export function grafTelepit(reg: Regiszter, felulet: Felulet): () => void {
     },
     {
       id: 'graf.helyi',
-      nev: 'Helyi gráf a jegyzetből',
-      kategoria: 'Gráf',
+      nev: tk('Helyi gráf a jegyzetből'),
+      kategoria: tk('Gráf'),
       ikon: Network,
       elerheto: () => !!m.aktivFul?.ut,
       futtat: () => {

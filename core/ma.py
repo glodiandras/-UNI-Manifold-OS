@@ -27,7 +27,9 @@ from contextlib import closing
 from datetime import date, datetime, timedelta
 
 from . import naplo, sablon, szoveg_tisztit
+from .hibakod import kodol
 from .index import feladatok
+from .utvonalak import hiba_torzs
 from .vaultio import NotFound
 
 POS_FAJL = "pos.sqlite"
@@ -43,7 +45,7 @@ def _pos(cfg) -> sqlite3.Connection:
     """A személyes adatbázis csak olvasható kapcsolata; hiányzó fájl: `FileNotFoundError`."""
     ut = cfg.path("szemelyes") / POS_FAJL
     if not ut.is_file():
-        raise FileNotFoundError("még nincs naptáradat: a naptár-szinkron még nem futott (a naptár-engedély a vezérlőben, ⇧⌘M)")
+        raise kodol(FileNotFoundError("még nincs naptáradat: a naptár-szinkron még nem futott"), "ma.nincs_naptaradat")
     c = sqlite3.connect(f"file:{urllib.parse.quote(str(ut))}?mode=ro", uri=True, timeout=2)
     c.row_factory = sqlite3.Row
     return c
@@ -54,7 +56,7 @@ def _szakasz(fn, *args) -> dict:
     try:
         return fn(*args)
     except Exception as e:            # noqa: BLE001 — független szakaszok: az egyik hibája nem viheti el a többit
-        return {"hiba": str(e) or e.__class__.__name__}
+        return hiba_torzs(e, alap_kod="ma.szakasz_hiba")
 
 
 # ------------------------------------------------------------------ napi jegyzet

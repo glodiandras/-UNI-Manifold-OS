@@ -637,12 +637,12 @@ class Repo:
                 self.git("diff", "--quiet", check=False).returncode == 0:
             self._naplo_torol()
             self.index_frissit()
-            return [f"Egy megszakadt visszavonás ({self.name}) a commit előtt állt meg; a vault visszaállt a visszavonás előtti "
-                    "állapotra, a visszavonás újra elindítható."]
+            return [f"An undo operation in {self.name} stopped before its commit. The vault was restored to its state before "
+                    "the undo. You can try undoing again."]
         megtartva = d.with_name(f"{d.name}-megtartva-{time.strftime('%Y%m%d-%H%M%S')}")
         os.rename(d, megtartva)
-        return [f"Egy megszakadt visszavonás ({self.name}) naplóját nem sikerült teljesen visszagörgetni (a fájlokat közben más is "
-                f"átírta); a patchek itt vannak: {megtartva}."]
+        return [f"An interrupted undo in {self.name} could not be fully rolled back because another writer changed the files. "
+                f"Its patches are preserved at: {megtartva}."]
 
     # A `git apply` a fájlt újraírja, a neve a tárolóé (NFC, core.precomposeunicode). A vault sok
     # neve a lemezen NFD (L40, L45): a visszavonás után a fájl a korábbi, lemezen álló nevét kapja

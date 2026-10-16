@@ -6,6 +6,7 @@
 // attribútumot kap (a navigációt és a lebegő előnézetet az Olvasó és a szerkesztő kezeli, C10); a beágyazás
 // (`![[…]]`) a `beagyazas/rajzol.ts`-ben készül. A Live Preview táblázat-widgetje is ezt a renderelőt használja.
 
+import { t } from '../../lib/i18n';
 import type { SyntaxNode, Tree } from '@lezer/common';
 import { ikonElem } from '../../lib/ikon/ikonElem';
 import { Check, ChevronRight, Copy } from '../../lib/ikon/ikonok';
@@ -243,7 +244,7 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
     case 'Image': {
       const l = linkSzoveg(c, o);
       const s = el('span', 'kep-helyorzo');
-      s.textContent = `[kép: ${o.olvas(l.from, l.to) || l.cim}]`;
+      s.textContent = t('[kép: {cim}]', { cim: o.olvas(l.from, l.to) || l.cim });
       if (l.cim) s.title = l.cim;
       return w.elem(s);
     }
@@ -306,7 +307,7 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       a.textContent = String(n);
       a.setAttribute('role', 'link');
       a.tabIndex = 0;
-      a.setAttribute('aria-label', `${n}. lábjegyzet`);
+      a.setAttribute('aria-label', t('{n}. lábjegyzet', { n }));
       sup.appendChild(a);
       return w.elem(sup);
     }
@@ -449,7 +450,7 @@ function feladat(n: SyntaxNode, o: RenderOpciok, li: HTMLElement): void {
   const doboz = el('input', 'feladat-jelolo');
   doboz.type = 'checkbox';
   doboz.checked = allapot !== ' ';
-  doboz.setAttribute('aria-label', allapot === ' ' ? 'Feladat: kész' : 'Feladat: nincs kész');
+  doboz.setAttribute('aria-label', allapot === ' ' ? t('Feladat: kész') : t('Feladat: nincs kész'));
   if (jel) doboz.dataset.jelolo = String(jel.from);
   const p = el('p');
   p.appendChild(doboz);
@@ -468,18 +469,18 @@ function kodSzovege(n: SyntaxNode, o: RenderOpciok): string {
 export function masolasGomb(kod: () => string): HTMLButtonElement {
   const b = el('button', 'kod-masol');
   b.type = 'button';
-  b.setAttribute('aria-label', 'Kód másolása');
-  b.title = 'Kód másolása';
+  b.setAttribute('aria-label', t('Kód másolása'));
+  b.title = t('Kód másolása');
   b.appendChild(ikonElem(Copy, 14));
   b.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (await vagolapra(kod())) {
       b.replaceChildren(ikonElem(Check, 14));
-      b.setAttribute('aria-label', 'Másolva');
+      b.setAttribute('aria-label', t('Másolva'));
       setTimeout(() => {
         b.replaceChildren(ikonElem(Copy, 14));
-        b.setAttribute('aria-label', 'Kód másolása');
+        b.setAttribute('aria-label', t('Kód másolása'));
       }, 1500);
     }
   });
@@ -555,7 +556,7 @@ function frontmatter(n: SyntaxNode, o: RenderOpciok, cel: Node): void {
   const d = el('details', 'tulajdonsagok');
   const s = el('summary');
   const sorok = yaml.split('\n').filter((x) => /^[^\s#-][^:]*:/.test(x)).length;
-  s.textContent = sorok ? `Tulajdonságok (${sorok})` : 'Tulajdonságok';
+  s.textContent = sorok ? t('Tulajdonságok ({n})', { n: sorok }) : t('Tulajdonságok');
   const pre = el('pre');
   const code = el('code');
   code.textContent = yaml;
@@ -625,7 +626,7 @@ function labjegyzetSzakasz(o: RenderOpciok): HTMLElement | null {
   const szamok = (o.labjegyzetSzam ??= new Map());
   for (const nev of defs.keys()) if (!szamok.has(nev)) szamok.set(nev, szamok.size + 1);
   const s = el('section', 'labjegyzetek');
-  s.setAttribute('aria-label', 'Lábjegyzetek');
+  s.setAttribute('aria-label', t('Lábjegyzetek'));
   s.appendChild(el('hr'));
   const ol = el('ol');
   for (const [nev, n] of [...defs].sort((a, b) => szamok.get(a[0])! - szamok.get(b[0])!)) {
@@ -637,7 +638,7 @@ function labjegyzetSzakasz(o: RenderOpciok): HTMLElement | null {
     vissza.textContent = '↩';
     vissza.setAttribute('role', 'link');
     vissza.tabIndex = 0;
-    vissza.setAttribute('aria-label', 'Vissza a szövegbe');
+    vissza.setAttribute('aria-label', t('Vissza a szövegbe'));
     (li.lastElementChild ?? li).appendChild(vissza);
     ol.appendChild(li);
   }

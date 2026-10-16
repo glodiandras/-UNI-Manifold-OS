@@ -61,6 +61,7 @@ from .modell import jelek as modell_jelek
 from .modell import kalibracio, kapu, kliens
 from . import vezerlo
 from . import higienia
+from .hibakod import angol_uzenet, json_param
 from .asszisztens import api as asszisztens_api
 from .asszisztens import homlokzat as asszisztens_homlokzat
 from . import kviz_api
@@ -88,6 +89,7 @@ KONFIG_HIBA_KILEPES = 78           # EX_CONFIG: a konfiguráció vagy a munkaté
 
 
 HttpError = utvonalak.HttpError      # a kezelők kivétele; a regiszterben (utvonalak.py) él, itt a régi név marad
+hiba_torzs = utvonalak.hiba_torzs
 
 
 def rss_mb(pid: int | None = None) -> float | None:
@@ -257,16 +259,16 @@ class App:
                 self.indulasi_uzenetek += self._helyreallitas_zarban(tmp_takarit=tmp_takarit)
             else:
                 self.indulasi_uzenetek.append(
-                    "Az indulási helyreállítás kimaradt: a kör-zárat egy másik folyamat fogja (egy gépi írás, átnevezés vagy "
-                    "másik core). Amint felszabadul, a core lefuttatja; egy megszakadt írás maradványa addig a vaultban "
-                    "maradhat.")
+                    "Startup recovery is waiting because another process holds the operation lock. Recovery will run "
+                    "when the lock is released; remnants of an interrupted write may remain in the vault until then.")
                 self._helyreallitas_ujra()
         hiba = mentes.hiba_olvas(self.cfg)      # T023: az előző kilépési/időzített mentés hibája nem maradhat néma
         if hiba:
             self.indulasi_uzenetek.append(
-                f"Az előző belső lemezes mentés nem sikerült ({hiba.get('ido', '?')}): {mentes.hiba_szoveg(hiba)}. "
-                "A szöveg ettől még a vault kötetén megvan, de a belső lemezen a legutóbbi mentés régebbi a HEAD-nél; a következő "
-                "sikeres mentés (kilépéskor, vagy tétlenségben 30 percenként) törli ezt az üzenetet.")
+                f"The previous local backup failed ({hiba.get('ido', '?')}) for: {', '.join(hiba['hibak'])}. "
+                "Your text is still on the vault volume, but the local backup is older than the latest changes. "
+                f"Error details are preserved at: {self.cfg.path('state') / mentes.HIBA_FAJL}. "
+                "The next successful backup (on exit or every 30 minutes while idle) will clear this warning.")
         for u in self.indulasi_uzenetek:
             print(f"[indulás] {u}", file=sys.stderr, flush=True)
 
@@ -322,23 +324,28 @@ class App:
             try:
                 repo.biztosit_kornyezet()
             except (OSError, snapshot.SnapshotError) as e:
-                uzenetek.append(f"A(z) {repo.name} pillanatkép-tároló git-környezetét nem sikerült lezárni: {e}")
+                uzenetek.append(f"The Git environment of the {repo.name} snapshot store could not be secured "
+                                f"({type(e).__name__}). See the core log for details.")
+                print(f"[recovery] {repo.name}: {e}", file=sys.stderr, flush=True)
         for repo in frame.live_repos(self.cfg).values():       # T020: egy megszakadt visszavonás/visszaállítás naplója
             try:
                 uzenetek += repo.visszavonas_helyreallit()
             except (OSError, ValueError, KeyError, snapshot.SnapshotError) as e:
-                uzenetek.append(f"Egy megszakadt visszavonás ({repo.name}) helyreállítása nem sikerült: {e}. "
-                                f"A napló megmaradt: {repo.naplo_dir}")
+                uzenetek.append(f"Recovery of an interrupted undo in {repo.name} failed ({type(e).__name__}). "
+                                f"Its journal is preserved at: {repo.naplo_dir}. See the core log for details.")
+                print(f"[recovery] undo {repo.name}: {e}", file=sys.stderr, flush=True)
         try:
             uzenetek += atnevezes.helyreallit(self.cfg)
         except (OSError, ValueError, KeyError) as e:      # a core ettől még induljon el
-            uzenetek.append(f"Egy megszakadt átnevezés helyreállítása nem sikerült: {e}. "
-                            f"A napló megmaradt: {self.cfg.path('run') / atnevezes.NAPLO}")
+            uzenetek.append(f"Recovery of an interrupted rename failed ({type(e).__name__}). "
+                            f"Its journal is preserved at: {self.cfg.path('run') / atnevezes.NAPLO}. See the core log for details.")
+            print(f"[recovery] rename: {e}", file=sys.stderr, flush=True)
         try:
             uzenetek += gepi_iras.helyreallit(self.cfg)
         except (OSError, ValueError, KeyError, snapshot.SnapshotError) as e:
-            uzenetek.append(f"Egy megszakadt gépi írás helyreállítása nem sikerült: {e}. "
-                            f"A napló megmaradt: {self.cfg.path('run') / gepi_iras.NAPLO}")
+            uzenetek.append(f"Recovery of an interrupted machine write failed ({type(e).__name__}). "
+                            f"Its journal is preserved at: {self.cfg.path('run') / gepi_iras.NAPLO}. See the core log for details.")
+            print(f"[recovery] machine write: {e}", file=sys.stderr, flush=True)
         if tmp_takarit:     # a T093-as újrapróba a kézfogás után fut: csak a core indulása ELŐTT keletkezett maradék törlődik
             uzenetek += frame.tmp_takaritas(self.cfg, elotte=getattr(self, "indulas_ido", None))
         return uzenetek
@@ -450,7 +457,7 @@ class App:
         """Egy folyó médiaküldés nyilvántartása (a `close_ws` megszakítja); leálláskor új küldés nem indul (503)."""
         with self._lock:
             if self.closing:
-                raise HttpError(503, "a core leáll")
+                raise HttpError(503, "a core leáll", kod="core.leall")
             self._media.add(sock)
         try:
             yield
@@ -550,21 +557,21 @@ class App:
     def repo(self, tar: str) -> snapshot.Repo:
         r = frame.live_repos(self.cfg).get(tar)
         if not r:
-            raise HttpError(404, f"nincs ilyen élő pillanatkép-tároló: {tar}")
+            raise HttpError(404, f"nincs ilyen élő pillanatkép-tároló: {tar}", kod="pillanatkep.nincs_tar", param={"tar": tar})
         return r
 
     def undo(self, tar: str, body: dict) -> dict:
         repo = self.repo(tar)
         sha, kor = body.get("sha"), body.get("kor")
         if bool(sha) == bool(kor):
-            raise HttpError(400, "adj meg pontosan egyet: sha vagy kor")
+            raise HttpError(400, "adj meg pontosan egyet: sha vagy kor", kod="pillanatkep.sha_vagy_kor")
         if kor and (not isinstance(kor, str) or not KOR_ID.fullmatch(kor) or "proba" in kor):
-            raise HttpError(400, f"érvénytelen vagy próba-kör: {kor}")
+            raise HttpError(400, f"érvénytelen vagy próba-kör: {kor}", kod="pillanatkep.kor_ervenytelen", param={"kor": kor})
         if sha and (not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{7,40}", sha)):
-            raise HttpError(400, f"érvénytelen commit: {sha}")
+            raise HttpError(400, f"érvénytelen commit: {sha}", kod="pillanatkep.commit_ervenytelen", param={"sha": sha})
         feladat = body.get("feladat")
         if feladat is not None and (not isinstance(feladat, str) or not re.fullmatch(r"F-[0-9]{8}-[0-9]{6}-[0-9]+", feladat)):
-            raise HttpError(400, f"érvénytelen feladat-azonosító: {feladat!r}")
+            raise HttpError(400, f"érvénytelen feladat-azonosító: {feladat!r}", kod="pillanatkep.feladat_azon", param={"feladat": repr(feladat)})
         kivetelek = snapshot.exclusions(self.cfg, tar)
         visszavont_forrasok: list = []
         media: dict = {}
@@ -583,13 +590,13 @@ class App:
                     media = self._media_visszaallit(repo, sha, kor)
                     self._fuzet_visszavonas(repo, sha, kor, kor_commitok)
         except frame.Busy as exc:
-            raise HttpError(409, str(exc), foglalt=True) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.foglalt", foglalt=True) from exc
         except snapshot.NaploAll as exc:
-            raise HttpError(409, str(exc), naplo=True) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.naplo_all", naplo=True) from exc
         except snapshot.UndoConflict as exc:
-            raise HttpError(409, str(exc), utkozes=True, fajlok=exc.files) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.visszavonas_utkozes", utkozes=True, fajlok=exc.files) from exc
         except snapshot.SnapshotError as exc:
-            raise HttpError(400, str(exc)) from exc
+            raise HttpError(400, str(exc), kod="pillanatkep.hibas") from exc
         if tar == "vault":                  # az index ne a figyelőre várjon (C16.5): az érintett utak azonnal
             self._index_jelez(repo.changed_files(uj))
         self.bus.publish({"tipus": "visszavonas", "tar": tar, "sha": uj, "visszavont": sha or kor})
@@ -712,17 +719,17 @@ def _handler(app: App):
             try:
                 n = int(self.headers.get("Content-Length") or 0)
             except ValueError as exc:
-                raise HttpError(400, "hibás Content-Length") from exc
+                raise HttpError(400, "hibás Content-Length", kod="http.content_length") from exc
             if n < 0:                   # L2: a negatív hossz a kapcsolat végéig olvasna
-                raise HttpError(400, "hibás Content-Length")
+                raise HttpError(400, "hibás Content-Length", kod="http.content_length")
             if n > MAX_TORZS:
-                raise HttpError(413, "túl nagy kérés")
+                raise HttpError(413, "túl nagy kérés", kod="http.tul_nagy")
             try:
                 d = json.loads(self.rfile.read(n) or b"{}")
             except ValueError as exc:
-                raise HttpError(400, "hibás JSON") from exc
+                raise HttpError(400, "hibás JSON", kod="http.json_hibas") from exc
             if not isinstance(d, dict):
-                raise HttpError(400, "JSON-objektum kell")
+                raise HttpError(400, "JSON-objektum kell", kod="http.json_objektum")
             return d
 
         @staticmethod
@@ -734,9 +741,9 @@ def _handler(app: App):
             try:
                 n = int(v)
             except ValueError:
-                raise HttpError(400, f"hibás {kulcs}: egész szám kell") from None
+                raise HttpError(400, f"hibás {kulcs}: egész szám kell", kod="http.egesz_szam", param={"kulcs": kulcs}) from None
             if not also <= n <= felso:
-                raise HttpError(400, f"hibás {kulcs}: {also} és {felso} között kell lennie")
+                raise HttpError(400, f"hibás {kulcs}: {also} és {felso} között kell lennie", kod="http.tartomany", param={"kulcs": kulcs, "also": also, "felso": felso})
             return n
 
         def _hitelesit(self, ut: str) -> None:
@@ -747,13 +754,13 @@ def _handler(app: App):
             if app.titok_ok(kapott):
                 return
             if app.queue.lepes_feladat(kapott) is None:
-                raise HttpError(403, "hiányzó vagy hibás X-Manifold fejléc")
+                raise HttpError(403, "hiányzó vagy hibás X-Manifold fejléc", kod="http.x_manifold")
             if not lepes_kapu.engedelyezett(self.command, ut):
-                raise HttpError(403, "lépés-folyamat ezt a végpontot nem hívhatja: a vaultba a gépi-írás szolgáltatáson át ír (28(a))")
+                raise HttpError(403, "lépés-folyamat ezt a végpontot nem hívhatja: a vaultba a gépi-írás szolgáltatáson át ír (28(a))", kod="http.lepes_tiltott")
 
         def _kezel(self, fn) -> None:
             if not self._gazda_ok():
-                return self._kuld(403, "tiltott gazda".encode(), "text/plain; charset=utf-8")
+                return self._kuld(403, b"This host is not allowed.", "text/plain; charset=utf-8")
             url = urllib.parse.urlsplit(self.path)
             ut = urllib.parse.unquote(url.path)
             q = {k: v[-1] for k, v in urllib.parse.parse_qs(url.query).items()}
@@ -762,19 +769,28 @@ def _handler(app: App):
                     self._hitelesit(ut)
                 return fn(ut, q)
             except HttpError as e:
-                self._json(e.code, {"hiba": str(e), **e.data})
+                if e.kod:
+                    self._json(e.code, e.torzs())
+                else:
+                    alap = {404: "http.nem_talalhato", 409: "http.utkozes", 503: "http.nem_elerheto"}
+                    self._json(e.code, hiba_torzs(e, alap_kod=alap.get(e.code, "http.keres_hibas"), **e.data))
             except atnevezes.Hiba as e:
-                self._json(e.kod, {"hiba": str(e), **e.adat})
+                kod = next((f"atnevezes.{nev}" for mezo, nev in (
+                    ("naplo", "naplo_all"), ("foglalt", "foglalt"), ("nyitott", "mentetlen"),
+                    ("valtozott", "valtozott"), ("blokkolok", "blokkolt"), ("proba_hibak", "visszaallitva"))
+                    if e.adat.get(mezo)), "atnevezes.sikertelen")
+                self._json(e.kod, hiba_torzs(e, alap_kod=kod, **e.adat))
             except vaultio.NemElerheto as e:
-                self._json(503, {"hiba": str(e), "lemez_hiba": True, "vault_elerheto": False})
+                self._json(503, hiba_torzs(e, alap_kod=e.kod, lemez_hiba=True, vault_elerheto=False))
             except vaultio.NotFound as e:
-                self._json(404, {"hiba": str(e)})
+                self._json(404, hiba_torzs(e, alap_kod="http.nem_talalhato"))
             except (vaultio.Invalid, tasks.Invalid, felulet.Hibas) as e:
-                self._json(400, {"hiba": str(e)})
+                self._json(400, hiba_torzs(e, alap_kod="http.keres_hibas"))
             except vaultio.Conflict as e:
-                self._json(409, {"hiba": str(e), "utkozes": True, **e.data})
+                self._json(409, hiba_torzs(e, alap_kod="http.utkozes", utkozes=True, **e.data))
             except (tasks.Closed, indexelo.NemKesz) as e:
-                self._json(503, {"hiba": str(e)})
+                kod = "core.leall" if isinstance(e, tasks.Closed) else "index.nem_kesz"
+                self._json(503, hiba_torzs(e, alap_kod=kod))
             except (BrokenPipeError, ConnectionResetError, TimeoutError):
                 pass            # a kliens elment vagy elakadt (socket-időkorlát): nincs kinek választ küldeni
             except OSError as e:
@@ -783,7 +799,8 @@ def _handler(app: App):
                 print(f"[core] lemezhiba: {self.command} {ut}: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
                 self._json(kod, adat)
             except Exception as e:  # noqa: BLE001 — a szerver nem halhat meg egy kéréstől
-                self._json(500, {"hiba": f"{type(e).__name__}: {e}"})
+                print(f"[core] {self.command} {ut}: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+                self._json(500, hiba_torzs(e, alap_kod="http.belso_hiba"))
 
         # ---------------------------------------------------- GET
 
@@ -797,7 +814,7 @@ def _handler(app: App):
             if self._utvonal("GET", ut, q):
                 return
             if ut.startswith("/api/"):
-                raise HttpError(404, "nincs ilyen végpont")
+                raise HttpError(404, "nincs ilyen végpont", kod="http.nincs_vegpont")
             return self._statikus(ut)
 
         def _utvonal(self, metodus: str, ut: str, q: dict, torzs: dict | None = None) -> bool:
@@ -832,7 +849,7 @@ def _handler(app: App):
                     return self._kuld(200, p.read_bytes(), tipus)
             if ut == "/":
                 return self._kuld(200, URES_LAP, "text/html; charset=utf-8")
-            raise HttpError(404, "nincs ilyen")
+            raise HttpError(404, "nincs ilyen", kod="http.nincs_ilyen")
 
         # ---------------------------------------------------- POST / PUT
 
@@ -844,14 +861,14 @@ def _handler(app: App):
 
         def _post(self, ut: str, q: dict):
             if not ut.startswith("/api/"):
-                raise HttpError(404, "nincs ilyen végpont")
+                raise HttpError(404, "nincs ilyen végpont", kod="http.nincs_vegpont")
             body = self._torzs()        # a törzs a végpont keresése előtt olvasódik: a hibás törzs 400, nem 404
             if not self._utvonal("POST", ut, q, body):
-                raise HttpError(404, "nincs ilyen végpont")
+                raise HttpError(404, "nincs ilyen végpont", kod="http.nincs_vegpont")
 
         def _put(self, ut: str, q: dict):
             if not self._utvonal("PUT", ut, q):
-                raise HttpError(404, "nincs ilyen végpont")
+                raise HttpError(404, "nincs ilyen végpont", kod="http.nincs_vegpont")
 
         # ---------------------------------------------------- WebSocket
 
@@ -859,24 +876,24 @@ def _handler(app: App):
             self.protocol_version = "HTTP/1.1"          # a WS-kliens a hibaválaszt is HTTP/1.1-ként várja
             h = self.headers
             if "websocket" not in (h.get("Upgrade") or "").lower() or "upgrade" not in (h.get("Connection") or "").lower():
-                raise HttpError(400, "WebSocket-kézfogás kell")
+                raise HttpError(400, "WebSocket-kézfogás kell", kod="ws.kezfogas_kell")
             origin = h.get("Origin")
             sajat = {f"http://{g}:{app.port}" for g in HELYI_GAZDAK}
             if origin is not None and origin not in sajat:
-                raise HttpError(403, "idegen origin")
+                raise HttpError(403, "idegen origin", kod="ws.origin")
             key = h.get("Sec-WebSocket-Key")
             if not key or h.get("Sec-WebSocket-Version") != "13":
-                raise HttpError(400, "hibás WebSocket-kézfogás")
+                raise HttpError(400, "hibás WebSocket-kézfogás", kod="ws.kezfogas_hibas")
             # a böngésző WS-e nem küldhet fejlécet: a titok az alprotokollban megy (`mos.<titok>`), a választottat vissza kell küldeni
             alprotokoll = next((p.strip() for p in (h.get("Sec-WebSocket-Protocol") or "").split(",")
                                 if p.strip().startswith("mos.") and app.titok_ok(p.strip()[4:])), None)
             if alprotokoll is None:
-                raise HttpError(403, "hiányzó vagy hibás WebSocket-titok")
+                raise HttpError(403, "hiányzó vagy hibás WebSocket-titok", kod="ws.titok")
             conn = websocket.Connection(self.connection, self.rfile, self.wfile)
             sub = app.bus.subscribe()       # az `add_ws` ELŐTT: a közben küldött `indulasi_uzenet` sem vész el
             if not app.add_ws(conn):
                 sub.close()
-                raise HttpError(503, "a core leáll")
+                raise HttpError(503, "a core leáll", kod="core.leall")
             self.connection.settimeout(None)     # a WS hosszan tétlen lehet; a lezárást a `Connection.close()` shutdown-ja végzi
             self.wfile.write(("HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                               f"Sec-WebSocket-Accept: {websocket.accept_key(key)}\r\n"
@@ -1144,8 +1161,9 @@ def _foglalt_kezfogas(out, foglalt: dict) -> int:
 def _hiba_kezfogas(out, e: Exception) -> int:
     """A konfigurációs hiba első stdout-sora (`{"hiba": kod, "param": …, "uzenet": …}`) és a 78-as kilépési kód."""
     kod = getattr(e, "kod", None) or "konfig_hiba"
-    param = getattr(e, "param", None) or {}
-    out.write(json.dumps({"hiba": kod, "param": param, "uzenet": str(e)}, ensure_ascii=False, default=str) + "\n")
+    param = json_param(getattr(e, "param", None))
+    uzenet = angol_uzenet(kod, param, "The core could not start. Check its configuration.")
+    out.write(json.dumps({"hiba": kod, "param": param, "uzenet": uzenet}, ensure_ascii=False) + "\n")
     out.flush()
     print(f"[core] a core nem indul ({kod}): {e}", file=sys.stderr, flush=True)
     return KONFIG_HIBA_KILEPES

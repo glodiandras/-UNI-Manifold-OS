@@ -7,6 +7,23 @@ from core.epites import allapot, jegyzek
 
 
 class EpitesTest(unittest.TestCase):
+    def test_a_lokalizacio_valtozasa_elavultta_teszi_a_hejat(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            szotar = root / 'shell/Resources/en.lproj/Localizable.strings'
+            szotar.parent.mkdir(parents=True)
+            szotar.write_text('"Kilépés" = "Quit";\n', encoding='utf-8')
+            j = jegyzek(root)
+            for p in ('app/dist/epites.json', 'Manifold.app/Contents/Resources/epites.json'):
+                f = root / p
+                f.parent.mkdir(parents=True)
+                f.write_text(json.dumps(j))
+            self.assertTrue(allapot(root)['ok'])
+            szotar.write_text('"Kilépés" = "Quit Manifold";\n', encoding='utf-8')
+            r = {x['resz']: x for x in allapot(root)['reszek']}
+            self.assertFalse(r['hej']['friss'])
+            self.assertTrue(r['felulet']['friss'])
+
     def test_valtozas_es_hianyzo_jegyzek(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

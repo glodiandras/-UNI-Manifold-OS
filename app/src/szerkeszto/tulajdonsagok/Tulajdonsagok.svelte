@@ -10,6 +10,7 @@
   vault-kulcsokat. A javaslat csak bevitel: a beírás ugyanazon a `modosit`-on át megy, a séma-sértő érték megerősítéssel.
 -->
 <script lang="ts">
+  import { t as tx, tp as tpx } from '../../lib/i18n';
   import type { Text } from '@codemirror/state';
   import { onMount, untrack } from 'svelte';
   import { csend } from '../../lib/elrendezes/csend.svelte';
@@ -126,7 +127,7 @@
     if (fajta(t) === 'szam') {
       const n = szamBevitel(v);
       if (n === undefined) {
-        m.elutasitott = { kulcs: t.kulcs, uzenet: 'A szám alakja: 12 vagy 3,5.' };
+        m.elutasitott = { kulcs: t.kulcs, uzenet: tx('A szám alakja: 12 vagy 3,5.') };
         return;
       }
       beallit(t.kulcs, n, 'number');
@@ -173,13 +174,13 @@
   // ---------------------------------------------------------------- új tulajdonság
 
   const UJ_TIPUSOK: { id: TulajdonsagTipus; nev: string }[] = [
-    { id: 'text', nev: 'Szöveg' },
-    { id: 'number', nev: 'Szám' },
-    { id: 'date', nev: 'Dátum' },
-    { id: 'datetime', nev: 'Dátum és idő' },
-    { id: 'checkbox', nev: 'Jelölő' },
-    { id: 'multitext', nev: 'Lista' },
-    { id: 'tags', nev: 'Címkék' },
+    { id: 'text', nev: tx('Szöveg|tipus') },
+    { id: 'number', nev: tx('Szám|tipus') },
+    { id: 'date', nev: tx('Dátum|tipus') },
+    { id: 'datetime', nev: tx('Dátum és idő') },
+    { id: 'checkbox', nev: tx('Jelölő|tipus') },
+    { id: 'multitext', nev: tx('Lista|tipus') },
+    { id: 'tags', nev: tx('Címkék') },
   ];
   let ujNyitva = $state(false);
   let ujNev = $state('');
@@ -234,7 +235,7 @@
     else if (ujTipus === 'number') {
       const n = szamBevitel(ujErtek);
       if (n === undefined) {
-        m.elutasitott = { kulcs, uzenet: 'A szám alakja: 12 vagy 3,5.' };
+        m.elutasitott = { kulcs, uzenet: tx('A szám alakja: 12 vagy 3,5.') };
         return;
       }
       ertek = n;
@@ -259,10 +260,10 @@
     <span class="figy-ikon"><Ikon ikon={TriangleAlert} meret={14} /></span>
     <div class="figy-szoveg">
       {#each fuggo.problemak as p, i (i)}<p>{p.uzenet}</p>{/each}
-      <p class="figy-info">A vault sémája szerint ez eltérés; a vault-ellenőrző találatot ad rá.</p>
+      <p class="figy-info">{tx('A vault sémája szerint ez eltérés; a vault-ellenőrző találatot ad rá.')}</p>
       <div class="figy-gombok">
-        <button type="button" class="m-gomb semleges gomb" onclick={() => void m.megerosit()}>Mégis beírom</button>
-        <button type="button" class="m-gomb semleges gomb halvany" onclick={() => m.elvet()}>Mégse</button>
+        <button type="button" class="m-gomb semleges gomb" onclick={() => void m.megerosit()}>{tx('Mégis beírom')}</button>
+        <button type="button" class="m-gomb semleges gomb halvany" onclick={() => m.elvet()}>{tx('Mégse')}</button>
       </div>
     </div>
   </div>
@@ -279,10 +280,10 @@
         <span class="nyil" class:nyitva><Ikon ikon={ChevronRight} meret={14} /></span>
         {#if halk}
           <!-- C38: csendben az összecsukott panel egy halvány sor -->
-          <span>{tul.length ? `${tul.length} tulajdonság` : 'Tulajdonságok'}</span>
+          <span>{tul.length ? tpx('{n} tulajdonság', tul.length) : tx('Tulajdonságok')}</span>
         {:else}
           <Ikon ikon={SlidersHorizontal} meret={14} />
-          <span>Tulajdonságok</span>
+          <span>{tx('Tulajdonságok')}</span>
           {#if tul.length}<span class="db">{tul.length}</span>{/if}
         {/if}
       </button>
@@ -294,17 +295,17 @@
         class:hiba-szint={problemak.some((p) => p.szint === 'hiba')}
         aria-expanded={problemakNyitva}
         aria-controls="{id}-problemak"
-        title="A vault sémája szerinti eltérések"
+        title={tx('A vault sémája szerinti eltérések')}
         onclick={() => ((problemakNyitva = !problemakNyitva), (nyitva = true))}
       >
         <Ikon ikon={TriangleAlert} meret={14} />
-        {problemak.length} eltérés
+        {tpx('{n} eltérés', problemak.length)}
       </button>
     {/if}
     <span class="tavoltarto"></span>
     {#if irhato}
       <button type="button" class="uj-gomb" aria-expanded={ujNyitva} data-csend-rejt onclick={() => ((ujNyitva = !ujNyitva), (nyitva = true))}>
-        <Ikon ikon={Plus} meret={14} /> Új tulajdonság
+        <Ikon ikon={Plus} meret={14} /> {tx('Új tulajdonság')}
       </button>
     {/if}
   </header>
@@ -312,13 +313,13 @@
   <div class="torzs" id="{id}-lista" hidden={!nyitva}>
     {#if m.hiba}<p class="hiba" role="alert">{m.hiba}</p>{/if}
     {#if problemakNyitva && problemak.length}
-      <ul class="problemak" id="{id}-problemak" aria-label="Séma-eltérések">
+      <ul class="problemak" id="{id}-problemak" aria-label={tx('Séma-eltérések')}>
         {#each problemak as p, i (i)}<li class:hiba={p.szint === 'hiba'}>{p.uzenet}</li>{/each}
       </ul>
     {/if}
 
     {#if m.elemzes && !m.elemzes.van && !ujNyitva}
-      <p class="ures">A jegyzetnek nincs frontmattere{irhato ? '; az „Új tulajdonság” létrehozza.' : '.'}</p>
+      <p class="ures">{tx('A jegyzetnek nincs frontmattere')}{irhato ? '; ' + tx('az „Új tulajdonság” létrehozza.') : '.'}</p>
     {/if}
 
     {#each tul as t (t.kulcs)}
@@ -368,13 +369,13 @@
               <span class="linkchip">
                 <button type="button" class="nyit" title={String(t.ertek)} onclick={(e) => chipNyit(String(t.ertek), e)}>{w?.felirat}</button>
                 {#if irhato}
-                  <button type="button" class="szerk" aria-label="{t.kulcs} szerkesztése" title="Szerkesztés" onclick={() => (linkSzerkeszt = t.kulcs)}>
+                  <button type="button" class="szerk" aria-label={tx('{kulcs} szerkesztése', { kulcs: t.kulcs })} title={tx('Szerkesztés')} onclick={() => (linkSzerkeszt = t.kulcs)}>
                     <Ikon ikon={Pencil} meret={14} />
                   </button>
                 {/if}
               </span>
             {:else if f === 'csak'}
-              <code class="csak" title="Nem szerkeszthető itt: forrásmódban írható">{ertekSzoveg(t.ertek)}</code>
+              <code class="csak" title={tx('Nem szerkeszthető itt: forrásmódban írható')}>{ertekSzoveg(t.ertek)}</code>
             {:else if f === 'szam'}
               <input
                 id="{id}-{t.kulcs}"
@@ -382,7 +383,7 @@
                 class="mezo"
                 inputmode="decimal"
                 value={ertekSzoveg(t.ertek)}
-                placeholder="Üres"
+                placeholder={tx('Üres')}
                 readonly={!irhato}
                 onchange={(e) => szovegValtozas(t, e)}
                 onkeydown={enterBlur}
@@ -393,7 +394,7 @@
                 osztaly="mezo"
                 cimke={t.kulcs}
                 value={ertekSzoveg(t.ertek)}
-                placeholder="Üres"
+                placeholder={tx('Üres')}
                 readonly={!irhato}
                 javasol={javaslo(t.kulcs, { fajta: javaslatFajta(t.kulcs, t.ertek), jelenlegi: ertekSzoveg(t.ertek) })}
                 onvalaszt={(e) => void szovegJavaslat(t, e)}
@@ -405,7 +406,7 @@
           {/key}
         </div>
         {#if irhato}
-          <button type="button" class="torol" aria-label="{t.kulcs} törlése" title="Törlés" onclick={() => torol(t.kulcs)}>
+          <button type="button" class="torol" aria-label={tx('{kulcs} törlése', { kulcs: t.kulcs })} title={tx('Törlés')} onclick={() => torol(t.kulcs)}>
             <Ikon ikon={Trash2} meret={14} />
           </button>
         {/if}
@@ -416,29 +417,29 @@
 
     {#if ujNyitva && irhato}
       <form class="uj" onsubmit={(e) => (e.preventDefault(), void ujFelvesz())}>
-        <JavaslatMezo osztaly="mezo nev" cimke="Új tulajdonság neve" placeholder="Név" bind:value={ujNev} javasol={kulcsJavasol} onvalaszt={kulcsValaszt} />
-        <select class="mezo tipus" aria-label="Típus" bind:value={ujTipus}>
+        <JavaslatMezo osztaly="mezo nev" cimke={tx('Új tulajdonság neve')} placeholder={tx('Név')} bind:value={ujNev} javasol={kulcsJavasol} onvalaszt={kulcsValaszt} />
+        <select class="mezo tipus" aria-label={tx('Típus')} bind:value={ujTipus}>
           {#each UJ_TIPUSOK as t (t.id)}<option value={t.id}>{t.nev}</option>{/each}
         </select>
         {#if ujTipus === 'checkbox'}
-          <input type="checkbox" class="jelolo" aria-label="Érték" bind:checked={ujJelolo} />
+          <input type="checkbox" class="jelolo" aria-label={tx('Érték')} bind:checked={ujJelolo} />
         {:else if ujTipus === 'date'}
-          <input type="date" class="mezo" aria-label="Érték" bind:value={ujErtek} />
+          <input type="date" class="mezo" aria-label={tx('Érték')} bind:value={ujErtek} />
         {:else if ujTipus === 'datetime'}
-          <input type="datetime-local" class="mezo" aria-label="Érték" bind:value={ujErtek} />
+          <input type="datetime-local" class="mezo" aria-label={tx('Érték')} bind:value={ujErtek} />
         {:else}
           <JavaslatMezo
             osztaly="mezo ertek"
-            cimke="Érték"
-            placeholder={ujListas ? 'Vesszővel elválasztva' : 'Érték'}
+            cimke={tx('Érték')}
+            placeholder={ujListas ? tx('Vesszővel elválasztva') : tx('Érték')}
             inputmode={ujTipus === 'number' ? 'decimal' : undefined}
             bind:value={ujErtek}
             javasol={ujTipus === 'number' ? () => URES : ujErtekJavasol}
             onvalaszt={(e) => void ujErtekValaszt(e)}
           />
         {/if}
-        <button type="submit" class="m-gomb semleges gomb" disabled={!ujNev.trim() || m.dolgozik}>Hozzáadás</button>
-        <button type="button" class="m-gomb semleges gomb halvany" onclick={() => ((ujNyitva = false), m.elvet())}>Mégse</button>
+        <button type="submit" class="m-gomb semleges gomb" disabled={!ujNev.trim() || m.dolgozik}>{tx('Hozzáadás')}</button>
+        <button type="button" class="m-gomb semleges gomb halvany" onclick={() => ((ujNyitva = false), m.elvet())}>{tx('Mégse')}</button>
       </form>
       {#if ujElutasitva}{@render elutasitas(ujElutasitva.uzenet)}{/if}
       {#if ujFuggo}{@render megerosites(ujFuggo)}{/if}

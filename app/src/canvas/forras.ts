@@ -7,6 +7,7 @@ import type { Csatolt, Dokumentum, Dokumentumok } from '../szerkeszto/dokumentum
 import { csere } from '../szerkeszto/dokumentum/kulonbseg';
 import { foltoz, IroHiba } from './iro';
 import { beolvas, type Beolvasas, type Vaszon } from './modell';
+import { t } from '../lib/i18n';
 
 /** A nyitott szövegkártya gépelése után ennyi csenddel kerül a szöveg a dokumentumba (az automatikus mentés 1 s-a előtt). */
 export const KARTYA_ATVETEL_MS = 400;
@@ -63,8 +64,8 @@ export class CanvasForras {
   /** miért nem írható (magyar mondat), vagy `null` */
   csakOlvashato(): string | null {
     if (this.dok.csakOlvashato) return this.dok.csakOlvashato;
-    if (this.beolvasas.hiba) return `${this.beolvasas.hiba} A canvas javításáig csak olvasható.`;
-    if (this.dok.allapot === 'eltunt') return 'A fájl közben eltűnt (törölték vagy áthelyezték).';
+    if (this.beolvasas.hiba) return t('{hiba} A canvas javításáig csak olvasható.', { hiba: this.beolvasas.hiba });
+    if (this.dok.allapot === 'eltunt') return t('A fájl közben eltűnt (törölték vagy áthelyezték).');
     return null;
   }
 
@@ -74,7 +75,7 @@ export class CanvasForras {
     const ok = this.csakOlvashato();
     if (ok) return { ok: false, hiba: ok };
     if (this.dok.allapot === 'utkozes')
-      return { ok: false, hiba: 'A canvas közben megváltozott a lemezen; előbb az ütközést kell feloldani.' };
+      return { ok: false, hiba: t('A canvas közben megváltozott a lemezen; előbb az ütközést kell feloldani.') };
     const regi = this.szoveg();
     let szoveg: string;
     try {

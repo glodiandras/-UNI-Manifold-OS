@@ -4,6 +4,7 @@
      vaultba. 84. döntés (javasolt): „Az oldal összes videója (bejárás)” — a core `video_bejaras` feladata felderíti a kezdőoldal alatti
      videóoldalakat (letöltés nélkül), a lista itt jelölhető, és a kijelölt videók egy `video_letoltes` feladatba mennek. -->
 <script lang="ts">
+  import { t, tp } from '../../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import { ApiHiba } from '../../lib/core/api';
   import { kornyezet } from '../../lib/kornyezet';
@@ -68,7 +69,7 @@
       void eredmenyBetolt(bejarasUrl);
     } else if (f.allapot === 'hiba' || f.allapot === 'megszakadt') {
       betoltottFeladat = f.id;
-      hiba = f.hiba ?? 'Az oldal bejárása nem sikerült (a részletek a feladat naplójában).';
+      hiba = f.hiba ?? t('Az oldal bejárása nem sikerült (a részletek a feladat naplójában).');
     }
   });
 
@@ -103,8 +104,8 @@
       eredmeny = null;
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'Az oldal bejárása elindult',
-        szoveg: 'A videóoldalak listája néhány perc alatt összeáll (a robots.txt és a kért késleltetés szerint); letöltés még nincs.',
+        cim: t('Az oldal bejárása elindult'),
+        szoveg: t('A videóoldalak listája néhány perc alatt összeáll (a robots.txt és a kért késleltetés szerint); letöltés még nincs.'),
       });
     } catch (e) {
       hiba = e instanceof ApiHiba ? e.message : String(e);
@@ -122,8 +123,8 @@
       feladatsor.upsert(f);
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'A letöltés elindult',
-        szoveg: `${terv.urlek.length} videó a stagingbe; megállítható, és újraindítva a már letöltöttek kimaradnak.`,
+        cim: t('A letöltés elindult'),
+        szoveg: tp('{n} videó a stagingbe; megállítható, és újraindítva a már letöltöttek kimaradnak.', terv.urlek.length),
       });
       eredmeny = null;
       szoveg = '';
@@ -187,13 +188,13 @@
       szoveg = '';
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'A letöltés elindult',
-        szoveg: `${beolvasva.urlek.length === 1 ? '1 videó' : `${beolvasva.urlek.length} videó`} a stagingbe` +
+        cim: t('A letöltés elindult'),
+        szoveg: `${tp('{n} videó', beolvasva.urlek.length)} ${t('a stagingbe')}` +
           (automatikusBevitel
-            ? '; utána a vaultba kerül (visszavonható).'
+            ? t('; utána a vaultba kerül (visszavonható).')
             : cel
-              ? `; a letöltés után a „${cel}” célmappába itt viheted be.`
-              : '; a vaultba nem ír.'),
+              ? t('; a letöltés után a „{cel}” célmappába itt viheted be.', { cel })
+              : t('; a vaultba nem ír.')),
       });
     } catch (e) {
       hiba = e instanceof ApiHiba ? e.message : String(e);
@@ -211,9 +212,9 @@
       feladatsor.upsert(await vezerloApi.videoBevitel(proba, cel ? { temaMappa: cel, mappak } : undefined));
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'A bevitel elindult',
-        szoveg: (proba ? 'Próba: a vault klónjára ír.' : 'Videónként egy gépi írás; a „Mit változtatott” nézetből visszavonható.') +
-          (cel ? ` Célmappa: ${cel}.` : ''),
+        cim: t('A bevitel elindult'),
+        szoveg: (proba ? t('Próba: a vault klónjára ír.') : t('Videónként egy gépi írás; a „Mit változtatott” nézetből visszavonható.')) +
+          (cel ? ` ${t('Célmappa: {cel}.', { cel })}` : ''),
       });
       celKijelolt = new Set();
     } catch (e) {
@@ -227,7 +228,7 @@
   async function fajlokBe(fajlok: File[]) {
     if (dolgozik || !fajlok.length) return;
     if (!fajlok.some(videoFajl)) {
-      hiba = 'Csak videófájl vihető be (mp4, m4v, mov, mkv, webm, avi).';
+      hiba = t('Csak videófájl vihető be (mp4, m4v, mov, mkv, webm, avi).');
       return;
     }
     dolgozik = true;
@@ -238,7 +239,7 @@
         haladas: (h) => (feltoltes = `${h.fajl} — ${h.szazalek}%${h.n > 1 ? ` (${h.i + 1}/${h.n})` : ''}`),
       });
       feladatsor.upsert(f);
-      ertesitesek.ertesit({ szint: 'info', cim: 'A videó feltöltve', szoveg: 'A bevitel a háttérben fut (a vezérlőben követhető).' });
+      ertesitesek.ertesit({ szint: 'info', cim: t('A videó feltöltve'), szoveg: t('A bevitel a háttérben fut (a vezérlőben követhető).') });
     } catch (e) {
       hiba = e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e);
     } finally {
@@ -255,7 +256,7 @@
   }}
 >
   <label class="cimke" for="video-linkek">
-    {bejarasMod ? 'Az oldal linkje' : 'Videólinkek'} <span class="halvany">{bejarasMod ? '(a kezdőoldal)' : '(soronként egy)'}</span>
+    {bejarasMod ? 'Az oldal linkje' : t('Videólinkek')} <span class="halvany">{bejarasMod ? t('(a kezdőoldal)') : t('(soronként egy)')}</span>
   </label>
   <textarea
     id="video-linkek"
@@ -273,65 +274,63 @@
     }}
   ></textarea>
   {#if szoveg.trim() && beolvasva.hibak.length}
-    <ul class="figy" aria-label="A link nem használható">
+    <ul class="figy" aria-label={t('A link nem használható')}>
       {#each beolvasva.hibak as h (h)}<li>{h}</li>{/each}
     </ul>
   {/if}
   <div class="sor">
-    <button type="submit" class="m-gomb semleges gomb" disabled={!indithato}>{bejarasMod ? 'Videók keresése' : 'Letöltés'}</button>
+    <button type="submit" class="m-gomb semleges gomb" disabled={!indithato}>{bejarasMod ? t('Videók keresése') : t('Letöltés')}</button>
     <span class="halvany">{beolvasva.urlek.length && !bejarasMod ? `${beolvasva.urlek.length} link` : ''}</span>
   </div>
-  <label class="halvany kapcsolo"><input type="checkbox" bind:checked={bejarasMod} /> Az oldal összes videója (bejárás)</label>
-  {#if bejarasMod && beolvasva.urlek.length > 1}<p class="halvany leiras">A bejáráshoz egy kezdőoldal kell.</p>{/if}
-  <label class="halvany kapcsolo"><input type="checkbox" bind:checked={bevitel} disabled={!!cel} /> Utána a vaultba is</label>
+  <label class="halvany kapcsolo"><input type="checkbox" bind:checked={bejarasMod} /> {t('Az oldal összes videója (bejárás)')}</label>
+  {#if bejarasMod && beolvasva.urlek.length > 1}<p class="halvany leiras">{t('A bejáráshoz egy kezdőoldal kell.')}</p>{/if}
+  <label class="halvany kapcsolo"><input type="checkbox" bind:checked={bevitel} disabled={!!cel} /> {t('Utána a vaultba is')}</label>
   {#if cel}
     <p class="halvany leiras">
-      A célmappa ki van töltve: a letöltés után a bevitel nem indul magától (a téma-felismerés helyett a „{cel}” mappába itt, lent
-      viheted be).
+      {t('A célmappa ki van töltve: a letöltés után a bevitel nem indul magától (a téma-felismerés helyett a „{cel}” mappába itt, lent viheted be).', { cel })}
     </p>
   {/if}
   <p class="halvany leiras">
-    A letöltés hálózatot használ (yt-dlp). A videó a staging-be kerül (a nem natív formátum mp4-re alakul); a vaultba a bevitel viszi.
+    {t('A letöltés hálózatot használ (yt-dlp). A videó a staging-be kerül (a nem natív formátum mp4-re alakul); a vaultba a bevitel viszi.')}
   </p>
   {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
 </form>
 
 {#if eredmeny?.kesz}
-  <section class="bejaras" aria-label="Az oldal videói">
+  <section class="bejaras" aria-label={t('Az oldal videói')}>
     <p class="halvany">
-      {tetelek.length} videó · {eredmeny.oldalak ?? 0} oldal olvasva{eredmeny.megszakitva ? ' · a bejárás megállítva (részlista)' : ''}
+      {tp('{n} videó', tetelek.length)} · {tp('{n} oldal olvasva', eredmeny.oldalak ?? 0)}{eredmeny.megszakitva ? ` · ${t('a bejárás megállítva (részlista)')}` : ''}
     </p>
     {#if tetelek.length}
       <ul class="tetelek">
-        {#each tetelek as t (t.video)}
+        {#each tetelek as v (v.video)}
           <li>
             <label class="kapcsolo">
-              <input type="checkbox" checked={kijelolt.has(t.video)} onchange={() => valt(t.video)} />
-              <span class="tetel-cim">{t.cim}</span>
-              {#if t.megvan}<span class="halvany">megvan</span>{/if}
+              <input type="checkbox" checked={kijelolt.has(v.video)} onchange={() => valt(v.video)} />
+              <span class="tetel-cim">{v.cim}</span>
+              {#if v.megvan}<span class="halvany">{t('megvan')}</span>{/if}
             </label>
-            <span class="halvany tetel-url" title={t.oldal}>{t.video}</span>
-            <span class="halvany tetel-url tetel-forras">{forrasLeiras(t)}{t.diak ? ' · diák: csak a link' : ''}</span>
+            <span class="halvany tetel-url" title={v.oldal}>{v.video}</span>
+            <span class="halvany tetel-url tetel-forras">{forrasLeiras(v)}{v.diak ? ` · ${t('diák: csak a link')}` : ''}</span>
           </li>
         {/each}
       </ul>
       {#if terv.megerositesKell && !terv.tulSok}
         <label class="halvany kapcsolo">
-          <input type="checkbox" bind:checked={megerosit} /> Igen, mind a {terv.urlek.length} videót letöltöm
-          (több, mint {eredmeny.max_db})
+          <input type="checkbox" bind:checked={megerosit} /> {t('Igen, mind a {n} videót letöltöm (több, mint {max})', { n: terv.urlek.length, max: eredmeny.max_db ?? 50 })}
         </label>
       {/if}
-      {#if terv.tulSok}<p class="figy">Egy feladatban legfeljebb 200 videó; szűkítsd a kijelölést.</p>{/if}
+      {#if terv.tulSok}<p class="figy">{t('Egy feladatban legfeljebb 200 videó; szűkítsd a kijelölést.')}</p>{/if}
       <div class="sor">
         <button
           type="button"
           class="m-gomb semleges gomb"
           disabled={!terv.urlek.length || terv.tulSok || (terv.megerositesKell && !megerosit) || dolgozik}
-          onclick={() => void bejarasLetoltes()}>Letöltés ({terv.urlek.length})</button
+          onclick={() => void bejarasLetoltes()}>{t('Letöltés ({n})', { n: terv.urlek.length })}</button
         >
       </div>
     {:else}
-      <p class="halvany leiras">Ezen az oldalon (és az alatta lévőkön) nem találtam beágyazott videót.</p>
+      <p class="halvany leiras">{t('Ezen az oldalon (és az alatta lévőkön) nem találtam beágyazott videót.')}</p>
     {/if}
   </section>
 {/if}
@@ -342,7 +341,7 @@
     class:aktiv={huzas}
     role="button"
     tabindex="0"
-    aria-label="Videófájl behúzása vagy kiválasztása"
+    aria-label={t('Videófájl behúzása vagy kiválasztása')}
     ondragover={(e) => {
       e.preventDefault();
       huzas = true;
@@ -361,9 +360,9 @@
       }
     }}
   >
-    {feltoltes ?? 'Videófájl behúzása vagy kiválasztása…'}
+    {feltoltes ?? t('Videófájl behúzása vagy kiválasztása…')}
   </div>
-  <label class="cimke" for="video-celmappa">Célmappa (téma) <span class="halvany">(üresen: a téma-felismerés dönt)</span></label>
+  <label class="cimke" for="video-celmappa">{t('Célmappa (téma)')} <span class="halvany">{t('(üresen: a téma-felismerés dönt)')}</span></label>
   <input
     id="video-celmappa"
     class="mezo"
@@ -371,14 +370,14 @@
     bind:value={celmappa}
     spellcheck="false"
     autocomplete="off"
-    placeholder="pl. A01 - Téma neve"
+    placeholder={t('pl. A01 - Téma neve')}
   />
   <datalist id="video-temamappak">
     {#each temamappak as t (t)}<option value={t}></option>{/each}
   </datalist>
   {#if cel}
     {#if fuggo.length}
-      <ul class="tetelek" aria-label="A célmappába vihető videók">
+      <ul class="tetelek" aria-label={t('A célmappába vihető videók')}>
         {#each fuggo as f (f.mappa)}
           <li>
             <label class="kapcsolo" title={f.mappa}>
@@ -390,15 +389,14 @@
         {/each}
       </ul>
       <div class="sor">
-        <button type="button" class="m-gomb link" onclick={() => (celKijelolt = new Set(fuggo.map((f) => f.mappa)))}>Mind</button>
-        <button type="button" class="m-gomb link" onclick={() => (celKijelolt = new Set())}>Egyik sem</button>
+        <button type="button" class="m-gomb link" onclick={() => (celKijelolt = new Set(fuggo.map((f) => f.mappa)))}>{t('Mind')}</button>
+        <button type="button" class="m-gomb link" onclick={() => (celKijelolt = new Set())}>{t('Egyik sem')}</button>
       </div>
     {:else}
-      <p class="halvany leiras">Nincs várakozó videó a stagingben.</p>
+      <p class="halvany leiras">{t('Nincs várakozó videó a stagingben.')}</p>
     {/if}
     <p class="halvany leiras">
-      A kijelölt videók a(z) „{cel}” mappába kerülnek (a hiányzó mappa létrejön): a felirat és a forrásleíró jegyzet a
-      mappa média-almappájába, kötés csak a mappa saját jegyzeteihez. A téma-modell nem fut.
+      {t('A kijelölt videók a(z) „{cel}” mappába kerülnek (a hiányzó mappa létrejön): a felirat és a forrásleíró jegyzet a mappa média-almappájába, kötés csak a mappa saját jegyzeteihez. A téma-modell nem fut.', { cel })}
     </p>
   {/if}
   <div class="sor">
@@ -408,18 +406,17 @@
       disabled={dolgozik || varakozik === 0 || (!!cel && !celKijelolt.size)}
       onclick={() => void bevitelInditas()}
     >
-      {#if cel}Bevitel a célmappába ({celKijelolt.size}){:else}Bevitel a vaultba{varakozik ? ` (${varakozik})` : ''}{/if}
+      {#if cel}{t('Bevitel a célmappába ({n})', { n: celKijelolt.size })}{:else}{t('Bevitel a vaultba')}{varakozik ? ` (${varakozik})` : ''}{/if}
     </button>
-    <label class="halvany kapcsolo"><input type="checkbox" bind:checked={proba} /> Próba (a vault klónján)</label>
+    <label class="halvany kapcsolo"><input type="checkbox" bind:checked={proba} /> {t('Próba (a vault klónján)')}</label>
   </div>
   <p class="halvany leiras">
-    A videó a vault videómappája alá, a felirat és a forrásleíró jegyzet a téma média-almappájába, a kötések a jegyzetek Source
-    mezőjébe kerülnek. Videónként egy gépi írás: a feladat „Mit változtatott” nézetéből visszavonható.
+    {t('A videó a vault videómappája alá, a felirat és a forrásleíró jegyzet a téma média-almappájába, a kötések a jegyzetek Source mezőjébe kerülnek. Videónként egy gépi írás: a feladat „Mit változtatott” nézetéből visszavonható.')}
   </p>
 </div>
 
 {#if feladatok.length}
-  <ul class="lista" aria-label="A legutóbbi letöltések">
+  <ul class="lista" aria-label={t('A legutóbbi letöltések')}>
     {#each feladatok as f (f.id)}<li><FeladatSor feladat={f} {onnyit} /></li>{/each}
   </ul>
 {/if}

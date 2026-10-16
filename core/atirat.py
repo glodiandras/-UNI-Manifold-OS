@@ -20,6 +20,7 @@ import unicodedata
 from . import kiserok, mediatipus, utkapu
 from .utvonalak import HttpError
 from .vaultio import Invalid, NotFound, norm_path
+from .hibakod import kodol
 
 ALAP_VIDEO_MAPPA = kiserok.alap_mappa("video")
 ALAP_RETEG = "Média"
@@ -241,10 +242,10 @@ def atirat(vault, rel) -> dict:
     """A média átirata a lejátszónak (lásd a modul leírását)."""
     rel = norm_path(rel)
     if not rel.lower().endswith(MEDIA_KIT):
-        raise Invalid(f"nem videó- vagy hangfájl: {rel}")
+        raise kodol(Invalid(f"nem videó- vagy hangfájl: {rel}"), "atirat.video_hangfajl_rel", {"rel": rel})
     p = vault.lemezen(rel)
     if not p.is_file():
-        raise NotFound(f"nincs ilyen fájl: {rel}")
+        raise kodol(NotFound(f"nincs ilyen fájl: {rel}"), "atirat.nincs_ilyen_fajl_rel", {"rel": rel})
     gyoker = str(vault.root)
     b = beallitasok(vault.cfg)
     torzs = os.path.splitext(rel.rsplit("/", 1)[-1])[0]
@@ -285,7 +286,7 @@ def utvonalak(r) -> None:
     def kezelo(k):
         ut = k.q.get("ut")
         if not ut:
-            raise HttpError(400, "hiányzik az `ut`")
+            raise HttpError(400, "hiányzik az `ut`", kod="atirat.hianyzik_ut")
         return atirat(k.app.vault, ut)
 
     r.get("/api/media/atirat", kezelo)

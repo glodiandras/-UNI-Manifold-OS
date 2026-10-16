@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { ablak, sorMagassagPx } from '../src/bazis/ablak';
 import { datumSzoveg, ertekSzoveg, fajta, osszesitoSzoveg, szamSzoveg } from '../src/bazis/ertek';
 import type { Ertek } from '../src/bazis/tipusok';
+import { nyelv } from '../src/lib/i18n';
 
 describe('ablak', () => {
   it('az elején az első elemektől a nézet magassága + a tartalék', () => {
@@ -79,6 +80,24 @@ describe('értékek megjelenítése', () => {
     expect(datumSzoveg('2026-09-01', false)).toBe('2026. 09. 01.');
     expect(datumSzoveg('2026-09-01T14:30:00', true)).toMatch(/^2026\. 09\. 01\. 14:30$/);
     expect(datumSzoveg('nem dátum', false)).toBe('nem dátum');
+  });
+
+  it('az angol felület számai, dátumai és értékcímkéi a nyelvváltáskor frissülnek', () => {
+    try {
+      nyelv.beallit('en');
+      expect(szamSzoveg(4.5)).toBe('4.5');
+      expect(datumSzoveg('2026-09-01', false)).toBe('01/09/2026');
+      expect(datumSzoveg('2026-09-01T14:30:00', true)).toBe('01/09/2026, 14:30');
+      expect(ertekSzoveg(true)).toBe('yes');
+      expect(ertekSzoveg(false)).toBe('no');
+      expect(ertekSzoveg({ t: 'hiba', u: 'unknown property' })).toBe('Error: unknown property');
+      nyelv.beallit('hu');
+      expect(szamSzoveg(4.5)).toBe('4,5');
+      expect(datumSzoveg('2026-09-01', false)).toBe('2026. 09. 01.');
+      expect(ertekSzoveg(true)).toBe('igen');
+    } finally {
+      nyelv.beallit('hu');
+    }
   });
 
   const esetek: [Ertek, string, string][] = [

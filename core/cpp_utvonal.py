@@ -35,6 +35,7 @@ from pathlib import Path
 from . import cpp_ai, cpp_teszt, pdfkiemeles, sablon
 from .utvonalak import HttpError, Valasz
 from .vaultio import Invalid, NotFound, nfc, norm_path
+from .hibakod import kodol
 
 REPO = Path(__file__).resolve().parent.parent
 MODOK = ("gyors", "hibakereso")
@@ -121,10 +122,10 @@ class Szolgalat:
 
     def _rp(self, ut, *kiterjesztesek: str) -> str:
         if not isinstance(ut, str) or not ut.strip():
-            raise Invalid("hiányzik az út (`ut`)")
+            raise kodol(Invalid("hiányzik az út (`ut`)"), "cpp_utvonal.hianyzik_ut_ut")
         rp = self.vault.kanonikus(norm_path(ut))
         if not rp.lower().endswith(kiterjesztesek):
-            raise Invalid(f"a fájl {' vagy '.join(kiterjesztesek)} kiterjesztésű legyen: {rp}")
+            raise kodol(Invalid(f"a fájl {' vagy '.join(kiterjesztesek)} kiterjesztésű legyen: {rp}"), "cpp_utvonal.fajl_join_kiterjesztesu_legyen_rp", {"join": ' vagy '.join(kiterjesztesek), "rp": rp})
         return rp
 
     def _tesztek(self, rp: str) -> list[dict]:
@@ -206,9 +207,9 @@ class Szolgalat:
                 nev = nev[:-len(kit)].rstrip()
         mappa = self.vault.kanonikus(norm_path(d.get("mappa"))) if d.get("mappa") else ""
         if not nev:
-            raise Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal')
+            raise kodol(Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal'), "cpp_utvonal.ervenytelen_nev_tilos_benne_kezdodhet")
         if mappa and not self.vault._abs(mappa).is_dir():
-            raise NotFound(f"nincs ilyen mappa: {mappa}")
+            raise kodol(NotFound(f"nincs ilyen mappa: {mappa}"), "cpp_utvonal.nincs_ilyen_mappa_mappa", {"mappa": mappa})
         for kit in (".md", ".cpp"):
             if self._van_ilyen(mappa, nev + kit):
                 raise Invalid(f"már van ilyen nevű fájl: {mappa + '/' if mappa else ''}{nev}{kit}")
@@ -240,7 +241,7 @@ class Szolgalat:
                                 env=gyerek_env(self.cfg))
             d = json.loads(ki.stdout)
         except (OSError, subprocess.TimeoutExpired, ValueError) as exc:
-            raise HttpError(503, f"a C++ motor nem válaszol: {exc}") from exc
+            raise HttpError(503, f"a C++ motor nem válaszol: {exc}", kod="cpp_utvonal.motor_nem_valaszol", param={"exc": exc}) from exc
         with self._zar:
             d["futas"] = self._aktiv.id if self._aktiv and self._aktiv.allapot == "fut" else None
         return d
@@ -248,16 +249,16 @@ class Szolgalat:
     def formaz(self, d: dict) -> dict:
         szoveg = d.get("szoveg")
         if not isinstance(szoveg, str):
-            raise Invalid("hiányzik a `szoveg`")
+            raise kodol(Invalid("hiányzik a `szoveg`"), "cpp_utvonal.hianyzik_szoveg")
         if len(szoveg.encode("utf-8")) > FORMAZ_MAX_BAJT:
-            raise Invalid("túl nagy szöveg a formázáshoz")
+            raise kodol(Invalid("túl nagy szöveg a formázáshoz"), "cpp_utvonal.tul_nagy_szoveg_formazashoz")
         if not os.access(self.cfg.path("llvm") / "bin" / "clang-format", os.X_OK):
-            raise HttpError(503, "nincs clang-format (bin/mos cpp telepit --igen)")
+            raise HttpError(503, "nincs clang-format (bin/mos cpp telepit --igen)", kod="cpp_utvonal.nincs_clang_format")
         try:
             ki = subprocess.run(self._motor("formaz", "-"), input=szoveg, capture_output=True, text=True,
                                 timeout=FORMAZ_IDOKORLAT_S, cwd=str(REPO), env=gyerek_env(self.cfg))
         except (OSError, subprocess.TimeoutExpired) as exc:
-            raise HttpError(503, f"a formázás nem sikerült: {exc}") from exc
+            raise HttpError(503, f"a formázás nem sikerült: {exc}", kod="cpp_utvonal.formazas_sikertelen", param={"exc": exc}) from exc
         if ki.returncode != 0:
             raise Invalid(ki.stderr.strip().removeprefix("HIBA: ") or "a formázás nem sikerült")
         return {"szoveg": ki.stdout, "valtozott": ki.stdout != szoveg}
@@ -267,7 +268,7 @@ class Szolgalat:
     def ellenoriz(self, d: dict) -> Valasz:
         mod = d.get("mod") or "gyors"
         if mod not in MODOK:
-            raise Invalid("a `mod` gyors vagy hibakereso lehet")
+            raise kodol(Invalid("a `mod` gyors vagy hibakereso lehet"), "cpp_utvonal.mod_gyors_hibakereso_lehet")
         f = self.feladat(d.get("ut"))
         jegyzet = f["jegyzet"]
         if d.get("jegyzet") is not None:
@@ -293,7 +294,7 @@ class Szolgalat:
             argv.append("--hibakereso")
         with self._zar:
             if self._leallt:
-                raise HttpError(503, "a core leáll")
+                raise HttpError(503, "a core leáll", kod="cpp_utvonal.core_leall")
             if self._aktiv is not None and self._aktiv.allapot == "fut":
                 raise HttpError(409, "már fut egy ellenőrzés", kod="foglalt", futas=self._aktiv.id)
             fid = f"futas-{os.urandom(6).hex()}"
@@ -301,7 +302,7 @@ class Szolgalat:
                 proc = subprocess.Popen(self._motor(*argv), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                         cwd=str(REPO), env=gyerek_env(self.cfg), start_new_session=True)
             except OSError as exc:
-                raise HttpError(503, f"a C++ motor nem indul: {exc}") from exc
+                raise HttpError(503, f"a C++ motor nem indul: {exc}", kod="cpp_utvonal.motor_nem_indul", param={"exc": exc}) from exc
             futas = Futas(fid, f["cpp"], jegyzet, mod, len(tesztek), proc)
             self._aktiv = futas
             self._futasok[fid] = futas
@@ -378,16 +379,16 @@ class Szolgalat:
     def futas(self, fid: str) -> dict:
         f = self._futasok.get(fid) if FUTAS_ID.match(fid or "") else None
         if f is None:
-            raise NotFound(f"nincs ilyen futás: {fid}")
+            raise kodol(NotFound(f"nincs ilyen futás: {fid}"), "cpp_utvonal.nincs_ilyen_futas_fid", {"fid": fid})
         return f.adat()
 
     def megszakit(self, d: dict) -> dict:
         fid = d.get("futas")
         if not isinstance(fid, str) or not fid:
-            raise Invalid("hiányzik a `futas`")
+            raise kodol(Invalid("hiányzik a `futas`"), "cpp_utvonal.hianyzik_futas")
         f = self._futasok.get(fid) if FUTAS_ID.match(fid) else None
         if f is None:
-            raise NotFound(f"nincs ilyen futás: {fid}")
+            raise kodol(NotFound(f"nincs ilyen futás: {fid}"), "cpp_utvonal.nincs_ilyen_futas_fid", {"fid": fid})
         if f.allapot != "fut":
             return {"megszakitva": False, "allapot": f.allapot}
         self._leallit(f)

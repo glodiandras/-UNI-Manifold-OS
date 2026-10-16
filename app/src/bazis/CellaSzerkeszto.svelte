@@ -5,6 +5,7 @@
   A kezdőérték a jegyzet frontmatterének nyers értéke (nem a megjelenített cella), így az álnév és a formátum sértetlen.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { onMount, untrack } from 'svelte';
   import { tulajdonsagApi } from '../szerkeszto/tulajdonsagok/api';
   import type { SemaProblema } from '../szerkeszto/tulajdonsagok/tipusok';
@@ -83,7 +84,7 @@
       fuggo = r.fuggo;
     } else {
       fuggo = null;
-      hiba = r.elutasitva ?? 'A módosítás nem írható.';
+      hiba = r.elutasitva ?? t('A módosítás nem írható.');
     }
   }
 
@@ -114,7 +115,7 @@
   }
 </script>
 
-<span class="szerkeszto" role="group" aria-label="{valos} szerkesztése">
+<span class="szerkeszto" role="group" aria-label={t('{valos} szerkesztése', { valos })}>
   {#if tolt}
     <span class="tolt">…</span>
   {:else if f === 'valaszto'}
@@ -141,9 +142,9 @@
   {/if}
   {#if fuggo}
     <span class="uzenet figyelmeztetes" role="alert">
-      {fuggo[0]?.uzenet ?? 'A séma sérül.'}
-      <button type="button" class="m-gomb semleges gomb" onclick={() => void ment(true)}>Mégis beírom</button>
-      <button type="button" class="m-gomb semleges gomb" onclick={megseKilep}>Mégse</button>
+      {fuggo[0]?.uzenet ?? t('A séma sérül.')}
+      <button type="button" class="m-gomb semleges gomb" onclick={() => void ment(true)}>{t('Mégis beírom')}</button>
+      <button type="button" class="m-gomb semleges gomb" onclick={megseKilep}>{t('Mégse')}</button>
     </span>
   {/if}
 </span>

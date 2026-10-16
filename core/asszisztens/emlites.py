@@ -224,7 +224,7 @@ class Emlitesek:
     def keres(self, ut, szoveg, limit: int | None = None) -> dict:
         """A `szoveg` említései a `ut` jegyzet nevében (a jegyzet maga és az már belinkelt célok kimaradnak)."""
         if not isinstance(szoveg, str):
-            raise HttpError(400, "a szöveg kötelező")
+            raise HttpError(400, "a szöveg kötelező", kod="asszisztens.emlites.szoveg_kotelezo")
         b = beallitasok(self.cfg)
         limit = max(1, int(limit)) if limit else int(b["emlites_max"])
         ut = nfc(str(ut or "")).replace("\\", "/").strip().strip("/")

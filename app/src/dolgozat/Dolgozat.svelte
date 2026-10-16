@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import { t, tk, tp } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { FileText } from '../lib/ikon/ikonok';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
@@ -68,12 +69,12 @@
   const hianyzik = $derived(
     r
       ? ([
-          ['kártya', r.adatok.kartya],
-          ['kvíz', r.adatok.kviz],
-          ['tracker', r.adatok.tracker],
+          [tk('kártya'), r.adatok.kartya],
+          [tk('kvíz'), r.adatok.kviz],
+          [tk('tracker'), r.adatok.tracker],
         ] as const)
           .filter(([, a]) => a && a.van === false && a.ok)
-          .map(([nev, a]) => `${nev}: ${a.ok}`)
+          .map(([nev, a]) => `${t(nev)}: ${a.ok}`)
       : [],
   );
 
@@ -84,11 +85,11 @@
 
   const meta = $derived(r ? [napokSzoveg(r.napok), napSzoveg(r.nap), r.ora, r.tantargy].filter(Boolean).join(' · ') : '');
 
-  function temaMeta(t: Tema): string {
-    const reszek = [t.kartya.db ? `${t.kartya.db} kártya${t.kartya.uj ? ` (${t.kartya.uj} új)` : ''}` : 'nincs kártya'];
-    reszek.push(t.kviz.db ? `${t.kviz.db} kvízeredmény` : 'nincs kvíz');
-    reszek.push(`utolsó tanulás: ${utolsoSzoveg(t.utolso_tanulas, ma)}`);
-    if (t.tanult_perc) reszek.push(percSzoveg(t.tanult_perc));
+  function temaMeta(tm: Tema): string {
+    const reszek = [tm.kartya.db ? (tm.kartya.uj ? tp('{n} kártya ({uj} új)', tm.kartya.db, { uj: tm.kartya.uj }) : tp('{n} kártya', tm.kartya.db)) : t('nincs kártya')];
+    reszek.push(tm.kviz.db ? tp('{n} kvízeredmény', tm.kviz.db) : t('nincs kvíz'));
+    reszek.push(t('utolsó tanulás: {mikor}', { mikor: utolsoSzoveg(tm.utolso_tanulas, ma) }));
+    if (tm.tanult_perc) reszek.push(percSzoveg(tm.tanult_perc));
     return reszek.join(' · ');
   }
 
@@ -97,19 +98,19 @@
 </script>
 
 {#snippet mezoTipp(eleje: string)}
-  {eleje}: írj a kiértékelő jegyzet dolgozat-szakaszába egy saját sort, például <code>{EREDMENY_MEZO_PELDA}</code> (vagy
-  <code>68%</code>, <code>16/23 (70%)</code>) — a mező a szöveg előtt áll, és az önkalibráció ezt használja.
+  {t('{eleje}: írj a kiértékelő jegyzet dolgozat-szakaszába egy saját sort, például', { eleje })} <code>{EREDMENY_MEZO_PELDA}</code> {t('(vagy')}
+  <code>68%</code>, <code>16/23 (70%)</code>{t(') — a mező a szöveg előtt áll, és az önkalibráció ezt használja.')}
 {/snippet}
 
 {#snippet sav(nev: string, x: number | null, szint: string)}
   <div
     class="sav"
     role="meter"
-    aria-label={`${nev} felkészültsége`}
+    aria-label={t('{nev} felkészültsége', { nev })}
     aria-valuemin={0}
     aria-valuemax={100}
     aria-valuenow={x === null ? undefined : Math.round(x * 100)}
-    aria-valuetext={x === null ? 'nincs adat' : `${szazalek(x)}, ${szint}`}
+    aria-valuetext={x === null ? t('nincs adat') : `${szazalek(x)}, ${szint}`}
   >
     {#if x !== null}<span style:width={`${Math.round(x * 100)}%`}></span>{/if}
   </div>
@@ -117,15 +118,15 @@
 
 <div class="dolgozat olvasas">
   <header>
-    <h1>{r?.cim ?? 'Dolgozat'}</h1>
+    <h1>{r?.cim ?? t('Dolgozat')}</h1>
     {#if r}<p class="meta">{meta}</p>{/if}
     {#if regi}<p class="regi" role="status">{szinkronSzoveg(szinkron)}</p>{/if}
     {#if dolgozatok.length > 1}
       <label class="valto">
-        <span>Dolgozat</span>
+        <span>{t('Dolgozat')}</span>
         <select value={dolgozatAdat.valasztott ?? ''} onchange={(e) => valaszt((e.currentTarget as HTMLSelectElement).value)}>
           {#each dolgozatok as d (d.azon)}
-            <option value={d.azon}>{napRovid(d.nap)} · {d.cim}{d.lezart ? ' (lezárt)' : ''}</option>
+            <option value={d.azon}>{napRovid(d.nap)} · {d.cim}{d.lezart ? ` ${t('(lezárt)')}` : ''}</option>
           {/each}
         </select>
       </label>
@@ -133,67 +134,66 @@
   </header>
 
   {#if dolgozatAdat.hiba && !lista}
-    <p class="hiba" role="alert">A dolgozat-oldal adata nem tölthető be: {dolgozatAdat.hiba}</p>
+    <p class="hiba" role="alert">{t('A dolgozat-oldal adata nem tölthető be:')} {dolgozatAdat.hiba}</p>
   {:else if !dolgozatAdat.betoltve}
-    <p class="ures" role="status">Betöltés…</p>
+    <p class="ures" role="status">{t('Betöltés…')}</p>
   {:else if !dolgozatok.length}
-    <p class="ures">{lista?.hiba ? lista.hiba.charAt(0).toUpperCase() + lista.hiba.slice(1) : 'Nincs közelgő dolgozat a naptárban.'}</p>
+    <p class="ures">{lista?.hiba ? lista.hiba.charAt(0).toUpperCase() + lista.hiba.slice(1) : t('Nincs közelgő dolgozat a naptárban.')}</p>
   {:else if dolgozatAdat.reszletHiba}
     <p class="hiba" role="alert">{dolgozatAdat.reszletHiba}</p>
   {:else if r}
-    {#if r.lezart}<p class="regi" role="status">Ez a dolgozat már lezárult: a számok a mostani állapotot mutatják.</p>{/if}
+    {#if r.lezart}<p class="regi" role="status">{t('Ez a dolgozat már lezárult: a számok a mostani állapotot mutatják.')}</p>{/if}
 
     <!-- ------------------------------------------------------------- szám -->
-    <section class="fej" aria-label="Felkészültség">
+    <section class="fej" aria-label={t('Felkészültség')}>
       <div class="nagy" class:nincs={r.szam === null}>
         <span class="ertek">{szazalek(r.szam)}</span>
-        <span class="szint">{SZINT_SZOVEG[r.szint ?? 'nincs_adat']}</span>
+        <span class="szint">{t(SZINT_SZOVEG[r.szint ?? 'nincs_adat'])}</span>
       </div>
       <div class="kiegeszito">
         {#if r.szam !== null}
           {#if r.kilatas !== null && !r.lezart}
-            <p>Ha ma nem tanulsz többet: <strong>{szazalek(r.kilatas)}</strong> a dolgozat napjára.</p>
+            <p>{t('Ha ma nem tanulsz többet:')} <strong>{szazalek(r.kilatas)}</strong> {t('a dolgozat napjára.')}</p>
           {/if}
           <p class="halvany">
-            {r.lefedettseg?.van} / {r.lefedettseg?.osszes} témára van mért adat.
-            <span title={r.keplet.leiras}>A súlyok kalibrálatlan induló értékek.</span>
+            {t('{van} / {osszes} témára van mért adat.', { van: r.lefedettseg?.van ?? '', osszes: r.lefedettseg?.osszes ?? '' })}
+            <span title={r.keplet.leiras}>{t('A súlyok kalibrálatlan induló értékek.')}</span>
           </p>
         {:else}
-          <p>Még nincs elég mért adat a számhoz (kártya vagy kvíz kell).</p>
+          <p>{t('Még nincs elég mért adat a számhoz (kártya vagy kvíz kell).')}</p>
           {#if hianyzik.length}<p class="halvany">{hianyzik.join(' · ')}</p>{/if}
         {/if}
         {#if r.eredmeny}
           <p class="eredmeny">
-            A dolgozat eredménye: <strong>{tizedes(r.eredmeny.szazalek)}%</strong>
+            {t('A dolgozat eredménye:')} <strong>{tizedes(r.eredmeny.szazalek)}%</strong>
             {#if r.eredmeny.pont !== null}({pontSzoveg(r.eredmeny.pont, r.eredmeny.max)}){/if}
             {#if r.eredmeny.eredet === 'mezo'}
-              <span class="halvany" data-eredet="mezo">— az „{EREDMENY_MEZO_KULCS}::” mezőből: <code>{r.eredmeny.forras}</code></span>
+              <span class="halvany" data-eredet="mezo">{t('— az „{mezo}::” mezőből:', { mezo: EREDMENY_MEZO_KULCS })} <code>{r.eredmeny.forras}</code></span>
             {:else}
-              <span class="halvany" data-eredet="szoveg">— a kiértékelő jegyzet szövegéből: „{r.eredmeny.forras}”</span>
+              <span class="halvany" data-eredet="szoveg">{t('— a kiértékelő jegyzet szövegéből: „{forras}”', { forras: r.eredmeny.forras })}</span>
             {/if}
           </p>
           {#if r.eredmeny.eredet !== 'mezo'}
-            <p class="halvany mezo-tipp">{@render mezoTipp('Egyértelműbb eredményhez')}</p>
+            <p class="halvany mezo-tipp">{@render mezoTipp(t('Egyértelműbb eredményhez'))}</p>
           {/if}
         {:else if r.eredmeny_ellentmondas}
           <p class="halvany" role="status">
             {#if r.eredmeny_ellentmondas.eredet === 'mezo'}
-              A kiértékelő „{EREDMENY_MEZO_KULCS}::” mezője nem használható: {r.eredmeny_ellentmondas.ok}
+              {t('A kiértékelő „{mezo}::” mezője nem használható:', { mezo: EREDMENY_MEZO_KULCS })} {r.eredmeny_ellentmondas.ok}
             {:else}
-              A kiértékelő jegyzetben ellentmondó eredmény áll ({r.eredmeny_ellentmondas.jeloltek.map((j) => j.forras).join(' · ')}): javítsd
-              a jegyzetben, hogy az eredmény egyértelmű legyen.
+              {t('A kiértékelő jegyzetben ellentmondó eredmény áll ({jeloltek}): javítsd a jegyzetben, hogy az eredmény egyértelmű legyen.', { jeloltek: r.eredmeny_ellentmondas.jeloltek.map((j) => j.forras).join(' · ') })}
             {/if}
           </p>
-          <p class="halvany mezo-tipp">{@render mezoTipp('Javításként')}</p>
+          <p class="halvany mezo-tipp">{@render mezoTipp(t('Javításként'))}</p>
         {:else if r.lezart}
-          <p class="halvany mezo-tipp">{@render mezoTipp('Az eredmény megadásához')}</p>
+          <p class="halvany mezo-tipp">{@render mezoTipp(t('Az eredmény megadásához'))}</p>
         {/if}
         {#if r.jegyzet}
           <p class="halvany">
             <button type="button" class="szoveg-gomb" onclick={(e) => megnyit(r.jegyzet!, e)} title={r.jegyzet}>
               <Ikon ikon={FileText} /> {fajlNev(r.jegyzet)}
             </button>
-            · {r.kotes ? KOTES_SZOVEG[r.kotes.fok] : ''}
+            · {r.kotes ? t(KOTES_SZOVEG[r.kotes.fok]) : ''}
           </p>
         {/if}
       </div>
@@ -205,9 +205,9 @@
 
     <!-- ------------------------------------------------------------- szöveges értékelés (C28b) -->
     <section aria-labelledby="d-ertekeles">
-      <h2 id="d-ertekeles">Szöveges értékelés</h2>
+      <h2 id="d-ertekeles">{t('Szöveges értékelés')}</h2>
       {#if r.szam === null}
-        <p class="ures">Mért tudás (kártya vagy kvíz) nélkül nincs mit szavakba önteni.</p>
+        <p class="ures">{t('Mért tudás (kártya vagy kvíz) nélkül nincs mit szavakba önteni.')}</p>
       {:else}
         <p>
           <button
@@ -216,27 +216,27 @@
             disabled={dolgozatAdat.ertekelesFut}
             onclick={() => void dolgozatAdat.ertekelesKer(r.azon)}
           >
-            {dolgozatAdat.ertekelesFut ? 'A helyi modell dolgozik…' : ertekeles ? 'Új értékelés' : 'Értékelés kérése'}
+            {dolgozatAdat.ertekelesFut ? t('A helyi modell dolgozik…') : ertekeles ? t('Új értékelés') : t('Értékelés kérése')}
           </button>
-          <span class="halvany">A számokat a program számolta; a helyi modell csak szavakba önti őket.</span>
+          <span class="halvany">{t('A számokat a program számolta; a helyi modell csak szavakba önti őket.')}</span>
         </p>
       {/if}
       {#if dolgozatAdat.ertekelesHiba}
-        <p class="hiba" role="alert">A szöveges értékelés nem készült el: {dolgozatAdat.ertekelesHiba}</p>
+        <p class="hiba" role="alert">{t('A szöveges értékelés nem készült el:')} {dolgozatAdat.ertekelesHiba}</p>
       {/if}
       {#if ertekeles}
         {#if ertekeles.szoveg}
           <p class="ertekeles-szoveg">{ertekeles.szoveg}</p>
           <p class="halvany">
             {#if ertekeles.proba}
-              Próba — a modell ({ertekeles.modell ?? 'helyi modell'}) erre a feladatra nincs kalibrálva, a szöveget fenntartással olvasd.
+              {t('Próba — a modell ({modell}) erre a feladatra nincs kalibrálva, a szöveget fenntartással olvasd.', { modell: ertekeles.modell ?? t('helyi modell') })}
             {:else}
-              Kalibrált helyi modell ({ertekeles.modell ?? 'helyi modell'}).
+              {t('Kalibrált helyi modell ({modell}).', { modell: ertekeles.modell ?? t('helyi modell') })}
             {/if}
-            A szövegben csak a fenti számok szerepelhettek, ezt a program ellenőrizte{ertekeles.probalkozas > 1 ? ' (a második próbálkozásra sikerült)' : ''}.
+            {ertekeles.probalkozas > 1 ? t('A szövegben csak a fenti számok szerepelhettek, ezt a program ellenőrizte (a második próbálkozásra sikerült).') : t('A szövegben csak a fenti számok szerepelhettek, ezt a program ellenőrizte.')}
           </p>
           {#if ertekelesElavult}
-            <p class="figy" role="status">A számok azóta változtak: kérj új értékelést.</p>
+            <p class="figy" role="status">{t('A számok azóta változtak: kérj új értékelést.')}</p>
           {/if}
         {:else if ertekeles.uzenet}
           <p class="figy" role="status">{ertekeles.uzenet}</p>
@@ -246,39 +246,39 @@
 
     <!-- ------------------------------------------------------------- témák -->
     <section aria-labelledby="d-temak">
-      <h2 id="d-temak">Témák <span class="szam">{r.temak.length}</span></h2>
+      <h2 id="d-temak">{t('Témák')} <span class="szam">{r.temak.length}</span></h2>
       {#if !r.temak.length}
-        <p class="ures">Nincs téma: a felkészülési jegyzet `Source` és `NN` mezője nem hivatkozik jegyzetre.</p>
+        <p class="ures">{t('Nincs téma: a felkészülési jegyzet `Source` és `NN` mezője nem hivatkozik jegyzetre.')}</p>
       {/if}
       {#if r.onmaga && r.temak.length}
-        <p class="halvany">A jegyzet nem hivatkozik témajegyzetre: maga a felkészülési jegyzet az egyetlen téma.</p>
+        <p class="halvany">{t('A jegyzet nem hivatkozik témajegyzetre: maga a felkészülési jegyzet az egyetlen téma.')}</p>
       {/if}
       <ul class="lista" role="list">
-        {#each r.temak as t, i (t.ut)}
+        {#each r.temak as tm, i (tm.ut)}
           <li>
             <div class="tema">
               <div class="tema-fej">
-                <button type="button" class="szoveg-gomb nev" onclick={(e) => megnyit(t.ut, e)} title={t.ut}>{t.nev}</button>
-                <span class="szazalek" class:nincs={t.szam === null}>{szazalek(t.szam)}</span>
+                <button type="button" class="szoveg-gomb nev" onclick={(e) => megnyit(tm.ut, e)} title={tm.ut}>{tm.nev}</button>
+                <span class="szazalek" class:nincs={tm.szam === null}>{szazalek(tm.szam)}</span>
                 <button
                   type="button"
                   class="kicsi"
-                  aria-expanded={!!nyitott[t.ut]}
+                  aria-expanded={!!nyitott[tm.ut]}
                   aria-controls={`osszetevo-${i}`}
-                  onclick={() => (nyitott[t.ut] = !nyitott[t.ut])}
+                  onclick={() => (nyitott[tm.ut] = !nyitott[tm.ut])}
                 >
-                  {nyitott[t.ut] ? 'Elrejt' : 'Hogyan?'}
+                  {nyitott[tm.ut] ? t('Elrejt') : t('Hogyan?')}
                 </button>
               </div>
-              {@render sav(t.nev, t.szam, SZINT_SZOVEG[t.szint])}
-              <p class="halvany">{temaMeta(t)}</p>
-              {#if nyitott[t.ut]}
+              {@render sav(tm.nev, tm.szam, t(SZINT_SZOVEG[tm.szint]))}
+              <p class="halvany">{temaMeta(tm)}</p>
+              {#if nyitott[tm.ut]}
                 <table id={`osszetevo-${i}`}>
-                  <thead><tr><th>Összetevő</th><th>Érték</th><th>Bizalom</th><th>Súly</th><th>Adat</th></tr></thead>
+                  <thead><tr><th>{t('Összetevő')}</th><th>{t('Érték')}</th><th>{t('Bizalom')}</th><th>{t('Súly')}</th><th>{t('Adat')}</th></tr></thead>
                   <tbody>
-                    {#each t.osszetevok as o (o.nev)}
+                    {#each tm.osszetevok as o (o.nev)}
                       <tr>
-                        <td>{OSSZETEVO_SZOVEG[o.nev]}</td>
+                        <td>{t(OSSZETEVO_SZOVEG[o.nev])}</td>
                         <td>{szazalek(o.ertek)}</td>
                         <td>{Math.round(o.bizalom * 100)}%</td>
                         <td>{suly(o.suly)}</td>
@@ -287,9 +287,9 @@
                     {/each}
                   </tbody>
                 </table>
-                {#if t.szam === null}<p class="halvany">Mért tudás (kártya vagy kvíz) nélkül nincs szám; az idő és a frissesség csak finomít.</p>{/if}
-                {#if t.kilatas !== null && !r.lezart}<p class="halvany">Kilátás a dolgozat napjára: {szazalek(t.kilatas)}.</p>{/if}
-                {#if t.aliasok.length}<p class="halvany">A tanult idő az átnevezés előtti útvonalakat is tartalmazza: {t.aliasok.map(fajlNev).join(', ')}.</p>{/if}
+                {#if tm.szam === null}<p class="halvany">{t('Mért tudás (kártya vagy kvíz) nélkül nincs szám; az idő és a frissesség csak finomít.')}</p>{/if}
+                {#if tm.kilatas !== null && !r.lezart}<p class="halvany">{t('Kilátás a dolgozat napjára: {szazalek}.', { szazalek: szazalek(tm.kilatas) })}</p>{/if}
+                {#if tm.aliasok.length}<p class="halvany">{t('A tanult idő az átnevezés előtti útvonalakat is tartalmazza: {utak}.', { utak: tm.aliasok.map(fajlNev).join(', ') })}</p>{/if}
               {/if}
             </div>
           </li>
@@ -297,26 +297,26 @@
       </ul>
       {#if r.forrasok.length}
         <p class="halvany">
-          Források:
-          {#each r.forrasok as f, i (f.ut)}{i ? ', ' : ' '}{fajlNev(f.ut)}{f.oldalak ? ` (${f.oldalak}. oldal)` : ''}{/each}
+          {t('Források:')}
+          {#each r.forrasok as f, i (f.ut)}{i ? ', ' : ' '}{fajlNev(f.ut)}{f.oldalak ? ` (${t('{n}. oldal', { n: f.oldalak })})` : ''}{/each}
         </p>
       {/if}
     </section>
 
     <!-- ------------------------------------------------------------- gyenge pontok -->
     <section aria-labelledby="d-gyenge">
-      <h2 id="d-gyenge">Gyenge pontok</h2>
+      <h2 id="d-gyenge">{t('Gyenge pontok')}</h2>
       {#if r.gyenge_pontok.temak.length || r.gyenge_pontok.nincs_adat.length || r.gyenge_pontok.kartyak.length}
         <ul class="lista" role="list">
-          {#each r.gyenge_pontok.temak as t (t.ut)}
-            <li><span class="szoveg">{t.nev}</span><span class="halvany">gyenge: {szazalek(t.szam)}</span></li>
+          {#each r.gyenge_pontok.temak as tm (tm.ut)}
+            <li><span class="szoveg">{tm.nev}</span><span class="halvany">{t('gyenge: {szazalek}', { szazalek: szazalek(tm.szam) })}</span></li>
           {/each}
-          {#each r.gyenge_pontok.nincs_adat as t (t.ut)}
-            <li><span class="szoveg">{t.nev}</span><span class="halvany">nincs mért adat</span></li>
+          {#each r.gyenge_pontok.nincs_adat as tm (tm.ut)}
+            <li><span class="szoveg">{tm.nev}</span><span class="halvany">{t('nincs mért adat')}</span></li>
           {/each}
         </ul>
         {#if r.gyenge_pontok.kartyak.length}
-          <h3>Leggyengébb kártyák</h3>
+          <h3>{t('Leggyengébb kártyák')}</h3>
           <ul class="lista" role="list">
             {#each r.gyenge_pontok.kartyak as k (k.azon)}
               <li><span class="szoveg">{k.kerdes}</span><span class="halvany">{szazalek(k.felidezes)}</span></li>
@@ -324,30 +324,30 @@
           </ul>
         {/if}
       {:else}
-        <p class="ures">Nincs gyenge pont a mért adatok alapján.</p>
+        <p class="ures">{t('Nincs gyenge pont a mért adatok alapján.')}</p>
       {/if}
       <p>
-        <button type="button" class="m-gomb semleges gomb" disabled title="A próbakvíz ebből a nézetből még nem indítható.">Próbakvíz</button>
-        <span class="halvany">A próbakvíz egyelőre nem indítható.</span>
+        <button type="button" class="m-gomb semleges gomb" disabled title={t('A próbakvíz ebből a nézetből még nem indítható.')}>{t('Próbakvíz')}</button>
+        <span class="halvany">{t('A próbakvíz egyelőre nem indítható.')}</span>
       </p>
     </section>
 
     <!-- ------------------------------------------------------------- esedékes kártyák -->
     <section aria-labelledby="d-kartya">
-      <h2 id="d-kartya">Esedékes kártyák <span class="szam">{r.esedekes_kartya ?? 0}</span></h2>
+      <h2 id="d-kartya">{t('Esedékes kártyák')} <span class="szam">{r.esedekes_kartya ?? 0}</span></h2>
       <p class="halvany">
-        {r.esedekes_kartya ?? 0} esedékes és {r.uj_kartya ?? 0} új, még nem tanult kártya ezekhez a témákhoz.
-        {#if r.adatok.kartya.kotetlen}{r.adatok.kartya.kotetlen} kártya egyik laphoz sem köthető.{/if}
+        {t('{esedekes} esedékes és {uj} új, még nem tanult kártya ezekhez a témákhoz.', { esedekes: r.esedekes_kartya ?? 0, uj: r.uj_kartya ?? 0 })}
+        {#if r.adatok.kartya.kotetlen}{tp('{n} kártya egyik laphoz sem köthető.', r.adatok.kartya.kotetlen)}{/if}
       </p>
       <p>
-        <button type="button" class="m-gomb semleges gomb" disabled title="A kártyák ismétlése ebből a nézetből még nem indítható.">Mai ismétlés</button>
-        <span class="halvany">A kártyaismétlés egyelőre nem indítható.</span>
+        <button type="button" class="m-gomb semleges gomb" disabled title={t('A kártyák ismétlése ebből a nézetből még nem indítható.')}>{t('Mai ismétlés')}</button>
+        <span class="halvany">{t('A kártyaismétlés egyelőre nem indítható.')}</span>
       </p>
     </section>
 
     <!-- ------------------------------------------------------------- napi terv -->
     <section aria-labelledby="d-terv">
-      <h2 id="d-terv">Napi terv <span class="szam">{r.terv.napok.length}</span></h2>
+      <h2 id="d-terv">{t('Napi terv')} <span class="szam">{r.terv.napok.length}</span></h2>
       {#if r.terv.uzenet}<p class="halvany">{r.terv.uzenet}</p>{/if}
       <ul class="lista terv" role="list">
         {#each r.terv.napok as n (n.nap)}
@@ -355,14 +355,14 @@
             <div class="nap">
               <p class="nap-fej">
                 <strong>{napRovid(n.nap)}</strong> <span class="halvany">{napokSzoveg(Math.round((Date.parse(n.nap) - Date.parse(ma)) / 86_400_000))} · {percSzoveg(n.perc)}</span>
-                {#if n.javaslat}<span class="jelzo" title="A naptárba írást jóvá kell hagyni a Ma oldalon.">naptár-javaslat ({n.javaslat.allapot === 'uj' ? 'jóváhagyásra vár' : n.javaslat.allapot})</span>{/if}
+                {#if n.javaslat}<span class="jelzo" title={t('A naptárba írást jóvá kell hagyni a Ma oldalon.')}>{t('naptár-javaslat ({allapot})', { allapot: n.javaslat.allapot === 'uj' ? t('jóváhagyásra vár') : n.javaslat.allapot })}</span>{/if}
               </p>
               <ul class="reszlet" role="list">
                 {#each n.szeletek as s (s.tema + s.perc)}
                   <li><span class="szoveg">{s.tema}</span><span class="halvany">{percSzoveg(s.perc)} · {s.ok}</span></li>
                 {/each}
-                {#if n.kartya_esedekes}<li><span class="szoveg">Kártyák</span><span class="halvany">kb. {n.kartya_esedekes} esedékes</span></li>{/if}
-                {#each n.naptar as b (b.kezd)}<li><span class="szoveg">A naptárban: {b.cim}</span><span class="halvany">{idoSav(b)}</span></li>{/each}
+                {#if n.kartya_esedekes}<li><span class="szoveg">{t('Kártyák')}</span><span class="halvany">{t('kb. {n} esedékes', { n: n.kartya_esedekes })}</span></li>{/if}
+                {#each n.naptar as b (b.kezd)}<li><span class="szoveg">{t('A naptárban: {cim}', { cim: b.cim })}</span><span class="halvany">{idoSav(b)}</span></li>{/each}
               </ul>
             </div>
           </li>
@@ -372,56 +372,55 @@
 
     <!-- ------------------------------------------------------------- képlet -->
     <section aria-labelledby="d-keplet">
-      <h2 id="d-keplet">Hogyan számolódik</h2>
+      <h2 id="d-keplet">{t('Hogyan számolódik')}</h2>
       <details>
-        <summary>A képlet és a súlyok</summary>
+        <summary>{t('A képlet és a súlyok')}</summary>
         <p>{r.keplet.leiras}</p>
         <p class="halvany">
-          Súlyok: kártya {suly(r.keplet.suly.kartya)} · kvíz {suly(r.keplet.suly.kviz)} · frissesség {suly(r.keplet.suly.frissesseg)} · idő {suly(r.keplet.suly.ido)}.
-          Szám csak akkor születik, ha a mért összetevők bizonyítéka legalább {suly(r.keplet.min_bizonyitek)}. Célszint: {szazalek(r.keplet.cel)}.
-          {r.keplet.kalibralt ? 'A súlyokat a valódi dolgozat-eredményekre illesztettük.' : 'A súlyok kalibrálatlan induló értékek.'}
+          {t('Súlyok: kártya {kartya} · kvíz {kviz} · frissesség {frissesseg} · idő {ido}.', { kartya: suly(r.keplet.suly.kartya), kviz: suly(r.keplet.suly.kviz), frissesseg: suly(r.keplet.suly.frissesseg), ido: suly(r.keplet.suly.ido) })}
+          {t('Szám csak akkor születik, ha a mért összetevők bizonyítéka legalább {min}.', { min: suly(r.keplet.min_bizonyitek) })} {t('Célszint: {cel}.', { cel: szazalek(r.keplet.cel) })}
+          {r.keplet.kalibralt ? t('A súlyokat a valódi dolgozat-eredményekre illesztettük.') : t('A súlyok kalibrálatlan induló értékek.')}
         </p>
       </details>
       <details ontoggle={(e) => (e.currentTarget as HTMLDetailsElement).open && void dolgozatAdat.kalibracioBetolt()}>
-        <summary>Önkalibráció és a becslés mért hibája</summary>
+        <summary>{t('Önkalibráció és a becslés mért hibája')}</summary>
         {#if dolgozatAdat.kalibracioTolt && !kal}
-          <p class="halvany" role="status">Számolom…</p>
+          <p class="halvany" role="status">{t('Számolom…')}</p>
         {:else if dolgozatAdat.kalibracioHiba && !kal}
-          <p class="hiba" role="alert">Az önkalibráció állapota nem tölthető be: {dolgozatAdat.kalibracioHiba}</p>
+          <p class="hiba" role="alert">{t('Az önkalibráció állapota nem tölthető be:')} {dolgozatAdat.kalibracioHiba}</p>
         {:else if kal}
           <p>
-            <strong>{KALIBRACIO_SZOVEG[kal.allapot]}</strong> — {kal.pontok} / {kal.kell} kalibrációs pont.
-            {#if kal.allapot === 'nem_teljesitheto'}A súlyok addig nem változnak.{/if}
+            <strong>{t(KALIBRACIO_SZOVEG[kal.allapot])}</strong> — {t('{pontok} / {kell} kalibrációs pont.', { pontok: kal.pontok, kell: kal.kell })}
+            {#if kal.allapot === 'nem_teljesitheto'}{t('A súlyok addig nem változnak.')}{/if}
           </p>
           <p>{kal.ok}</p>
           {#if kal.alap.rmse !== null}
             <p class="halvany">
-              Az induló súlyokkal {kal.alap.n} lezárt dolgozaton mért hiba: átlagosan {szazalekpont(kal.alap.mae)}
-              (négyzetes átlag {szazalekpont(kal.alap.rmse)}, torzítás {szazalekpont(kal.alap.torzitas)}).
-              {#if kal.kis_minta}Ennyi dolgozat kevés a következtetéshez: a szám tájékoztató.{/if}
+              {t('Az induló súlyokkal {n} lezárt dolgozaton mért hiba: átlagosan {mae} (négyzetes átlag {rmse}, torzítás {torzitas}).', { n: kal.alap.n, mae: szazalekpont(kal.alap.mae), rmse: szazalekpont(kal.alap.rmse), torzitas: szazalekpont(kal.alap.torzitas) })}
+              {#if kal.kis_minta}{t('Ennyi dolgozat kevés a következtetéshez: a szám tájékoztató.')}{/if}
             </p>
           {:else}
-            <p class="halvany">A becslési hiba még nem mérhető: nincs egyetlen lezárt dolgozat sem, amelyre egyszerre van eredmény és a dolgozat előtti mért tudás.</p>
+            <p class="halvany">{t('A becslési hiba még nem mérhető: nincs egyetlen lezárt dolgozat sem, amelyre egyszerre van eredmény és a dolgozat előtti mért tudás.')}</p>
           {/if}
           {#if kal.pontok_reszlet.length}
             <table>
-              <thead><tr><th>Dolgozat</th><th>Eredmény</th><th>Becslés</th><th>Hiba</th></tr></thead>
+              <thead><tr><th>{t('Dolgozat')}</th><th>{t('Eredmény')}</th><th>{t('Becslés')}</th><th>{t('Hiba')}</th></tr></thead>
               <tbody>
                 {#each kal.pontok_reszlet as p (p.azon)}
                   <tr>
                     <td>{napRovid(p.nap)} · {p.cim}</td>
                     <td>{szazalek(p.eredmeny)}</td>
                     <td>{szazalek(p.becsles)}</td>
-                    <td>{p.hiba > 0 ? '+' : ''}{tizedes(p.hiba * 100)} százalékpont</td>
+                    <td>{p.hiba > 0 ? '+' : ''}{t('{n} százalékpont', { n: tizedes(p.hiba * 100) })}</td>
                   </tr>
                 {/each}
               </tbody>
             </table>
           {/if}
           {#if kal.kihagyott.length}
-            <p class="halvany">Kihagyva: {kal.kihagyott.map((k) => `${napRovid(k.nap)} ${k.cim} (${k.ok})`).join(' · ')}.</p>
+            <p class="halvany">{t('Kihagyva: {lista}.', { lista: kal.kihagyott.map((k) => `${napRovid(k.nap)} ${k.cim} (${k.ok})`).join(' · ') })}</p>
           {/if}
-          <p class="halvany">A kalibrált súlyok csak akkor kerülnek a beállításokba, ha az illesztés bizonyíthatóan javít.</p>
+          <p class="halvany">{t('A kalibrált súlyok csak akkor kerülnek a beállításokba, ha az illesztés bizonyíthatóan javít.')}</p>
         {/if}
       </details>
     </section>

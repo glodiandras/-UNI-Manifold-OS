@@ -23,7 +23,7 @@ enum HelyiMenu {
 
     /// A héj képességeinek bejelentése a lapnak (a betöltés előtt injektálva): csak ahol ez a héj tényleg fűzi a parancsokat,
     /// kapcsol be a natív menü; a régebbi héj mellett a lap a saját menüjét tartja meg.
-    static let kepessegekJs = "window.__MOS_HEJ__ = Object.freeze({ helyiMenu: true });"
+    static let kepessegekJs = "window.__MOS_HEJ__ = Object.freeze({ helyiMenu: true, nyelvFelismeres: true });"
 
     /// A felület üzenetének `elemek` tömbje → az érvényes elemek (a hibás elem kimarad, a lista a korlátnál csonkul).
     static func elemek(_ nyers: Any?) -> [HelyiMenuElem] {

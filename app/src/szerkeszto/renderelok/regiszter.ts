@@ -11,6 +11,7 @@
 // forrás változásakor a DOM helyben frissül (`frissit`), így a görgetés és a fókusz megmarad. A blokk forrását a
 // renderelő a befoglaló jegyzet **egyetlen tranzakciójával** írja át (`blokk.csere`).
 
+import { t } from '../../lib/i18n';
 export interface RenderKornyezet {
   /** a jegyzet vault-relatív útja (ha van) */
   ut: string | null;
@@ -53,7 +54,7 @@ export class KodRendeloRegiszter {
 
   regisztral(r: KodRenderelo): () => void {
     const nevek = (typeof r.nyelv === 'string' ? [r.nyelv] : [...r.nyelv]).map((n) => n.toLowerCase());
-    for (const n of nevek) if (this.nyelvek.has(n)) throw new Error(`már regisztrált kódblokk-renderelő: ${n}`);
+    for (const n of nevek) if (this.nyelvek.has(n)) throw new Error(`már regisztrált kódblokk-renderelő: ${n}`); // i18n-ignore: programozói hiba
     for (const n of nevek) this.nyelvek.set(n, r);
     return () => {
       for (const n of nevek) if (this.nyelvek.get(n) === r) this.nyelvek.delete(n);
@@ -80,7 +81,7 @@ export async function renderel(r: KodRenderelo, forras: string, cel: HTMLElement
     const h = document.createElement('div');
     h.className = 'renderelo-hiba';
     h.setAttribute('role', 'note');
-    h.textContent = `A blokk nem rajzolható ki: ${e instanceof Error ? e.message : String(e)}`;
+    h.textContent = t('A blokk nem rajzolható ki: {hiba}', { hiba: e instanceof Error ? e.message : String(e) });
     cel.appendChild(h);
     return () => {};
   }

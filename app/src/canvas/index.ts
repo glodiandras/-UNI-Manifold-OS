@@ -12,24 +12,26 @@ import { beagyazasRenderelok } from '../szerkeszto/beagyazas/regiszter';
 import { canvasok, type CanvasParancs } from './aktiv.svelte';
 import { canvasBeagyazasRenderelo } from './beagyazas';
 import CanvasFul from './CanvasFul.svelte';
+import { t, tk } from '../lib/i18n';
 
 const PARANCSOK: [CanvasParancs, string, boolean][] = [
-  ['uj-szoveg', 'Canvas: új szövegkártya', true],
-  ['uj-fajl', 'Canvas: jegyzet vagy fájl hozzáadása', true],
-  ['uj-link', 'Canvas: új link-kártya', true],
-  ['uj-csoport', 'Canvas: új csoport (a kijelölés köré)', true],
-  ['duplikal', 'Canvas: a kijelölés duplikálása', true],
-  ['torol', 'Canvas: a kijelölés törlése', true],
-  ['mind', 'Canvas: mindent kijelöl', false],
-  ['mindent-mutat', 'Canvas: mindent mutat', false],
-  ['nagyitas-100', 'Canvas: nagyítás 100%', false],
-  ['nagyit', 'Canvas: nagyítás', false],
-  ['kicsinyit', 'Canvas: kicsinyítés', false],
-  ['racs', 'Canvas: rácsra igazítás be/ki', true],
-  ['visszavon', 'Canvas: visszavonás', true],
-  ['ujra', 'Canvas: újra', true],
+  ['uj-szoveg', tk('Canvas: új szövegkártya'), true],
+  ['uj-fajl', tk('Canvas: jegyzet vagy fájl hozzáadása'), true],
+  ['uj-link', tk('Canvas: új link-kártya'), true],
+  ['uj-csoport', tk('Canvas: új csoport (a kijelölés köré)'), true],
+  ['duplikal', tk('Canvas: a kijelölés duplikálása'), true],
+  ['torol', tk('Canvas: a kijelölés törlése'), true],
+  ['mind', tk('Canvas: mindent kijelöl'), false],
+  ['mindent-mutat', tk('Canvas: mindent mutat'), false],
+  ['nagyitas-100', tk('Canvas: nagyítás 100%'), false],
+  ['nagyit', tk('Canvas: nagyítás'), false],
+  ['kicsinyit', tk('Canvas: kicsinyítés'), false],
+  ['racs', tk('Canvas: rácsra igazítás be/ki'), true],
+  ['visszavon', tk('Canvas: visszavonás'), true],
+  ['ujra', tk('Canvas: újra'), true],
 ];
 
+// i18n-ignore: a vaultba írt fájlnév (azonosító), nem felületi szöveg
 export const UJ_NEV = 'Névtelen canvas';
 
 /** Új, üres canvas (`{}`, az Obsidian alakja) az aktív fájl mappájában (különben a gyökérben), a következő szabad
@@ -47,7 +49,7 @@ export async function ujCanvas(felulet: Felulet, fajlok: VaultFajlok): Promise<s
       return d.ut;
     } catch (e) {
       if (e instanceof ApiHiba && e.statusz === 400 && /már van/.test(e.message)) continue;
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'Az új canvas nem jött létre', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('Az új canvas nem jött létre'), szoveg: e instanceof Error ? e.message : String(e) });
       return null;
     }
   }
@@ -63,7 +65,7 @@ export function canvasTelepit(reg: Regiszter, felulet: Felulet, fajlok: VaultFaj
       prioritas: 10,
     }),
     beagyazasRenderelok.regisztral(canvasBeagyazasRenderelo),
-    reg.regisztral({ id: 'canvas.uj', nev: 'Új canvas', kategoria: 'Canvas', futtat: () => void ujCanvas(felulet, fajlok) }),
+    reg.regisztral({ id: 'canvas.uj', nev: tk('Új canvas'), kategoria: 'Canvas', futtat: () => void ujCanvas(felulet, fajlok) }),
     reg.regisztralMind(
       PARANCSOK.map(([p, nev, ir]) => ({
         id: `canvas.${p}`,

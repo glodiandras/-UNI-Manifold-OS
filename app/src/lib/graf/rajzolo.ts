@@ -4,6 +4,7 @@
 // Nyugalmi állapotban nem fut semmi: a `requestAnimationFrame` csak akkor ütemez, ha a fizika fut, animáció van
 // (repülés, kifutás, kiemelés áttűnése) vagy a felhasználó húz/nagyít; különben a rajz áll, és a CPU nulla.
 
+
 import type { Be } from './fizikaMotor';
 import type { GrafAdat } from './modell';
 
@@ -183,7 +184,7 @@ export class GrafRajzolo {
     private readonly e: Esemenyek,
   ) {
     const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) throw new Error('nincs 2D vászon');
+    if (!ctx) throw new Error('nincs 2D vászon'); // i18n-ignore: programozói hiba
     this.ctx = ctx;
     this.csokkentett = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.bemenetTelepit();

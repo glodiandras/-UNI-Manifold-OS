@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { hibaSzoveg, kerdez } from '../lib/core/api';
+  import { t } from '../lib/i18n';
   import { maAdat } from './modell.svelte';
   let perc = $state(45), hiba = $state(''), mentve = $state(false);
   onMount(() => { void kerdez<{ napi_perc: number }>('/api/felkeszultseg/keret').then(d => perc = d.napi_perc).catch(e => hiba = hibaSzoveg(e)); });
@@ -10,9 +11,9 @@
     catch(e) { hiba = hibaSzoveg(e); }
   }
 </script>
-<label>Napi tanulási keret <input type="number" min="15" max="480" step="15" bind:value={perc} onchange={() => void ment()} /> perc</label>
-<p class="halvany">Az összes dolgozat közös kerete. Naptárba csak az elfogadott javaslat kerül.</p>
-{#if mentve}<p role="status" class="halvany">Elmentve. Az új tervek ezt a keretet használják.</p>{/if}
+<label>{t('Napi tanulási keret')} <input type="number" min="15" max="480" step="15" bind:value={perc} onchange={() => void ment()} /> {t('perc')}</label>
+<p class="halvany">{t('Az összes dolgozat közös kerete. Naptárba csak az elfogadott javaslat kerül.')}</p>
+{#if mentve}<p role="status" class="halvany">{t('Elmentve. Az új tervek ezt a keretet használják.')}</p>{/if}
 {#if hiba}<p role="alert">{hiba}</p>{/if}
 <style>
   label { display: flex; gap: var(--t-2); align-items: center; margin-top: var(--t-4); }

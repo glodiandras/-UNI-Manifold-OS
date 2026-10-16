@@ -443,7 +443,7 @@ class VisszavonasAtomiTest(unittest.TestCase):
         self.assertEqual(self.note.read_bytes(), self.utana)
         self._tiszta()
         self.assertFalse(self.repo.naplo_dir.exists())
-        self.assertTrue(uzenetek and "visszavonás" in uzenetek[0])
+        self.assertTrue(uzenetek and "undo operation" in uzenetek[0])
         self.assertEqual(self.repo.visszavonas_helyreallit(), [])
 
     def test_a_commit_utan_meghalt_visszavonasnal_csak_a_naplo_torlodik(self):

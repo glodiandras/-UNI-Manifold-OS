@@ -3,6 +3,7 @@
 // itt sem lehet: az egyetlen író út a Ma oldal „Beírom a naptárba” gombja (D12).
 
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
+import { tk, t } from '../lib/i18n';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import { CalendarCheck, CalendarDays } from '../lib/ikon/ikonok';
@@ -20,11 +21,11 @@ export async function naptarSzinkronParancs(): Promise<void> {
   maAdat.utemez(100);
   const a = naptarVezerlo.adat;
   if (naptarVezerlo.muveletHiba) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A naptár szinkronja nem sikerült', szoveg: naptarVezerlo.muveletHiba });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A naptár szinkronja nem sikerült'), szoveg: naptarVezerlo.muveletHiba });
   } else if (a?.hiba) {
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A naptár szinkronja hibát jelzett', szoveg: a.hiba });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A naptár szinkronja hibát jelzett'), szoveg: a.hiba });
   } else if (a) {
-    ertesitesek.ertesit({ szint: 'siker', cim: 'A naptár szinkronizálva', szoveg: szinkronEredmeny(a) });
+    ertesitesek.ertesit({ szint: 'siker', cim: t('A naptár szinkronizálva'), szoveg: szinkronEredmeny(a) });
   }
 }
 
@@ -36,9 +37,9 @@ export async function naptarSzinkronParancs(): Promise<void> {
 export async function engedelyValasz(v: NaptarEngedelyValasz, kerdesre: boolean): Promise<void> {
   if (kerdesre) {
     const e = v.esemeny as EngedelyAllapot | null | undefined;
-    if (v.hiba) ertesitesek.ertesit({ szint: 'hiba', cim: 'A naptár-engedély kérése nem sikerült', szoveg: v.hiba });
-    else if (e === 'engedelyezve') ertesitesek.ertesit({ szint: 'siker', cim: 'A naptár-hozzáférés engedélyezve' });
-    else ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A naptár-hozzáférés nincs engedélyezve', szoveg: `Állapot: ${engedelySzoveg(e)}.` });
+    if (v.hiba) ertesitesek.ertesit({ szint: 'hiba', cim: t('A naptár-engedély kérése nem sikerült'), szoveg: v.hiba });
+    else if (e === 'engedelyezve') ertesitesek.ertesit({ szint: 'siker', cim: t('A naptár-hozzáférés engedélyezve') });
+    else ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A naptár-hozzáférés nincs engedélyezve'), szoveg: t('Állapot: {allapot}.', { allapot: engedelySzoveg(e) }) });
   }
   await naptarVezerlo.betolt(true);
   if (v.esemeny === 'engedelyezve' && naptarVezerlo.adat?.naptar?.allapot !== 'engedelyezve') await naptarVezerlo.szinkron();
@@ -60,11 +61,11 @@ export function naptarTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreK
     }),
     naptarHid.figyel((v, kerdesre) => void engedelyValasz(v, kerdesre)),
     reg.regisztralMind([
-      { id: 'naptar.szinkron', nev: 'Naptár szinkronizálása', kategoria: 'Napló', ikon: CalendarDays, futtat: () => naptarSzinkronParancs() },
+      { id: 'naptar.szinkron', nev: tk('Naptár szinkronizálása'), kategoria: tk('Napló'), ikon: CalendarDays, futtat: () => naptarSzinkronParancs() },
       {
         id: 'naptar.engedely',
-        nev: 'Naptár-engedély kérése…',
-        kategoria: 'Napló',
+        nev: tk('Naptár-engedély kérése…'),
+        kategoria: tk('Napló'),
         ikon: CalendarCheck,
         elerheto: () => naptarHid.elerheto,
         futtat: () => void naptarHid.kerd(),

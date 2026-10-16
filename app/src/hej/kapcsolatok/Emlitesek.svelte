@@ -3,6 +3,7 @@
   a „Linkelés”: az említés `[[Név]]` (vagy `[[Név|szöveg]]`) lesz a másik jegyzetben.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { fajlNev, mappa } from '../../lib/vault/fajlok.svelte';
   import { kornyezetReszek, type Emlites, type EmlitesForras } from '../../lib/vault/kapcsolatok.svelte';
 
@@ -18,11 +19,11 @@
 
   let folyamatban = $state<string | null>(null);
 
-  async function linkel(ut: string, t: Emlites) {
-    const kulcs = `${ut}:${t.sor}:${t.oszlop}`;
+  async function linkel(ut: string, em: Emlites) {
+    const kulcs = `${ut}:${em.sor}:${em.oszlop}`;
     folyamatban = kulcs;
     try {
-      await onlinkel(ut, t);
+      await onlinkel(ut, em);
     } finally {
       folyamatban = null;
     }
@@ -30,7 +31,7 @@
 </script>
 
 {#if !forrasok.length}
-  <p class="ures">Nincs linkeletlen említés.</p>
+  <p class="ures">{t('Nincs linkeletlen említés.')}</p>
 {:else}
   <ul class="forrasok">
     {#each forrasok as f (f.ut)}
@@ -40,18 +41,18 @@
           {#if mappa(f.ut)}<span class="mappa">{mappa(f.ut)}</span>{/if}
         </button>
         <ul class="talalatok">
-          {#each f.talalatok as t (`${t.sor}:${t.oszlop}`)}
-            {@const r = kornyezetReszek(t.szoveg, t.oszlop, t.hossz)}
+          {#each f.talalatok as ta (`${ta.sor}:${ta.oszlop}`)}
+            {@const r = kornyezetReszek(ta.szoveg, ta.oszlop, ta.hossz)}
             <li class="talalat">
               <span class="szoveg">{r.elotte.trimStart().slice(-50)}<mark>{r.link}</mark>{r.utana.slice(0, 70)}</span>
               <button
                 type="button"
                 class="linkel"
                 disabled={folyamatban !== null}
-                aria-label={`Linkelés: ${r.link} a(z) ${fajlNev(f.ut)} jegyzetben`}
-                onclick={() => linkel(f.ut, t)}
+                aria-label={t('Linkelés: {link} a(z) {fajl} jegyzetben', { link: r.link, fajl: fajlNev(f.ut) })}
+                onclick={() => linkel(f.ut, ta)}
               >
-                {folyamatban === `${f.ut}:${t.sor}:${t.oszlop}` ? '…' : 'Linkelés'}
+                {folyamatban === `${f.ut}:${ta.sor}:${ta.oszlop}` ? '…' : t('Linkelés')}
               </button>
             </li>
           {/each}

@@ -29,6 +29,7 @@ from pathlib import Path
 
 from .utvonalak import KESZ, HttpError, biztonsagi_fejlecek
 from .vaultio import Invalid
+from .hibakod import kodol
 
 _szolgalatok: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
 _zar = threading.Lock()
@@ -201,9 +202,9 @@ def _kerdes(k) -> tuple[str, bool]:
     t = k.torzs()
     kerdes = t.get("kerdes")
     if not isinstance(kerdes, str) or not kerdes.strip():
-        raise Invalid("hiányzó kérdés")
+        raise kodol(Invalid("hiányzó kérdés"), "kereses_api.hianyzo_kerdes")
     if len(kerdes) > 2000:
-        raise Invalid("a kérdés legfeljebb 2000 karakter")
+        raise kodol(Invalid("a kérdés legfeljebb 2000 karakter"), "kereses_api.kerdes_legfeljebb_2000_karakter")
     return kerdes, bool(t.get("folyam"))
 
 
@@ -232,7 +233,10 @@ def _hiba_esemenyekkel(esemenyek):
     try:
         yield from esemenyek
     except KliensHiba as e:
-        yield {"tipus": "hiba", "kod": 503 if e.kod in (409, 503) else e.kod, "hiba": str(e)}
+        # `kod` is the legacy numeric HTTP status in this stream; keep its type.
+        yield {"tipus": "hiba", "kod": 503 if e.kod in (409, 503) else e.kod,
+               "hiba": "The model is not available. Try again or check its calibration in Settings.",
+               "hiba_kod": "kereses.modell_hiba", "param": {}}
     finally:
         esemenyek.close()
 
@@ -258,9 +262,9 @@ def utvonalak(r) -> None:
         try:
             v = K.valaszol(kerdes, kr, sz.modell, **kw)
         except KliensHiba as e:
-            raise HttpError(503, f"A „Kérdezz a vaulttól” modellje nem érhető el: {e}") from None
+            raise HttpError(503, f"A „Kérdezz a vaulttól” modellje nem érhető el: {e}", kod="kereses_api.modell_nem_erheto_el", param={"e": e}) from None
         if v["allapot"] == "nincs_modell":
-            raise HttpError(503, "A „Kérdezz a vaulttól” modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", forrasok=v["forrasok"])
+            raise HttpError(503, "A „Kérdezz a vaulttól” modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="kereses_api.modell_nincs_kotve", forrasok=v["forrasok"])
         return v
 
     def hasonlo(k):

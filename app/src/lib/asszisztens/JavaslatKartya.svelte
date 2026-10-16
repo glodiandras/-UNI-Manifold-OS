@@ -4,6 +4,7 @@
   a nyitott jegyzetbe ír, a szerkesztőn át (egy ⌘Z-lépés).
 -->
 <script lang="ts">
+  import { t } from '../i18n';
   import { fly } from 'svelte/transition';
   import { ido } from '../elrendezes/mozgas';
   import Ikon from '../ikon/Ikon.svelte';
@@ -28,11 +29,11 @@
       <p class="cim" id="asszisztens-kartya-cim">{j.cim}</p>
       <p class="indok" id="asszisztens-kartya-indok">{j.indok}</p>
       <div class="gombok">
-        <button type="button" class="m-gomb suru" disabled={kartyaAllapot.foglalt} onclick={() => void kartyaAllapot.igen()}>Igen</button>
-        <button type="button" class="m-gomb semleges suru" disabled={kartyaAllapot.foglalt} onclick={() => kartyaAllapot.nem()}>Nem</button>
+        <button type="button" class="m-gomb suru" disabled={kartyaAllapot.foglalt} onclick={() => void kartyaAllapot.igen()}>{t('Igen')}</button>
+        <button type="button" class="m-gomb semleges suru" disabled={kartyaAllapot.foglalt} onclick={() => kartyaAllapot.nem()}>{t('Nem')}</button>
       </div>
     </div>
-    <button type="button" class="bezar" aria-label="A javaslat bezárása döntés nélkül" onclick={() => kartyaAllapot.elrejt('figyelmen_kivul')}>
+    <button type="button" class="bezar" aria-label={t('A javaslat bezárása döntés nélkül')} onclick={() => kartyaAllapot.elrejt('figyelmen_kivul')}>
       <Ikon ikon={X} meret={14} />
     </button>
   </div>

@@ -41,7 +41,7 @@ def lista(k) -> dict:
 def dolgozat(k) -> dict:
     azon = k.q.get("azon")
     if not azon:
-        raise HttpError(400, "az `azon` (a dolgozat naptár-azonosítója) kötelező")
+        raise HttpError(400, "az `azon` (a dolgozat naptár-azonosítója) kötelező", kod="felkeszultseg.api.azon_kell")
     _, a = _adatok(k)
     return osszesit.reszlet(a, azon)
 
@@ -65,19 +65,19 @@ def _hivo(app, modell_nev):
     sz.worker_kot()
     if modell_nev is not None:
         if not isinstance(modell_nev, str) or not modell_nev:
-            raise HttpError(400, "A `modell` egy regisztrált modell neve legyen.")
+            raise HttpError(400, "A `modell` egy regisztrált modell neve legyen.", kod="felkeszultseg.api.modell_nev")
         try:
             m = B.betolt(app.cfg).modell(modell_nev)
         except B.RegiszterHiba as e:
-            raise HttpError(400, str(e)) from None
+            raise HttpError(400, str(e), kod="felkeszultseg.modell_hibas") from None
         if "szoveg" not in m.feladat:
-            raise HttpError(400, f"A(z) {m.nev} nem `szoveg`-modell (a regiszter `feladat` listája).")
+            raise HttpError(400, f"A(z) {m.nev} nem `szoveg`-modell (a regiszter `feladat` listája).", kod="felkeszultseg.api.nem_szoveg_modell", param={"nev": m.nev})
         w = sz._worker()
         if w is None:
-            raise HttpError(503, "A modell-worker nem érhető el.")
+            raise HttpError(503, "A modell-worker nem érhető el.", kod="felkeszultseg.api.worker_nem_erheto_el")
         return WorkerModell(w.biztosit, proba_modell=m.nev), m.nev, False
     if sz.modell is None:
-        raise HttpError(503, "A szöveges értékelés modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).")
+        raise HttpError(503, "A szöveges értékelés modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="felkeszultseg.api.modell_nincs_kotve")
     return sz.modell, None, bool(sz.kalibralt)
 
 
@@ -86,10 +86,10 @@ def ertekeles_valasz(app, t: dict) -> dict:
     from ..modell.kliens import KliensHiba
     azon = t.get("azon")
     if not isinstance(azon, str) or not azon:
-        raise HttpError(400, "az `azon` (a dolgozat naptár-azonosítója) kötelező")
+        raise HttpError(400, "az `azon` (a dolgozat naptár-azonosítója) kötelező", kod="felkeszultseg.api.azon_kell")
     datum = t.get("datum")
     if datum is not None and not isinstance(datum, str):
-        raise HttpError(400, "a `datum` ÉÉÉÉ-HH-NN szöveg legyen")
+        raise HttpError(400, "a `datum` ÉÉÉÉ-HH-NN szöveg legyen", kod="felkeszultseg.api.datum_alak")
     _, a = _adatok_datumbol(app, datum)
     r = osszesit.reszlet(a, azon)
     ten = ertekeles.tenyek(r, a.ma)
@@ -97,16 +97,16 @@ def ertekeles_valasz(app, t: dict) -> dict:
           "kalibralt": False, "probalkozas": 0, "tiltott_szamok": []}
     if not ten["szam_van"]:
         return {**ki, "allapot": "nincs_mert_adat",
-                "uzenet": "Még nincs mért tudás (kártya vagy kvíz), így nincs mit szavakba önteni — a modell nem is fut."}
+                "uzenet": "There is no measured card or quiz data yet, so the model has not run."}
     hivo, nev, kalibralt = _hivo(app, t.get("modell"))
     try:
         ered = ertekeles.futtat(hivo, ten)
     except KliensHiba as e:
-        raise HttpError(503, f"A szöveges értékelés modellje nem érhető el: {e}") from None
+        raise HttpError(503, f"A szöveges értékelés modellje nem érhető el: {e}", kod="felkeszultseg.api.modell_nem_erheto_el", param={"e": e}) from None
     modell_neve = getattr(hivo, "nev", None) or nev
     proba = (not kalibralt) or bool(getattr(hivo, "proba", False))
-    uzenet = {"kesz": None, "kapu_bukott": "A modell kétszer is olyan számot írt, amely nincs az adatok között — a szöveget nem mutatom.",
-              "ures": "A modell üres választ adott."}[ered["allapot"]]
+    uzenet = {"kesz": None, "kapu_bukott": "The model twice included numbers that are not in the data. Its assessment is hidden.",
+              "ures": "The model returned an empty response."}[ered["allapot"]]
     return {**ki, "allapot": ered["allapot"], "szoveg": ered["szoveg"], "modell": modell_neve, "proba": proba,
             "kalibralt": bool(kalibralt) and not proba, "probalkozas": ered["probalkozas"], "tiltott_szamok": ered["tiltott"],
             "uzenet": uzenet}

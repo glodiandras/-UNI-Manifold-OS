@@ -3,6 +3,7 @@
 // Kifejezésenkénti gyorsítótár (az ablakkal együtt), az egyidejű azonos kérés egyszer megy, a megszakítás csak a
 // hívó várakozását szakítja meg (a lekérés a gyorsítótárba fut), a hibát rövid ideig nem próbálja újra.
 
+import { locale } from '../../../lib/i18n';
 import { kerdez as apiKerdez, type KeresOpciok } from '../../../lib/core/api';
 
 export interface Pont {
@@ -53,7 +54,7 @@ export function kiterjeszt(lo: number, hi: number): [number, number] {
 }
 
 function megszakitott(): DOMException {
-  return new DOMException('megszakítva', 'AbortError');
+  return new DOMException('megszakítva', 'AbortError') // i18n-ignore: belső megszakítás-jel, nem látszik;
 }
 
 export class JellemzoKliens {
@@ -125,11 +126,17 @@ export class JellemzoKliens {
 
 // ------------------------------------------------------------------ olvasható szöveg
 
-const HU = new Intl.NumberFormat('hu-HU', { maximumSignificantDigits: 4, useGrouping: false });
+const SZAMFORMA = new Map<string, Intl.NumberFormat>();
+function szamForma(): Intl.NumberFormat {
+  const l = locale();
+  let f = SZAMFORMA.get(l);
+  if (!f) SZAMFORMA.set(l, (f = new Intl.NumberFormat(l, { maximumSignificantDigits: 4, useGrouping: false })));
+  return f;
+}
 
-/** Egy szám olvasható szövege: magyar tizedesvessző, legfeljebb 4 értékes jegy, valódi mínuszjel. */
+/** Egy szám olvasható szövege: a nyelv tizedesjele, legfeljebb 4 értékes jegy, valódi mínuszjel. */
 export function szam(v: number): string {
-  return HU.format(v).replace('-', '−');
+  return szamForma().format(v).replace('-', '−');
 }
 
 /** A CAS pontos értékének (`3*pi/2`, `-sqrt(3)`, `y=sqrt(3)*x`) olvasható alakja. */

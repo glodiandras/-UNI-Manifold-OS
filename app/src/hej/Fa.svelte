@@ -6,6 +6,7 @@
   A húzás sosem ír közvetlenül: az ejtés a terv-átfedést nyitja, a megerősítés után megy a core-hoz.
 -->
 <script lang="ts">
+  import { t, tp, tk } from '../lib/i18n';
   import { onDestroy, tick, untrack } from 'svelte';
   import { ApiHiba, kerdez } from '../lib/core/api';
   import Atfedes from '../lib/ui/Atfedes.svelte';
@@ -144,7 +145,8 @@
   let ujMezo: HTMLInputElement | undefined = $state();
   /** Az új fájl fajtája: jegyzet, adatbázis-nézet (C12), canvas (C14); a felirat és a kiterjesztés. */
   type UjTipus = 'md' | 'base' | 'canvas' | 'mappa';
-  const UJ_FELIRAT: Record<UjTipus, string> = { md: 'jegyzet', base: 'adatbázis-nézet', canvas: 'canvas', mappa: 'mappa' };
+  const UJ_NEV_ARIA: Record<UjTipus, string> = { md: tk('Az új jegyzet neve'), base: tk('Az új adatbázis-nézet neve'), canvas: tk('Az új canvas neve'), mappa: tk('Az új mappa neve') };
+  const UJ_NEV_HELYORZO: Record<UjTipus, string> = { md: tk('Új jegyzet neve'), base: tk('Új adatbázis-nézet neve'), canvas: tk('Új canvas neve'), mappa: tk('Új mappa neve') };
 
   /** A fókuszált sor mappája (mappa: önmaga; fájl: a szülője), vagy a gyökér. */
   function celMappa(): string {
@@ -227,25 +229,25 @@
       akciok.set(id, fn);
     };
     if (cs.mappa) {
-      hozzaad('uj-mappa', 'Új mappa itt', () => void ujJegyzetNyit(cs.ut, 'mappa'));
-      hozzaad('uj', 'Új jegyzet itt', () => void ujJegyzetNyit(cs.ut));
-      hozzaad('uj-sablon', 'Új jegyzet sablonból…', () => ujJegyzetSablonbol(felulet, cs.ut));
-      hozzaad('uj-base', 'Új adatbázis-nézet itt', () => void ujJegyzetNyit(cs.ut, 'base'));
-      hozzaad('uj-canvas', 'Új canvas itt', () => void ujJegyzetNyit(cs.ut, 'canvas'));
-      hozzaad('ossz-mappa', 'Összefoglalás a mappából', () => void osszefoglalasMappabol(cs.ut));
-      hozzaad('kereses', 'Keresés ebben a mappában', () => {
+      hozzaad('uj-mappa', t('Új mappa itt'), () => void ujJegyzetNyit(cs.ut, 'mappa'));
+      hozzaad('uj', t('Új jegyzet itt'), () => void ujJegyzetNyit(cs.ut));
+      hozzaad('uj-sablon', t('Új jegyzet sablonból…'), () => ujJegyzetSablonbol(felulet, cs.ut));
+      hozzaad('uj-base', t('Új adatbázis-nézet itt'), () => void ujJegyzetNyit(cs.ut, 'base'));
+      hozzaad('uj-canvas', t('Új canvas itt'), () => void ujJegyzetNyit(cs.ut, 'canvas'));
+      hozzaad('ossz-mappa', t('Összefoglalás a mappából|menu'), () => void osszefoglalasMappabol(cs.ut));
+      hozzaad('kereses', t('Keresés ebben a mappában'), () => {
         keresoMegnyit(felulet, `path:"${cs.ut}/" `);
       });
     } else {
-      hozzaad('megnyit', 'Megnyitás', () => felulet.munkaterulet.megnyit(cs.ut, 'aktiv'));
-      hozzaad('ujful', 'Megnyitás új fülben', () => felulet.munkaterulet.megnyit(cs.ut, 'ujful'));
-      hozzaad('osztas', 'Megnyitás osztásban', () => felulet.munkaterulet.megnyit(cs.ut, 'osztas'));
-      if (tartalmiJegyzet(cs.ut) || mediaUt(cs.ut)) hozzaad('osszefoglalas', mediaUt(cs.ut) ? 'Összefoglalás az átiratból' : 'Összefoglalás', () => void osszefoglalasFajlbol(cs.ut));
+      hozzaad('megnyit', t('Megnyitás'), () => felulet.munkaterulet.megnyit(cs.ut, 'aktiv'));
+      hozzaad('ujful', t('Megnyitás új fülben'), () => felulet.munkaterulet.megnyit(cs.ut, 'ujful'));
+      hozzaad('osztas', t('Megnyitás osztásban'), () => felulet.munkaterulet.megnyit(cs.ut, 'osztas'));
+      if (tartalmiJegyzet(cs.ut) || mediaUt(cs.ut)) hozzaad('osszefoglalas', mediaUt(cs.ut) ? t('Összefoglalás az átiratból') : t('Összefoglalás|menu'), () => void osszefoglalasFajlbol(cs.ut));
     }
-    hozzaad('nev', cs.mappa ? 'Mappa átnevezése…' : 'Átnevezés…', () => atnevez(cs, 'nev'), 'F2');
-    hozzaad('kuka', 'Áthelyezés a Kukába…', () => { torlendo = cs.ut; torlesHiba = ''; });
-    hozzaad('hely', cs.mappa ? 'Mappa áthelyezése…' : 'Áthelyezés…', () => atnevez(cs, 'hely'));
-    lebegoMenu({ focus: () => sorElem(cs.ut)?.focus() }, x, y, elemek, akciok, 'Fájlfa menü');
+    hozzaad('nev', cs.mappa ? t('Mappa átnevezése…') : t('Átnevezés…'), () => atnevez(cs, 'nev'), 'F2');
+    hozzaad('kuka', t('Áthelyezés a Kukába…'), () => { torlendo = cs.ut; torlesHiba = ''; });
+    hozzaad('hely', cs.mappa ? t('Mappa áthelyezése…') : t('Áthelyezés…'), () => atnevez(cs, 'hely'));
+    lebegoMenu({ focus: () => sorElem(cs.ut)?.focus() }, x, y, elemek, akciok, t('Fájlfa menü'));
   }
 
   function sorMenu(e: MouseEvent, cs: FaCsomopont) {
@@ -318,7 +320,7 @@
       for (const f of lista) await fajlImport(f, { mappa });
       await fajlok.frissit();
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A fájlimport megállt', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A fájlimport megállt'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
   let torlendo = $state<string | null>(null);
@@ -343,27 +345,27 @@
     felulet.oldalsav.nyitott = [];
   }
 
-  const tipusNev = (cs: FaCsomopont) => (cs.mappa ? `${cs.jegyzetek} jegyzet · ${cs.fajlok} fájl` : cs.ut);
+  const tipusNev = (cs: FaCsomopont) => (cs.mappa ? `${tp('{n} jegyzet', cs.jegyzetek)} · ${tp('{n} fájl', cs.fajlok)}` : cs.ut);
 </script>
 
 <div class="fa-doboz">
   {#if torlendo}
-    <Atfedes cimke="Áthelyezés a Kukába" nev="kuka" onbezar={() => { if (!torlesFut) torlendo = null; }}>
+    <Atfedes cimke={t('Áthelyezés a Kukába')} nev="kuka" onbezar={() => { if (!torlesFut) torlendo = null; }}>
       <div class="kuka-kerdes">
-        <h2>Áthelyezés a Kukába</h2>
+        <h2>{t('Áthelyezés a Kukába')}</h2>
         <p>{torlendo}</p>
-        <p>A fájl vagy mappa a macOS Kukájából visszahozható. A rá mutató hivatkozások megmaradnak.</p>
+        <p>{t('A fájl vagy mappa a macOS Kukájából visszahozható. A rá mutató hivatkozások megmaradnak.')}</p>
         {#if torlesHiba}<p role="alert">{torlesHiba}</p>{/if}
-        <button class="m-gomb semleges" disabled={torlesFut} onclick={() => torlendo = null}>Mégse</button>
-        <button class="m-gomb" disabled={torlesFut} onclick={() => void kukaba()}>Áthelyezés a Kukába</button>
+        <button class="m-gomb semleges" disabled={torlesFut} onclick={() => torlendo = null}>{t('Mégse')}</button>
+        <button class="m-gomb" disabled={torlesFut} onclick={() => void kukaba()}>{t('Áthelyezés a Kukába')}</button>
       </div>
     </Atfedes>
   {/if}
   <div class="eszkoztar">
-    <span class="felirat" aria-hidden="true" data-csend-rejt>{gyoker.fajlok} fájl</span>
-    <IkonGomb ikon={FilePlus} cimke="Új jegyzet" kicsi data-csend-rejt onclick={() => ujJegyzetNyit()} />
-    <IkonGomb ikon={Folder} cimke="Új mappa" kicsi data-csend-rejt onclick={() => ujJegyzetNyit(celMappa(), 'mappa')} />
-    <IkonGomb ikon={ChevronsDownUp} cimke="Összes mappa összecsukása" kicsi data-csend-rejt onclick={osszecsuk} />
+    <span class="felirat" aria-hidden="true" data-csend-rejt>{tp('{n} fájl', gyoker.fajlok)}</span>
+    <IkonGomb ikon={FilePlus} cimke={t('Új jegyzet')} kicsi data-csend-rejt onclick={() => ujJegyzetNyit()} />
+    <IkonGomb ikon={Folder} cimke={t('Új mappa')} kicsi data-csend-rejt onclick={() => ujJegyzetNyit(celMappa(), 'mappa')} />
+    <IkonGomb ikon={ChevronsDownUp} cimke={t('Összes mappa összecsukása')} kicsi data-csend-rejt onclick={osszecsuk} />
   </div>
 
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -372,7 +374,7 @@
     class:gyoker-cel={celUt === ''}
     role="tree"
     tabindex="-1"
-    aria-label="Fájlok"
+    aria-label={t('Fájlok')}
     bind:this={fa}
     onkeydown={billentyu}
     ondragover={huzasFolott}
@@ -426,7 +428,7 @@
         {@render ujSor(s.melyseg + 1)}
       {/if}
     {:else}
-      <p class="ures">{fajlok.betoltve ? 'A vault üres.' : 'A fájllista töltődik…'}</p>
+      <p class="ures">{fajlok.betoltve ? t('A vault üres.') : t('A fájllista töltődik…')}</p>
     {/each}
   </div>
 </div>
@@ -438,8 +440,8 @@
     <input
       bind:this={ujMezo}
       class="uj-mezo"
-      aria-label={`Az új ${UJ_FELIRAT[ujJegyzet?.tipus ?? 'md']} neve`}
-      placeholder={`Új ${UJ_FELIRAT[ujJegyzet?.tipus ?? 'md']} neve`}
+      aria-label={t(UJ_NEV_ARIA[ujJegyzet?.tipus ?? 'md'])}
+      placeholder={t(UJ_NEV_HELYORZO[ujJegyzet?.tipus ?? 'md'])}
       spellcheck="false"
       autocomplete="off"
       disabled={ujJegyzet?.folyamat}
@@ -464,7 +466,7 @@
   {#if ujJegyzet?.hiba}
     <p class="uj-hiba" role="alert" style:padding-left={`${8 + melyseg * 16 + 36}px`}>{ujJegyzet.hiba}</p>
     {#if ujJegyzet.problemak?.length}
-      <ul class="uj-sertesek" style:padding-left={`${8 + melyseg * 16 + 36 + 14}px`} aria-label="A sablon séma-sértései">
+      <ul class="uj-sertesek" style:padding-left={`${8 + melyseg * 16 + 36 + 14}px`} aria-label={t('A sablon séma-sértései')}>
         {#each ujJegyzet.problemak as p, i (i)}
           <li class:hiba-szint={p.szint === 'hiba'}>{p.uzenet}</li>
         {/each}
@@ -472,7 +474,7 @@
     {/if}
     {#if ujJegyzet.megerosit}
       <div class="uj-megerosit" style:padding-left={`${8 + melyseg * 16 + 36}px`}>
-        <button type="button" class="m-gomb semleges gomb" onclick={() => void ujJegyzetLetrehoz(true)}>Mégis létrehozom</button>
+        <button type="button" class="m-gomb semleges gomb" onclick={() => void ujJegyzetLetrehoz(true)}>{t('Mégis létrehozom')}</button>
       </div>
     {/if}
   {/if}

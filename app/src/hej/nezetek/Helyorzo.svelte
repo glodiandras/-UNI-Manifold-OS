@@ -3,6 +3,7 @@
   A cím és az adatok az olvasótörzs tipográfiáját mutatják (16 px, 44rem).
 -->
 <script lang="ts">
+  import { t, locale } from '../../lib/i18n';
   import { TIPUS_NEV } from '../../lib/ikon/fajlIkon';
   import type { NezetProps } from '../../lib/elrendezes/nezetek.svelte';
   import { kornyezet } from '../../lib/kornyezet';
@@ -11,11 +12,11 @@
   let { ful, info }: NezetProps = $props();
   const { fajlok } = kornyezet();
   const ut = $derived(ful.ut ?? '');
-  const szam = new Intl.NumberFormat('hu-HU', { maximumFractionDigits: 1 });
-  const datum = new Intl.DateTimeFormat('hu-HU', { dateStyle: 'long', timeStyle: 'short' });
+  const szam = $derived(new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }));
+  const datum = $derived(new Intl.DateTimeFormat(locale(), { dateStyle: 'long', timeStyle: 'short' }));
 
   function meret(b: number): string {
-    if (b < 1024) return `${b} bájt`;
+    if (b < 1024) return t('{b} bájt', { b });
     if (b < 1024 * 1024) return `${szam.format(b / 1024)} KB`;
     return `${szam.format(b / 1024 / 1024)} MB`;
   }
@@ -26,21 +27,21 @@
   <h1>{fajlNev(ut)}</h1>
   {#if info}
     <dl class="adatok">
-      <dt>Típus</dt>
+      <dt>{t('Típus')}</dt>
       <dd>{TIPUS_NEV[info.tipus]}</dd>
-      <dt>Méret</dt>
+      <dt>{t('Méret')}</dt>
       <dd>{meret(info.meret)}</dd>
       {#if info.mtime}
-        <dt>Módosítva</dt>
+        <dt>{t('Módosítva')}</dt>
         <dd>{datum.format(info.mtime * 1000)}</dd>
       {/if}
     </dl>
   {:else if fajlok.betoltve}
-    <p class="megjegyzes">A fájl nincs az indexben (törölték vagy átnevezték).</p>
+    <p class="megjegyzes">{t('A fájl nincs az indexben (törölték vagy átnevezték).')}</p>
   {:else}
     <div class="adatok-hely" aria-hidden="true"></div>
   {/if}
-  <p class="megjegyzes">Ehhez a fájltípushoz még nincs nézet; addig az adatai látszanak.</p>
+  <p class="megjegyzes">{t('Ehhez a fájltípushoz még nincs nézet; addig az adatai látszanak.')}</p>
 </article>
 
 <style>

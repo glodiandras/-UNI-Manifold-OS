@@ -16,6 +16,8 @@ import type { Feladat, FeladatReszlet, Valtozasok } from '../src/lib/vezerlo/tip
 import { VaultFajlok } from '../src/lib/vault/fajlok.svelte';
 import ManifoldLap from '../src/hej/ManifoldLap.svelte';
 import Ikonsav from '../src/hej/Ikonsav.svelte';
+import FeladatSor from '../src/hej/vezerlo/FeladatSor.svelte';
+import { nyelv } from '../src/lib/i18n';
 
 vi.mock('../src/hej/kapcsolatok/mergeNezet', () => ({
   lf: (s: string | null) => s ?? '',
@@ -93,6 +95,7 @@ afterEach(() => {
   cleanup();
   document.body.textContent = '';
   vi.unstubAllGlobals();
+  nyelv.beallit('hu');
 });
 
 describe('a szakaszok', () => {
@@ -218,6 +221,16 @@ describe('a Tracker nem fogad jelzése (T007)', () => {
 });
 
 describe('a feladatlista és a részlet', () => {
+  it('angol feladatnév és indulási felirat a futó feladat sorában', () => {
+    nyelv.beallit('en');
+    const { container } = render(FeladatSor, { props: {
+      feladat: feladat('en', { cim: 'Füzetfotók bekötése', allapot: 'fut', indult: '2026-10-02T10:00:00' }), onnyit: () => {},
+    } });
+    expect(container.querySelector('.cim')?.textContent).toBe('Link notebook photos');
+    expect(container.querySelector('.meta')?.textContent).toContain('started ');
+    expect(container.querySelector('.meta')?.textContent).not.toContain('indult');
+  });
+
   beforeEach(() => {
     feladatsor.lista = [
       feladat('F-3', { allapot: 'kesz', cim: 'Mentés', indult: '2026-10-02T10:00:00', vegzett: '2026-10-02T10:00:09', szazalek: 100 }),

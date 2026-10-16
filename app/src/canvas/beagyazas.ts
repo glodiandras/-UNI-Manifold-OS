@@ -8,6 +8,7 @@ import type { FajlOlvasas } from '../szerkeszto/dokumentum/api';
 import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
 import { befoglalo, elGeometria, nyilhegy } from './geometria';
 import { beolvas, csomopontok, elek, kezdoVeg, szinCss, zaroVeg, type Csomopont } from './modell';
+import { t } from '../lib/i18n';
 
 const NS = 'http://www.w3.org/2000/svg';
 export const BEAGYAZAS_MAGASSAG = 360;
@@ -37,7 +38,7 @@ function felirat(c: Csomopont): string {
 /** A canvas képe egy SVG-ben (a doboz kitöltve, arányosan). */
 export function canvasKep(szoveg: string): SVGSVGElement | string {
   const b = beolvas(szoveg);
-  if (!b.vaszon) return b.hiba ?? 'A canvas nem olvasható.';
+  if (!b.vaszon) return b.hiba ?? t('A canvas nem olvasható.');
   const v = b.vaszon;
   const d = befoglalo(csomopontok(v));
   const kep = svg('svg', { class: 'canvas-kep', role: 'img', preserveAspectRatio: 'xMidYMid meet' });
@@ -103,7 +104,7 @@ export const canvasBeagyazasRenderelo: BeagyazasRenderelo = {
     const test = document.createElement('div');
     test.className = 'beagyazas-canvas-kep';
     test.style.height = `${BEAGYAZAS_MAGASSAG}px`;
-    test.title = 'Kattintásra megnyílik';
+    test.title = t('Kattintásra megnyílik');
     test.addEventListener('click', nyit);
     kont.append(fej, test);
     const f = await kerdez<FajlOlvasas>(`/api/vault/fajl?ut=${encodeURIComponent(ut)}`, { idokorlat: 15000 });

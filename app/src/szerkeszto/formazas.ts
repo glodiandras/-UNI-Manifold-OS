@@ -12,6 +12,7 @@
 // A `*` és a `**` egymás mellett is állhat (`***x***` félkövér és dőlt): ott a csillagok sorozatának hossza
 // dönt (`**` = legalább 2, `*` = páratlan), így a ⌘I a `**x**`-et nem bontja szét, hanem `***x***`-t csinál.
 
+import { t } from '../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { EditorSelection, type EditorState, type SelectionRange } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
@@ -89,7 +90,7 @@ function blokkotNyitna(s: EditorState, r: SelectionRange, jel: string): boolean 
 }
 
 /** A helyőrző szó a blokkot nyitó üres jelölőpár helyett (kijelölve: az első leütés lecseréli). */
-export const FORMAZAS_HELYORZO = 'szöveg';
+const helyorzo = (): string => t('szöveg');
 
 /** A munkaterület jegyzetszabályai nem ajánlják a `==kiemelés==` jelölést: a beszúrás figyelmeztet, de nem tagad meg.
  *  A megjelenítés marad. */
@@ -97,8 +98,8 @@ function kiemelesFigyelmeztet(): void {
   ertesitesek.ertesit({
     szint: 'figyelmeztetes',
     kulcs: 'formazas-kiemeles',
-    cim: 'A ==kiemelés== nem ajánlott jelölés',
-    szoveg: 'A munkaterület jegyzetszabályai nem ajánlják a == kiemelést; a vault-ellenőrző jelezni fogja. Helyette félkövér (⌘B).',
+    cim: t('A ==kiemelés== nem ajánlott jelölés'),
+    szoveg: t('A munkaterület jegyzetszabályai nem ajánlják a == kiemelést; a vault-ellenőrző jelezni fogja. Helyette félkövér (⌘B).'),
   });
 }
 
@@ -116,8 +117,8 @@ export function korbefog(view: EditorView, jel: string): boolean {
     if (hol === null) beszur = true;
     if (r.empty && blokkotNyitna(s, r, jel))
       return {
-        changes: { from: r.head, insert: jel + FORMAZAS_HELYORZO + jel },
-        range: EditorSelection.range(r.head + n, r.head + n + FORMAZAS_HELYORZO.length),
+        changes: { from: r.head, insert: jel + helyorzo() + jel },
+        range: EditorSelection.range(r.head + n, r.head + n + helyorzo().length),
       };
     if (r.empty && setextLenne(s, r, jel)) {
       // új bekezdés: a sor helyére üres (előtag-)sor, alá az előtag és a jelölőpár

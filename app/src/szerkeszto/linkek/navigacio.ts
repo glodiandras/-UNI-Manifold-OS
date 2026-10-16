@@ -2,6 +2,7 @@
 // megnyitása az aktív fülben / új fülben (⌘) / osztásban (⌘⌥), fejezetre vagy blokkra ugrás, és — Obsidian-módra —
 // a feloldatlan linkre kattintva új jegyzet; a helyét a core dönti (C31, T158: `POST /api/vault/uj {link}`).
 
+import { t } from '../../lib/i18n';
 import { ApiHiba, kerdez } from '../../lib/core/api';
 import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
 import { linkek } from '../../lib/vault/linkek.svelte';
@@ -49,7 +50,7 @@ export async function jegyzetLetrehoz(forras: string, cel: string): Promise<stri
   const tiszta = cel.trim().replaceAll('\\', '/').replace(/^\/+/, '');
   const nev = tiszta.slice(tiszta.lastIndexOf('/') + 1).replace(/\.md$/i, '');
   if (!nev || ISMERT_KITERJESZTES.test(tiszta)) {
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A fájl nem található', szoveg: cel });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A fájl nem található'), szoveg: cel });
     return null;
   }
   // C36a-UI: a hiányzó `![[x.cpp]]` célja C++ forrás (a core váza), nem `x.cpp.md` — a felhasználó művelete (53(d));
@@ -61,7 +62,7 @@ export async function jegyzetLetrehoz(forras: string, cel: string): Promise<stri
     linkek.ervenytelenit();
     return d.ut;
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'Az új jegyzet nem hozható létre', szoveg: e instanceof ApiHiba ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('Az új jegyzet nem hozható létre'), szoveg: e instanceof ApiHiba ? e.message : String(e) });
     return null;
   }
 }
@@ -74,7 +75,7 @@ export async function linkMegnyit(l: LinkCel, mod: NyitasMod = 'aktiv'): Promise
   try {
     b = await linkek.beagyazas(l.forras, cel, l.alcel);
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A link nem oldható fel', szoveg: e instanceof ApiHiba ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A link nem oldható fel'), szoveg: e instanceof ApiHiba ? e.message : String(e) });
     return;
   }
   let ut = b.ut ?? null;
@@ -93,5 +94,5 @@ export async function linkMegnyit(l: LinkCel, mod: NyitasMod = 'aktiv'): Promise
   fugg.megnyit(ut, mod, horgony);
   if (b.tipus === 'jegyzet' && b.kezd && l.alcel && !b.alcel_hiba) szerkesztok.ugras(ut, b.kezd);
   else if (b.tipus === 'jegyzet' && l.alcel && b.alcel_hiba)
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A horgony nem található', szoveg: `${fajlNev(ut)}#${l.alcel}` });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A horgony nem található'), szoveg: `${fajlNev(ut)}#${l.alcel}` });
 }

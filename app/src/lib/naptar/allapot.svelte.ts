@@ -3,6 +3,8 @@
 // nem látszó szakasz nem tölt, a következő megjelenéskor úgyis újratölt. A naptárba itt nem írunk: az egyetlen író út a Ma oldal
 // javaslat-jóváhagyása.
 
+import { t } from '../i18n';
+
 import { ApiHiba } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 import { naptarApi } from './api';
@@ -77,7 +79,7 @@ export class NaptarAllapot {
       this.adat = await naptarApi.szinkron();
       this.hiba = null;
     } catch (e) {
-      this.muveletHiba = `A szinkron nem sikerült: ${hibaSzoveg(e)}`;
+      this.muveletHiba = t('A szinkron nem sikerült: {hiba}', { hiba: hibaSzoveg(e) });
     } finally {
       this.foglalt = false;
     }
@@ -91,7 +93,7 @@ export class NaptarAllapot {
       await naptarApi.kategoria(azon, kategoria);
       await this.betolt();
     } catch (e) {
-      this.muveletHiba = `A kategória nem állítható: ${hibaSzoveg(e)}`;
+      this.muveletHiba = t('A kategória nem állítható: {hiba}', { hiba: hibaSzoveg(e) });
     } finally {
       this.kategoriaFolyamatban = this.kategoriaFolyamatban.filter((a) => a !== azon);
     }
@@ -104,7 +106,7 @@ export class NaptarAllapot {
       await naptarApi.utkozesLatva(azonok);
       await this.betolt();
     } catch (e) {
-      this.muveletHiba = `A láttamozás nem sikerült: ${hibaSzoveg(e)}`;
+      this.muveletHiba = t('A láttamozás nem sikerült: {hiba}', { hiba: hibaSzoveg(e) });
     }
   }
 

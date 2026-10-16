@@ -1,6 +1,7 @@
 // A videólinkek beolvasása a Bevitel szakasz mezőjéből (C20a). A core (`core/videolanc.py`) ugyanezeket az ellenőrzéseket végzi, és a
 // helyi/privát címet is elutasítja; itt csak a gyors, kliensoldali visszajelzés: soronként egy http(s) link, ismétlés nélkül, legfeljebb VIDEO_MAX.
 
+import { t } from '../i18n';
 export const VIDEO_MAX = 20;
 
 export interface LinkEredmeny {
@@ -23,11 +24,11 @@ export function linkekBeolvas(szoveg: string): LinkEredmeny {
     } catch {
       ok = false;
     }
-    if (!ok) hibak.push(`Nem http(s) link: ${u.length > 60 ? `${u.slice(0, 57)}…` : u}`);
+    if (!ok) hibak.push(t('Nem http(s) link: {url}', { url: u.length > 60 ? `${u.slice(0, 57)}…` : u }));
     else if (!urlek.includes(u)) urlek.push(u);
   }
   if (urlek.length > VIDEO_MAX) {
-    hibak.push(`Egy feladatban legfeljebb ${VIDEO_MAX} link adható meg (${urlek.length} érkezett).`);
+    hibak.push(t('Egy feladatban legfeljebb {max} link adható meg ({n} érkezett).', { max: VIDEO_MAX, n: urlek.length }));
   }
   return { urlek, hibak };
 }

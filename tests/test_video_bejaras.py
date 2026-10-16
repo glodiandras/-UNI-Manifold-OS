@@ -375,7 +375,7 @@ class CoreTeszt(unittest.TestCase):
         self.assertEqual(l.argv[3:7], ["modulok.ytdlp", "lepes", "bejaras", "--url"])
         self.assertEqual(l.argv[-1], str(videolanc.bejaras_fajl(self.cfg, START)))
         self.assertEqual(l.jogok, "nincs")
-        self.assertIn("letöltés nélkül", osszeg)
+        self.assertIn("without downloading", osszeg)
         for p in ({}, {"url": 5}, {"url": "ftp://x/y"}, {"url": "http://localhost/x"}, "x"):
             with self.subTest(p=p), self.assertRaises(tasks.Invalid):
                 videolanc._bejaras_terv(self.cfg, p, "/stop")

@@ -836,7 +836,7 @@ def _uj_azonosito_ad(cfg: Config, reg: Regiszter, vault: Path, toml: Path, id: s
             try:
                 frame.apfs_clone(forras, cel)            # a másolat a saját (klónozott) történetével indul
             except (RuntimeError, OSError):
-                uzenetek.append("A másolat állapota nem klónozható: a pillanatkép-története üresen indul.")
+                uzenetek.append("The copied workspace state could not be cloned. Its snapshot history starts empty.")
     _uj_id_irasa(toml, id, uj)
     reg.felvesz(**_bejegyzes(vault, id=uj, allapot=str(e.get("allapot") or "vault"), nev=nev, demo=False))
     uzenetek.append(uzenet)
@@ -961,20 +961,20 @@ def nyit(cfg: Config) -> list[str]:
             reg.felvesz(id=id)                           # a legutóbbi
         elif e.get("vault") and regi.is_dir() and azonosit(regi) == id:
             _uj_azonosito_ad(cfg, reg, vault, toml, id, e, nev, uzenetek,
-                             f"Ez a mappa egy másik munkatér ({regi}) másolata: új azonosítót kapott, a régi érintetlen.")
+                             f"This folder is a copy of another workspace ({regi}). It received a new ID; the original workspace is unchanged.")
         elif not _athelyezes_bizonyitek(e, vault):
             # az azonosító a vaulttal utazik, de a régi hely eltűnt, és a mappa nem bizonyíthatóan az: idegen vault is hordozhatja —
             # a regisztrált munkatér bejegyzését és mentéseit nem vehetjük át (K5)
             _uj_azonosito_ad(cfg, reg, vault, toml, id, e, nev, uzenetek,
-                             f"Ez a mappa egy korábbi munkatér ({regi}) azonosítóját hordozza, de nem bizonyítható, hogy annak "
-                             "áthelyezett példánya: új azonosítót kapott és üres állapottal indul, a régi bejegyzés érintetlen.",
+                             f"This folder carries the ID of an earlier workspace ({regi}), but could not be verified as its moved instance. "
+                             "It received a new ID and starts with empty state; the earlier registration is unchanged.",
                              klonoz=False)
         else:
             reg.frissit(id, **{k: x for k, x in _bejegyzes(vault, id=id, allapot=str(e.get("allapot") or allapot), nev=nev,
                                                            demo=bool(e.get("demo"))).items()
                                if k not in ("letrehozva", "id", "allapot", "demo")})
             reg.felvesz(id=id)
-            uzenetek.append(f"A munkatér új helyen nyílt meg ({regi} → {vault}).")
+            uzenetek.append(f"The workspace opened at a new location ({regi} → {vault}).")
     if not _ujratoltes_kell(cfg):                        # különben a `cfg` állapota (`{var}`) nem ezé a munkatéré: az `ujratolt` dolga
         _tarolo_biztosit(cfg)
     return uzenetek

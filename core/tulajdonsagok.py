@@ -85,6 +85,8 @@ class Sema:
     (`cfg` nélkül a v2 szigorú viselkedése; `cfg`-vel a `[sema] mod`, hiányában `ki`)."""
 
     def __init__(self, adat: dict, cfg=None, mod: str | None = None):
+        self.nyelv: str = ((cfg.section("workspace").get("nyelv") or cfg.section("sablon").get("nyelv") or "")
+                           if cfg is not None else "")
         if mod is None:
             mod = (cfg.section("sema").get("mod") or "ki") if cfg is not None else "szigoru"
         self.mod: str = mod if mod in MODOK else "ki"
@@ -149,7 +151,7 @@ class Sema:
     def leiras(self, ut: str | None = None) -> dict:
         return {"mezosorrend": self.mezosorrend, "extra_kulcsok": self.extra, "tags_ertekkeszlet": self.tags or [],
                 "status_ertekkeszlet": self.status or [], "status_gazdai": self.status_gazdai,
-                "mod": self.mod, "kisero": self.kisero, "kisero_elotag": self.kisero_elotag,
+                "mod": self.mod, "nyelv": self.nyelv, "kisero": self.kisero, "kisero_elotag": self.kisero_elotag,
                 "osztaly": self.osztaly(ut) if ut is not None else None}
 
 
@@ -222,7 +224,7 @@ def _fm_elemez(fm: str | None) -> _Fm | None:
     if fm is None or fm == "":
         return None
     if not FM_RE.match(fm) or FM_RE.match(fm).end() != len(fm):
-        raise HttpError(400, "a `fm` nem frontmatter-blokk (az `FM_RE` illesztése kell, a záró `---`-ig)")
+        raise HttpError(400, "a `fm` nem frontmatter-blokk (az `FM_RE` illesztése kell, a záró `---`-ig)", kod="tulajdonsag.fm_nem_blokk")
     elo = "\ufeff" if fm.startswith("\ufeff") else ""
     fm = fm[len(elo):]
     eol = "\r\n" if "\r\n" in fm else "\n"
@@ -240,6 +242,22 @@ def _yaml_kulcsok(belso: str) -> list[str] | None:
     if not isinstance(gyoker, yaml.MappingNode):
         return None
     return [str(k.value) for k, _ in gyoker.value if isinstance(k, yaml.ScalarNode)]
+
+
+def frontmatter_hiba_angol(hiba: str | None) -> str | None:
+    """Translate core diagnostic phrases while retaining YAML locations, keys and source excerpts."""
+    if not hiba:
+        return hiba
+    szoveg = str(hiba)
+    for regi, uj in (
+        ("a frontmatter túl mélyen egymásba ágyazott", "The frontmatter nesting is too deep."),
+        ("a frontmatter nem kulcs–érték párokból áll", "The frontmatter must contain key–value pairs."),
+        ("a tábla felépítése közben", "while constructing a mapping"),
+        ("duplikált kulcs:", "duplicate key:"),
+    ):
+        szoveg = szoveg.replace(regi, uj)
+    szoveg = re.sub(r"a YAML-alias \(\*(.*?)\) nem megengedett", r"YAML aliases (*\1) are not allowed", szoveg)
+    return re.sub(r"a YAML legfeljebb (\d+) szint mélyen ágyazható egymásba", r"YAML nesting cannot exceed \1 levels", szoveg)
 
 
 # ---------------------------------------------------------------- értékek szövege
@@ -275,7 +293,7 @@ def _ertek_normal(tipus: str, ertek):
     if tipus in _LISTA_TIPUSOK or isinstance(ertek, list):
         elemek = ertek if isinstance(ertek, list) else [ertek]
         if any(isinstance(x, (list, dict)) for x in elemek):
-            return None, "a lista elemei szövegek lehetnek"
+            return None, "List items must be text."
         lista = [str(x).strip() for x in elemek if x is not None and str(x).strip()]
         if tipus == "tags":
             lista = [x[1:] if x.startswith("#") else x for x in lista]
@@ -285,30 +303,30 @@ def _ertek_normal(tipus: str, ertek):
             return ertek, None
         if ertek in ("true", "false"):
             return ertek == "true", None
-        return None, "a jelölő értéke igaz vagy hamis lehet"
+        return None, "A checkbox must be true or false."
     if tipus == "number":
         if isinstance(ertek, bool) or not isinstance(ertek, (int, float, str)):
-            return None, "a szám nem szám"
+            return None, "Enter a finite number."
         try:
             n = ertek if not isinstance(ertek, str) else (int(ertek) if re.fullmatch(r"[-+]?\d+", ertek.strip())
                                                            else float(ertek.replace(",", ".")))
         except ValueError:
-            return None, "a szám nem szám"
+            return None, "Enter a finite number."
         if isinstance(n, float) and (n != n or n in (float("inf"), float("-inf"))):
-            return None, "a szám nem szám"
+            return None, "Enter a finite number."
         return n, None
     if tipus == "date":
         if isinstance(ertek, str) and _DATUM.match(ertek):
-            return (ertek, None) if _datum_ervenyes(ertek) else (None, "a dátum naptárilag érvénytelen (nincs ilyen nap)")
-        return None, "a dátum alakja ÉÉÉÉ-HH-NN"
+            return (ertek, None) if _datum_ervenyes(ertek) else (None, "The date does not exist in the calendar.")
+        return None, "The date must use YYYY-MM-DD format."
     if tipus == "datetime":
         if isinstance(ertek, str) and _DATUM_IDO.match(ertek):
-            return (ertek, None) if _datumido_ervenyes(ertek) else (None, "az időpont naptárilag érvénytelen")
+            return (ertek, None) if _datumido_ervenyes(ertek) else (None, "The date or time is invalid.")
         if isinstance(ertek, str) and _DATUM.match(ertek):
-            return (ertek, None) if _datum_ervenyes(ertek) else (None, "a dátum naptárilag érvénytelen (nincs ilyen nap)")
-        return None, "a dátum és idő alakja ÉÉÉÉ-HH-NNTÓÓ:PP"
+            return (ertek, None) if _datum_ervenyes(ertek) else (None, "The date does not exist in the calendar.")
+        return None, "The date and time must use YYYY-MM-DDTHH:MM format."
     if isinstance(ertek, dict):
-        return None, "ez az érték nem szerkeszthető itt"
+        return None, "This value cannot be edited here."
     return str(ertek), None
 
 
@@ -377,27 +395,27 @@ class Tulajdonsagok:
         ismert = set(kanon) | extra
         for k in dict.fromkeys(kulcsok):
             if kulcsok.count(k) > 1:
-                p("duplikalt_kulcs", HIBA, f"A(z) „{k}” kulcs többször szerepel.", k)
+                p("duplikalt_kulcs", HIBA, f"The ‘{k}’ key appears more than once.", k)
         nyitott = not kanon                       # üres `mezosorrend`: a kulcsok nyitottak (nincs ismeretlen kulcs, nincs sorrend)
         for k in dict.fromkeys(kulcsok):
             if k in ismert or nyitott:
                 continue
             nagy = next((c for c in kanon if c.lower() == k.lower()), None)
             if nagy:
-                p("kisbetus_kulcs", SERTES, f"A séma „{nagy}” alakot vár, nem „{k}”-t.", k)
+                p("kisbetus_kulcs", SERTES, f"The schema expects ‘{nagy}’, not ‘{k}’.", k)
             else:
-                p("ismeretlen_kulcs", SERTES, f"A(z) „{k}” kulcs nincs a vault sémájában.", k)
+                p("ismeretlen_kulcs", SERTES, f"The ‘{k}’ key is not in the vault schema.", k)
         # A legacy próba az ismeretlen kulcsot is sorrend-sértésnek veszi; itt az ismeretlen kulcs külön problémát ad
         # (`ismeretlen_kulcs`), a `mezosorrend` csak a séma kulcsainak hiányát vagy felcserélődését jelzi.
         mag = [k for k in kulcsok if k in kanon]
         if mag != kanon and not nyitott:
             if not van_fm or not kulcsok:
-                p("mezosorrend", SERTES, "A jegyzetnek nincs frontmattere; a séma kulcsai: " + ", ".join(kanon))
+                p("mezosorrend", SERTES, "The note has no frontmatter. Schema keys: " + ", ".join(kanon))
                 out[-1]["hianyzo"] = list(kanon)
             else:
                 hianyzo = [k for k in kanon if k not in mag]
-                szoveg = ("hiányzik: " + ", ".join(hianyzo)) if hianyzo else "a sorrend eltér"
-                p("mezosorrend", SERTES, f"A kulcsok nem a séma szerintiek ({', '.join(kanon)}): {szoveg}.")
+                szoveg = ("missing: " + ", ".join(hianyzo)) if hianyzo else "the order differs"
+                p("mezosorrend", SERTES, f"The keys do not match the schema ({', '.join(kanon)}): {szoveg}.")
                 out[-1]["hianyzo"] = hianyzo               # T133: az „új sértés” azonosítója a hiányzó kulcsok halmaza
         if o["ertekek"]:
             # CX-002 (80(d)): egy címke vagy Status-érték érvényes, ha a séma értékkészletében van, vagy egy MÁSIK jegyzet
@@ -408,19 +426,19 @@ class Tulajdonsagok:
             def hasznalt(fajta: str, kulcs: str) -> bool:
                 h = (hasznalat or {}).get(fajta, {}).get(kulcs)
                 return bool(h) and (h["db"] >= 2 or any(u != ut for u in h["utak"]))
-            nem_kesz = "" if hasznalat is not None else " (Az index még épül: most csak a séma értékkészlete számít.)"
+            nem_kesz = "" if hasznalat is not None else " (The index is still building; only the schema value set is available.)"
             tags = None if self.sema.tags is None else set(self.sema.tags)           # None: nincs értékkészlet-korlát
             statusok = None if self.sema.status is None else set(self.sema.status)
             for t in self._lista(ertekek.get("Tags")) if tags is not None else ():
                 if t not in tags and not hasznalt("tags", nfc(t).removeprefix("#").strip().casefold()):
-                    p("ertekkeszlet", SERTES, f"A(z) „{t}” címke nincs az értékkészletben.{nem_kesz}", "Tags", t)
+                    p("ertekkeszlet", SERTES, f"The ‘{t}’ tag is not in the allowed value set.{nem_kesz}", "Tags", t)
             st = ertekek.get("Status")
             ures = st is None or st == [] or (isinstance(st, str) and not st.strip())
             if statusok is not None and not ures and (not isinstance(st, str) or (st not in statusok and not hasznalt("status", nfc(st).strip()))):
                 # T042: a nem szöveges érték (true, 5, lista, map) is értékkészleten kívüli; az `ertek` szöveg (az azonosító-halmaz hash-elhető)
                 szoveg = st if isinstance(st, str) else json.dumps(st, ensure_ascii=False)
                 p("ertekkeszlet", SERTES,
-                  f"A Status értéke ({', '.join(self.sema.status or [])}) közül való szöveg lehet, nem „{szoveg}”.{nem_kesz}",
+                  f"Status must be text from the allowed values ({', '.join(self.sema.status or [])}), not ‘{szoveg}’.{nem_kesz}",
                   "Status", szoveg)
         return out
 
@@ -446,10 +464,10 @@ class Tulajdonsagok:
         tan = self.tanacsok(nfc(ut or ""), yk, ertekek)
         if hiba:
             prob.insert(0, {"kod": "yaml_hiba", "szint": HIBA, "kulcs": None, "ertek": None,
-                            "uzenet": f"A frontmatter formai hibás: {hiba}"})
+                            "uzenet": f"Invalid frontmatter syntax: {frontmatter_hiba_angol(hiba)}"})
         return {"van": True, "tulajdonsagok": [{"kulcs": t.kulcs, "tipus": t.tipus, "ertek": t.ertek,
                                                  "ervenyes": t.ervenyes} for t in tul],
-                "hiba": hiba, "kulcsok": kulcsok, "problemak": prob, "tanacsok": tan,
+                "hiba": frontmatter_hiba_angol(hiba), "kulcsok": kulcsok, "problemak": prob, "tanacsok": tan,
                 "osztaly": self.sema.osztaly(ut or "")["nev"]}
 
     def uj_jegyzet_ellenorzes(self, ut: str, szoveg: str | None) -> dict:
@@ -465,7 +483,7 @@ class Tulajdonsagok:
         hibak = [p for p in e["problemak"] if p["szint"] == HIBA]
         for t in e["tulajdonsagok"]:
             if not t["ervenyes"]:
-                hibak.append(self._hiba("ertek_tipus", f"A(z) „{t['kulcs']}” értéke nem illik a(z) {t['tipus']} típushoz.", t["kulcs"]))
+                hibak.append(self._hiba("ertek_tipus", f"The value of ‘{t['kulcs']}’ does not match its {t['tipus']} type.", t["kulcs"]))
         return {"van": True, "hibak": hibak, "sertesek": [p for p in e["problemak"] if p["szint"] == SERTES]}
 
     @staticmethod
@@ -521,10 +539,10 @@ class Tulajdonsagok:
 
         if o.get("h1_minta"):                                           # kviz-szerű osztály: saját H1-szerződés
             if h1 is None:
-                return p("h1_hiany", "A jegyzetnek nincs H1 címsora (a kvíznek van: a fájlnév).")
+                return p("h1_hiany", "The note has no H1 heading. Quiz notes must use the file name as their H1.")
             m = re.fullmatch(o["h1_minta"], h1)
             if not m or (o.get("h1_egyezzen_fajlnevvel") and nfc(m.group(1)) != stem):
-                return p("h1", f"A H1 („{h1}”) nem a {o['nev']} osztály alakja, vagy nem egyezik a fájlnévvel („{stem}”).")
+                return p("h1", f"The H1 (‘{h1}’) does not match the {o['nev']} class format or the file name (‘{stem}’).")
             return []
         kivetel_utvonal = any(ut.startswith(nfc(e)) for e in h.get("kivetel_utvonalak", []))
         nincs_egyezes = h1_nelkul_jo = False
@@ -545,12 +563,12 @@ class Tulajdonsagok:
             else:
                 nincs_egyezes = True
         if h1 is None:
-            return [] if h1_nelkul_jo else p("h1_hiany", "A jegyzetnek nincs H1 címsora: a H1 a fájlnév legyen (a sorszám-előtag nélkül).")
+            return [] if h1_nelkul_jo else p("h1_hiany", "The note has no H1 heading. Use the file name without its numeric prefix as the H1.")
         if kivetel_utvonal or nincs_egyezes:
             return []
         elvart = _SORSZAM_ELOTAG.sub("", stem)
         if h1 != elvart:
-            return p("h1", f"A H1 („{h1}”) nem egyezik a fájlnévvel („{elvart}”; a `NN - ` sorszám-előtag nélkül).")
+            return p("h1", f"The H1 (‘{h1}’) does not match the file name (‘{elvart}’, without the `NN - ` numeric prefix).")
         return []
 
     # -------------------------------------------------- módosítás
@@ -561,27 +579,27 @@ class Tulajdonsagok:
         esetén `fm_uj` nincs, a `problemak` mondja az okot (a `szint: hiba` nem írható, a `sertes` megerősítéssel)."""
         ut = nfc(ut or "")
         if muvelet not in ("beallit", "torol"):
-            raise HttpError(400, "a művelet beallit vagy torol lehet")
+            raise HttpError(400, "a művelet beallit vagy torol lehet", kod="tulajdonsag.muvelet")
         if not isinstance(kulcs, str) or not _KULCS_NEV.match(kulcs) or len(kulcs) > 80:
-            return self._elutasit([self._hiba("kulcs_nev", f"Érvénytelen tulajdonságnév: „{kulcs}”.", kulcs)])
+            return self._elutasit([self._hiba("kulcs_nev", f"Invalid property name: ‘{kulcs}’.", kulcs)])
         if forras not in ("felhasznalo", "gep"):
-            raise HttpError(400, "a forrás felhasznalo vagy gep lehet")
+            raise HttpError(400, "a forrás felhasznalo vagy gep lehet", kod="tulajdonsag.forras")
         if tipus is not None and tipus not in TIPUSOK:
-            raise HttpError(400, f"ismeretlen típus: {tipus}")
+            raise HttpError(400, f"ismeretlen típus: {tipus}", kod="tulajdonsag.tipus", param={"tipus": tipus})
         regi = _fm_elemez(fm)
         regi_tul, regi_hiba, regi_ertek = self._tulajdonsagok(regi)
         if regi_hiba:
-            return self._elutasit([self._hiba("yaml_hiba", f"A frontmatter formai hibás ({regi_hiba}); előbb javítsd forrásmódban.")])
+            return self._elutasit([self._hiba("yaml_hiba", f"Invalid frontmatter syntax ({frontmatter_hiba_angol(regi_hiba)}). Fix it in source mode first.")])
         if forras == "gep" and kulcs.casefold() == "status" \
                 and self.sema.status_vedett(any(x.kulcs.casefold() == "status" for x in regi_tul)):
             # T127: a tilalom kis-nagybetűtől független és a törlésre is vonatkozik (a `status` kulcs a Status kijátszása lett volna)
-            return self._elutasit([self._hiba("status_gep", "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.",
+            return self._elutasit([self._hiba("status_gep", "Only the user can fill in or change the Status field; machine writes cannot change it.",
                                               "Status")])
         if regi is None and muvelet == "torol":
             return {"ok": True, "fm_uj": None, "megerositheto": False, "valtozas": False, "problemak": []}
         elotte = (regi.kulcsok() if regi else [])
         if elotte.count(kulcs) > 1:
-            return self._elutasit([self._hiba("duplikalt_kulcs", f"A(z) „{kulcs}” kulcs többször szerepel; forrásmódban javítható.", kulcs)])
+            return self._elutasit([self._hiba("duplikalt_kulcs", f"The ‘{kulcs}’ key appears more than once. Fix it in source mode.", kulcs)])
 
         vart = None
         uj_sorok: list[str] = []
@@ -606,8 +624,8 @@ class Tulajdonsagok:
         sorrend_uj = [k for k in uj.kulcsok() if k != kulcs]
         if uj_hiba or uj_ertek != vart_ertek or sorrend_uj != sorrend_vart:
             return self._elutasit([self._hiba(
-                "belso_hiba", "A módosítás nem végezhető el biztonságosan (a frontmatter szerkezete szokatlan); "
-                              "szerkeszd forrásmódban.", kulcs)])
+                "belso_hiba", "This change cannot be made safely because the frontmatter structure is unusual. "
+                              "Edit it in source mode.", kulcs)])
 
         elotte_p = self.problemak(ut, elotte, regi_ertek, van_fm=regi is not None)
         utana_p = self.problemak(ut, uj.kulcsok(), uj_ertek)
@@ -675,7 +693,7 @@ class Tulajdonsagok:
         elemei elöl (jegyzetszám, utána a séma sorrendje szerint), utánuk a többi jegyzetszám szerint. Nem ír; a séma
         szabálya (22(b)) a beíráskor érvényes, nem itt."""
         if not isinstance(kulcs, str) or not kulcs.strip():
-            raise HttpError(400, "hiányzó `kulcs`")
+            raise HttpError(400, "hiányzó `kulcs`", kod="tulajdonsag.kulcs_hianyzik")
         kulcs = nfc(kulcs.strip())
         o = self.sema.osztaly(nfc(ut or ""))
         keszlet: list[str] = []
@@ -722,16 +740,16 @@ class Tulajdonsagok:
             return ki
         sab_tul, sab_hiba, _ = self._tulajdonsagok(sab)
         if sab_hiba:
-            ki["kihagyva"].append({"kulcs": None, "uzenet": f"A sablon frontmattere formai hibás: {sab_hiba}"})
+            ki["kihagyva"].append({"kulcs": None, "uzenet": f"The template frontmatter has invalid syntax: {frontmatter_hiba_angol(sab_hiba)}"})
             return ki
         _, regi_hiba, _ = self._tulajdonsagok(_fm_elemez(fm))
         if regi_hiba:
-            ki["kihagyva"].append({"kulcs": None, "uzenet": f"A jegyzet frontmattere formai hibás ({regi_hiba}); előbb javítsd forrásmódban."})
+            ki["kihagyva"].append({"kulcs": None, "uzenet": f"The note frontmatter has invalid syntax ({frontmatter_hiba_angol(regi_hiba)}). Fix it in source mode first."})
             return ki
         aktualis = fm
         for t in sab_tul:
             if t.tipus == "unknown" or isinstance(t.ertek, dict):
-                ki["kihagyva"].append({"kulcs": t.kulcs, "uzenet": "Ez az érték nem szerkeszthető itt."})
+                ki["kihagyva"].append({"kulcs": t.kulcs, "uzenet": "This value cannot be edited here."})
                 continue
             _, _, jelenlegi = self._tulajdonsagok(_fm_elemez(aktualis))
             if t.kulcs in jelenlegi:
@@ -761,7 +779,7 @@ class Tulajdonsagok:
             elif r["megerositheto"]:
                 ki["fuggo"].append({"kulcs": t.kulcs, "ertek": ertek, "tipus": tipus, "problemak": r["problemak"]})
             else:
-                ki["kihagyva"].append({"kulcs": t.kulcs, "uzenet": (r["problemak"] or [{}])[0].get("uzenet", "Nem írható.")})
+                ki["kihagyva"].append({"kulcs": t.kulcs, "uzenet": (r["problemak"] or [{}])[0].get("uzenet", "This value cannot be written.")})
         ki["fm_uj"] = aktualis
         ki["valtozas"] = aktualis != (fm or "")
         return ki
@@ -814,7 +832,7 @@ def utvonalak(r) -> None:
         t = k.torzs()
         megerosit = t.get("megerosit")
         if megerosit is not None and not isinstance(megerosit, bool):         # T128: a `"false"` szöveg nem megerősítés
-            raise HttpError(400, "a `megerosit` igaz vagy hamis lehet")
+            raise HttpError(400, "a `megerosit` igaz vagy hamis lehet", kod="tulajdonsag.megerosit_logikai")
         return k.app.tulajdonsagok.modosit(
             t.get("ut"), t.get("fm"), t.get("muvelet"), t.get("kulcs"), t.get("ertek"), t.get("tipus"),
             megerosit is True, t.get("forras") or "felhasznalo")
@@ -823,7 +841,7 @@ def utvonalak(r) -> None:
         t = k.torzs()
         for kulcs in ("fm", "sablon_fm"):
             if t.get(kulcs) is not None and not isinstance(t[kulcs], str):
-                raise HttpError(400, f"a `{kulcs}` szöveg lehet")
+                raise HttpError(400, f"a `{kulcs}` szöveg lehet", kod="tulajdonsag.kulcs_szoveg", param={"kulcs": kulcs})
         return k.app.tulajdonsagok.osszefesul(t.get("ut"), t.get("fm"), t.get("sablon_fm"))
 
     def kulcsok(k):

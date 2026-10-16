@@ -1,6 +1,7 @@
 // A nyitott jegyzet valódi KaTeX-hibái a jobb panel Higiénia-szakaszának (C30b-mag). A számítás csendes idő után fut
 // (a hívó időzíti), a szerkesztő meglévő szintaxisfájából, időkeretes szeletekben: a gépelés útvonalán nincs dolga.
 
+import { t } from '../../lib/i18n';
 import { syntaxTree } from '@codemirror/language';
 import type { Text } from '@codemirror/state';
 import type { Tree } from '@lezer/common';
@@ -46,7 +47,7 @@ export class KatexHibak {
       szint: 'hiba',
       ut,
       sor: h.sor,
-      uzenet: `A KaTeX nem tudja megjeleníteni: ${h.uzenet}`,
+      uzenet: t('A KaTeX nem tudja megjeleníteni: {uzenet}', { uzenet: h.uzenet }),
     }));
   }
 

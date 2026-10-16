@@ -5,6 +5,8 @@
 // behúz (a behúzás tabulátor, a tabulátor 4 széles); ⌘Z / ⇧⌘Z visszavon / újra; ⌘F keresés és csere;
 // sortörés és olvasható sorhossz; a macOS magyar helyesírás-ellenőrzése.
 
+import { t, tk } from '../lib/i18n';
+import { automatikusNyelv } from './nyelv';
 import { gepelesMero } from '../lib/tracker/gepelesMero';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { eloTulajdonsagok } from './tulajdonsagok/elo.svelte';
@@ -45,35 +47,40 @@ export function irhato(view: { state: EditorState }): boolean {
   return !view.state.readOnly;
 }
 
-/** A CodeMirror feliratai magyarul (keresőpanel, összefésülés, összecsukás). */
-export const MAGYAR_FELIRATOK: Record<string, string> = {
-  Find: 'Keresés',
-  Replace: 'Csere',
-  next: 'következő',
-  previous: 'előző',
-  all: 'mind',
-  'match case': 'kis- és nagybetű',
-  regexp: 'reguláris kifejezés',
-  'by word': 'egész szó',
-  replace: 'csere',
-  'replace all': 'mindet cseréli',
-  close: 'bezárás',
-  'current match': 'aktuális találat',
-  'on line': 'sor',
-  'replaced $ matches': '$ találat cserélve',
-  'replaced match on line $': 'a(z) $. sor találata cserélve',
-  'Go to line': 'Ugrás a sorra',
-  go: 'ugrás',
-  'Control character': 'Vezérlőkarakter',
-  'Selection deleted': 'Kijelölés törölve',
-  'folded code': 'összecsukott rész',
-  unfold: 'kibontás',
+/** A CodeMirror feliratai az aktív nyelven (keresőpanel, összefésülés, összecsukás); a mezők olvasáskor fordítódnak. */
+const FELIRAT_TABLA: Record<string, string> = {
+  Find: tk('Keresés|cm'),
+  Replace: tk('Csere|cm'),
+  next: tk('következő|cm'),
+  previous: tk('előző|cm'),
+  all: tk('mind|cm'),
+  'match case': tk('kis- és nagybetű'),
+  regexp: tk('reguláris kifejezés'),
+  'by word': tk('egész szó'),
+  replace: tk('csere|cm'),
+  'replace all': tk('mindet cseréli'),
+  close: tk('bezárás|cm'),
+  'current match': tk('aktuális találat'),
+  'on line': tk('sor|cm'),
+  'replaced $ matches': tk('$ találat cserélve'),
+  'replaced match on line $': tk('a(z) $. sor találata cserélve'),
+  'Go to line': tk('Ugrás a sorra'),
+  go: tk('ugrás|cm'),
+  'Control character': tk('Vezérlőkarakter|cm'),
+  'Selection deleted': tk('Kijelölés törölve'),
+  'folded code': tk('összecsukott rész'),
+  unfold: tk('kibontás|cm'),
   to: '–',
-  'Revert this chunk': 'Ezt a szakaszt átveszem',
-  Accept: 'Elfogad',
-  Reject: 'Elvet',
-  '$ unchanged lines': '$ változatlan sor',
+  'Revert this chunk': tk('Ezt a szakaszt átveszem'),
+  Accept: tk('Elfogad|cm'),
+  Reject: tk('Elvet|cm'),
+  '$ unchanged lines': tk('$ változatlan sor'),
 };
+
+export const MAGYAR_FELIRATOK: Record<string, string> = Object.defineProperties(
+  {} as Record<string, string>,
+  Object.fromEntries(Object.entries(FELIRAT_TABLA).map(([k, v]) => [k, { enumerable: true, get: () => (v === '–' ? v : t(v)) }])),
+);
 
 /** A Markdown-nyelv a Manifold elemzőjével (az olvasó és a képlet-szkript ugyanezt használja). */
 export function markdownNyelv(): Extension {
@@ -138,10 +145,10 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
       spellcheck: 'true',
       autocorrect: 'off',
       autocapitalize: 'off',
-      lang: 'hu',
       'aria-label': o.cimke,
       'data-fokusz-cel': '',
     }),
+    automatikusNyelv(),
     ...(o.tovabbi ?? []),
   ];
 }

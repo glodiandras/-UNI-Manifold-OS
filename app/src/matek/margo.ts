@@ -2,6 +2,7 @@
 // kerül sor-dekorációként — ✓ (helyes átmenet), ✗ (az első hibás sor, az ítélet szövegével), – (nem ellenőrizhető). A fájlba nem ír.
 // A jel a megjelölt sorok szerkesztésekor és Esc-re eltűnik; a többi szerkesztés csak eltolja.
 
+import { t, tk } from '../lib/i18n';
 import { RangeSetBuilder, StateEffect, StateField, type Extension } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView, keymap } from '@codemirror/view';
 
@@ -105,22 +106,22 @@ export interface LevezetesValasz {
 }
 
 const ITELET: Record<string, string> = {
-  ekvivalens: 'ekvivalens az előző sorral',
-  szures: 'helyes szűrés (a megoldáshalmaz szűkült, de a megoldás megmaradt)',
-  bovulo: 'bővülő lépés (hamis gyök kerülhet be: ellenőrizd a végén)',
-  nem_eldontheto: 'a CAS nem tudta eldönteni',
-  nem_elemezheto: 'a sor nem elemezhető',
+  ekvivalens: tk('ekvivalens az előző sorral'),
+  szures: tk('helyes szűrés (a megoldáshalmaz szűkült, de a megoldás megmaradt)'),
+  bovulo: tk('bővülő lépés (hamis gyök kerülhet be: ellenőrizd a végén)'),
+  nem_eldontheto: tk('a CAS nem tudta eldönteni'),
+  nem_elemezheto: tk('a sor nem elemezhető'),
 };
 
 /** A core ítélete → margójelek (a hibás sor jele előbb, hogy az nyerjen). */
 export function jelekValaszbol(v: LevezetesValasz): MargoJel[] {
   const ki: MargoJel[] = [];
   const h = v.elso_hiba;
-  if (h && h.jegyzet_sor) ki.push({ sor: h.jegyzet_sor, fajta: 'hiba', szoveg: h.uzenet || 'hibás átmenet' });
+  if (h && h.jegyzet_sor) ki.push({ sor: h.jegyzet_sor, fajta: 'hiba', szoveg: h.uzenet || t('hibás átmenet') });
   for (const a of v.atmenetek ?? []) {
     if (!a.jegyzet_hova) continue;
     const fajta: JelFajta = a.itelet === 'hiba' ? 'hiba' : ['ekvivalens', 'szures', 'bovulo'].includes(a.itelet) ? 'ok' : 'nem';
-    ki.push({ sor: a.jegyzet_hova, fajta, szoveg: ITELET[a.itelet] ?? (fajta === 'hiba' ? 'hibás átmenet' : a.itelet) });
+    ki.push({ sor: a.jegyzet_hova, fajta, szoveg: ITELET[a.itelet] ? t(ITELET[a.itelet]) : fajta === 'hiba' ? t('hibás átmenet') : a.itelet });
   }
   return ki;
 }

@@ -2,6 +2,7 @@
 // értesítés, a Ma oldal és a vezérlő saját újratöltése ettől független (az a saját store-jukban él).
 
 import type { CoreKapcsolat } from '../lib/core/ws.svelte';
+import { t } from '../lib/i18n';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import { naptarApi } from '../lib/naptar/api';
 import { utkozesErtesites, valtozasErtesites } from '../lib/naptar/megjelenites';
@@ -35,9 +36,9 @@ async function ujNaptarak(azonok: string[], celok: ErtesitesCelok): Promise<void
     bejelentett.add(n.azon);
     ertesitesek.ertesit({
       szint: 'info',
-      cim: `Új naptár: „${n.nev}”`,
-      szoveg: 'A kategóriát a vezérlőben erősítheted meg.',
-      muvelet: { nev: 'Vezérlő', futtat: celok.vezerloNyit },
+      cim: t('Új naptár: „{nev}”', { nev: n.nev }),
+      szoveg: t('A kategóriát a vezérlőben erősítheted meg.'),
+      muvelet: { nev: t('Vezérlő'), futtat: celok.vezerloNyit },
     });
   }
 }
@@ -56,7 +57,7 @@ export function naptarErtesitesek(k: CoreKapcsolat, celok: ErtesitesCelok): () =
         szint: 'figyelmeztetes',
         cim,
         szoveg,
-        ...(ut ? { muvelet: { nev: 'Megnyitás', futtat: () => celok.jegyzetNyit(ut) } } : {}),
+        ...(ut ? { muvelet: { nev: t('Megnyitás'), futtat: () => celok.jegyzetNyit(ut) } } : {}),
       });
     }),
     k.figyel('naptar_valtozas', (e) => {
@@ -71,7 +72,7 @@ export function naptarErtesitesek(k: CoreKapcsolat, celok: ErtesitesCelok): () =
     }),
     k.figyel('naptar_javaslat', (e) => {
       if (typeof e.uj === 'number' && e.uj > 0) {
-        ertesitesek.ertesit({ szint: 'info', cim: 'Új tanulási blokk javaslat a Ma oldalon', muvelet: { nev: 'Ma', futtat: celok.maNyit } });
+        ertesitesek.ertesit({ szint: 'info', cim: t('Új tanulási blokk javaslat a Ma oldalon'), muvelet: { nev: t('Ma'), futtat: celok.maNyit } });
       }
     }),
   ];

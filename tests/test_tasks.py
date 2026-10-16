@@ -381,10 +381,10 @@ class ArvaTest(Alap):
         self.assertFalse(self._el(pid), "az indulási takarítás leállítja")
         d = q.get(fid)
         self.assertEqual(d["allapot"], "megszakadt")
-        self.assertIn("árván", d["hiba"])
+        self.assertIn("orphaned", d["hiba"])
         self.assertIn(str(pid), d["hiba"])
         self.assertEqual(horog, [fid])                                    # a worker értesül (C17)
-        self.assertIn("árván", "\n".join(q.detail(fid)["sorok"]))
+        self.assertIn("orphaned", "\n".join(q.detail(fid)["sorok"]))
 
     def test_nem_egyezo_ujjlenyomatu_folyamathoz_nem_nyul(self):
         p, fid, pid, _, _ = self._arva_core()
@@ -399,7 +399,7 @@ class ArvaTest(Alap):
         self.assertTrue(q.arva_var(15))
         self.assertTrue(self._el(pid), "a pid-újrahasznosítás ellen: más indulási idő → nem a mi lépésünk")
         self.assertEqual(q.get(fid)["allapot"], "megszakadt")
-        self.assertNotIn("árván", q.get(fid)["hiba"])
+        self.assertNotIn("orphaned", q.get(fid)["hiba"])
 
     def test_azonnali_leallitas_ertesiti_a_workert_a_kulturalt_nem(self):
         _tipus("t_hg", ["import time; print('indul', flush=True); time.sleep(30)"])
@@ -444,7 +444,7 @@ class ArvaTest(Alap):
         db.close()
         q2 = self.sor()
         self.assertEqual(q2.get(f)["allapot"], "kesz")
-        self.assertEqual(q2._db.execute("PRAGMA user_version").fetchone()[0], 2)
+        self.assertEqual(q2._db.execute("PRAGMA user_version").fetchone()[0], 3)
 
 
 

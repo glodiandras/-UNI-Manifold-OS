@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import type { EditorView } from '@codemirror/view';
   import type { LinkForras } from './javaslat';
   import Tulajdonsagok from './Tulajdonsagok.svelte';
@@ -12,7 +13,7 @@
 </script>
 
 {#if hiba}
-  <p class="hiba" role="alert">A frontmatter formai hibás: {hiba}. A nyers szöveg alább szerkeszthető.</p>
+  <p class="hiba" role="alert">{t('A frontmatter formai hibás: {hiba}. A nyers szöveg alább szerkeszthető.', { hiba })}</p>
 {/if}
 <div hidden={!!hiba}>
   <Tulajdonsagok {ut} {valtozat} {kiegeszites}

@@ -2,6 +2,7 @@
 // alapjának tükre (`core/kiserok.py`: `<kisero_elotag>Summaries`): a `tests/test_osszefoglalas_api.py` és az
 // `app/tests/osszefoglalas.test.ts` őrzi az egyezést. A munkatér saját mappáit a core adja (`GET /api/vault/sema` → `kisero`,
 // `kisero_elotag`): a kapcsolat felépülésekor a felület `beallitKiserok`-ot hívja (kártya, kvíz és összefoglaló együtt).
+import { tk } from '../lib/i18n';
 import { beallitKartyaMappa } from '../kartya/allando';
 import { beallitKvizMappa } from '../kviz/allando';
 
@@ -39,8 +40,8 @@ export function mediaUt(ut: string | undefined | null): boolean {
 
 /** Az összefoglaló szintjének felirata. */
 export const SZINT_NEV: Record<string, string> = {
-  jegyzet: 'jegyzet',
-  mappa: 'mappa',
-  video: 'videó',
-  kontextus: 'külső AI',
+  jegyzet: tk('jegyzet'),
+  mappa: tk('mappa'),
+  video: tk('videó'),
+  kontextus: tk('külső AI'),
 };

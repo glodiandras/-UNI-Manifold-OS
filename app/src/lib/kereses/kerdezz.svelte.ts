@@ -4,6 +4,9 @@
 // bezárása) a kapcsolatot bontja: a core a modell folyamát zárja, a worker a következő tokennél megáll. A válasz a vaultba
 // nem íródik (58(d)); a `proba` jel a kalibrálatlan modellé (D9).
 
+import { t } from '../i18n';
+import { kodUzenet } from '../core/api';
+
 import { apiTitok } from '../core/titok';
 
 export interface KerdezzForras {
@@ -52,11 +55,11 @@ export function ndjsonSorok(puffer: string, darab: string): { esemenyek: Kerdezz
 /** A vége-esemény magyar szövege a felületre (a nem kész válaszoknál). */
 export function vegeSzoveg(v: Pick<KerdezzVege, 'allapot' | 'ok'>): string {
   if (v.allapot === 'kesz') return '';
-  if (v.ok === 'nincs_eleg_forras') return 'A jegyzeteidben nincs elég forrás ehhez a kérdéshez — nem találgatok.';
-  if (v.ok === 'modell_szerint_nincs') return 'A talált jegyzetek nem válaszolják meg a kérdést.';
-  if (v.ok === 'minden_mondat_kiesett') return 'A válasz egyetlen mondata sem ment át a forrásellenőrzésen.';
-  if (v.allapot === 'nincs_modell') return 'A válaszhoz nincs kalibrált nyelvi modell (a források alább).';
-  return 'Nincs válasz.';
+  if (v.ok === 'nincs_eleg_forras') return t('A jegyzeteidben nincs elég forrás ehhez a kérdéshez — nem találgatok.');
+  if (v.ok === 'modell_szerint_nincs') return t('A talált jegyzetek nem válaszolják meg a kérdést.');
+  if (v.ok === 'minden_mondat_kiesett') return t('A válasz egyetlen mondata sem ment át a forrásellenőrzésen.');
+  if (v.allapot === 'nincs_modell') return t('A válaszhoz nincs kalibrált nyelvi modell (a források alább).');
+  return t('Nincs válasz.');
 }
 
 class KerdezzAllapot {
@@ -96,7 +99,7 @@ class KerdezzAllapot {
       });
       if (!v.ok || !v.body) {
         const adat = await v.json().catch(() => ({}));
-        throw new Error(String((adat as { hiba?: string }).hiba ?? v.statusText));
+        throw new Error(kodUzenet(adat as { hiba?: unknown; kod?: unknown; param?: unknown }, v.statusText));
       }
       const olvaso = v.body.getReader();
       const dek = new TextDecoder();

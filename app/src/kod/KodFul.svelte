@@ -10,6 +10,7 @@
   import { ApiHiba } from '../lib/core/api';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+  import { t } from '../lib/i18n';
   import { Bug, Play } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
   import { regiszter } from '../lib/parancsok/regiszter';
@@ -63,7 +64,7 @@
       state = EditorState.create({
         doc: d.szoveg,
         selection: Number.isFinite(kurzor) && kurzor <= d.szoveg.length ? { anchor: kurzor } : undefined,
-        extensions: kodBovitmenyek({ csakOlvashato: !!d.csakOlvashato, cimke: `C++ forrás: ${fajlNev(ut)}` }),
+        extensions: kodBovitmenyek({ csakOlvashato: !!d.csakOlvashato, cimke: t('C++ forrás: {nev}', { nev: fajlNev(ut) }) }),
       });
     }
     view = new EditorView({
@@ -144,7 +145,7 @@
       (e) => {
         if (!el) return;
         betoltesHiba =
-          e instanceof ApiHiba && e.statusz === 404 ? 'A fájl nincs meg (törölték vagy áthelyezték).' : `A fájl nem tölthető be: ${e instanceof Error ? e.message : e}`;
+          e instanceof ApiHiba && e.statusz === 404 ? t('A fájl nincs meg (törölték vagy áthelyezték).') : t('A fájl nem tölthető be: {hiba}', { hiba: e instanceof Error ? e.message : String(e) });
       },
     );
     return () => {
@@ -198,22 +199,22 @@
       const ok = await vagolapra(sajat);
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'A lemezen lévő változat betöltve',
-        szoveg: ok ? 'A saját szöveged a vágólapon van.' : 'A fájl visszaállt a lemezen lévő változatra.',
+        cim: t('A lemezen lévő változat betöltve'),
+        szoveg: ok ? t('A saját szöveged a vágólapon van.') : t('A fájl visszaállt a lemezen lévő változatra.'),
       });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A lemezen lévő változat nem tölthető be', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A lemezen lévő változat nem tölthető be'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
 
   const allapotSzoveg = $derived.by(() => {
     switch (dok?.allapot) {
       case 'mentes':
-        return 'Mentés…';
+        return t('Mentés…');
       case 'hiba':
-        return 'Nincs mentve — újrapróbálás';
+        return t('Nincs mentve — újrapróbálás');
       case 'eltunt':
-        return 'A fájl eltűnt — nincs mentve';
+        return t('A fájl eltűnt — nincs mentve');
       default:
         return '';
     }
@@ -229,19 +230,19 @@
     </p>
     <div class="jelek" role="status">
       {#if dok?.csakOlvashato}
-        <span class="jel figyelmeztetes" title={dok.csakOlvashato}>Csak olvasható</span>
+        <span class="jel figyelmeztetes" title={dok.csakOlvashato}>{t('Csak olvasható')}</span>
       {/if}
       {#if dok?.allapot === 'utkozes'}
-        <button type="button" class="jel hiba gomb" onclick={() => (utkozesNyitva = true)}>Ütközés — döntés kell</button>
+        <button type="button" class="jel hiba gomb" onclick={() => (utkozesNyitva = true)}>{t('Ütközés — döntés kell')}</button>
       {:else if allapotSzoveg}
         <span class="jel" class:hiba={dok?.allapot !== 'mentes'} title={dok?.hiba ?? undefined}>{allapotSzoveg}</span>
         {#if dok?.allapot === 'hiba'}
-          <button type="button" class="jel gomb" onclick={lemezenLevoBetolt}>A lemezen lévő betöltése</button>
+          <button type="button" class="jel gomb" onclick={lemezenLevoBetolt}>{t('A lemezen lévő betöltése')}</button>
         {/if}
       {/if}
     </div>
-    <IkonGomb ikon={Bug} cimke="Ellenőrzés hibakereső móddal" billentyu="Mod+Shift+R" onclick={() => regiszter.futtat('kod.ellenorzes-hibakereso', 'gomb')} />
-    <IkonGomb ikon={Play} cimke="Ellenőrzés" billentyu="Mod+R" onclick={() => regiszter.futtat('kod.ellenorzes', 'gomb')} />
+    <IkonGomb ikon={Bug} cimke={t('Ellenőrzés hibakereső móddal')} billentyu="Mod+Shift+R" onclick={() => regiszter.futtat('kod.ellenorzes-hibakereso', 'gomb')} />
+    <IkonGomb ikon={Play} cimke={t('Ellenőrzés')} billentyu="Mod+R" onclick={() => regiszter.futtat('kod.ellenorzes', 'gomb')} />
   </header>
 
   {#if betoltesHiba}
@@ -251,8 +252,8 @@
   <div class="cm-hely" bind:this={cmHely}></div>
 
   {#if valasztas}
-    <div class="valasztas" role="group" aria-label="Melyik feladat-jegyzet tesztjei fussanak?">
-      <span>Több feladat-jegyzet ágyazza be ezt a fájlt. Melyik tesztjei fussanak?</span>
+    <div class="valasztas" role="group" aria-label={t('Melyik feladat-jegyzet tesztjei fussanak?')}>
+      <span>{t('Több feladat-jegyzet ágyazza be ezt a fájlt. Melyik tesztjei fussanak?')}</span>
       {#each valasztas.jegyzetek as j (j)}
         <button
           type="button"
@@ -263,7 +264,7 @@
           }}>{fajlNev(j)}</button
         >
       {/each}
-      <button type="button" class="jel gomb" onclick={() => (kodFutasok.tobbertelmu = null)}>Mégse</button>
+      <button type="button" class="jel gomb" onclick={() => (kodFutasok.tobbertelmu = null)}>{t('Mégse')}</button>
     </div>
   {/if}
 

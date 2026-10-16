@@ -141,8 +141,8 @@ def index_lock_takaritas(cfg: Config) -> list[str]:
         lock = repo.git_dir / "index.lock"
         if lock.exists():
             lock.unlink()
-            uzenetek.append(f"A(z) {name} pillanatkép-tárolóban elakadt index.lock maradt (a core egy commit "
-                            "közben állt le); eltávolítottam, a pillanatképek újra működnek.")
+            uzenetek.append(f"A stale index.lock was removed from the {name} snapshot store after an interrupted commit. "
+                            "Snapshots are available again.")
     return uzenetek
 
 
@@ -185,7 +185,7 @@ def tmp_takaritas(cfg: Config, elotte: float | None = None, jeloltek: list[Path]
             torolt += 1
         except OSError:
             pass
-    return [f"{torolt} ideiglenes fájl maradt egy megszakadt mentésből (.manifold-tmp); törölve."] if torolt else []
+    return [f"Removed {torolt} temporary files left by an interrupted save (.manifold-tmp)."] if torolt else []
 
 
 FELADATNAPLO_MAX_NAP = 60          # `[feladatsor] naplo_max_nap`: ennél régebbi feladatnapló törlődik

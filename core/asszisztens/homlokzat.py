@@ -61,7 +61,7 @@ class Asszisztens:
             self.hangolo.torol_mind()
             return {"ok": True, **self.tanult()}
         if not isinstance(kulcs, str) or not kulcs:
-            raise HttpError(400, "a `kulcs` a törlendő tétel azonosítója")
+            raise HttpError(400, "a `kulcs` a törlendő tétel azonosítója", kod="asszisztens.homlokzat.kulcs_kell")
         if fajta == "minta":
             ok = self.kiegeszites.torol_minta(kulcs)["ok"]
         elif fajta == "muvelet":
@@ -71,9 +71,9 @@ class Asszisztens:
         elif fajta == "hangolas":
             ok = self.hangolo.torol(kulcs)
         else:
-            raise HttpError(400, "a fajta minta, muvelet, elutasitott, hangolas vagy mind lehet")
+            raise HttpError(400, "a fajta minta, muvelet, elutasitott, hangolas vagy mind lehet", kod="asszisztens.homlokzat.fajta_ertek")
         if not ok:
-            raise HttpError(404, "nincs ilyen tanult tétel")
+            raise HttpError(404, "nincs ilyen tanult tétel", kod="asszisztens.homlokzat.nincs_tetel")
         return {"ok": True, **self.tanult()}
 
     def link_kuszob(self, kuszob: dict) -> dict:

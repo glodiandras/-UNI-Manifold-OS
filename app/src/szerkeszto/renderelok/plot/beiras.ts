@@ -3,6 +3,7 @@
 // `utak: [jegyzet]`); a blokkot a core írja a gépi-írás szolgáltatáson át (egy jegyzet = egy gépi commit, visszavonható), a modell-ág
 // és a D9 kapuk a core-ban élnek (a kézi út modell nélkül, a determinisztikus ágon fut). Mentetlen jegyzetet előbb mentünk (28(c)).
 
+import { t as tx, tk } from '../../../lib/i18n';
 import { kerdez } from '../../../lib/core/api';
 import { ertesitesek } from '../../../lib/ertesites/ertesites.svelte';
 import type { Parancs } from '../../../lib/parancsok/regiszter';
@@ -21,13 +22,13 @@ export async function grafikonokBeirasa(ut: string, mentes: () => Promise<void>,
     await mentes();
     await keres('/api/feladatok', { metodus: 'POST', torzs: { tipus: 'grafikon_beiras', parameterek: { utak: [ut] } }, idokorlat: 10_000 });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A grafikonok beírása nem indult el', szoveg: e instanceof Error ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: tx('A grafikonok beírása nem indult el'), szoveg: e instanceof Error ? e.message : String(e) });
     return false;
   }
   ertesitesek.ertesit({
     szint: 'info',
-    cim: 'Grafikonok készülnek',
-    szoveg: 'A jegyzet biztosan felismert képletei alá ```plot blokk kerül (gépi írás, visszavonható); a vezérlőben követhető (⌘⇧M).',
+    cim: tx('Grafikonok készülnek'),
+    szoveg: tx('A jegyzet biztosan felismert képletei alá ```plot blokk kerül (gépi írás, visszavonható); a vezérlőben követhető (⌘⇧M).'),
   });
   return true;
 }
@@ -37,8 +38,8 @@ export function grafikonParancsok(aktiv: () => { ut: string; mentes: () => Promi
   return [
     {
       id: GRAFIKON_PARANCS_ID,
-      nev: 'Grafikonok beírása ebbe a jegyzetbe',
-      kategoria: 'Grafikon',
+      nev: tk('Grafikonok beírása ebbe a jegyzetbe'),
+      kategoria: tk('Grafikon'),
       elerheto: () => grafikonJegyzet(aktiv()?.ut),
       futtat: async () => {
         const a = aktiv();

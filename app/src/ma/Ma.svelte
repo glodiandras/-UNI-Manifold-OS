@@ -6,6 +6,8 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { kodUzenet } from '../lib/core/api';
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { CalendarCheck, FileText, GraduationCap } from '../lib/ikon/ikonok';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
@@ -40,7 +42,7 @@
   const feladatok = $derived(adat && !hibas(adat.feladatok) ? adat.feladatok : null);
   const kartyak = $derived(adat && adat.kartyak && !hibas(adat.kartyak) ? adat.kartyak : null);
   // a core hibaszövege kisbetűvel kezdődik (naplóba is megy); a felületen mondatként áll
-  const hibaSzoveg = (s: object | undefined) => (s && hibas(s) ? s.hiba.charAt(0).toUpperCase() + s.hiba.slice(1) : null);
+  const hibaSzoveg = (s: object | undefined) => (s && hibas(s) ? ((u) => u.charAt(0).toUpperCase() + u.slice(1))(kodUzenet(s)) : null);
 
   const elso = $derived(dolgozatok?.lista[0] ?? null);
   const tovabbi = $derived(dolgozatok?.lista.slice(1) ?? []);
@@ -72,16 +74,16 @@
   </header>
 
   {#if maAdat.hiba && !adat}
-    <p class="hiba" role="alert">A Ma oldal adata nem tölthető be: {maAdat.hiba}</p>
+    <p class="hiba" role="alert">{t('A Ma oldal adata nem tölthető be:')} {maAdat.hiba}</p>
   {:else if !adat}
-    <p class="ures" role="status">Betöltés…</p>
+    <p class="ures" role="status">{t('Betöltés…')}</p>
   {/if}
 
-  <section aria-label="Tanulási idő"><h2>Tanulás a héten</h2><StatisztikaSzakasz /><TanulasiKeret /></section>
+  <section aria-label={t('Tanulási idő')}><h2>{t('Tanulás a héten')}</h2><StatisztikaSzakasz /><TanulasiKeret /></section>
 
   <!-- ------------------------------------------------------------- következő dolgozat -->
   <section aria-labelledby="ma-dolgozat">
-    <h2 id="ma-dolgozat">Következő dolgozat / határidő</h2>
+    <h2 id="ma-dolgozat">{t('Következő dolgozat / határidő')}</h2>
     {#if hibaSzoveg(adat?.dolgozatok)}
       <p class="ures">{hibaSzoveg(adat?.dolgozatok)}</p>
     {:else if elso}
@@ -92,11 +94,11 @@
         <p class="meta">{dolgozatMeta(elso)}</p>
         {#if elso.jegyzet}
           <button type="button" class="m-gomb semleges gomb" onclick={(e) => megnyit(elso.jegyzet!, e)} title={elso.jegyzet}>
-            <Ikon ikon={FileText} /> Felkészülési jegyzet
+            <Ikon ikon={FileText} /> {t('Felkészülési jegyzet')}
           </button>
         {/if}
         <button type="button" class="m-gomb semleges gomb" onclick={() => felulet.munkaterulet.megnyitNezet('dolgozat', { azon: elso.azon })}>
-          <Ikon ikon={GraduationCap} /> Felkészültség
+          <Ikon ikon={GraduationCap} /> {t('Felkészültség')}
         </button>
       </div>
       {#if tovabbi.length}
@@ -111,14 +113,14 @@
         </ul>
       {/if}
     {:else if dolgozatok}
-      <p class="ures">Nincs közelgő határidő a naptárban.</p>
+      <p class="ures">{t('Nincs közelgő határidő a naptárban.')}</p>
     {/if}
     <Javaslatok szakasz={adat?.javaslatok} />
   </section>
 
   <!-- ------------------------------------------------------------- a nap -->
   <section aria-labelledby="ma-nap">
-    <h2 id="ma-nap">A nap</h2>
+    <h2 id="ma-nap">{t('A nap')}</h2>
     <NaptarJelzes szakasz={adat?.naptar_allapot} />
     {#if hibaSzoveg(adat?.naptar)}
       <p class="ures">{hibaSzoveg(adat?.naptar)}</p>
@@ -134,28 +136,28 @@
         {/each}
       </ul>
     {:else if naptar}
-      <p class="ures">Nincs esemény a naptárban.</p>
+      <p class="ures">{t('Nincs esemény a naptárban.')}</p>
     {/if}
   </section>
 
   <!-- ------------------------------------------------------------- napi jegyzet -->
   <section aria-labelledby="ma-napi">
-    <h2 id="ma-napi">Napi jegyzet</h2>
+    <h2 id="ma-napi">{t('Napi jegyzet')}</h2>
     {#if hibaSzoveg(adat?.napi)}
       <p class="ures">{hibaSzoveg(adat?.napi)}</p>
     {:else if napi?.letezik}
       <div class="kartya">
         <p class="cim">{fajlNev(napi.ut)}</p>
-        {#if napi.kivonat}<p class="kivonat">{napi.kivonat}</p>{:else}<p class="ures">A jegyzet még üres.</p>{/if}
+        {#if napi.kivonat}<p class="kivonat">{napi.kivonat}</p>{:else}<p class="ures">{t('A jegyzet még üres.')}</p>{/if}
         <button type="button" class="m-gomb semleges gomb" onclick={() => regiszter.futtat('naplo.napi', 'gomb')}>
-          <Ikon ikon={CalendarCheck} /> Megnyitás <Billentyu akkord="Mod+Shift+D" />
+          <Ikon ikon={CalendarCheck} /> {t('Megnyitás')} <Billentyu akkord="Mod+Shift+D" />
         </button>
       </div>
     {:else if napi}
       <div class="sor">
-        <span class="ures">Még nincs.</span>
+        <span class="ures">{t('Még nincs.')}</span>
         <button type="button" class="m-gomb semleges gomb" onclick={() => regiszter.futtat('naplo.napi', 'gomb')}>
-          <Ikon ikon={CalendarCheck} /> Létrehozás <Billentyu akkord="Mod+Shift+D" />
+          <Ikon ikon={CalendarCheck} /> {t('Létrehozás')} <Billentyu akkord="Mod+Shift+D" />
         </button>
       </div>
     {/if}
@@ -164,7 +166,7 @@
   <!-- ------------------------------------------------------------- feladatok -->
   <section aria-labelledby="ma-feladat">
     <h2 id="ma-feladat">
-      Feladatok ma
+      {t('Feladatok ma')}
       {#if feladatok}<span class="szam">{feladatok.osszes_ma}</span>{/if}
     </h2>
     {#if hibaSzoveg(adat?.feladatok)}
@@ -181,10 +183,10 @@
         {/each}
       </ul>
     {:else if feladatok}
-      <p class="ures" title="A feladat végére írt 📅 ÉÉÉÉ-HH-NN (vagy [due:: ÉÉÉÉ-HH-NN]) adja a határidőt.">Nincs mára esedékes feladat.</p>
+      <p class="ures" title={t('A feladat végére írt 📅 ÉÉÉÉ-HH-NN (vagy [due:: ÉÉÉÉ-HH-NN]) adja a határidőt.')}>{t('Nincs mára esedékes feladat.')}</p>
     {/if}
     {#if feladatok && feladatok.lejart.length}
-      <h3>Lejárt <span class="szam">{feladatok.osszes_lejart}</span></h3>
+      <h3>{t('Lejárt')} <span class="szam">{feladatok.osszes_lejart}</span></h3>
       <ul class="lista" role="list">
         {#each feladatok.lejart as f (f.ut + ':' + f.sor)}
           <li>
@@ -202,14 +204,14 @@
   <!-- ------------------------------------------------------------- kártyák (C23b) -->
   <section aria-labelledby="ma-kartya">
     <h2 id="ma-kartya">
-      Kártyák
+      {t('Kártyák')}
       <span class="szam">{kartyak && kartyak.allapot === 'kesz' ? kartyak.esedekes + (kartyak.uj ?? 0) : '—'}</span>
     </h2>
     {#if kartyak && kartyak.allapot === 'kesz'}
       <p class="halvany kartya-sor">
-        {kartyak.esedekes} esedékes · {kartyak.uj ?? 0} új{kartyak.holnap ? ` · holnap ${kartyak.holnap}` : ''}
+        {t('{n} esedékes', { n: kartyak.esedekes })} · {t('{n} új', { n: kartyak.uj ?? 0 })}{kartyak.holnap ? ` · ${t('holnap {n}', { n: kartyak.holnap })}` : ''}
         {#if kartyak.esedekes + (kartyak.uj ?? 0) > 0}
-          <button class="m-gomb link" type="button" onclick={() => maiIsmetles(felulet)}>Ismétlés</button>
+          <button class="m-gomb link" type="button" onclick={() => maiIsmetles(felulet)}>{t('Ismétlés')}</button>
         {/if}
       </p>
     {:else if adat && hibas(adat.kartyak)}
@@ -220,7 +222,7 @@
   <!-- ------------------------------------------------------------- asszisztens (csak ha van mit mutatni) -->
   <Asszisztens szakasz={adat?.asszisztens} datum={adat?.datum} />
   <details class="rendszer" bind:open={felulet.manifoldRendszer}>
-    <summary>Rendszer és beállítások</summary>
+    <summary>{t('Rendszer és beállítások')}</summary>
     {#if felulet.manifoldRendszer}<ManifoldLap />{/if}
   </details>
 </div>

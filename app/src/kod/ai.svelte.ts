@@ -4,6 +4,7 @@
 // Javaslatot (teszt-blokk, javított program) csak a felhasználó fogad el, egy szerkesztő-tranzakcióval (`aiElfogad.ts`).
 
 import { ApiHiba, kerdez } from '../lib/core/api';
+import { t, tk } from '../lib/i18n';
 import type { CoreEsemeny, CoreKapcsolat } from '../lib/core/ws.svelte';
 
 export type AIMod = 'hiba' | 'tipp' | 'megoldas' | 'teszt' | 'stressz';
@@ -12,8 +13,8 @@ export type AIAllapot = 'fut' | 'kesz' | 'hiba' | 'megszakitva';
 export const AI_MOD_NEV: Record<AIMod, string> = {
   hiba: 'Mi a hiba?',
   tipp: 'Tipp',
-  megoldas: 'Teljes megoldás',
-  teszt: 'Szélső tesztek',
+  megoldas: tk('Teljes megoldás'),
+  teszt: tk('Szélső tesztek'),
   stressz: 'Stressz-teszt',
 };
 
@@ -142,7 +143,7 @@ export class KodAI {
                      hiba: (d.hiba as AIFutas['hiba']) ?? a.hiba };
     } catch (e) {
       if (e instanceof ApiHiba && e.statusz === 404 && this.aktiv?.ai === a.ai)
-        this.aktiv = { ...a, allapot: 'hiba', hiba: { kod: 'elveszett', uzenet: 'a kérés a core újraindulásakor megszakadt' } };
+        this.aktiv = { ...a, allapot: 'hiba', hiba: { kod: 'elveszett', uzenet: t('a kérés a core újraindulásakor megszakadt') } };
     }
   }
 

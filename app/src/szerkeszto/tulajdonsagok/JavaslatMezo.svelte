@@ -7,6 +7,7 @@
   A beírás (és a séma-ellenőrzés) a hívóé (`onvalaszt`); ez a komponens csak a bevitel.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onDestroy, untrack } from 'svelte';
   import Ikon from '../../lib/ikon/Ikon.svelte';
   import { TriangleAlert } from '../../lib/ikon/ikonok';
@@ -262,7 +263,7 @@
           {#each e.kiemeles ? darabol(e.nev, e.kiemeles) : [{ szoveg: e.nev, kiemelt: false }] as d, j (j)}{#if d.kiemelt}<mark>{d.szoveg}</mark>{:else}{d.szoveg}{/if}{/each}
         </span>
         {#if e.megjegyzes}
-          <span class="megj"><Ikon ikon={TriangleAlert} meret={14} />{e.megjegyzes}</span>
+          <span class="megj"><Ikon ikon={TriangleAlert} meret={14} />{t(e.megjegyzes)}</span>
         {/if}
         {#if e.jelzo}<span class="nt-menu-jelzo">{e.jelzo}</span>{/if}
       </div>

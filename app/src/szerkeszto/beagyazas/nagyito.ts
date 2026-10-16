@@ -3,6 +3,7 @@
 // eltűnik, így a nagy bitmap memóriája felszabadul. Egy modális réteg: Esc és a háttérre kattintás zár, a fókusz
 // a bezáró gombra kerül (csapda: az egyetlen fókuszálható elem), és bezáráskor a kiindulóra tér vissza.
 
+import { t } from '../../lib/i18n';
 import { ikonElem } from '../../lib/ikon/ikonElem';
 import { X } from '../../lib/ikon/ikonok';
 
@@ -23,7 +24,7 @@ export function kepetNagyit(src: string, nev: string, kiindulo?: HTMLElement | n
   fedo.className = 'nagyito';
   fedo.setAttribute('role', 'dialog');
   fedo.setAttribute('aria-modal', 'true');
-  fedo.setAttribute('aria-label', `Kép: ${nev}`);
+  fedo.setAttribute('aria-label', t('Kép: {nev}', { nev }));
   const img = document.createElement('img');
   img.className = 'nagyito-kep';
   img.alt = nev;
@@ -32,8 +33,8 @@ export function kepetNagyit(src: string, nev: string, kiindulo?: HTMLElement | n
   const bezar = document.createElement('button');
   bezar.type = 'button';
   bezar.className = 'nagyito-bezar';
-  bezar.setAttribute('aria-label', 'Bezárás');
-  bezar.title = 'Bezárás (Esc)';
+  bezar.setAttribute('aria-label', t('Bezárás'));
+  bezar.title = t('Bezárás (Esc)');
   bezar.appendChild(ikonElem(X, 20));
   fedo.append(img, bezar);
 

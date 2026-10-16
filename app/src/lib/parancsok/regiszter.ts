@@ -5,17 +5,25 @@
 //                                     futtat: () => … });
 //   …
 //   le(); // leiratkozás (pl. a nézet bezárásakor)
+//
+// A `nev` és a `kategoria` a magyar KULCS (stabil, az azonosítók mellett ez a szótár kulcsa): a felület nyelvére a megjelenítés helyén
+// fordítódik (`parancsNev(p)` / `parancsKategoria(p)`: a paletta, a helyi menü), nem a regisztrációkor — így nyelvváltáskor frissül.
+// Az `id` változatlan (a tracker és a legutóbbiak ezt tárolják). Fordítandó szöveg jelölése a regisztrációban: `nev: tk('Kártyák ebből')`.
+// Dinamikus név (`3. fül`, `X bekapcsolása`) getterrel adható, amely maga hív `t()`-t (a regisztráció megőrzi a gettert):
+//   { id: 'ful.3', get nev() { return t('{n}. fül', { n: 3 }); }, … }
 
 import type { IconNode } from 'lucide';
-import { hibaSzoveg } from '../core/api';
+import { hibaUzenet } from '../core/api';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
+import { t } from '../i18n';
 import { normalizalLeiras } from './billentyuk';
 
 export interface Parancs {
   /** Egyedi, pontokkal tagolt azonosító: `<modul>.<művelet>`. */
   id: string;
-  /** A palettában megjelenő név (magyarul, igével vagy főnévvel kezdve). */
+  /** A palettában megjelenő név: a magyar kulcs (igével vagy főnévvel kezdve); megjelenítéskor `parancsNev(p)` fordítja. */
   nev: string;
+  /** A paletta kategória-felirata: a magyar kulcs; megjelenítéskor `parancsKategoria(p)` fordítja. */
   kategoria?: string;
   /** Pl. „Mod+Shift+M”; ütközés esetén a regisztráció hibát dob. */
   billentyu?: string;
@@ -30,6 +38,16 @@ export interface Parancs {
    *  palettából és a szerkesztőn kívül a parancs fut. */
   szerkesztoNyer?: boolean;
   futtat: () => void | Promise<void>;
+}
+
+/** A parancs neve az aktív nyelven (a kulcs `t()`-je; a getteres, már fordított név változatlan marad). */
+export function parancsNev(p: Pick<Parancs, 'nev'>): string {
+  return Object.getOwnPropertyDescriptor(p, 'nev')?.get ? p.nev : t(p.nev);
+}
+
+/** A parancs kategóriája az aktív nyelven; üres, ha nincs. */
+export function parancsKategoria(p: Pick<Parancs, 'kategoria'>): string {
+  return p.kategoria ? t(p.kategoria) : '';
 }
 
 type Figyelo = () => void;
@@ -53,15 +71,22 @@ export class Regiszter {
   }
 
   regisztral(p: Parancs): () => void {
+    // i18n-ignore: programozói hiba (a fejlesztőnek szól, a felhasználó nem látja)
     if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(p.id)) throw new Error(`hibás parancsazonosító: ${p.id}`);
+    // i18n-ignore: programozói hiba (a fejlesztőnek szól, a felhasználó nem látja)
     if (this.parancsok.has(p.id)) throw new Error(`már regisztrált parancs: ${p.id}`);
     let akkord: string | undefined;
     if (p.billentyu) {
       akkord = normalizalLeiras(p.billentyu);
       const masik = this.akkordok.get(akkord);
+      // i18n-ignore: programozói hiba (a fejlesztőnek szól, a felhasználó nem látja)
       if (masik) throw new Error(`a(z) ${p.billentyu} billentyű már foglalt: ${masik}`);
     }
-    const tarolt: Parancs = akkord ? { ...p, billentyu: akkord } : { ...p };
+    // a getterek (dinamikus, `t()`-vel számolt név) megmaradnak: a leíró-másolat nem értékeli ki őket a regisztrációkor
+    const leirok = Object.getOwnPropertyDescriptors(p);
+    for (const l of Object.values(leirok)) if ('value' in l) l.writable = l.configurable = true; // mint a korábbi `{ ...p }`: módosítható másolat
+    if (akkord) leirok.billentyu = { value: akkord, enumerable: true, writable: true, configurable: true };
+    const tarolt = Object.defineProperties({}, leirok) as Parancs;
     this.parancsok.set(p.id, tarolt);
     if (akkord) this.akkordok.set(akkord, p.id);
     this.jelez();
@@ -107,8 +132,8 @@ export class Regiszter {
     if (!p || !this.elerheto(p)) return false;
     // a parancs hibája (szinkron vagy aszinkron) a felhasználónak is látszik, nem csak a konzolon
     const hibaJelez = (e: unknown) => {
-      console.error(`parancs hiba: ${id}`, e);
-      ertesitesek.ertesit({ szint: 'hiba', cim: `A parancs nem sikerült: ${p.nev}`, szoveg: hibaSzoveg(e) });
+      console.error(`parancs hiba: ${id}`, e); // i18n-ignore: fejlesztői konzol-napló
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A parancs nem sikerült: {nev}', { nev: parancsNev(p) }), szoveg: hibaUzenet(e) });
     };
     try {
       const r = p.futtat();
@@ -121,7 +146,7 @@ export class Regiszter {
       try {
         f(id, forras);
       } catch (e) {
-        console.error('parancs-megfigyelő hiba', e); // a megfigyelő hibája nem akasztja a parancsot
+        console.error('parancs-megfigyelő hiba', e); // a megfigyelő hibája nem akasztja a parancsot — i18n-ignore: fejlesztői konzol-napló
       }
     }
     return true;

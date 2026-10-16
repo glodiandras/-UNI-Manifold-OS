@@ -54,7 +54,7 @@ class Elozmeny:
     def _repo(self) -> snapshot.Repo:
         r = frame.live_repos(self.cfg).get("vault")
         if not r:
-            raise HttpError(404, "a vault pillanatkép-tárolója nem érhető el, az előzmények nem állnak rendelkezésre")
+            raise HttpError(404, "a vault pillanatkép-tárolója nem érhető el, az előzmények nem állnak rendelkezésre", kod="elozmeny.nincs_pillanatkep_tarolo")
         return r
 
     def _el(self, repo: snapshot.Repo, ut: str) -> None:
@@ -63,7 +63,7 @@ class Elozmeny:
         van_lemezen = os.path.lexists(repo.work_tree / ut)
         van_headben = repo.has_head() and repo.git("cat-file", "-e", f"HEAD:{ut}", check=False).returncode == 0
         if not (van_lemezen or van_headben):
-            raise HttpError(404, f"a jegyzetet közben átnevezték vagy törölték: {ut} — nyisd meg az új nevén")
+            raise HttpError(404, f"a jegyzetet közben átnevezték vagy törölték: {ut} — nyisd meg az új nevén", kod="elozmeny.jegyzet_athelyezve", param={"ut": ut})
 
     def naplo(self, ut, n: int = 50) -> dict:
         ut = self._ut(ut)
@@ -91,7 +91,7 @@ class Elozmeny:
         naplo = repo.fajl_naplo(ut, MAX_BEJEGYZES)
         i = next((j for j, c in enumerate(naplo) if c["sha"].startswith(sha)), None)
         if i is None:
-            raise HttpError(404, f"a commit nem érinti ezt a jegyzetet: {sha}")
+            raise HttpError(404, f"a commit nem érinti ezt a jegyzetet: {sha}", kod="elozmeny.commit_nem_erinti", param={"sha": sha})
         c = naplo[i]
         szoveg, ok = (None, "nincs") if c["statusz"] == "D" else repo.fajl_valtozat(c["sha"], c["ut_akkor"])
         elozo, elozo_ok = (None, "nincs")
@@ -108,11 +108,11 @@ class Elozmeny:
         naplo = repo.fajl_naplo(ut, MAX_BEJEGYZES)
         c = next((c for c in naplo if c["sha"].startswith(str(sha)) and len(str(sha)) >= 7), None)
         if c is None:
-            raise HttpError(404, f"a commit nem érinti ezt a jegyzetet: {sha}")
+            raise HttpError(404, f"a commit nem érinti ezt a jegyzetet: {sha}", kod="elozmeny.commit_nem_erinti", param={"sha": sha})
         if c["statusz"] == "D":
-            raise HttpError(400, "ebben a commitban a jegyzet törölve lett, nincs mire visszaállítani")
+            raise HttpError(400, "ebben a commitban a jegyzet törölve lett, nincs mire visszaállítani", kod="elozmeny.jegyzet_torolve_a_commitban")
         if self.busy():
-            raise HttpError(409, "egy vault-író feladat fut — a visszaállítás a vége után indítható", foglalt=True)
+            raise HttpError(409, "egy vault-író feladat fut — a visszaállítás a vége után indítható", kod="elozmeny.iro_feladat_fut", foglalt=True)
         kor = frame.new_id(KOR_ELOTAG)
         trailerek = {snapshot.TRAILER_RUN: kor, snapshot.TRAILER_ITEM: ut, "Mos-Forras": FORRAS}
         try:
@@ -122,13 +122,13 @@ class Elozmeny:
                 else:
                     uj = repo.visszaallit_fajl(ut, c["sha"], trailerek)
         except frame.Busy as exc:
-            raise HttpError(409, str(exc), foglalt=True) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.foglalt", foglalt=True) from exc
         except snapshot.NaploAll as exc:
-            raise HttpError(409, str(exc), naplo=True) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.naplo_all", naplo=True) from exc
         except snapshot.UndoConflict as exc:
-            raise HttpError(409, str(exc), utkozes=True, fajlok=exc.files) from exc
+            raise HttpError(409, str(exc), kod="pillanatkep.visszavonas_utkozes", utkozes=True, fajlok=exc.files) from exc
         except snapshot.SnapshotError as exc:
-            raise HttpError(400, str(exc)) from exc
+            raise HttpError(400, str(exc), kod="pillanatkep.hibas") from exc
         self.jelez(repo.changed_files(uj))          # T102: az index ne a figyelőre várjon (a visszavonáshoz hasonlóan)
         return {"ok": True, "ut": ut, "sha": uj, "visszaallitott": c["sha"]}
 
@@ -139,17 +139,17 @@ class Elozmeny:
         p = vaultio.Vault(self.cfg).lemezen(ut)
         ujtartalom = repo.git_bytes("show", f"{c['sha']}:{c['ut_akkor']}", check=False)
         if ujtartalom.returncode != 0:
-            raise HttpError(400, f"a változat tartalma nem olvasható: {c['sha'][:7]}:{c['ut_akkor']}")
+            raise HttpError(400, f"a változat tartalma nem olvasható: {c['sha'][:7]}:{c['ut_akkor']}", kod="elozmeny.valtozat_nem_olvashato", param={"sha": c["sha"][:7], "ut": c["ut_akkor"]})
         b = ujtartalom.stdout
         if len(b) > vaultio.MAX_SZOVEG:
-            raise HttpError(400, "túl nagy változat, nem állítható vissza")
+            raise HttpError(400, "túl nagy változat, nem állítható vissza", kod="elozmeny.valtozat_tul_nagy")
         with vaultio._ut_zar(ut):
             try:
                 regi = p.read_bytes()
             except FileNotFoundError:
-                raise HttpError(404, f"a jegyzetet közben átnevezték vagy törölték: {ut}") from None
+                raise HttpError(404, f"a jegyzetet közben átnevezték vagy törölték: {ut}", kod="elozmeny.jegyzet_athelyezve_rovid", param={"ut": ut}) from None
             if regi == b:
-                raise HttpError(400, f"ez már a jelenlegi változat: {ut}")
+                raise HttpError(400, f"ez már a jelenlegi változat: {ut}", kod="elozmeny.mar_jelenlegi", param={"ut": ut})
             repo.visszavonas_helyreallit_vagy_hiba()            # a kézi commit ELŐTT: félkész visszavonás maradványa ne kerüljön bele
             tartos.atomi_ir(p, b)
             try:
@@ -167,7 +167,7 @@ def utvonalak(r) -> None:
     def valtozat(k):
         sha = k.q.get("sha")
         if not sha:
-            raise HttpError(400, "hiányzó sha")
+            raise HttpError(400, "hiányzó sha", kod="elozmeny.hianyzo_sha")
         return k.app.elozmeny.valtozat(k.q.get("ut"), sha)
 
     def visszaallit(k):

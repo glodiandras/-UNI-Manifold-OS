@@ -3,6 +3,7 @@
   A p95 a vödör felső határa (a core fix vödrös hisztogramot tárol), ezért „legfeljebb” értelmű.
 -->
 <script lang="ts">
+  import { t } from '../../i18n';
   import { szelessegFigyel } from '../szelesseg';
   import { msSzoveg } from '../megjelenites';
 
@@ -32,7 +33,7 @@
   const jel = $derived.by(() => {
     const a = { nev: 'p50', i: vedorIdx(p50), ertek: p50 };
     const b = { nev: 'p95', i: vedorIdx(p95), ertek: p95 };
-    if (a.i >= 0 && a.i === b.i) return [{ nev: 'p50 és p95', i: a.i, ertek: b.ertek }];
+    if (a.i >= 0 && a.i === b.i) return [{ nev: t('p50 és p95'), i: a.i, ertek: b.ertek }];
     return [a, b].filter((j) => j.i >= 0);
   });
 </script>

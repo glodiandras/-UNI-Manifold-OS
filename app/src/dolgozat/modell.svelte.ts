@@ -4,6 +4,7 @@
 // nézetnek**; nyugalomban és rejtett lapon semmi nem ütemez. Az elavult választ a sorszám dobja el.
 
 import { ApiHiba, kerdez } from '../lib/core/api';
+import { t } from '../lib/i18n';
 import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import { ejfelig, napKulcs } from '../ma/datum';
 import type { DolgozatSor, Ertekeles, Kalibracio, ListaValasz, Reszlet } from './tipusok';
@@ -77,8 +78,8 @@ export class DolgozatAdat {
       const v = await kerdez<Ertekeles>('/api/felkeszultseg/ertekeles', { metodus: 'POST', torzs: { azon }, idokorlat: 300_000 });
       this.ertekeles = { ...v, azon };
     } catch (e) {
-      this.ertekelesHiba = e instanceof ApiHiba && e.statusz === 0 && e.message === 'időtúllépés'
-        ? 'A modell nem válaszolt időben.'
+      this.ertekelesHiba = e instanceof ApiHiba && e.statusz === 0 && e.idotullepes
+        ? t('A modell nem válaszolt időben.')
         : e instanceof Error ? e.message : String(e);
     } finally {
       this.ertekelesFut = false;

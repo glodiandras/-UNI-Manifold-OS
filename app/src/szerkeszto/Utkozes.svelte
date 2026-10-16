@@ -7,6 +7,7 @@
     - „Összevetés”: kétoldalas összefésülés (a lemezen lévő szakaszai átvehetők), a kész szöveg mentése.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { MergeView } from '@codemirror/merge';
   import { syntaxHighlighting } from '@codemirror/language';
   import { EditorState } from '@codemirror/state';
@@ -122,8 +123,8 @@
     if (kulso !== undefined) void vagolapra(kulso);
     ertesitesek.ertesit({
       szint: 'figyelmeztetes',
-      cim: 'A lemezen lévő változat nem került pillanatképbe',
-      szoveg: 'A mentés pillanatkép nélkül ment (a core éppen a vaultot írta, vagy a git hibázott). A felülírt, külső változatot a vágólapra másoltam.',
+      cim: t('A lemezen lévő változat nem került pillanatképbe'),
+      szoveg: t('A mentés pillanatkép nélkül ment (a core éppen a vaultot írta, vagy a git hibázott). A felülírt, külső változatot a vágólapra másoltam.'),
       idotartam: 0,
     });
   }
@@ -143,8 +144,8 @@
     const ok = await vagolapra(sajat);
     ertesitesek.ertesit({
       szint: 'info',
-      cim: 'A lemezen lévő változat betöltve',
-      szoveg: ok ? 'A saját szöveged a vágólapon van, és ⌘Z-vel is visszahozható.' : 'A saját szöveged ⌘Z-vel visszahozható.',
+      cim: t('A lemezen lévő változat betöltve'),
+      szoveg: ok ? t('A saját szöveged a vágólapon van, és ⌘Z-vel is visszahozható.') : t('A saját szöveged ⌘Z-vel visszahozható.'),
     });
     onbezar();
   }
@@ -163,47 +164,45 @@
   }
 </script>
 
-<Atfedes cimke="Ütközés: a jegyzet közben megváltozott" nev="utkozes" {onbezar} szeles={osszevetes}>
+<Atfedes cimke={t('Ütközés: a jegyzet közben megváltozott')} nev="utkozes" {onbezar} szeles={osszevetes}>
   <div class="utkozes">
     <header class="fej">
       <span class="ikon"><Ikon ikon={TriangleAlert} meret={20} /></span>
       <div>
-        <h2>A jegyzet közben megváltozott</h2>
+        <h2>{t('A jegyzet közben megváltozott')}</h2>
         <p>
-          A lemezen lévő változatot más írta (Obsidian, szinkron vagy egy lánc), ezért nem írtam felül. A te
-          változatod itt van, mentetlenül.
+          {t('A lemezen lévő változatot más írta (Obsidian, szinkron vagy egy lánc), ezért nem írtam felül. A te változatod itt van, mentetlenül.')}
         </p>
       </div>
     </header>
 
     {#if hiba}
-      <p class="hiba" role="alert">A lemezen lévő változat nem olvasható: {hiba}</p>
+      <p class="hiba" role="alert">{t('A lemezen lévő változat nem olvasható: {hiba}', { hiba })}</p>
     {/if}
     {#if dok.utkozesUzenet}
-      <p class="figyelmeztetes" role="status">{dok.utkozesUzenet}{varakozik ? ' Újrapróbálom…' : ''}</p>
+      <p class="figyelmeztetes" role="status">{dok.utkozesUzenet}{varakozik ? ' ' + t('Újrapróbálom…') : ''}</p>
     {/if}
 
     {#if osszevetes}
-      <div class="oszlopfej" aria-hidden="true"><span>A lemezen lévő</span><span>Az enyém (szerkeszthető)</span></div>
+      <div class="oszlopfej" aria-hidden="true"><span>{t('A lemezen lévő')}</span><span>{t('Az enyém (szerkeszthető)')}</span></div>
       <div class="merge" bind:this={mergeHely}></div>
       <footer class="gombok">
-        <button type="button" class="m-gomb semleges gomb" onclick={() => (osszevetes = false)}>Vissza</button>
+        <button type="button" class="m-gomb semleges gomb" onclick={() => (osszevetes = false)}>{t('Vissza')}</button>
         {#if osszefesultHiba}
-          <p class="hiba" role="alert">Az összefésült szöveg nem menthető: {osszefesultHiba}</p>
+          <p class="hiba" role="alert">{t('Az összefésült szöveg nem menthető: {hiba}', { hiba: osszefesultHiba })}</p>
         {/if}
         <button type="button" class="m-gomb gomb elsodleges" disabled={dolgozik || !!osszefesultHiba} onclick={osszefesultMent}>
-          Az összefésült szöveg mentése
+          {t('Az összefésült szöveg mentése')}
         </button>
       </footer>
     {:else}
       <p class="megjegyzes">
-        „Az enyém”: a lemezen lévő változat előbb pillanatképbe kerül, tehát az sem vész el. „A lemezen lévő”:
-        a te szöveged a vágólapra kerül, és ⌘Z-vel is visszahozható.
+        {t('„Az enyém”: a lemezen lévő változat előbb pillanatképbe kerül, tehát az sem vész el. „A lemezen lévő”: a te szöveged a vágólapra kerül, és ⌘Z-vel is visszahozható.')}
       </p>
       <footer class="gombok">
-        <button type="button" class="m-gomb semleges gomb" disabled={!lemez} onclick={() => (osszevetes = true)}>Összevetés…</button>
-        <button type="button" class="m-gomb semleges gomb" disabled={!lemez} onclick={lemezenLevo}>A lemezen lévő</button>
-        <button type="button" class="m-gomb gomb elsodleges" disabled={!lemez || dolgozik} onclick={enyem}>Az enyém</button>
+        <button type="button" class="m-gomb semleges gomb" disabled={!lemez} onclick={() => (osszevetes = true)}>{t('Összevetés…')}</button>
+        <button type="button" class="m-gomb semleges gomb" disabled={!lemez} onclick={lemezenLevo}>{t('A lemezen lévő')}</button>
+        <button type="button" class="m-gomb gomb elsodleges" disabled={!lemez || dolgozik} onclick={enyem}>{t('Az enyém')}</button>
       </footer>
     {/if}
   </div>

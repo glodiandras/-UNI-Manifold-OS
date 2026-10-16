@@ -5,6 +5,7 @@
   Egy feladatra kattintva a lap a feladat részletét mutatja (haladás, leállítás, napló, mit változtatott).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { Activity, Boxes, CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, HardDrive, Inbox, MessageCircleQuestionMark, Sparkles } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
   import Bevitel from './vezerlo/Bevitel.svelte';
@@ -33,35 +34,35 @@
     {#if felulet.manifoldFeladat}
       <FeladatReszlet id={felulet.manifoldFeladat} vissza={() => (felulet.manifoldFeladat = null)} />
     {:else}
-      <Szakasz cim="Most" ikon={Activity} bind:nyitva={() => nyitva('most'), (v) => allit('most', v)}>
+      <Szakasz cim={t('Most')} ikon={Activity} bind:nyitva={() => nyitva('most'), (v) => allit('most', v)}>
         <Most onnyit={(id) => (felulet.manifoldFeladat = id)} />
       </Szakasz>
-      <Szakasz cim="Bevitel" ikon={Inbox} bind:nyitva={() => nyitva('bevitel'), (v) => allit('bevitel', v)}>
+      <Szakasz cim={t('Bevitel')} ikon={Inbox} bind:nyitva={() => nyitva('bevitel'), (v) => allit('bevitel', v)}>
         {#if nyitva('bevitel')}<Bevitel onnyit={(id) => (felulet.manifoldFeladat = id)} />{/if}
       </Szakasz>
-      <Szakasz cim="Kérdezz a vaulttól" ikon={MessageCircleQuestionMark} bind:nyitva={() => nyitva('kerdezz'), (v) => allit('kerdezz', v)}>
+      <Szakasz cim={t('Kérdezz a vaulttól')} ikon={MessageCircleQuestionMark} bind:nyitva={() => nyitva('kerdezz'), (v) => allit('kerdezz', v)}>
         {#if nyitva('kerdezz')}<Kerdezz />{/if}
       </Szakasz>
-      <Szakasz cim="Tanulás" ikon={GraduationCap} bind:nyitva={() => nyitva('tanulas'), (v) => allit('tanulas', v)}>
+      <Szakasz cim={t('Tanulás')} ikon={GraduationCap} bind:nyitva={() => nyitva('tanulas'), (v) => allit('tanulas', v)}>
         {#if nyitva('tanulas')}<Tanulas />{/if}
       </Szakasz>
-      <Szakasz cim="Statisztika" ikon={ChartNoAxesColumn} bind:nyitva={() => nyitva('statisztika'), (v) => allit('statisztika', v)}>
+      <Szakasz cim={t('Statisztika')} ikon={ChartNoAxesColumn} bind:nyitva={() => nyitva('statisztika'), (v) => allit('statisztika', v)}>
         {#if nyitva('statisztika')}<StatisztikaSzakasz />{/if}
       </Szakasz>
-      <Szakasz cim="Használat" ikon={Gauge} bind:nyitva={() => nyitva('hasznalat'), (v) => allit('hasznalat', v)}>
+      <Szakasz cim={t('Használat')} ikon={Gauge} bind:nyitva={() => nyitva('hasznalat'), (v) => allit('hasznalat', v)}>
         {#if nyitva('hasznalat')}<HasznalatSzakasz />{/if}
       </Szakasz>
-      <Szakasz cim="Naptár és emlékeztetők" ikon={CalendarDays} bind:nyitva={() => nyitva('naptar'), (v) => allit('naptar', v)}>
+      <Szakasz cim={t('Naptár és emlékeztetők')} ikon={CalendarDays} bind:nyitva={() => nyitva('naptar'), (v) => allit('naptar', v)}>
         {#if nyitva('naptar')}<NaptarSzakasz />{/if}
       </Szakasz>
-      <Szakasz cim="Asszisztens" ikon={Sparkles} bind:nyitva={() => nyitva('asszisztens'), (v) => allit('asszisztens', v)}>
+      <Szakasz cim={t('Asszisztens')} ikon={Sparkles} bind:nyitva={() => nyitva('asszisztens'), (v) => allit('asszisztens', v)}>
         <Kapcsolok />
         {#if nyitva('asszisztens')}<AsszisztensTanult /><AsszisztensStatisztika />{/if}
       </Szakasz>
-      <Szakasz cim="Modellek" ikon={Boxes} bind:nyitva={() => nyitva('modellek'), (v) => allit('modellek', v)}>
+      <Szakasz cim={t('Modellek')} ikon={Boxes} bind:nyitva={() => nyitva('modellek'), (v) => allit('modellek', v)}>
         {#if nyitva('modellek')}<Modellek />{/if}
       </Szakasz>
-      <Szakasz cim="Rendszer" ikon={HardDrive} bind:nyitva={() => nyitva('rendszer'), (v) => allit('rendszer', v)}>
+      <Szakasz cim={t('Rendszer')} ikon={HardDrive} bind:nyitva={() => nyitva('rendszer'), (v) => allit('rendszer', v)}>
         {#if nyitva('rendszer')}<Rendszer />{/if}
       </Szakasz>
     {/if}

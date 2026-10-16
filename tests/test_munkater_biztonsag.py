@@ -167,7 +167,7 @@ class AzonositoKotesTest(Alap):
         uzenetek = workspace.nyit(termek_cfg(self.root, self.home, hamis))
         uj = workspace.azonosit(hamis)
         self.assertNotEqual(uj, id_a)                                            # új azonosítót kapott: nem az A áthelyezése
-        self.assertIn("nem bizonyítható", uzenetek[0])
+        self.assertIn("could not be verified", uzenetek[0])
         r = self.reg()["munkaterek"]
         self.assertEqual(r[id_a], regi_bejegyzes)                                # az A bejegyzése (és mentési mappája) érintetlen
         self.assertEqual(r[uj]["vault"], str(hamis))

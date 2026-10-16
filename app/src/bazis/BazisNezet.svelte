@@ -5,6 +5,7 @@
   A találatszám `title`-je a core és a rajzolás idejét mutatja (cél: 2000 soron együtt < 300 ms).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import type { CoreKapcsolat } from '../lib/core/ws.svelte';
   import type { BazisApi } from './api';
@@ -83,7 +84,7 @@
   }
 </script>
 
-<section class="bazis" class:kompakt aria-label="Adatbázis-nézet">
+<section class="bazis" class:kompakt aria-label={t('Adatbázis-nézet')}>
   {#if v}
     <Eszkoztar {modell} {v} {irhato} {idoSzoveg} nezetValtott={valtott} {forrasGomb} />
     {#if modell.irasHiba}
@@ -91,7 +92,7 @@
     {/if}
     {#each v.hibak as h, i (i)}
       <p class="uzenet hiba" role="alert">
-        {h.hely === 'yaml' ? 'A .base fájl nem értelmezhető' : `Hiba (${h.hely})`}: {h.uzenet}{h.db ? ` — ${h.db} sort kihagytam` : ''}
+        {h.hely === 'yaml' ? t('A .base fájl nem értelmezhető') : t('Hiba ({hely})', { hely: h.hely })}: {h.uzenet}{h.db ? ` — ${t('{db} sort kihagytam', { db: h.db })}` : ''}
       </p>
     {/each}
     {#each v.figyelmeztetesek as h, i (i)}
@@ -100,15 +101,15 @@
     {#if modell.forrasMod}
       <div class="forras-mod">
         <SzovegMezo
-          cimke="A .base fájl teljes YAML-forrása"
+          cimke={t('A .base fájl teljes YAML-forrása')}
           ertek={forrasSzoveg}
           sorok={kompakt ? 12 : 22}
-          gomb="Alkalmaz"
+          gomb={t('Alkalmaz')}
           uresEngedett
           ellenorzes={forrasEllenorzes}
           alkalmaz={forrasIras}
         />
-        <p class="segito">Forrásnézetben a megjegyzések megmaradnak; a nézet beállításainak módosítása a fájlt újraírja (a megjegyzések ilyenkor elvesznek).</p>
+        <p class="segito">{t('Forrásnézetben a megjegyzések megmaradnak; a nézet beállításainak módosítása a fájlt újraírja (a megjegyzések ilyenkor elvesznek).')}</p>
       </div>
     {:else if v.ok}
       {#if v.nezet?.tipus === 'cards'}
@@ -128,9 +129,9 @@
       {/if}
     {/if}
   {:else if modell.hiba}
-    <p class="uzenet hiba" role="alert">Az adatbázis-nézet nem tölthető be: {modell.hiba}</p>
+    <p class="uzenet hiba" role="alert">{t('Az adatbázis-nézet nem tölthető be: {hiba}', { hiba: modell.hiba })}</p>
   {:else}
-    <p class="uzenet" role="status">Betöltés…</p>
+    <p class="uzenet" role="status">{t('Betöltés…')}</p>
   {/if}
 </section>
 

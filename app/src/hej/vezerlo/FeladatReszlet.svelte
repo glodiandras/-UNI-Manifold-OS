@@ -3,6 +3,7 @@
   akkor kérdez, ha a feladat fut és az ablak látszik (2 s); a változások a feladat végén és a visszavonásra töltődnek újra.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import { ApiHiba } from '../../lib/core/api';
   import Ikon from '../../lib/ikon/Ikon.svelte';
@@ -10,7 +11,7 @@
   import { feladatsor } from '../../lib/vezerlo/feladatsor.svelte';
   import { vezerloApi } from '../../lib/vezerlo/api';
   import { egyszerre, naploHozzafuz, type NaploAllapot } from '../../lib/vezerlo/naplo';
-  import { allapotCimke, haladasSzoveg, idoRovid, idotartam } from '../../lib/vezerlo/megjelenites';
+  import { allapotCimke, feladatHiba, feladatSzoveg, haladasSzoveg, idoRovid, idotartam } from '../../lib/vezerlo/megjelenites';
   import type { Feladat } from '../../lib/vezerlo/tipusok';
   import Valtozasok from './Valtozasok.svelte';
 
@@ -45,7 +46,7 @@
       }
       hiba = null;
     } catch (e) {
-      hiba = e instanceof ApiHiba && e.statusz === 404 ? 'Ez a feladat már nincs a listában.' : e instanceof Error ? e.message : String(e);
+      hiba = e instanceof ApiHiba && e.statusz === 404 ? t('Ez a feladat már nincs a listában.') : e instanceof Error ? e.message : String(e);
     }
   });
 
@@ -81,56 +82,56 @@
 </script>
 
 <div class="reszlet">
-  <button type="button" class="vissza" onclick={vissza}><Ikon ikon={ChevronLeft} meret={14} /> Feladatok</button>
+  <button type="button" class="vissza" onclick={vissza}><Ikon ikon={ChevronLeft} meret={14} /> {t('Feladatok')}</button>
   {#if !feladat}
-    {#if hiba}<p class="hiba" role="alert">{hiba}</p>{:else}<p class="halvany" role="status">Betöltés…</p>{/if}
+    {#if hiba}<p class="hiba" role="alert">{hiba}</p>{:else}<p class="halvany" role="status">{t('Betöltés…')}</p>{/if}
   {:else}
-    <h3 class="cim">{feladat.cim}</h3>
+    <h3 class="cim">{feladatSzoveg(feladat.cim)}</h3>
     <p class="meta">
       <span class="allapot" data-allapot={feladat.allapot}>{allapotCimke(feladat.allapot)}</span>
       {#if fut || sorban}{haladasSzoveg(feladat)}{:else}{idoRovid(feladat.vegzett)}{idotartam(feladat) ? ` · ${idotartam(feladat)}` : ''}{/if}
     </p>
     {#if fut}
-      <div class="sav" role="progressbar" aria-label="Haladás" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(feladat.szazalek)}>
+      <div class="sav" role="progressbar" aria-label={t('Haladás')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(feladat.szazalek)}>
         <span style:width="{Math.max(2, feladat.szazalek)}%"></span>
       </div>
     {/if}
-    {#if feladat.osszegzes}<p class="halvany">{feladat.osszegzes}</p>{/if}
-    {#each feladat.figyelmeztetes as f (f)}<p class="figy">{f}</p>{/each}
-    {#if feladat.hiba}<p class="hiba" role="alert">{feladat.hiba}</p>{/if}
+    {#if feladat.osszegzes}<p class="halvany">{feladatSzoveg(feladat.osszegzes)}</p>{/if}
+    {#each feladat.figyelmeztetes as f (f)}<p class="figy">{feladatSzoveg(f)}</p>{/each}
+    {#if feladat.hiba}<p class="hiba" role="alert">{feladatHiba(feladat)}</p>{/if}
     {#if hiba && feladat}<p class="hiba" role="alert">{hiba}</p>{/if}
 
     {#if fut || sorban}
       <div class="gombok">
         {#if megerosit}
-          <span class="figy">Azonnal leáll, a folyamatban lévő tétel megszakad.</span>
-          <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = false)}>Mégse</button>
-          <button type="button" class="m-gomb semleges gomb veszely" disabled={dolgozik} onclick={() => leallit(true)}>Azonnali leállítás</button>
+          <span class="figy">{t('Azonnal leáll, a folyamatban lévő tétel megszakad.')}</span>
+          <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = false)}>{t('Mégse')}</button>
+          <button type="button" class="m-gomb semleges gomb veszely" disabled={dolgozik} onclick={() => leallit(true)}>{t('Azonnali leállítás')}</button>
         {:else if sorban}
-          <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => leallit(false)}>Törlés a sorból</button>
+          <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => leallit(false)}>{t('Törlés a sorból')}</button>
         {:else}
           <button
             type="button"
             class="m-gomb semleges gomb"
             disabled={dolgozik || feladat.leallitas_kerve}
-            title={feladat.kulturalt_stop ? 'A folyamatban lévő tétel végén áll meg' : 'Azonnal leáll'}
+            title={feladat.kulturalt_stop ? t('A folyamatban lévő tétel végén áll meg') : t('Azonnal leáll')}
             onclick={() => (feladat.kulturalt_stop ? leallit(false) : (megerosit = true))}
           >
-            <Ikon ikon={Square} meret={14} /> {feladat.leallitas_kerve ? 'Leállítás kérve…' : 'Leállítás'}
+            <Ikon ikon={Square} meret={14} /> {feladat.leallitas_kerve ? t('Leállítás kérve…') : t('Leállítás')}
           </button>
           {#if feladat.kulturalt_stop && !feladat.leallitas_kerve}
-            <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = true)}>Azonnal…</button>
+            <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = true)}>{t('Azonnal…')}</button>
           {/if}
         {/if}
       </div>
     {/if}
 
-    <h4 class="alcim">Mit változtatott</h4>
+    <h4 class="alcim">{t('Mit változtatott')}</h4>
     <Valtozasok {feladat} />
 
-    <h4 class="alcim">Napló</h4>
+    <h4 class="alcim">{t('Napló')}</h4>
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <pre class="naplo gorgeto" bind:this={naploEl} tabindex="0" aria-label="A feladat naplója">{sorok.length ? (naplo.levagva ? `… (a korábbi ${naplo.levagva} sor nem látszik)\n` : '') + sorok.join('\n') : feladat.forras !== '2.0' ? 'Ehhez a feladathoz nincs elérhető napló.' : 'Még nincs naplósor.'}</pre>
+    <pre class="naplo gorgeto" bind:this={naploEl} tabindex="0" aria-label={t('A feladat naplója')}>{sorok.length ? (naplo.levagva ? `${t('… (a korábbi {n} sor nem látszik)', { n: naplo.levagva })}\n` : '') + sorok.join('\n') : feladat.forras !== '2.0' ? t('Ehhez a feladathoz nincs elérhető napló.') : t('Még nincs naplósor.')}</pre>
   {/if}
 </div>
 

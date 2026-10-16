@@ -79,7 +79,7 @@ def biztonsagos_nev(nev: str) -> str:
     nev = fuzet.nfc(os.path.basename(str(nev or "")).strip())
     nev = _NEV.sub("_", nev).lstrip(".")
     if not nev or not nev.lower().endswith(fuzet.KEP_KITERJESZTESEK) or len(nev.encode("utf-8")) > 200:
-        raise HttpError(400, "csak .jpg, .jpeg, .png vagy .heic füzetfotó tölthető fel (legfeljebb 200 bájtos névvel)")
+        raise HttpError(400, "csak .jpg, .jpeg, .png vagy .heic füzetfotó tölthető fel (legfeljebb 200 bájtos névvel)", kod="fuzet_api.csak_kepformatum")
     return nev
 
 
@@ -87,16 +87,16 @@ def bejovo(app, body: dict) -> dict:
     nev = biztonsagos_nev(body.get("nev"))
     csoport = body.get("csoport") or time.strftime("%Y%m%d-%H%M%S-") + secrets.token_hex(3)
     if not isinstance(csoport, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", csoport):
-        raise HttpError(400, "érvénytelen csoport-azonosító")
+        raise HttpError(400, "érvénytelen csoport-azonosító", kod="fuzet_api.ervenytelen_csoport_azonosito")
     adat = body.get("adat")
     if not isinstance(adat, str) or len(adat) > MAX_FOTO_BAJT * 4 // 3 + 8:
-        raise HttpError(413 if isinstance(adat, str) else 400, "a fotó base64-kódolt `adat` mezőben jön, legfeljebb 11 MiB")
+        raise HttpError(413 if isinstance(adat, str) else 400, "a fotó base64-kódolt `adat` mezőben jön, legfeljebb 11 MiB", kod="fuzet_api.foto_base64_mezo")
     try:
         b = base64.b64decode(adat, validate=True)
     except (binascii.Error, ValueError):
-        raise HttpError(400, "az `adat` nem érvényes base64") from None
+        raise HttpError(400, "az `adat` nem érvényes base64", kod="fuzet_api.adat_nem_base64") from None
     if not b or len(b) > MAX_FOTO_BAJT:
-        raise HttpError(413, "üres vagy túl nagy fotó")
+        raise HttpError(413, "üres vagy túl nagy fotó", kod="fuzet_api.ures_tul_nagy_foto")
     d = app.cfg.path("fuzet_bejovo") / csoport
     d.mkdir(parents=True, exist_ok=True)
     torzs, kit = os.path.splitext(nev)
@@ -109,7 +109,7 @@ def bejovo(app, body: dict) -> dict:
         except FileExistsError:
             continue
     else:
-        raise HttpError(409, "nincs szabad név a beérkező mappában")
+        raise HttpError(409, "nincs szabad név a beérkező mappában", kod="fuzet_api.nincs_szabad_nev")
     return {"ok": True, "csoport": csoport, "nev": cel.name, "meret": len(b), "sha256": fuzet.sha256(cel)}
 
 
@@ -122,22 +122,22 @@ def vagolap_kep(cel: Path, futtat=subprocess.run) -> bool:
         r = futtat(["/usr/bin/osascript", "-", str(cel)], input=_VAGOLAP_SZKRIPT, capture_output=True, text=True,
                    timeout=VAGOLAP_IDO_MP)
     except (OSError, subprocess.TimeoutExpired) as e:
-        raise HttpError(503, f"a vágólap nem olvasható: {e}") from None
+        raise HttpError(503, f"a vágólap nem olvasható: {e}", kod="fuzet_api.vagolap_nem_olvashato", param={"e": e}) from None
     if (r.stdout or "").strip() != "OK" or not cel.is_file() or cel.stat().st_size == 0:
         return False
     if cel.stat().st_size > MAX_VAGOLAP_BAJT:
         cel.unlink(missing_ok=True)
-        raise HttpError(413, "a vágólap képe túl nagy")
+        raise HttpError(413, "a vágólap képe túl nagy", kod="fuzet_api.vagolap_kepe_tul_nagy")
     return True
 
 
 def keplet_ocr(app, body: dict, vagolap=vagolap_kep, chat=kliens.chat) -> dict:
     if not isinstance(body, dict) or body:
-        raise HttpError(400, "a kérés törzse üres objektum: a képet a core a vágólapról olvassa")
+        raise HttpError(400, "a kérés törzse üres objektum: a képet a core a vágólapról olvassa", kod="fuzet_api.torzs_ures_objektum")
     cel =app.cfg.path("tmp") / "keplet-ocr" / f"vagolap-{secrets.token_hex(4)}.png"
     try:
         if not vagolap(cel):
-            raise HttpError(404, "a vágólapon nincs kép — készíts képernyőképet a képletről (⌃⇧⌘4), aztán próbáld újra",
+            raise HttpError(404, "a vágólapon nincs kép — készíts képernyőképet a képletről (⌃⇧⌘4), aztán próbáld újra", kod="fuzet_api.vagolapon_nincs_kep",
                             nincs_kep=True)
         mod = _keplet_modul(app.cfg)
         u = app.worker.biztosit()
@@ -145,12 +145,12 @@ def keplet_ocr(app, body: dict, vagolap=vagolap_kep, chat=kliens.chat) -> dict:
             r = chat(u, [{"role": "user", "content": mod.PROMPT}], feladat="ocr_keplet", mod="interaktiv",
                      images=[str(cel)], max_tokens=int(mod.ARANY["max_token"]), temperature=0.0)
         except kliens.KliensHiba as e:
-            raise HttpError(503 if e.kod >= 500 else 400, f"a képlet-olvasó modell nem válaszolt: {e}",
+            raise HttpError(503 if e.kod >= 500 else 400, f"a képlet-olvasó modell nem válaszolt: {e}", kod="fuzet_api.keplet_modell_nem_valaszolt", param={"e": e},
                             modell_hiba=True) from None
         szoveg = r["choices"][0]["message"]["content"]
         latex = mod.jelolt(szoveg).strip().strip("$").strip()
         if not latex:
-            raise HttpError(422, "a modell nem adott képletet", nyers=szoveg[:500])
+            raise HttpError(422, "a modell nem adott képletet", kod="fuzet_api.nincs_keplet", nyers=szoveg[:500])
         return {"ok": True, "latex": latex, "modell": r.get("modell"), "proba": bool(r.get("proba")), "mp": r.get("mp")}
     finally:
         cel.unlink(missing_ok=True)

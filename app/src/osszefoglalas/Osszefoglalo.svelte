@@ -5,7 +5,9 @@
   újragenerálás a `osszefoglalas` feladat (gépi írás, visszavonható). Csak tokenekből rajzol (25. döntés).
 -->
 <script lang="ts">
+  import { tartalmiNyelv } from '../lib/munkater/nyelv.svelte';
   import { ApiHiba } from '../lib/core/api';
+  import { nyelv, t, tp } from '../lib/i18n';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
@@ -52,9 +54,9 @@
   }
 
   function jelzes(a: OsszAllitas): string {
-    if (a.forras_hianyzik) return 'a forrás már nincs meg';
-    if (a.sodrodott) return 'elavult lehet: a forrás azóta megváltozott';
-    if (a.horgony_hianyzik) return 'a hivatkozott hely már nincs a forrásban';
+    if (a.forras_hianyzik) return t('a forrás már nincs meg');
+    if (a.sodrodott) return t('elavult lehet: a forrás azóta megváltozott');
+    if (a.horgony_hianyzik) return t('a hivatkozott hely már nincs a forrásban');
     return '';
   }
 
@@ -65,58 +67,58 @@
       const p = szerkesztok.aktiv;
       if (p && p.ut === adat.forras_ut) await p.mentes();       // a gépi írás mentetlen dokumentumba nem ír (28(c))
       await osszefoglalasApi.keszit({ szint: 'jegyzet', ut: adat.forras_ut });
-      ertesitesek.ertesit({ szint: 'info', cim: 'Az összefoglaló újra készül', szoveg: 'Ami átmegy a kapukon, felváltja a mostanit (visszavonható).' });
+      ertesitesek.ertesit({ szint: 'info', cim: t('Az összefoglaló újra készül'), szoveg: t('Ami átmegy a kapukon, felváltja a mostanit (visszavonható).') });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'Az újragenerálás nem indult el', szoveg: uzenet(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('Az újragenerálás nem indult el'), szoveg: uzenet(e) });
     } finally {
       kuld = false;
     }
   }
 </script>
 
-<div class="ossz" role="group" aria-label={`Összefoglaló: ${cim}`} lang="hu">
+<div class="ossz" role="group" aria-label={t('Összefoglaló: {cim}', { cim })} lang={nyelv.kod}>
   {#if hiba}
-    <p class="ossz-hiba" role="alert">Az összefoglaló nem tölthető be: {hiba}</p>
-    <div class="ossz-sor"><button type="button" class="m-gomb semleges ossz-gomb" onclick={() => void betolt()}>Újra</button></div>
+    <p class="ossz-hiba" role="alert">{t('Az összefoglaló nem tölthető be: {hiba}', { hiba })}</p>
+    <div class="ossz-sor"><button type="button" class="m-gomb semleges ossz-gomb" onclick={() => void betolt()}>{t('Újra')}</button></div>
   {:else if !adat}
-    <p class="ossz-al">Összefoglaló betöltése…</p>
+    <p class="ossz-al">{t('Összefoglaló betöltése…')}</p>
   {:else}
     <div class="ossz-fej">
       <div>
-        <div class="ossz-cim">Összefoglaló · {adat.cim ?? cim}</div>
+        <div class="ossz-cim">{t('Összefoglaló · {cim}', { cim: adat.cim ?? cim })}</div>
         <div class="ossz-al">
-          {adat.allitasok.length} állítás · {SZINT_NEV[adat.szint ?? 'jegyzet'] ?? adat.szint}{adat.modell ? ` · ${adat.modell}` : ''}{adat.keszult ? ` · ${adat.keszult}` : ''}
+          {tp('{n} állítás', adat.allitasok.length)} · {t(SZINT_NEV[adat.szint ?? 'jegyzet'] ?? adat.szint)}{adat.modell ? ` · ${adat.modell}` : ''}{adat.keszult ? ` · ${adat.keszult}` : ''}
         </div>
       </div>
       {#if adat.szint === 'jegyzet' && adat.forras_ut && !forrasHianyzik}
-        <button type="button" class="m-gomb semleges ossz-gomb" disabled={kuld} onclick={() => void ujra()}>Újragenerálás</button>
+        <button type="button" class="m-gomb semleges ossz-gomb" disabled={kuld} onclick={() => void ujra()}>{t('Újragenerálás')}</button>
       {/if}
     </div>
     {#if elavult}
       <p class="ossz-megj" role="status">
-        {elavult} állítás elavult lehet: a forrás azóta megváltozott{adat.szint === 'jegyzet' && !forrasHianyzik ? ' — az újragenerálás frissíti' : ''}.
+        {tp('{n} állítás elavult lehet: a forrás azóta megváltozott', elavult)}{adat.szint === 'jegyzet' && !forrasHianyzik ? ' — ' + t('az újragenerálás frissíti') : ''}.
       </p>
     {/if}
     {#if adat.hibak.length && !adat.allitasok.length}
-      <p class="ossz-hiba" role="alert">Az összefoglaló jegyzetben nincs érvényes állítás ({adat.hibak.map((h) => h.fajta.replaceAll('_', ' ')).join(', ')}).</p>
+      <p class="ossz-hiba" role="alert">{t('Az összefoglaló jegyzetben nincs érvényes állítás ({lista}).', { lista: adat.hibak.map((h) => h.fajta.replaceAll('_', ' ')).join(', ') })}</p>
     {/if}
     <ol class="ossz-lista">
       {#each adat.allitasok as a (a.id)}
         {@const j = jelzes(a)}
         <li class:elavult={!!j}>
-          <span class="ossz-szoveg">{a.szoveg}</span>
-          <a class="ossz-link" href={`#${a.id}`} title={a.alcel ? `${a.cel} › ${a.alcel}` : a.cel} onclick={(e) => nyit(e, a)}>{a.felirat}</a>
+          <span class="ossz-szoveg" lang={tartalmiNyelv.kod}>{a.szoveg}</span>
+          <a class="ossz-link" lang={tartalmiNyelv.kod} href={`#${a.id}`} title={a.alcel ? `${a.cel} › ${a.alcel}` : a.cel} onclick={(e) => nyit(e, a)}>{a.felirat}</a>
           <button
             type="button"
             class="ossz-idezet-gomb"
             aria-expanded={nyitott.has(a.id)}
-            aria-label="A jegyzet mondata"
-            title="A jegyzet szó szerinti mondata"
+            aria-label={t('A jegyzet mondata')}
+            title={t('A jegyzet szó szerinti mondata')}
             onclick={() => idezetValt(a.id)}
           >„”</button>
           {#if j}<span class="ossz-jel">{j}</span>{/if}
           {#if nyitott.has(a.id)}
-            <blockquote class="ossz-idezet">{a.idezet}</blockquote>
+            <blockquote class="ossz-idezet" lang={tartalmiNyelv.kod}>{a.idezet}</blockquote>
           {/if}
         </li>
       {/each}

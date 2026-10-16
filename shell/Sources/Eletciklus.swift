@@ -54,9 +54,9 @@ enum Eletciklus {
     static func ertelmez(_ jelentes: Any?, hiba: String?) -> KilepesJelentes {
         if let hiba { return .nincsValasz(hiba) }
         guard let obj = jelentes as? [String: Any] else {
-            return .nincsValasz("a felület nem adott jelentést (a `window.manifold.mentes` hiányzik, vagy üres választ adott)")
+            return .nincsValasz(L("a felület nem adott jelentést (a `window.manifold.mentes` hiányzik, vagy üres választ adott)"))
         }
-        guard let ok = obj["ok"] as? Bool else { return .nincsValasz("a felület jelentése érvénytelen") }
+        guard let ok = obj["ok"] as? Bool else { return .nincsValasz(L("a felület jelentése érvénytelen")) }
         if ok { return .rendben }
         let lista = (obj["mentetlen"] as? [[String: Any]] ?? []).map {
             KilepesJelentes.Mentetlen(ut: $0["ut"] as? String ?? "?", hiba: $0["hiba"] as? String)
@@ -66,29 +66,27 @@ enum Eletciklus {
 
     /// Kell-e kérdezni kilépés előtt (és mit). `nil`: minden mentve, a core leállhat.
     static func kilepesKerdes(_ j: KilepesJelentes, idotullepes: Bool) -> KilepesKerdes? {
-        let figyelmeztet = "Ha most kilépsz, a mentetlen változások elvesznek. A szerkesztőben a szöveg megvan: onnan kimásolható, "
-            + "vagy a mentés újrapróbálható."
+        let figyelmeztet = L("Ha most kilépsz, a mentetlen változások elvesznek. A szerkesztőben a szöveg megvan: onnan kimásolható, vagy a mentés újrapróbálható.")
         if idotullepes {
             var szoveg = ""
             if case .mentetlen(let l) = j { szoveg = mentetlenSorok(l) + "\n\n" }
-            return KilepesKerdes(cim: "A mentés nem fejeződött be időben", szoveg: szoveg + figyelmeztet)
+            return KilepesKerdes(cim: L("A mentés nem fejeződött be időben"), szoveg: szoveg + figyelmeztet)
         }
         switch j {
         case .rendben:
             return nil
         case .mentetlen(let l):
-            return KilepesKerdes(cim: "Nem minden jegyzet mentődött", szoveg: (l.isEmpty ? "" : mentetlenSorok(l) + "\n\n") + figyelmeztet)
+            return KilepesKerdes(cim: L("Nem minden jegyzet mentődött"), szoveg: (l.isEmpty ? "" : mentetlenSorok(l) + "\n\n") + figyelmeztet)
         case .nincsValasz(let ok):
             return KilepesKerdes(
-                cim: "A felület nem válaszolt",
-                szoveg: "A felület nem válaszolt a mentési kérésre (\(ok)), ezért nem tudjuk, van-e mentetlen szöveg. "
-                    + "Ha most kilépsz, az elveszhet. Várj egy kicsit, majd próbáld újra.")
+                cim: L("A felület nem válaszolt"),
+                szoveg: L("A felület nem válaszolt a mentési kérésre (%@), ezért nem tudjuk, van-e mentetlen szöveg. Ha most kilépsz, az elveszhet. Várj egy kicsit, majd próbáld újra.", ok))
         }
     }
 
     static func mentetlenSorok(_ l: [KilepesJelentes.Mentetlen]) -> String {
         var sorok = l.prefix(8).map { "• \($0.ut)" + ($0.hiba.map { " — \($0)" } ?? "") }
-        if l.count > 8 { sorok.append("• …és \(l.count - 8) további") }
+        if l.count > 8 { sorok.append(L("• …és %d további", l.count - 8)) }
         return sorok.joined(separator: "\n")
     }
 
@@ -107,13 +105,12 @@ enum Eletciklus {
 
     /// Az „A core leállt” üzenet törzse: mi történt, a stderr vége, a mentetlen jegyzetek, és mi a teendő.
     static func coreHalalSzoveg(farok: String, mentetlen: [MentetlenSzoveg]) -> String {
-        var s = "A háttérfolyamat (a core) váratlanul leállt. Az Újraindítás ugyanazon a porton indítja újra, így az ablak és a "
-            + "benne lévő szöveg megmarad, a szerkesztő magától újra próbálja a mentést."
+        var s = L("A háttérfolyamat (a core) váratlanul leállt. Az Újraindítás ugyanazon a porton indítja újra, így az ablak és a benne lévő szöveg megmarad, a szerkesztő magától újra próbálja a mentést.")
         if !mentetlen.isEmpty {
-            s += "\n\nMentetlen jegyzet (a szerkesztőben a szöveg megvan):\n"
+            s += "\n\n" + L("Mentetlen jegyzet (a szerkesztőben a szöveg megvan):") + "\n"
                 + mentetlenSorok(mentetlen.map { KilepesJelentes.Mentetlen(ut: $0.ut, hiba: $0.hiba) })
         }
-        s += farok.isEmpty ? "\n\nA core nem írt hibaüzenetet." : "\n\nA core utolsó sorai:\n" + farok
+        s += farok.isEmpty ? "\n\n" + L("A core nem írt hibaüzenetet.") : "\n\n" + L("A core utolsó sorai:") + "\n" + farok
         return s
     }
 

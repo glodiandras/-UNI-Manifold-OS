@@ -132,15 +132,15 @@ class KesoiIndulasiUzenetTest(unittest.TestCase):
 
     def test_van_kapcsolat_esemeny_megy(self):
         kezdeti, hello_nak, esemenyek = self._fut(van_ws=True)
-        self.assertTrue(any("kimaradt" in u for u in kezdeti))
+        self.assertTrue(any("waiting" in u for u in kezdeti))
         self.assertEqual(len(esemenyek), 1, esemenyek)
-        self.assertTrue(any("visszaállt" in u for u in esemenyek[0]["uzenetek"]), esemenyek)
-        self.assertFalse(any("visszaállt" in u for u in hello_nak), "nem kerülhet a következő hello-ba is (dupla üzenet)")
+        self.assertTrue(any("was restored" in u for u in esemenyek[0]["uzenetek"]), esemenyek)
+        self.assertFalse(any("was restored" in u for u in hello_nak), "nem kerülhet a következő hello-ba is (dupla üzenet)")
 
     def test_nincs_kapcsolat_a_hello_nak_marad(self):
         kezdeti, hello_nak, esemenyek = self._fut(van_ws=False)
         self.assertEqual(esemenyek, [])
-        self.assertTrue(any("visszaállt" in u for u in hello_nak), hello_nak)
+        self.assertTrue(any("was restored" in u for u in hello_nak), hello_nak)
 
 
 if __name__ == "__main__":

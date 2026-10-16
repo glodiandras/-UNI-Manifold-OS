@@ -3,6 +3,7 @@
   a legutóbbiak előnyt kapnak), a választás nem nyit meg, hanem visszaadja az utat.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Kiemelt from '../atfedes/Kiemelt.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { fajlIkon } from '../lib/ikon/fajlIkon';
@@ -37,16 +38,16 @@
     });
   });
 
-  const ures = $derived(lekerdezes.trim() ? `Nincs találat erre: „${lekerdezes.trim()}”` : 'A vault üres.');
+  const ures = $derived(lekerdezes.trim() ? t('Nincs találat erre: „{kif}”', { kif: lekerdezes.trim() }) : t('A vault üres.'));
 </script>
 
-<Atfedes cimke="Jegyzet vagy fájl a canvasra" nev="canvas-fajl" {onbezar}>
+<Atfedes cimke={t('Jegyzet vagy fájl a canvasra')} nev="canvas-fajl" {onbezar}>
   <ListaValaszto
     elemek={talalatok}
     kulcs={(t) => t.ertek.ut}
     bind:lekerdezes
-    helyorzo="Jegyzet vagy fájl keresése…"
-    cimke="Jegyzet vagy fájl keresése"
+    helyorzo={t('Jegyzet vagy fájl keresése…')}
+    cimke={t('Jegyzet vagy fájl keresése')}
     {ures}
     onvalaszt={(t) => onvalaszt(t.ertek.ut)}
     {onbezar}
@@ -57,9 +58,9 @@
       <span class="ut">{mappa(t.ertek.ut)}</span>
     {/snippet}
     {#snippet lablec()}
-      <span><kbd>↑↓</kbd> választás</span>
-      <span><kbd>↩</kbd> a canvasra</span>
-      <span><kbd>esc</kbd> bezárás</span>
+      <span><kbd>↑↓</kbd> {t('választás')}</span>
+      <span><kbd>↩</kbd> {t('a canvasra')}</span>
+      <span><kbd>esc</kbd> {t('bezárás')}</span>
     {/snippet}
   </ListaValaszto>
 </Atfedes>

@@ -8,7 +8,8 @@ import { ertesitesek } from '../src/lib/ertesites/ertesites.svelte';
 import { Regiszter } from '../src/lib/parancsok/regiszter';
 import { Feladatsor } from '../src/lib/vezerlo/feladatsor.svelte';
 import { VezerloKapcsolok } from '../src/lib/vezerlo/kapcsolok.svelte';
-import { allapotCimke, gb, haladasSzoveg, idoRovid, idotartam, mb, utReszei } from '../src/lib/vezerlo/megjelenites';
+import { allapotCimke, feladatHiba, feladatSzoveg, gb, haladasSzoveg, idoRovid, idotartam, mb, utReszei } from '../src/lib/vezerlo/megjelenites';
+import { nyelv } from '../src/lib/i18n';
 import { FRISSITES_MS, RendszerAllapot } from '../src/lib/vezerlo/rendszer.svelte';
 import type { Feladat } from '../src/lib/vezerlo/tipusok';
 import { feladatVege, vezerloTelepit } from '../src/vezerlo';
@@ -61,6 +62,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  nyelv.beallit('hu');
 });
 
 describe('a feladatsor élő listája', () => {
@@ -120,6 +122,17 @@ describe('a feladatsor élő listája', () => {
 });
 
 describe('a feladat végének értesítése', () => {
+  it('a feladathiba kódja angolul jelenik meg; a dinamikus cím suffixe érintetlen', () => {
+    nyelv.beallit('en');
+    const f = feladat('F-en', {
+      allapot: 'hiba', cim: 'note|draft', hiba: 'magyar tartalék', kod: 'feladat.idotullepes', param: { mp: 30 },
+    });
+    expect(feladatHiba(f)).toBe('The task exceeded its maximum run time (30 s) and was stopped.');
+    feladatVege(f, new Felulet());
+    expect(ertesitesek.elozmeny[0].cim).toBe('Error: note|draft');
+    expect(ertesitesek.elozmeny[0].szoveg).toBe('The task exceeded its maximum run time (30 s) and was stopped.');
+  });
+
   it('állapotonként más szint; a „Részletek” a lapot a feladatra nyitja', () => {
     const felulet = new Felulet();
     feladatVege(feladat('F-1', { allapot: 'kesz', cim: 'Mentés' }), felulet);
@@ -230,6 +243,13 @@ describe('a rendszerállapot időzítése', () => {
 });
 
 describe('megjelenítési segédek', () => {
+  it('a core állandó feladatszövege fordítódik, az ismeretlen dinamikus szöveg érintetlen', () => {
+    nyelv.beallit('en');
+    expect(feladatSzoveg('Füzetfotók bekötése')).toBe('Link notebook photos');
+    expect(feladatSzoveg('Videók letöltése')).toBe('Download videos');
+    expect(feladatSzoveg('note|draft')).toBe('note|draft');
+  });
+
   it('feliratok, haladás, idő, méret, út', () => {
     expect(allapotCimke('megszakadt')).toBe('Megszakadt');
     expect(haladasSzoveg(feladat('a', { allapot: 'fut', szazalek: 40.4, lepes_i: 1 }))).toBe('2/2. lépés · 40 %');

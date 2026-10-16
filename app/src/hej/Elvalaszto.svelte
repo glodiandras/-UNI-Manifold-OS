@@ -1,5 +1,6 @@
 <!-- Osztás-elválasztó két panel között: húzás és ←→ / ↑↓ (5 %); role="separator". -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   let {
     irany,
     arany,
@@ -39,7 +40,7 @@
   class:huz
   role="separator"
   aria-orientation={irany === 'sor' ? 'vertical' : 'horizontal'}
-  aria-label="Panelek közötti elválasztó"
+  aria-label={t('Panelek közötti elválasztó')}
   aria-valuenow={Math.round(arany * 100)}
   aria-valuemin={15}
   aria-valuemax={85}

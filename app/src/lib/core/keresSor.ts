@@ -3,6 +3,7 @@
 // beágyazás-kérést indított egyszerre, és a szerkesztő mentése mögéjük sorolt. A megszakított (`jel`) várakozó kérés
 // nem indul el, és helyet sem foglal.
 
+import { t } from '../i18n';
 export class KeresSor {
   private fut = 0;
   private readonly varakozo: Array<() => void> = [];
@@ -23,7 +24,7 @@ export class KeresSor {
     return new Promise<T>((ok, nem) => {
       const indit = () => {
         if (jel?.aborted) {
-          nem(new DOMException('megszakítva', 'AbortError'));
+          nem(new DOMException(t('megszakítva'), 'AbortError'));
           this.kovetkezo();
           return;
         }
@@ -49,7 +50,7 @@ export class KeresSor {
             const i = this.varakozo.indexOf(indit);
             if (i >= 0) {
               this.varakozo.splice(i, 1);
-              nem(new DOMException('megszakítva', 'AbortError'));
+              nem(new DOMException(t('megszakítva'), 'AbortError'));
             }
           },
           { once: true },

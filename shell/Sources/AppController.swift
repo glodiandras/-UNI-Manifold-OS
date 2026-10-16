@@ -17,7 +17,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     static let ablakCim: String = {
 #if MOS_DEVELOPER
         let jel = ProcessInfo.processInfo.environment["MOS_PROBA_JELZES"] ?? ""
-        return jel.isEmpty ? "Manifold" : "PRÓBA — Manifold (\(jel))"
+        return jel.isEmpty ? "Manifold" : L("PRÓBA — Manifold (%@)", jel)
 #else
         return "Manifold"
 #endif
@@ -92,10 +92,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         }
 #endif
         if !selftest { _ = ertesitesKozpont }               // a kattintás-kezelő már indításkor él (E10)
+        NSSpellChecker.shared.automaticallyIdentifiesLanguages = true
         buildMenu()
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()      // nincs ~/Library/Caches és WebKit-tár
         config.userContentController.add(UzenetTovabbito(self), name: "manifold")
+        config.userContentController.addScriptMessageHandler(NyelvUzenetKezelo(origin: { [weak self] in self?.origin }),
+                                                             contentWorld: .page, name: "nyelv")
         webView = ManifoldWebView(frame: NSRect(x: 0, y: 0, width: 1240, height: 820), configuration: config)
         webView.onParancs = { [weak self] id in   // a natív helyi menü Manifold-parancsa (C32b): a híd ugyanazt a regisztert futtatja
             guard let js = HelyiMenu.parancsJs(id) else { return }
@@ -113,21 +116,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
         let kornyezet = ProcessInfo.processInfo.environment
         guard let hely = RootLocator.locate(environment: kornyezet, bundle: Bundle.main.bundleURL) else {
-            return fail("A Manifold alkalmazásmappája nem található. A Manifold.app-nak az alkalmazásmappájában kell lennie (bin/mos és config/os.toml mellett). A külső kötet nincs csatlakoztatva?")
+            return fail(L("A Manifold alkalmazásmappája nem található. A Manifold.app-nak az alkalmazásmappájában kell lennie (bin/mos és config/os.toml mellett). A külső kötet nincs csatlakoztatva?"))
         }
         self.gyoker = hely.root
         self.termek = hely.termek
         if hely.termek {
             // F3-DESIGN §2.6: a termék a vaultot a regiszterből kapja (az F5 indítóig az utoljára megnyitott munkatér)
             if Telepites.athelyezett(Bundle.main.bundleURL) {
-                return fail("A Manifold egy ideiglenes, csak olvasható helyről fut (a macOS áthelyezte, mert még a letöltési helyén van). Húzd a Manifoldot az Alkalmazások mappába, majd indítsd onnan.")
+                return fail(L("A Manifold egy ideiglenes, csak olvasható helyről fut (a macOS áthelyezte, mert még a letöltési helyén van). Húzd a Manifoldot az Alkalmazások mappába, majd indítsd onnan."))
             }
             guard let vault = Telepites.termekVault(environment: kornyezet) else {
-                return fail("Még nincs Manifold-munkatér ezen a gépen. Hozz létre egyet egy jegyzetmappából: mos workspace letrehoz <mappa>.")
+                return fail(L("Még nincs Manifold-munkatér ezen a gépen. Hozz létre egyet egy jegyzetmappából: mos workspace letrehoz <mappa>."))
             }
             var mappa: ObjCBool = false
             guard FileManager.default.fileExists(atPath: vault, isDirectory: &mappa), mappa.boolValue else {
-                return fail("A munkatér mappája nem érhető el: \(vault). Csatlakoztatva van a kötet?")
+                return fail(L("A munkatér mappája nem érhető el: %@. Csatlakoztatva van a kötet?", vault))
             }
             inditottVault = vault
         }
@@ -158,11 +161,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                     if let v = k.vault { self.figyeltVault = v }
                     self.coreElindult(port: k.port, titok: k.titok)
                 case .failure(.failed(let msg)):
-                    if self.coreHalalFolyamatban { self.ujraindulasHiba("A core nem indult el újra.\n\n\(msg)") }
-                    else { self.fail("A core nem indult el.\n\n\(msg)") }
+                    if self.coreHalalFolyamatban { self.ujraindulasHiba(L("A core nem indult el újra.\n\n%@", msg)) }
+                    else { self.fail(L("A core nem indult el.\n\n%@", msg)) }
                 case .failure(.konfig(let kod, let uzenet)):
                     let szoveg = CoreProcess.konfigSzoveg(kod: kod, uzenet: uzenet)
-                    if self.coreHalalFolyamatban { self.ujraindulasHiba("A core nem indult el újra.\n\n\(szoveg)") }
+                    if self.coreHalalFolyamatban { self.ujraindulasHiba(L("A core nem indult el újra.\n\n%@", szoveg)) }
                     else { self.fail(szoveg) }
                 case .failure(.foglalt(let pid, let vault)):
                     self.masikPeldany(pid: pid, vault: vault)
@@ -174,7 +177,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func coreElindult(port p: Int, titok ujTitok: String?) {
         guard Eletciklus.titokJs(ujTitok) != nil else {
-            return fail("A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el.")
+            return fail(L("A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el."))
         }
         let ujOrigin = "http://127.0.0.1:\(p)"
         let ujraindulas = coreHalalFolyamatban
@@ -186,19 +189,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         if ujraindulas, p == port, ujTitok == titok {
             // ugyanazon a porton és titokkal indult újra: a lap és a benne lévő mentetlen szöveg megmarad, a WS magától újracsatlakozik
             kesobbiUzenet = nil
-            webView.evaluateJavaScript(uzenetJs(szint: "info", cim: "A core újraindult",
-                                                szoveg: "A szerkesztő újra próbálja a mentést; ha valami nem mentődött, jelezni fog."), completionHandler: nil)
+            webView.evaluateJavaScript(uzenetJs(szint: "info", cim: L("A core újraindult"),
+                                                szoveg: L("A szerkesztő újra próbálja a mentést; ha valami nem mentődött, jelezni fog.")), completionHandler: nil)
             return
         }
         if ujraindulas, !ujraindulasMentetlen.isEmpty {
             // új porton indult: az új origin a lapot újratölti, a mentetlen szöveg elveszne → előbb a vágólapra
             vagolapra(Eletciklus.masolatSzoveg(ujraindulasMentetlen))
-            kesobbiUzenet = ("figyelmeztetes", "A core új porton indult újra",
-                             "A lap újratöltődött. A mentetlen szöveg a vágólapon van (\(ujraindulasMentetlen.count) jegyzet).")
+            kesobbiUzenet = ("figyelmeztetes", L("A core új porton indult újra"),
+                             L("A lap újratöltődött. A mentetlen szöveg a vágólapon van (%d jegyzet).", ujraindulasMentetlen.count))
         } else if ujraindulas {
             // mentetlen szöveg nélkül is szól (nem modális, a lap értesítése a `kesz` után): a lap ne töltődjön újra szó nélkül
-            kesobbiUzenet = ("info", "A core új porton indult újra",
-                             "A lap újratöltődött. Mentetlen jegyzetet a felület nem jelzett; a nyitott fülek a mentett állapotból töltődtek be.")
+            kesobbiUzenet = ("info", L("A core új porton indult újra"),
+                             L("A lap újratöltődött. Mentetlen jegyzetet a felület nem jelzett; a nyitott fülek a mentett állapotból töltődtek be."))
         }
         ujraindulasMentetlen = []
         port = p
@@ -367,38 +370,38 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         let main = NSMenu()
         let appItem = NSMenuItem(); main.addItem(appItem)
         let appMenu = NSMenu(); appItem.submenu = appMenu
-        appMenu.addItem(withTitle: "A Manifold névjegye", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: L("A Manifold névjegye"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Manifold elrejtése", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        let tobbiElrejt = appMenu.addItem(withTitle: "Többi elrejtése", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: L("Manifold elrejtése"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let tobbiElrejt = appMenu.addItem(withTitle: L("Többi elrejtése"), action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         tobbiElrejt.keyEquivalentModifierMask = [.command, .option]
-        appMenu.addItem(withTitle: "Összes megjelenítése", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: L("Összes megjelenítése"), action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Kilépés", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: L("Kilépés"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         let editItem = NSMenuItem(); main.addItem(editItem)
-        let edit = NSMenu(title: "Szerkesztés"); editItem.submenu = edit
+        let edit = NSMenu(title: L("Szerkesztés")); editItem.submenu = edit
         // Visszavonás / Újra (`undo:`/`redo:` a first responderre): a WKWebView a gyorsbillentyűt ELŐBB a lapnak adja — a CodeMirror
         // saját ⌘Z-je ott lefut és `preventDefault`-ot hív, ilyenkor a menüpont nem fut; ha mégis eljut a WebKithez (pl. üres
         // előzmény), a lap `beforeinput` `historyUndo` eseményt kap, amelyet a CodeMirror a saját előzményére köt — nincs
         // kettőzés. A sima `input`/`textarea` mezők (paletta, Bevitel, tulajdonságok) ⌘Z-je e menüpont nélkül nem működne.
-        edit.addItem(withTitle: "Visszavonás", action: Selector(("undo:")), keyEquivalent: "z")
-        let ujra = edit.addItem(withTitle: "Újra", action: Selector(("redo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: L("Visszavonás"), action: Selector(("undo:")), keyEquivalent: "z")
+        let ujra = edit.addItem(withTitle: L("Újra"), action: Selector(("redo:")), keyEquivalent: "z")
         ujra.keyEquivalentModifierMask = [.command, .shift]
         edit.addItem(.separator())
-        edit.addItem(withTitle: "Kivágás", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "Másolás", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "Beillesztés", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "Összes kijelölése", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: L("Kivágás"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: L("Másolás"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: L("Beillesztés"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: L("Összes kijelölése"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         // Nézet: a felület parancsregiszterének néhány parancsa (gyorsbillentyű nélkül: azt a felület kezeli,
         // így a ⌘P/⌘O/⇧⌘M egy helyen él; a menü a felfedezhetőségé).
         let viewItem = NSMenuItem(); main.addItem(viewItem)
-        let view = NSMenu(title: "Nézet"); viewItem.submenu = view
-        for (cim, id) in [("Parancspaletta", "hej.paletta"), ("Fájl megnyitása", "hej.valto"),
-                          ("Manifold áttekintő", "manifold.vezerlo"), ("-", ""),
-                          ("Oldalsáv", "hej.oldalsav"), ("Jobb panel", "hej.jobb-panel"),
-                          ("Állapotsor", "hej.allapotsor"), ("Csend mód be/ki", "hej.csend"), ("-", ""),
-                          ("Téma: a rendszer szerint", "tema.rendszer"), ("Téma: világos", "tema.vilagos"),
-                          ("Téma: sötét", "tema.sotet")] {
+        let view = NSMenu(title: L("Nézet")); viewItem.submenu = view
+        for (cim, id) in [(L("Parancspaletta"), "hej.paletta"), (L("Fájl megnyitása"), "hej.valto"),
+                          (L("Manifold áttekintő"), "manifold.vezerlo"), ("-", ""),
+                          (L("Oldalsáv"), "hej.oldalsav"), (L("Jobb panel"), "hej.jobb-panel"),
+                          (L("Állapotsor"), "hej.allapotsor"), (L("Csend mód be/ki"), "hej.csend"), ("-", ""),
+                          (L("Téma: a rendszer szerint"), "tema.rendszer"), (L("Téma: világos"), "tema.vilagos"),
+                          (L("Téma: sötét"), "tema.sotet")] {
             if cim == "-" { view.addItem(.separator()); continue }
             let item = NSMenuItem(title: cim, action: #selector(parancs(_:)), keyEquivalent: "")
             item.representedObject = id
@@ -409,13 +412,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         // tölti (`windowsMenu`). A ⌘W szándékosan nincs itt: a lap a fül bezárására használja, a menüpont az ablakot (és
         // az utolsó ablakkal az appot) zárná be.
         let ablakItem = NSMenuItem(); main.addItem(ablakItem)
-        let ablak = NSMenu(title: "Ablak"); ablakItem.submenu = ablak
-        ablak.addItem(withTitle: "Kicsinyítés", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
-        ablak.addItem(withTitle: "Nagyítás", action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
-        let teljes = ablak.addItem(withTitle: "Teljes képernyő", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
+        let ablak = NSMenu(title: L("Ablak")); ablakItem.submenu = ablak
+        ablak.addItem(withTitle: L("Kicsinyítés"), action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
+        ablak.addItem(withTitle: L("Nagyítás"), action: #selector(NSWindow.performZoom(_:)), keyEquivalent: "")
+        let teljes = ablak.addItem(withTitle: L("Teljes képernyő"), action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
         teljes.keyEquivalentModifierMask = [.command, .control]
         ablak.addItem(.separator())
-        ablak.addItem(withTitle: "Hozd előre mind", action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
+        ablak.addItem(withTitle: L("Hozd előre mind"), action: #selector(NSApplication.arrangeInFront(_:)), keyEquivalent: "")
         NSApp.mainMenu = main
         NSApp.windowsMenu = ablak
     }
@@ -427,14 +430,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     /// Másik core fut ugyanezen a vaulton (T027): üzenet, **ablak nélkül**, és kilépés — második ablakot nem indítunk.
     private func masikPeldany(pid: Int?, vault: String?) {
-        let uzenet = "Ugyanezen a vaulton már fut egy Manifold" + (pid.map { " (a core pid-je: \($0))" } ?? "")
-            + (vault.map { " — \($0)" } ?? "") + ". Zárd be a másik Manifold-ablakot, és indítsd újra."
+        let uzenet = L("Ugyanezen a vaulton már fut egy Manifold") + (pid.map { " " + L("(a core pid-je: %d)", $0) } ?? "")
+            + (vault.map { " — \($0)" } ?? "") + L(". Zárd be a másik Manifold-ablakot, és indítsd újra.")
         if selftest { return finishSelftest(ok: false, note: uzenet) }
         window?.orderOut(nil)                            // a töltésjelzős ablak se maradjon a háttérben (az üzenet ablak nélküli)
         let alert = NSAlert()
-        alert.messageText = "A Manifold már fut"
+        alert.messageText = L("A Manifold már fut")
         alert.informativeText = uzenet
-        alert.addButton(withTitle: "Kilépés")
+        alert.addButton(withTitle: L("Kilépés"))
         alert.runModal()
         NSApp.terminate(nil)
     }
@@ -457,9 +460,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         if selftest { return finishSelftest(ok: false, note: message) }
         ablakElotor()
         let alert = NSAlert()
-        alert.messageText = "A Manifold nem indul"
+        alert.messageText = L("A Manifold nem indul")
         alert.informativeText = message
-        alert.addButton(withTitle: "Kilépés")
+        alert.addButton(withTitle: L("Kilépés"))
         alert.runModal()
         core?.terminateNow()
         NSApp.terminate(nil)
@@ -479,16 +482,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private func kezfogasLejart(mp: TimeInterval) {
         kezfogasMunka = nil
         let farok = Eletciklus.farok(core?.stderrSzoveg() ?? "")
-        let szoveg = "A core \(Int(mp.rounded(.up))) másodperce nem jelentkezett (nagy vaultnál vagy lassú lemeznél az indulás tovább tarthat)."
-            + (farok.isEmpty ? "\n\nA core nem írt hibaüzenetet." : "\n\nA core utolsó sorai:\n" + farok)
+        let szoveg = L("A core %d másodperce nem jelentkezett (nagy vaultnál vagy lassú lemeznél az indulás tovább tarthat).", Int(mp.rounded(.up)))
+            + (farok.isEmpty ? "\n\n" + L("A core nem írt hibaüzenetet.") : "\n\n" + L("A core utolsó sorai:") + "\n" + farok)
         if selftest { return finishSelftest(ok: forgatokonyv == "kezfogas-ido", note: "A core nem válaszol: " + szoveg, kill: true) }
         ablakElotor()
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "A core nem válaszol"
+        alert.messageText = L("A core nem válaszol")
         alert.informativeText = szoveg
-        alert.addButton(withTitle: "Várok")
-        alert.addButton(withTitle: "Kilépés")
+        alert.addButton(withTitle: L("Várok"))
+        alert.addButton(withTitle: L("Kilépés"))
         if alert.runModal() == .alertFirstButtonReturn {
             kezfogasVarakozas()
         } else {
@@ -538,11 +541,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         ablakElotor()
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "A lap nem töltődött be"
-        alert.informativeText = "A felület betöltése megszakadt (\(ok)). A core fut; az Újratöltés újra kéri a lapot. "
-            + "Ha a hiba ismétlődik, lépj ki, és indítsd újra a Manifoldot."
-        alert.addButton(withTitle: "Újratöltés")
-        alert.addButton(withTitle: "Kilépés")
+        alert.messageText = L("A lap nem töltődött be")
+        alert.informativeText = L("A felület betöltése megszakadt (%@). A core fut; az Újratöltés újra kéri a lapot. Ha a hiba ismétlődik, lépj ki, és indítsd újra a Manifoldot.", ok)
+        alert.addButton(withTitle: L("Újratöltés"))
+        alert.addButton(withTitle: L("Kilépés"))
         if alert.runModal() == .alertFirstButtonReturn {
             webView.load(URLRequest(url: url))
         } else {
@@ -559,18 +561,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         if selftest { return finishSelftest(ok: false, note: "a WebContent-folyamat meghalt") }
         switch d.lepes {
         case .ujratolt:
-            kesobbiUzenet = ("figyelmeztetes", "A felület újratöltődött",
-                             "A felület folyamata váratlanul leállt. A mentetlen szöveg elveszhetett; a mentés a szerkesztés közben folyamatos.")
+            kesobbiUzenet = ("figyelmeztetes", L("A felület újratöltődött"),
+                             L("A felület folyamata váratlanul leállt. A mentetlen szöveg elveszhetett; a mentés a szerkesztés közben folyamatos."))
             webView.reload()
         case .feladja:
             ablakElotor()
             let alert = NSAlert()
             alert.alertStyle = .critical
-            alert.messageText = "A felület többször leállt"
-            alert.informativeText = "A felület folyamata rövid időn belül többször összeomlott, ezért nem töltöm újra magától. "
-                + "A core és a mentett jegyzetek épek. Újratöltés után folytathatod, vagy kilépsz."
-            alert.addButton(withTitle: "Újratöltés")
-            alert.addButton(withTitle: "Kilépés")
+            alert.messageText = L("A felület többször leállt")
+            alert.informativeText = L("A felület folyamata rövid időn belül többször összeomlott, ezért nem töltöm újra magától. A core és a mentett jegyzetek épek. Újratöltés után folytathatod, vagy kilépsz.")
+            alert.addButton(withTitle: L("Újratöltés"))
+            alert.addButton(withTitle: L("Kilépés"))
             if alert.runModal() == .alertFirstButtonReturn {
                 webContentHalalok = []
                 webView.reload()
@@ -594,13 +595,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         quitRequests += 1
         if quitRequests > 1 { core.terminateNow(); return .terminateNow }   // második ⌘Q: kényszerítés
         let cim = window?.title ?? "Manifold"
-        window?.title = AppController.ablakCim + " — mentés a kilépés előtt…"
+        window?.title = AppController.ablakCim + " — " + L("mentés a kilépés előtt…")
         var eldontve = false
         let dont = { [weak self] (jelentes: Any?, hiba: String?, idotullepes: Bool) in
             guard let self, !eldontve else { return }
             eldontve = true
             var j = Eletciklus.ertelmez(jelentes, hiba: hiba)
-            if idotullepes { j = .nincsValasz("a mentés nem fejeződött be \(Int(self.mentesKorlat)) másodperc alatt") }
+            if idotullepes { j = .nincsValasz(L("a mentés nem fejeződött be %d másodperc alatt", Int(self.mentesKorlat))) }
             if let kerdes = Eletciklus.kilepesKerdes(j, idotullepes: idotullepes), !self.kilepesMentesNelkul(kerdes) {
                 self.quitRequests = 0
                 self.window?.title = cim
@@ -608,15 +609,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 NSApp.reply(toApplicationShouldTerminate: false)
                 return
             }
-            self.window?.title = AppController.ablakCim + " — leállítás a futó feladat végén…"
-            self.leallAllapot("Leállítás a futó feladat végén…")
+            self.window?.title = AppController.ablakCim + " — " + L("leállítás a futó feladat végén…")
+            self.leallAllapot(L("Leállítás a futó feladat végén…"))
             self.core?.requestStop()
         }
         webView.callAsyncJavaScript("return await window.manifold?.mentes?.() ?? null", arguments: [:], in: nil,
                                     in: .page) { eredmeny in
             switch eredmeny {
             case .success(let v): dont(v, nil, false)
-            case .failure(let e): dont(nil, "a felület hibát jelzett: \(e.localizedDescription)", false)
+            case .failure(let e): dont(nil, L("a felület hibát jelzett: %@", e.localizedDescription), false)
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + mentesKorlat) { dont(nil, nil, true) }
@@ -633,8 +634,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         alert.alertStyle = .warning
         alert.messageText = kerdes.cim
         alert.informativeText = kerdes.szoveg
-        alert.addButton(withTitle: "Vissza a szerkesztéshez")
-        alert.addButton(withTitle: "Kilépés mentés nélkül")
+        alert.addButton(withTitle: L("Vissza a szerkesztéshez"))
+        alert.addButton(withTitle: L("Kilépés mentés nélkül"))
         ablakElotor()
         return alert.runModal() == .alertSecondButtonReturn
     }
@@ -675,11 +676,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private func coreHalalKerdes(farok: String, mentetlen: [Eletciklus.MentetlenSzoveg]) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "A core leállt"
+        alert.messageText = L("A core leállt")
         alert.informativeText = Eletciklus.coreHalalSzoveg(farok: farok, mentetlen: mentetlen)
-        alert.addButton(withTitle: "Újraindítás")
-        if !mentetlen.isEmpty { alert.addButton(withTitle: "Mentetlen szöveg másolása") }
-        alert.addButton(withTitle: "Kilépés")
+        alert.addButton(withTitle: L("Újraindítás"))
+        if !mentetlen.isEmpty { alert.addButton(withTitle: L("Mentetlen szöveg másolása")) }
+        alert.addButton(withTitle: L("Kilépés"))
         ablakElotor()
         let valasz = alert.runModal()
         if valasz == .alertFirstButtonReturn {
@@ -705,9 +706,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private func ujraindulasHiba(_ uzenet: String) {
         let alert = NSAlert()
         alert.alertStyle = .critical
-        alert.messageText = "Az újraindítás nem sikerült"
+        alert.messageText = L("Az újraindítás nem sikerült")
         alert.informativeText = uzenet
-        alert.addButton(withTitle: "Vissza")
+        alert.addButton(withTitle: L("Vissza"))
         ablakElotor()
         alert.runModal()
         coreHalalKerdes(farok: Eletciklus.farok(core?.stderrSzoveg() ?? uzenet), mentetlen: ujraindulasMentetlen)
@@ -838,7 +839,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 /// A töltésjelző (T123): az ablak azonnal megjelenik, amíg a core indul és a felület betöltődik — nem üres, fehér lap.
 private final class ToltesJelzo: NSView {
     private let jelzo = NSProgressIndicator()
-    private let felirat = NSTextField(labelWithString: "A Manifold indul…")
+    private let felirat = NSTextField(labelWithString: L("A Manifold indul…"))
 
     override init(frame: NSRect) {
         super.init(frame: frame)

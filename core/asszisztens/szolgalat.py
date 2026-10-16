@@ -170,10 +170,10 @@ class HigieniaSzolgalat:
         """A teljes riport a gyorsítótárból (`GET /api/higienia` `ut` nélkül; A3-25): soron belül nem számol, és a kapcsolót
         követi. Nincs kész riport vagy kikapcsolt Asszisztens: 409."""
         if not self.kapcsolo():
-            raise HttpError(409, "az Asszisztens ki van kapcsolva")
+            raise HttpError(409, "az Asszisztens ki van kapcsolva", kod="asszisztens.szolgalat.kikapcsolva")
         r = self.riport
         if r is None:
-            raise HttpError(409, "a higiénia-riport még nincs kész")
+            raise HttpError(409, "a higiénia-riport még nincs kész", kod="asszisztens.szolgalat.riport_nincs_kesz")
         return r
 
     def ma(self) -> dict:
@@ -185,7 +185,7 @@ class HigieniaSzolgalat:
         """Az „új” nullázása: az aktuális riport azonosítói „látva” lesznek."""
         r = self.riport
         if r is None:
-            raise HttpError(409, "még nincs kész riport")
+            raise HttpError(409, "még nincs kész riport", kod="asszisztens.szolgalat.nincs_riport")
         ids = sorted(t["azonosito"] for t in r["tetelek"])
         self.allapot.modosit(lambda d: d.update(higienia_latva=ids))
         with self._allj:

@@ -35,6 +35,7 @@ from types import SimpleNamespace
 from . import kiserok, rejtett
 from .utvonalak import HttpError
 from .vaultio import Invalid, nfc, norm_path
+from .hibakod import kodol
 
 MS_MAX = 3_600_000
 LIMIT_MAX = 500
@@ -219,7 +220,7 @@ class KartyaApi:
         try:
             limit = int(q.get("limit", 200))
         except (TypeError, ValueError):
-            raise Invalid("a `limit` egész szám") from None
+            raise kodol(Invalid("a `limit` egész szám"), "kartya_api.limit_egesz_szam") from None
         limit = max(1, min(LIMIT_MAX, limit))
         most = m.szinkron.most_utc()
         gy: dict = {}
@@ -239,12 +240,12 @@ class KartyaApi:
         m = _m()
         ut = q.get("ut")
         if not isinstance(ut, str) or not ut.strip():
-            raise Invalid("hiányzik az `ut`")
+            raise kodol(Invalid("hiányzik az `ut`"), "kartya_api.hianyzik_ut")
         rp = norm_path(ut)
         if not rp.lower().endswith(".md"):
             rp += ".md"
         if not nfc(rp).startswith(mappa(self.cfg) + "/"):
-            raise Invalid(f"kártyapakli csak a „{mappa(self.cfg)}” mappából tölthető: {rp}")
+            raise kodol(Invalid(f"kártyapakli csak a „{mappa(self.cfg)}” mappából tölthető: {rp}"), "kartya_api.kartyapakli_csak_mappa_mappabol_toltheto", {"mappa": mappa(self.cfg), "rp": rp})
         f = self.app.vault.read(rp)
         rp = f["ut"]
         e = m.formatum.elemez(f["tartalom"])
@@ -291,18 +292,18 @@ class KartyaApi:
         m = _m()
         azon, jegy, ms = d.get("azon"), d.get("jegy"), d.get("ms")
         if not isinstance(azon, str) or not m.formatum.AZON_RE.fullmatch(azon):
-            raise Invalid("az `azon` egy kártya-azonosító (c-…)")
+            raise kodol(Invalid("az `azon` egy kártya-azonosító (c-…)"), "kartya_api.azon_kartya_azonosito_c")
         if isinstance(jegy, bool) or not isinstance(jegy, int) or not 1 <= jegy <= 4:
-            raise Invalid("a `jegy` 1–4 (Again, Hard, Good, Easy)")
+            raise kodol(Invalid("a `jegy` 1–4 (Again, Hard, Good, Easy)"), "kartya_api.jegy_1_4_again_hard")
         if ms is not None and (isinstance(ms, bool) or not isinstance(ms, int) or ms < 0):
-            raise Invalid("az `ms` nem negatív egész")
+            raise kodol(Invalid("az `ms` nem negatív egész"), "kartya_api.ms_negativ_egesz")
         ms = None if ms is None else min(ms, MS_MAX)
         try:
             uj = m.utemezo.valaszol(self.cfg, azon, jegy, ms)
         except ValueError as e:
             raise Invalid(str(e)) from e
         except (sqlite3.Error, OSError) as e:
-            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}") from e
+            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}", kod="kartya_api.tanulasi_adatbazis", param={"e": e}) from e
         from . import tanulas_db
         with tanulas_db.olvaso(self.cfg) as c:
             r = c.execute("SELECT jegyzet, forras FROM kartya WHERE azon = ?", (azon,)).fetchone() if c is not None else None
@@ -313,11 +314,11 @@ class KartyaApi:
         m = _m()
         azon = d.get("azon")
         if not isinstance(azon, str) or not m.formatum.AZON_RE.fullmatch(azon):
-            raise Invalid("az `azon` egy kártya-azonosító (c-…)")
+            raise kodol(Invalid("az `azon` egy kártya-azonosító (c-…)"), "kartya_api.azon_kartya_azonosito_c")
         try:
             a = m.utemezo.visszavon(self.cfg, azon)
         except (sqlite3.Error, OSError) as e:
-            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}") from e
+            raise HttpError(503, f"a tanulási adatbázis nem érhető el: {e}", kod="kartya_api.tanulasi_adatbazis", param={"e": e}) from e
         return {"ok": True, "visszavonva": a is not None, "allapot": a}
 
     def export(self, d: dict) -> dict:
@@ -326,7 +327,7 @@ class KartyaApi:
         self._szinkron_most()
         utak = d.get("utak")
         if utak is not None and (not isinstance(utak, list) or not all(isinstance(u, str) for u in utak)):
-            raise Invalid("az `utak` kísérőjegyzet-utak listája")
+            raise kodol(Invalid("az `utak` kísérőjegyzet-utak listája"), "kartya_api.utak_kiserojegyzet_utak_listaja")
         el = None
         if utak:
             el = {}
@@ -339,10 +340,10 @@ class KartyaApi:
         if cel is None:
             cel = szem / f"manifold-kartyak-{datetime.now().strftime('%Y%m%d-%H%M%S')}.apkg"
         elif not isinstance(cel, str) or not cel.endswith(".apkg") or not os.path.isabs(cel):
-            raise Invalid("a `cel` egy abszolút `.apkg` út")
+            raise kodol(Invalid("a `cel` egy abszolút `.apkg` út"), "kartya_api.cel_abszolut_apkg_ut")
         cel = Path(cel)
         if vaultban_van(cel, self.cfg.path("vault")):
-            raise Invalid("a csomag nem kerülhet a vaultba")
+            raise kodol(Invalid("a csomag nem kerülhet a vaultba"), "kartya_api.csomag_kerulhet_vaultba")
         from modulok.kartya import __main__ as cli
         media, hiany = cli._media(self.cfg, kartyak)
         b = m.szinkron.beallitas(self.cfg)
@@ -354,14 +355,14 @@ class KartyaApi:
         m = _m()
         fajl, proba = d.get("fajl"), d.get("proba", True)
         if not isinstance(fajl, str) or not os.path.isabs(fajl) or not fajl.lower().endswith((".apkg", ".colpkg")):
-            raise Invalid("a `fajl` egy abszolút `.apkg` út")
+            raise kodol(Invalid("a `fajl` egy abszolút `.apkg` út"), "kartya_api.fajl_abszolut_apkg_ut")
         if not isinstance(proba, bool):
-            raise Invalid("a `proba` igaz vagy hamis")
+            raise kodol(Invalid("a `proba` igaz vagy hamis"), "kartya_api.proba_igaz_hamis")
         from modulok.kartya import __main__ as cli
         try:
             p = m.apkg.beolvas(Path(fajl), cli._lepesszam(self.cfg))
         except (m.apkg.ApkgHiba, OSError) as e:
-            raise Invalid(f"a csomag nem olvasható: {e}") from e
+            raise kodol(Invalid(f"a csomag nem olvasható: {e}"), "kartya_api.csomag_olvashato_e", {"e": e}) from e
         jel = importal_eles(self.app, p, proba, Path(fajl))
         return {"ok": True, "proba": proba, **jel}
 

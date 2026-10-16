@@ -1,5 +1,6 @@
 <!-- Az értesítések munkamenet-előzménye (az állapotsor gombja nyitja); Esc vagy kattintás kívül zárja. -->
 <script lang="ts">
+  import { t, locale } from '../lib/i18n';
   import { onMount } from 'svelte';
   import { fly } from 'svelte/transition';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -8,7 +9,7 @@
 
   let { nyito, onbezar }: { nyito: HTMLElement | undefined; onbezar: () => void } = $props();
   let doboz: HTMLDivElement | undefined = $state();
-  const idoFormatum = new Intl.DateTimeFormat('hu-HU', { hour: '2-digit', minute: '2-digit' });
+  const idoFormatum = $derived(new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit' }));
 
   onMount(() => {
     ertesitesek.olvasva();
@@ -28,7 +29,7 @@
   class="elozmeny"
   id="ertesites-elozmeny"
   role="dialog"
-  aria-label="Értesítések"
+  aria-label={t('Értesítések')}
   tabindex="-1"
   bind:this={doboz}
   transition:fly={{ y: 4, duration: ido('gyors') }}
@@ -40,9 +41,9 @@
   }}
 >
   <header>
-    <h2>Értesítések</h2>
+    <h2>{t('Értesítések')}</h2>
     {#if ertesitesek.elozmeny.length}
-      <button type="button" class="szoveg-gomb" onclick={() => ertesitesek.elozmenyTorles()}>Törlés</button>
+      <button type="button" class="szoveg-gomb" onclick={() => ertesitesek.elozmenyTorles()}>{t('Törlés|elozmeny')}</button>
     {/if}
   </header>
   {#if ertesitesek.elozmeny.length}
@@ -56,7 +57,7 @@
       {/each}
     </ul>
   {:else}
-    <p class="ures">Ebben a munkamenetben még nem jött értesítés.</p>
+    <p class="ures">{t('Ebben a munkamenetben még nem jött értesítés.')}</p>
   {/if}
 </div>
 

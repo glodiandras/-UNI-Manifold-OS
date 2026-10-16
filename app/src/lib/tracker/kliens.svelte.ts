@@ -7,6 +7,7 @@
 // nem dob és nem akaszt.
 
 import { ApiHiba, kerdez } from '../core/api';
+import { t } from '../i18n';
 import { vezerloKapcsolok } from '../vezerlo/kapcsolok.svelte';
 import { Hisztogram, type VedrokKuldes } from './kesleltetes';
 import { maiNap } from './megjelenites';
@@ -196,7 +197,7 @@ export class TrackerKliens {
       const v = await kerdez<{ fogadva?: boolean; hiba?: string; elvetve?: number; okok?: string[] }>('/api/tracker/esemenyek', {
         metodus: 'POST', torzs: k, idokorlat: 5000, keepalive: elhagyas,
       });
-      this.nemFogad = v?.fogadva === false ? (v.hiba ?? 'a core szerint a Tracker ki van kapcsolva') : null;
+      this.nemFogad = v?.fogadva === false ? (v.hiba ?? t('a core szerint a Tracker ki van kapcsolva')) : null;
       if (v?.fogadva && v.elvetve) console.warn(`[tracker] a core ${v.elvetve} elemet kihagyott a kötegből: ${(v.okok ?? []).join('; ')}`);
     } catch (e) {
       if (e instanceof ApiHiba && e.statusz >= 400 && e.statusz < 500) {

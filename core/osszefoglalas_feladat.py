@@ -66,7 +66,7 @@ def _argv(cfg: Config, szint: str, utak: list[str], p: dict, stop: str, automati
         proba = True
     if proba:
         argv.append("--proba")
-        figy.append("Próbamód: az összefoglaló a vault APFS-klónjára kerül, a vaultba nem.")
+        figy.append('Trial mode: the summary is written to an APFS clone of the workspace. The workspace is unchanged.')
     return argv, figy
 
 
@@ -84,8 +84,7 @@ def _terv(cfg: Config, p: dict, stop: str):
         if not tartalmi_ut(ut, kisero_elotag(cfg)):
             raise tasks.Invalid("Összefoglaló csak tartalmi jegyzetből készül (kísérőjegyzetből és rejtett mappából nem).")
         cim = "Összefoglaló a jegyzetből (modell + kapuk)"
-        mit = ("A modell állításokat javasol a jegyzetből, mindegyik mellé a jegyzet szó szerinti mondatával; ami átmegy a kapukon, a "
-               "kísérőjegyzetbe kerül, a forrásba blokkazonosító és beágyazó sor (gépi írás, visszavonható).")
+        mit = ('The model suggests claims supported by exact quotations from the note. Claims that pass the gates go to the companion note, with block IDs and embeds added to the source (machine write, undoable).')
     elif szint == "mappa":
         if not _rel_ok(ut) or ut.lower().endswith(".md") or ut.rstrip("/").split("/")[0].startswith("."):
             raise tasks.Invalid("Az `ut` a vault egy mappájának relatív útja legyen.")
@@ -94,14 +93,12 @@ def _terv(cfg: Config, p: dict, stop: str):
             raise tasks.Invalid("Gépi kísérőjegyzet-mappából nem készül mappa-összefoglaló.")
         ut = ut.rstrip("/")
         cim = "Összefoglaló a mappából (jegyzet-összefoglalókból)"
-        mit = ("A mappa jegyzet-összefoglalóiból (a hiányzókat előbb elkészíti) a modell mappa-szintű állításokat ír; mindegyik az "
-               "eredeti jegyzet mondatára vezethető vissza. A kísérőjegyzet az összefoglaló-mappába kerül (visszavonható).")
+        mit = ('The model combines the folder’s note summaries into claims traceable to the original notes. Missing note summaries are created first. The companion note is written to the summaries folder (undoable).')
     else:
         if not _rel_ok(ut) or not ut.lower().endswith(tuple(k for k, t in mediatipus.MEDIA_TIPUS.items() if t.startswith(("video/", "audio/")))):
             raise tasks.Invalid("Az `ut` a vault egy videó- vagy hangfájljának relatív útja legyen.")
         cim = "Összefoglaló a videóból (az átirat alapján)"
-        mit = ("A médiafájl melletti átirat (VTT) időablakaiból a modell állításokat javasol, időkód-linkekkel; a kísérőjegyzet az "
-               "összefoglaló-mappába kerül (visszavonható).")
+        mit = ('The model suggests claims from the media transcript (VTT), with links to timestamps. The companion note is written to the summaries folder (undoable).')
     argv, figy = _argv(cfg, szint, [ut], p, stop, automatikus=False)
     return [tasks.Step(cim, argv, str(cfg.root))], mit, figy
 
@@ -114,7 +111,7 @@ def _auto_terv(cfg: Config, p: dict, stop: str):
         raise tasks.Invalid(f"Az `utak` 1–{MAX_UT} jegyzet relatív útja legyen.")
     argv, figy = _argv(cfg, "jegyzet", utak, p, stop, automatikus=True)
     return ([tasks.Step("Összefoglalók az új vagy erősen módosult jegyzetekből", argv, str(cfg.root))],
-            f"{len(utak)} jegyzet kap összefoglalót (gépi írás, visszavonható).", figy)
+            f"Create summaries for {len(utak)} notes (machine write, undoable).", figy)
 
 
 def automatikus_szuro(cfg: Config):

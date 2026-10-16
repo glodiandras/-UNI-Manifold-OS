@@ -171,12 +171,12 @@ class Szokasok:
     def dontes(self, azon, dontes) -> dict:
         """A javaslat elfogadása vagy elutasítása: a statisztikába kerül, és a hét többi részében nincs új javaslat."""
         if dontes not in DONTESEK:
-            raise HttpError(400, "a döntés elfogad vagy elutasit lehet")
+            raise HttpError(400, "a döntés elfogad vagy elutasit lehet", kod="asszisztens.szokas.dontes_ertek")
         r = self.allapot.olvas().get("szokas")
         if not isinstance(r, dict) or r.get("azon") != azon:
-            raise HttpError(404, "nincs ilyen javaslat")
+            raise HttpError(404, "nincs ilyen javaslat", kod="asszisztens.szokas.nincs_ilyen_javaslat")
         if r.get("allapot") != "uj":
-            raise HttpError(409, "a javaslatról már döntöttek")
+            raise HttpError(409, "a javaslatról már döntöttek", kod="asszisztens.szokas.mar_dontottek")
         statisztika = self.st.rogzit("szokas", dontes)
         self.allapot.modosit(lambda d: d["szokas"].update(allapot="elfogadva" if dontes == "elfogad" else "elutasitva"))
         return {"ok": True, "statisztika": statisztika}

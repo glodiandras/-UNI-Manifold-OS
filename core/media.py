@@ -23,20 +23,20 @@ def media(k):
     h, app = k.h, k.app
     _, _, token, rel = (k.ut.split("/", 3) + ["", ""])[:4]
     if not hmac.compare_digest(token.encode(), app.media_token.encode()):
-        raise HttpError(403, "érvénytelen média-token")
+        raise HttpError(403, "érvénytelen média-token", kod="media.token_ervenytelen")
     p, tipus = app.vault.media_path(rel)
     if k.q.get("poster") not in (None, ""):     # `?poster=1[&t=mp]`: a videó előnézeti képe (E14); hiba → 404, a felület poszter nélkül marad
         if not tipus.startswith("video/"):
-            raise HttpError(400, "a poszter csak videóhoz kérhető")
+            raise HttpError(400, "a poszter csak videóhoz kérhető", kod="media.poszter_csak_video")
         try:
             t = float(k.q["t"]) if k.q.get("t") not in (None, "") else None
             if t is not None and not math.isfinite(t):
                 raise ValueError(t)
         except ValueError:
-            raise HttpError(400, "hibás t") from None
+            raise HttpError(400, "hibás t", kod="media.t_hibas") from None
         eredmeny = kepek.poszter(app.cfg, p, t)
         if eredmeny is None:
-            raise HttpError(404, "a poszter nem készíthető")
+            raise HttpError(404, "a poszter nem készíthető", kod="media.poszter_nem_keszul")
         fajl_kuld(h, *eredmeny)
         return KESZ
     if k.q.get("w") not in (None, ""):          # `?w=N`: a megjelenített szélességű változat (C11a, M9)
@@ -74,7 +74,7 @@ def fajl_kuld(h, p, tipus: str) -> None:
     if r:
         m = re.fullmatch(r"bytes=(\d*)-(\d*)", r)
         if not m or not (m.group(1) or m.group(2)):
-            raise HttpError(416, "hibás Range")
+            raise HttpError(416, "hibás Range", kod="media.range_hibas")
         if m.group(1):
             kezd = int(m.group(1))
             veg = min(int(m.group(2)), meret - 1) if m.group(2) else meret - 1

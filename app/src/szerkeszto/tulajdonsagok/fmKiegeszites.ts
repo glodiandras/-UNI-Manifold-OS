@@ -11,6 +11,7 @@
 // nem vár a core-ra. A `[[` saját menüje elsőbbséget kap (amíg nyitva van, ez a forrás hallgat). Csak olvasható
 // dokumentumban nincs kiegészítés.
 
+import { t } from '../../lib/i18n';
 import {
   acceptCompletion,
   autocompletion,
@@ -128,7 +129,7 @@ export interface FmKiegeszitesOpciok {
 }
 
 function opcio(e: JavaslatElem, i: number, apply: Completion['apply'], tipus: string): Completion {
-  const reszlet = [e.megjegyzes, e.jelzo].filter(Boolean).join(' · ');
+  const reszlet = [e.megjegyzes ? t(e.megjegyzes) : e.megjegyzes, e.jelzo].filter(Boolean).join(' · ');
   return { label: e.nev, detail: reszlet || undefined, info: e.leiras, apply, type: tipus, boost: 99 - Math.min(i, 198) };
 }
 

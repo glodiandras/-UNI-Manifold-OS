@@ -4,6 +4,7 @@
   állapotában).
 -->
 <script lang="ts">
+  import { t, tk } from '../lib/i18n';
   import { onMount } from 'svelte';
   import { csend, kivul, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
   import { regioFokusz } from '../lib/fokusz/fokusz';
@@ -35,8 +36,8 @@
   }
 
   const NEZETEK = [
-    { id: 'fajlok', nev: 'Fájlok' },
-    { id: 'cimkek', nev: 'Címkék' },
+    { id: 'fajlok', nev: tk('Fájlok') },
+    { id: 'cimkek', nev: tk('Címkék') },
   ] as const;
 
   /** A fülek léptetése nyilakkal (← →): a kijelölt fül kapja a fókuszt. */
@@ -57,14 +58,14 @@
   data-regio-rejtett={rejtett ? '' : undefined}
   data-csend-halvanyul
   data-csend-terulet
-  aria-label="Oldalsáv"
+  aria-label={t('Oldalsáv')}
   inert={rejtett}
   bind:this={nav}
   onfocusout={fokuszKi}
   onkeydown={esc}
 >
   <header class="fejlec">
-    <div class="fulek" role="tablist" aria-label="Az oldalsáv nézetei" tabindex="-1" onkeydown={fulBillentyu}>
+    <div class="fulek" role="tablist" aria-label={t('Az oldalsáv nézetei')} tabindex="-1" onkeydown={fulBillentyu}>
       {#each NEZETEK as n (n.id)}
         <button
           type="button"
@@ -76,13 +77,13 @@
           tabindex={nezet === n.id ? 0 : -1}
           onclick={() => (felulet.oldalsav.nezet = n.id)}
         >
-          {n.nev}
+          {t(n.nev)}
         </button>
       {/each}
     </div>
     <IkonGomb
       ikon={PanelLeft}
-      cimke={atfedes ? 'Oldalsáv rögzítése' : 'Oldalsáv elrejtése'}
+      cimke={atfedes ? t('Oldalsáv rögzítése') : t('Oldalsáv elrejtése')}
       billentyu="Mod+Alt+1"
       data-csend-rejt
       onclick={() => regiszter.futtat('hej.oldalsav', 'gomb')}

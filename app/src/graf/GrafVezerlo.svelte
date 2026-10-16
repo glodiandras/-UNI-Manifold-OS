@@ -4,6 +4,7 @@
   felülírva, a graph.json értékét kapja. A graph.json-ba a 2.0 nem ír vissza.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { Plus, RotateCcw, X } from '../lib/ikon/ikonok';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { EROK_KULCSOK, EROK_TARTOMANY, MAX_LEKERDEZES, MAX_SZINCSOPORT, type ErokKulcs, type GrafEffektiv, type GrafJson } from '../lib/graf/beallitasok';
@@ -48,14 +49,14 @@
   }
 
   const forras = $derived(
-    eff.szincsoportForras === 'graph.json' ? 'Az Obsidian graph.json-ból; a módosítás saját listát indít.' : eff.szincsoportForras === 'sajat' ? 'Saját lista.' : json?.van ? 'A graph.json-ban nincs színcsoport.' : 'Nincs graph.json; a színek a fájltípust követik.',
+    eff.szincsoportForras === 'graph.json' ? t('Az Obsidian graph.json-ból; a módosítás saját listát indít.') : eff.szincsoportForras === 'sajat' ? t('Saját lista.') : json?.van ? t('A graph.json-ban nincs színcsoport.') : t('Nincs graph.json; a színek a fájltípust követik.'),
   );
 </script>
 
-<aside class="vezerlo gorgeto" aria-label="Gráf beállításai">
+<aside class="vezerlo gorgeto" aria-label={t('Gráf beállításai')}>
   <section aria-labelledby="gv-szuro">
-    <h3 id="gv-szuro">Szűrők</h3>
-    <label class="mezo-cimke" for="gv-lek">Lekérdezés</label>
+    <h3 id="gv-szuro">{t('Szűrők')}</h3>
+    <label class="mezo-cimke" for="gv-lek">{t('Lekérdezés')}</label>
     <input
       id="gv-lek"
       class="mezo"
@@ -63,62 +64,62 @@
       spellcheck="false"
       autocomplete="off"
       maxlength={MAX_LEKERDEZES}
-      placeholder="path:mappa  tag:#címke  [kulcs:érték]"
+      placeholder={t('path:mappa  tag:#címke  [kulcs:érték]')}
       aria-describedby="gv-lek-sugo"
       value={eff.lekerdezes}
       oninput={(e) => beallit({ lekerdezes: e.currentTarget.value })}
     />
     <p id="gv-lek-sugo" class="sugo">
-      A fájlnévben vagy útban keres; <code>path:</code>, <code>file:</code>, <code>tag:#a</code>, <code>[kulcs:érték]</code>, <code>OR</code>, <code>-</code>, zárójel.
+      {t('A fájlnévben vagy útban keres;')} <code>path:</code>, <code>file:</code>, <code>tag:#a</code>, <code>{t('[kulcs:érték]')}</code>, <code>OR</code>, <code>-</code>, {t('zárójel.')}
     </p>
     {#if szuro.nemTamogatott}
-      <p class="figy" role="status">A(z) „{szuro.nemTamogatott}” elem a gráfban nem támogatott, ezért a lekérdezés nem szűr.</p>
+      <p class="figy" role="status">{t('A(z) „{elem}” elem a gráfban nem támogatott, ezért a lekérdezés nem szűr.', { elem: szuro.nemTamogatott })}</p>
     {/if}
-    <label class="kapcsolo"><input type="checkbox" checked={eff.mellekletek} onchange={(e) => beallit({ mellekletek: e.currentTarget.checked })} />Mellékletek (kép, PDF, média)</label>
-    <label class="kapcsolo"><input type="checkbox" checked={eff.arvak} onchange={(e) => beallit({ arvak: e.currentTarget.checked })} />Árva csúcsok (kapcsolat nélkül)</label>
-    <label class="kapcsolo"><input type="checkbox" checked={eff.nyilak} onchange={(e) => beallit({ nyilak: e.currentTarget.checked })} />Nyilak az élek irányával</label>
-    <p class="sugo">{szuro.csucsDb} / {adat.n} csúcs látszik.</p>
+    <label class="kapcsolo"><input type="checkbox" checked={eff.mellekletek} onchange={(e) => beallit({ mellekletek: e.currentTarget.checked })} />{t('Mellékletek (kép, PDF, média)')}</label>
+    <label class="kapcsolo"><input type="checkbox" checked={eff.arvak} onchange={(e) => beallit({ arvak: e.currentTarget.checked })} />{t('Árva csúcsok (kapcsolat nélkül)')}</label>
+    <label class="kapcsolo"><input type="checkbox" checked={eff.nyilak} onchange={(e) => beallit({ nyilak: e.currentTarget.checked })} />{t('Nyilak az élek irányával')}</label>
+    <p class="sugo">{t('{db} / {n} csúcs látszik.', { db: szuro.csucsDb, n: adat.n })}</p>
   </section>
 
   <section aria-labelledby="gv-szin">
-    <h3 id="gv-szin">Színcsoportok</h3>
-    <p class="sugo">{forras} Az első illeszkedő csoport színez.</p>
+    <h3 id="gv-szin">{t('Színcsoportok')}</h3>
+    <p class="sugo">{forras} {t('Az első illeszkedő csoport színez.')}</p>
     <ul class="csoportok" role="list">
       {#each eff.szincsoportok as c, i (i)}
         <li class="csoport">
-          <input class="szin" type="color" aria-label={`A(z) ${i + 1}. csoport színe`} value={c.szin} onchange={(e) => csoportModosit(i, { szin: e.currentTarget.value })} />
+          <input class="szin" type="color" aria-label={t('A(z) {n}. csoport színe', { n: i + 1 })} value={c.szin} onchange={(e) => csoportModosit(i, { szin: e.currentTarget.value })} />
           <input
             class="mezo"
             type="text"
             spellcheck="false"
             autocomplete="off"
-            aria-label={`A(z) ${i + 1}. csoport lekérdezése`}
+            aria-label={t('A(z) {n}. csoport lekérdezése', { n: i + 1 })}
             aria-invalid={!szinTamogatott[i]}
             value={c.lekerdezes}
             onchange={(e) => csoportModosit(i, { lekerdezes: e.currentTarget.value })}
           />
-          <button type="button" class="ikon" aria-label={`A(z) ${i + 1}. csoport törlése`} title="Csoport törlése" onclick={() => csoportTorol(i)}><Ikon ikon={X} meret={14} /></button>
-          {#if !szinTamogatott[i]}<p class="figy sor">Nem támogatott lekérdezés: nem színez.</p>{/if}
+          <button type="button" class="ikon" aria-label={t('A(z) {n}. csoport törlése', { n: i + 1 })} title={t('Csoport törlése')} onclick={() => csoportTorol(i)}><Ikon ikon={X} meret={14} /></button>
+          {#if !szinTamogatott[i]}<p class="figy sor">{t('Nem támogatott lekérdezés: nem színez.')}</p>{/if}
         </li>
       {/each}
     </ul>
-    <button type="button" class="m-gomb semleges gomb" disabled={eff.szincsoportok.length >= MAX_SZINCSOPORT} onclick={csoportUj}><Ikon ikon={Plus} meret={14} />Új csoport</button>
+    <button type="button" class="m-gomb semleges gomb" disabled={eff.szincsoportok.length >= MAX_SZINCSOPORT} onclick={csoportUj}><Ikon ikon={Plus} meret={14} />{t('Új csoport')}</button>
   </section>
 
   <section aria-labelledby="gv-erok">
-    <h3 id="gv-erok">Erők</h3>
+    <h3 id="gv-erok">{t('Erők')}</h3>
     {#each EROK_KULCSOK as k (k)}
-      {@const t = EROK_TARTOMANY[k]}
+      {@const ta = EROK_TARTOMANY[k]}
       <div class="csuszka">
-        <label for={`gv-erok-${k}`}>{t.nev}</label>
+        <label for={`gv-erok-${k}`}>{ta.nev}</label>
         <output for={`gv-erok-${k}`}>{eff.erok[k].toFixed(2)}</output>
-        <input id={`gv-erok-${k}`} type="range" min={t.min} max={t.max} step={t.lepes} value={eff.erok[k]} oninput={(e) => erokBeallit(k, Number(e.currentTarget.value))} />
+        <input id={`gv-erok-${k}`} type="range" min={ta.min} max={ta.max} step={ta.lepes} value={eff.erok[k]} oninput={(e) => erokBeallit(k, Number(e.currentTarget.value))} />
       </div>
     {/each}
   </section>
 
   <button type="button" class="m-gomb semleges gomb" disabled={!felulirt} onclick={visszaallit}>
-    <Ikon ikon={RotateCcw} meret={14} />{json?.van ? 'Visszaállítás a graph.json értékeire' : 'Alapértékek'}
+    <Ikon ikon={RotateCcw} meret={14} />{json?.van ? t('Visszaállítás a graph.json értékeire') : t('Alapértékek')}
   </button>
 </aside>
 

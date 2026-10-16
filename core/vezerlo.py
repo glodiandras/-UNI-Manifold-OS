@@ -182,7 +182,7 @@ def valtozasok(cfg: Config, fid: str) -> dict:
         sajat, levagva = repo.trailer_commitok(snapshot.TRAILER_TASK, fid, max_db=MAX_COMMIT)
         visszavonok, levagva_v = repo.trailer_commitok("Mos-Visszavon-Kor", max_db=MAX_COMMIT) if sajat else ([], False)
     except ValueError as e:
-        raise HttpError(400, f"érvénytelen feladat-azonosító: {fid!r}") from e
+        raise HttpError(400, f"érvénytelen feladat-azonosító: {fid!r}", kod="vezerlo.feladat_azon", param={"fid": repr(fid)}) from e
     visszavont = {c.trailers["Mos-Visszavon-Kor"] for c in visszavonok}
     sajat.reverse()                                     # régebbi → újabb
     fajlok = repo.commitok_fajlok([c.sha for c in sajat])
@@ -223,7 +223,7 @@ def utvonalak(r) -> None:
         try:
             ki = kapcsolo_ir(k.app.cfg, k.torzs())
         except ValueError as e:
-            raise HttpError(400, str(e)) from e
+            raise HttpError(400, str(e), kod="vezerlo.kapcsolo_hibas") from e
         k.app.bus.publish({"tipus": "kapcsolok", "kapcsolok": ki})
         return {"ok": True, "kapcsolok": ki}
     r.put("/api/vezerlo/kapcsolok", kapcsolo_put)

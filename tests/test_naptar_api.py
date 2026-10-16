@@ -79,7 +79,7 @@ class EngedelyNelkulTest(Alap):
         ma = self.k("GET", f"/api/ma?datum={MA.isoformat()}")[1]
         self.assertEqual(ma["naptar_allapot"]["esemeny_engedely"], "nincs_dontes")
         # engedély nélkül nincs adatbázis (T007: a szinkron nem migrál és nem hoz létre fájlt): a Ma oldal ezt mondja
-        self.assertIn("naptár-szinkron még nem futott", ma["naptar"]["hiba"])
+        self.assertIn("No calendar data is available yet", ma["naptar"]["hiba"])
         self.assertFalse(szemelyes_db.ut(self.cfg).exists())
         self.assertEqual(self.al.olvas().get("emlekeztetok"), {})
         kod, d = self.k("GET", "/api/naptar/allapot?frissit=1")

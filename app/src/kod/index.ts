@@ -6,6 +6,7 @@ import './kod.css';
 import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { nezetek } from '../lib/elrendezes/nezetek.svelte';
+import { t, tk } from '../lib/i18n';
 import { Bug, Play, Square } from '../lib/ikon/ikonok';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import { beagyazasRenderelok } from '../szerkeszto/beagyazas/regiszter';
@@ -31,7 +32,7 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
     reg.regisztralMind([
       {
         id: 'kod.ellenorzes',
-        nev: 'C++: ellenőrzés (fordítás és tesztek)',
+        nev: tk('C++: ellenőrzés (fordítás és tesztek)'),
         kategoria: 'C++',
         billentyu: 'Mod+R',
         ikon: Play,
@@ -40,7 +41,7 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
       },
       {
         id: 'kod.ellenorzes-hibakereso',
-        nev: 'C++: ellenőrzés hibakereső móddal (ASan, UBSan)',
+        nev: tk('C++: ellenőrzés hibakereső móddal (ASan, UBSan)'),
         kategoria: 'C++',
         billentyu: 'Mod+Shift+R',
         ikon: Bug,
@@ -49,7 +50,7 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
       },
       {
         id: 'kod.formaz',
-        nev: 'C++: formázás (clang-format)',
+        nev: tk('C++: formázás (clang-format)'),
         kategoria: 'C++',
         billentyu: 'Alt+Shift+F',
         elerheto: () => !!kodFulok.aktiv?.irhato(),
@@ -57,7 +58,7 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
       },
       {
         id: 'kod.megszakit',
-        nev: 'C++: a futó ellenőrzés megszakítása',
+        nev: tk('C++: a futó ellenőrzés megszakítása'),
         kategoria: 'C++',
         ikon: Square,
         elerheto: () => kodFutasok.fut,
@@ -66,14 +67,16 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
       // C36b: az AI-segítség, csak kattintásra (kalibrált `kod` modell nélkül nem elérhető, D9)
       ...(['hiba', 'tipp', 'teszt', 'stressz'] as const).map((mod) => ({
         id: `kod.ai-${mod}`,
-        nev: `C++ AI: ${AI_MOD_NEV[mod]}`,
+        get nev() {
+          return t('C++ AI: {mod}', { mod: t(AI_MOD_NEV[mod]) });
+        },
         kategoria: 'C++',
         elerheto: () => kodCel() !== null && kodAI.kalibralt && !kodAI.fut,
         futtat: () => void aiKer(felulet, mod),
       })),
       {
         id: 'kod.ai-megszakit',
-        nev: 'C++ AI: a futó kérés megszakítása',
+        nev: tk('C++ AI: a futó kérés megszakítása'),
         kategoria: 'C++',
         ikon: Square,
         elerheto: () => kodAI.fut,
@@ -81,7 +84,7 @@ export function kodTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: CoreKapc
       },
       {
         id: 'kod.uj-feladat',
-        nev: 'Új C++ feladat…',
+        nev: tk('Új C++ feladat…'),
         kategoria: 'C++',
         futtat: () => {
           felulet.atfedes = 'cpp-feladat';

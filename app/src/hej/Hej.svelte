@@ -3,6 +3,7 @@
   festéskor véglegesek (a mentett állapot a mount előtt megjön), így nincs elcsúszás.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Paletta from '../atfedes/Paletta.svelte';
   import Atnevezes from '../atfedes/Atnevezes.svelte';
   import Valto from '../atfedes/Valto.svelte';
@@ -37,14 +38,14 @@
 >
   <Ikonsav />
   <Oldalsav />
-  <main class="munkaterulet" data-regio="munkaterulet" aria-label="Munkaterület">
+  <main class="munkaterulet" data-regio="munkaterulet" aria-label={t('Munkaterület')}>
     {#if felulet.oldalsav.nyitva}
       <Atmeretezo
         bind:ertek={felulet.oldalsav.szelesseg}
         min={OLDALSAV.min}
         max={OLDALSAV.max}
         oldal="jobb"
-        cimke="Az oldalsáv szélessége"
+        cimke={t('Az oldalsáv szélessége')}
         onhuzas={(h) => (huzas = h)}
       />
     {/if}
@@ -56,7 +57,7 @@
           min={JOBB_PANEL.min}
           max={JOBB_PANEL.max}
           oldal="bal"
-          cimke="A jobb panel szélessége"
+          cimke={t('A jobb panel szélessége')}
           onhuzas={(h) => (huzas = h)}
         />
       </div>

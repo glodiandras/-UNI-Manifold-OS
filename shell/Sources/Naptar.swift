@@ -63,10 +63,10 @@ enum NaptarLogika {
             return .success([:])
         }
         guard let objektum = try? JSONSerialization.jsonObject(with: adat, options: []) else {
-            return .failure(NaptarHiba("a kérés nem érvényes JSON"))
+            return .failure(NaptarHiba(L("a kérés nem érvényes JSON")))
         }
         guard let szotar = objektum as? [String: Any] else {
-            return .failure(NaptarHiba("a kérésnek JSON-objektumnak kell lennie"))
+            return .failure(NaptarHiba(L("a kérésnek JSON-objektumnak kell lennie")))
         }
         return .success(szotar)
     }
@@ -319,7 +319,7 @@ enum Naptar {
             case .failure(let h): valasz = NaptarLogika.hiba(h.uzenet)
             }
         } else {
-            valasz = NaptarLogika.hiba("hiányzó parancs (allapot, kerd, olvas, emlekeztetok, emlekezteto-ir, esemeny-ir)")
+            valasz = NaptarLogika.hiba(L("hiányzó parancs (allapot, kerd, olvas, emlekeztetok, emlekezteto-ir, esemeny-ir)"))
         }
         kiir(valasz)
         return 0
@@ -333,13 +333,14 @@ enum Naptar {
         case "emlekeztetok": return emlekeztetok(kerdes)
         case "emlekezteto-ir": return emlekeztetoIr(kerdes)
         case "esemeny-ir": return esemenyIr(kerdes)
-        default: return NaptarLogika.hiba("ismeretlen parancs: \(parancs)")
+        default: return NaptarLogika.hiba(L("ismeretlen parancs: %@", parancs))
         }
     }
 
     private static func kiir(_ adat: [String: Any]) {
+        // A tartalék biztosan JSON-kompatibilis (csak Bool és String), és ugyanazt a szótárat használja, mint a többi hiba.
         let json = (try? JSONSerialization.data(withJSONObject: adat, options: [.sortedKeys, .withoutEscapingSlashes]))
-            ?? Data(#"{"ok":false,"hiba":"a válasz nem szerializálható"}"#.utf8)
+            ?? (try! JSONSerialization.data(withJSONObject: NaptarLogika.hiba(L("a válasz nem szerializálható")), options: [.sortedKeys]))
         FileHandle.standardOutput.write(json)
         FileHandle.standardOutput.write(Data("\n".utf8))
     }
@@ -431,19 +432,19 @@ enum Naptar {
 
     static func esemenyIr(_ kerdes: [String: Any]) -> [String: Any] {
         guard NaptarLogika.jovahagyott(kerdes) else {
-            return NaptarLogika.hiba("naptáresemény csak jóváhagyott javaslatra íródik (jovahagyva.javaslat hiányzik)")
+            return NaptarLogika.hiba(L("naptáresemény csak jóváhagyott javaslatra íródik (jovahagyva.javaslat hiányzik)"))
         }
-        guard allapotNyers(.event) == 3 else { return NaptarLogika.hiba("nincs naptár-engedély") }
-        guard let naptarAzon = kerdes["naptar"] as? String, !naptarAzon.isEmpty else { return NaptarLogika.hiba("hiányzó naptár") }
+        guard allapotNyers(.event) == 3 else { return NaptarLogika.hiba(L("nincs naptár-engedély")) }
+        guard let naptarAzon = kerdes["naptar"] as? String, !naptarAzon.isEmpty else { return NaptarLogika.hiba(L("hiányzó naptár")) }
         guard let cim = (kerdes["cim"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !cim.isEmpty else {
-            return NaptarLogika.hiba("hiányzó cím")
+            return NaptarLogika.hiba(L("hiányzó cím"))
         }
-        guard let kezd = (kerdes["kezd"] as? String).flatMap({ NaptarLogika.isoDatum($0) }) else { return NaptarLogika.hiba("hiányzó vagy érvénytelen kezdés") }
-        guard let veg = (kerdes["veg"] as? String).flatMap({ NaptarLogika.isoDatum($0) }) else { return NaptarLogika.hiba("hiányzó vagy érvénytelen vég") }
-        guard veg >= kezd else { return NaptarLogika.hiba("a vég a kezdés előtt van") }
+        guard let kezd = (kerdes["kezd"] as? String).flatMap({ NaptarLogika.isoDatum($0) }) else { return NaptarLogika.hiba(L("hiányzó vagy érvénytelen kezdés")) }
+        guard let veg = (kerdes["veg"] as? String).flatMap({ NaptarLogika.isoDatum($0) }) else { return NaptarLogika.hiba(L("hiányzó vagy érvénytelen vég")) }
+        guard veg >= kezd else { return NaptarLogika.hiba(L("a vég a kezdés előtt van")) }
         let store = EKEventStore()
-        guard let naptar = store.calendar(withIdentifier: naptarAzon) else { return NaptarLogika.hiba("nincs ilyen naptár", nincs: true) }
-        guard naptar.allowsContentModifications else { return NaptarLogika.hiba("a naptár nem írható") }
+        guard let naptar = store.calendar(withIdentifier: naptarAzon) else { return NaptarLogika.hiba(L("nincs ilyen naptár"), nincs: true) }
+        guard naptar.allowsContentModifications else { return NaptarLogika.hiba(L("a naptár nem írható")) }
         let esemeny = EKEvent(eventStore: store)
         esemeny.calendar = naptar
         esemeny.title = cim
@@ -451,7 +452,7 @@ enum Naptar {
         esemeny.endDate = veg
         if let j = kerdes["jegyzet"] as? String, !j.isEmpty { esemeny.notes = j }
         do { try store.save(esemeny, span: .thisEvent, commit: true) }
-        catch { return NaptarLogika.hiba("az esemény mentése nem sikerült: \(error.localizedDescription)") }
+        catch { return NaptarLogika.hiba(L("az esemény mentése nem sikerült: %@", error.localizedDescription)) }
         var valasz: [String: Any] = ["ok": true, "azon": esemenyKulcs(esemeny, elofordulas: kezd), "naptar": naptar.calendarIdentifier,
                                      "belso_azon": esemeny.calendarItemIdentifier]
         if let k = esemeny.calendarItemExternalIdentifier, !k.isEmpty { valasz["kulso"] = k }
@@ -501,7 +502,7 @@ enum Naptar {
         let store = EKEventStore()
         guard let lista = keresLista(store, nev: nev, forras: kerdes["forras"] as? String) else { return valasz }
         guard let elemek = lekerEmlekeztetok(store, lista: lista) else {
-            return NaptarLogika.hiba("az emlékeztetők lekérése időtúllépés miatt megszakadt")
+            return NaptarLogika.hiba(L("az emlékeztetők lekérése időtúllépés miatt megszakadt"))
         }
         valasz["lista"] = listaJson(lista)
         valasz["emlekeztetok"] = elemek.map(emlekeztetoJson)
@@ -525,7 +526,7 @@ enum Naptar {
     private static func hataridoBeallit(_ r: EKReminder, hatarido: String?, ora: String?) throws {
         guard let hatarido else { return }
         guard let c = NaptarLogika.hataridoKomponensek(hatarido: hatarido, ora: ora) else {
-            throw NaptarHiba("érvénytelen határidő vagy óra (\(hatarido) \(ora ?? "-"))")
+            throw NaptarHiba(L("érvénytelen határidő vagy óra (%@ %@)", hatarido, ora ?? "-"))
         }
         r.dueDateComponents = c
     }
@@ -542,8 +543,8 @@ enum Naptar {
     }
 
     static func emlekeztetoIr(_ kerdes: [String: Any]) -> [String: Any] {
-        guard allapotNyers(.reminder) == 3 else { return NaptarLogika.hiba("nincs emlékeztető-engedély") }
-        guard let muveletek = kerdes["muveletek"] as? [[String: Any]] else { return NaptarLogika.hiba("hiányzó vagy hibás műveletlista") }
+        guard allapotNyers(.reminder) == 3 else { return NaptarLogika.hiba(L("nincs emlékeztető-engedély")) }
+        guard let muveletek = kerdes["muveletek"] as? [[String: Any]] else { return NaptarLogika.hiba(L("hiányzó vagy hibás műveletlista")) }
         let nev = (kerdes["lista"] as? String).flatMap { $0.isEmpty ? nil : $0 } ?? alapLista
         let forrasNev = kerdes["forras"] as? String
         let alapOra = kerdes["ora"] as? String
@@ -555,13 +556,13 @@ enum Naptar {
             lista = l
         } else {
             guard let forras = keresForras(store, nev: forrasNev) else {
-                return NaptarLogika.hiba("nincs emlékeztető-forrás a lista létrehozásához" + (forrasNev.map { " (\($0))" } ?? ""))
+                return NaptarLogika.hiba(L("nincs emlékeztető-forrás a lista létrehozásához") + (forrasNev.map { " (\($0))" } ?? ""))
             }
             let uj = EKCalendar(for: .reminder, eventStore: store)
             uj.title = nev
             uj.source = forras
             do { try store.saveCalendar(uj, commit: true) }   // a lista előbb létezzen, mint az elemei
-            catch { return NaptarLogika.hiba("a lista létrehozása nem sikerült: \(error.localizedDescription)") }
+            catch { return NaptarLogika.hiba(L("a lista létrehozása nem sikerült: %@", error.localizedDescription)) }
             lista = uj
             ujLista = true
         }
@@ -579,7 +580,7 @@ enum Naptar {
                 switch op {
                 case "uj":
                     guard let cim = (m["cim"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines), !cim.isEmpty,
-                          let hatarido = m["hatarido"] as? String else { throw NaptarHiba("az új emlékeztetőhöz cím és határidő kell") }
+                          let hatarido = m["hatarido"] as? String else { throw NaptarHiba(L("az új emlékeztetőhöz cím és határidő kell")) }
                     let r = EKReminder(eventStore: store)
                     r.calendar = lista
                     r.title = cim
@@ -593,15 +594,15 @@ enum Naptar {
                 case "modosit", "kesz", "nyit", "torol":
                     guard let azon = m["azon"] as? String, !azon.isEmpty,
                           let r = store.calendarItem(withIdentifier: azon) as? EKReminder else {
-                        e["nincs"] = true; throw NaptarHiba("nincs ilyen emlékeztető")
+                        e["nincs"] = true; throw NaptarHiba(L("nincs ilyen emlékeztető"))
                     }
                     guard r.calendar?.calendarIdentifier == lista.calendarIdentifier else {
-                        throw NaptarHiba("az emlékeztető nem a(z) „\(nev)” listában van")
+                        throw NaptarHiba(L("az emlékeztető nem a(z) „%@” listában van", nev))
                     }
                     switch op {
                     case "modosit":
                         if let cim = m["cim"] as? String {
-                            guard !cim.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NaptarHiba("üres cím") }
+                            guard !cim.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw NaptarHiba(L("üres cím")) }
                             r.title = cim
                         }
                         if m["jegyzet"] != nil { r.notes = (m["jegyzet"] as? String).flatMap { $0.isEmpty ? nil : $0 } }
@@ -626,7 +627,7 @@ enum Naptar {
                     e["ok"] = true
                     e["azon"] = azon
                 default:
-                    throw NaptarHiba("ismeretlen művelet: \(op.isEmpty ? "(üres)" : op)")
+                    throw NaptarHiba(L("ismeretlen művelet: %@", op.isEmpty ? L("(üres)") : op))
                 }
             } catch let h as NaptarHiba {
                 e["ok"] = false; e["hiba"] = h.uzenet
@@ -637,7 +638,7 @@ enum Naptar {
         }
         if valtozott {
             do { try store.commit() }
-            catch { return NaptarLogika.hiba("a változások mentése (commit) nem sikerült: \(error.localizedDescription)") }
+            catch { return NaptarLogika.hiba(L("a változások mentése (commit) nem sikerült: %@", error.localizedDescription)) }
             for (i, r) in ujak {                              // az azonosítók a commit után véglegesek
                 eredmenyek[i]["azon"] = r.calendarItemIdentifier
                 eredmenyek[i]["kulso"] = r.calendarItemExternalIdentifier ?? ""

@@ -4,6 +4,7 @@
   a képek lustán töltődnek, így az ezres lista sem fagyaszt.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Kartya from './Kartya.svelte';
   import type { Csoport, Sor, Valasz } from './tipusok';
 
@@ -38,12 +39,12 @@
   const hatra = $derived(valasz.sorok.length - lathato.filter((e) => e.k === 'sor').length);
 </script>
 
-<div class="gorgeto" role="list" aria-label="Kártyák">
+<div class="gorgeto" role="list" aria-label={t('Kártyák')}>
   <div class="racs" style:--kartya-meret="{meret}px">
     {#each lathato as e (e.k === 'sor' ? `s${e.sor.ut}` : `c${e.cs.tol}`)}
       {#if e.k === 'csoport'}
         <h3 class="csoport">
-          <span>{e.cs.cimke || 'Nincs érték'}</span>
+          <span>{e.cs.cimke || t('Nincs érték')}</span>
           <span class="db">{e.cs.db}</span>
         </h3>
       {:else}
@@ -54,10 +55,10 @@
     {/each}
   </div>
   {#if hatra > 0}
-    <button type="button" class="tovabb" onclick={() => (darab += ADAG)}>További {Math.min(hatra, ADAG)} a(z) {hatra} közül</button>
+    <button type="button" class="tovabb" onclick={() => (darab += ADAG)}>{t('További {n} a(z) {hatra} közül', { n: Math.min(hatra, ADAG), hatra })}</button>
   {/if}
   {#if elemek.length === 0}
-    <p class="ures" role="status">Nincs a feltételeknek megfelelő fájl.</p>
+    <p class="ures" role="status">{t('Nincs a feltételeknek megfelelő fájl.')}</p>
   {/if}
 </div>
 

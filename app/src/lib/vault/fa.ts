@@ -2,6 +2,8 @@
 // számlálókkal. Tiszta függvények (nincs DOM, nincs állapot): az `Fa.svelte` ezt rajzolja, a teszt ezt védi.
 // A felület nem old fel linket és nem olvas fájlrendszert (ARCHITECTURE 2.): csak a core listáját mutatja.
 
+import { locale } from '../i18n';
+
 import type { FajlInfo, FajlTipus } from './fajlok.svelte';
 import { fajlNev } from './fajlok.svelte';
 
@@ -29,7 +31,17 @@ export interface FaSor {
 }
 
 /** Magyar ábécé (cs, dz, gy, ly… digráfokkal), a számok értékük szerint (02 < 10), kis-nagybetű-érzéketlen elsődlegesen. */
-const GYUJTO = new Intl.Collator('hu', { numeric: true, sensitivity: 'variant' });
+let gyujtoKod = '';
+let gyujtoCache: Intl.Collator | null = null;
+const GYUJTO = {
+  compare: (a: string, b: string) => {
+    if (!gyujtoCache || gyujtoKod !== locale()) {
+      gyujtoKod = locale();
+      gyujtoCache = new Intl.Collator(gyujtoKod, { numeric: true, sensitivity: 'variant' });
+    }
+    return gyujtoCache.compare(a, b);
+  },
+};
 
 export function nevHasonlit(a: string, b: string): number {
   return GYUJTO.compare(a, b);

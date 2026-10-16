@@ -30,22 +30,22 @@ _ALLAPOT_SZAL = threading.Lock()
 
 def ervenyes(torzs) -> dict:
     if not isinstance(torzs, dict):
-        raise HttpError(400, "a törzs JSON-objektum legyen")
+        raise HttpError(400, "a törzs JSON-objektum legyen", kod="matek.torzs_objektum")
     sorok = torzs.get("sorok")
     if not isinstance(sorok, list) or not 1 <= len(sorok) <= MAX_SOR:
-        raise HttpError(400, f"a `sorok` 1–{MAX_SOR} elemű lista legyen")
+        raise HttpError(400, f"a `sorok` 1–{MAX_SOR} elemű lista legyen", kod="matek.sorok_lista", param={"max": MAX_SOR})
     ki = []
     for s in sorok:
         if (not isinstance(s, dict) or isinstance(s.get("sor"), bool) or not isinstance(s.get("sor"), int)
                 or s["sor"] < 1 or not isinstance(s.get("szoveg"), str) or len(s["szoveg"]) > MAX_SOR_HOSSZ):
-            raise HttpError(400, f"minden sor {{sor: pozitív egész, szoveg: legfeljebb {MAX_SOR_HOSSZ} jel}} legyen")
+            raise HttpError(400, f"minden sor {{sor: pozitív egész, szoveg: legfeljebb {MAX_SOR_HOSSZ} jel}} legyen", kod="matek.sor_alak", param={"max": MAX_SOR_HOSSZ})
         ki.append({"sor": s["sor"], "szoveg": s["szoveg"]})
     kik = torzs.get("kikotesek", [])
     if not isinstance(kik, list) or len(kik) > MAX_KIKOTES or not all(isinstance(k, str) and len(k) <= 200 for k in kik):
-        raise HttpError(400, f"a `kikotesek` legfeljebb {MAX_KIKOTES} rövid szöveg legyen")
+        raise HttpError(400, f"a `kikotesek` legfeljebb {MAX_KIKOTES} rövid szöveg legyen", kod="matek.kikotesek", param={"max": MAX_KIKOTES})
     veg = torzs.get("vegeredmeny", False)
     if not isinstance(veg, bool):
-        raise HttpError(400, "a `vegeredmeny` igaz vagy hamis legyen")
+        raise HttpError(400, "a `vegeredmeny` igaz vagy hamis legyen", kod="matek.vegeredmeny_logikai")
     return {"sorok": ki, "vegeredmeny": veg, "kikotesek": kik}
 
 
@@ -62,15 +62,15 @@ class Ellenorzo:
     def levezetes(self, torzs) -> dict:
         keres = ervenyes(torzs)
         if not self._futas.acquire(timeout=max(0.0, float(self.beall["varakozas_s"]))):
-            raise HttpError(503, "az ellenőrző foglalt (a homokozó másik kérést szolgál ki); próbáld újra")
+            raise HttpError(503, "az ellenőrző foglalt (a homokozó másik kérést szolgál ki); próbáld újra", kod="matek.ellenorzo_foglalt")
         try:
             r = self.futtato(keres)
         finally:
             self._futas.release()
         if not isinstance(r, dict) or "allapot" not in r:
-            raise HttpError(503, "az ellenőrző értelmezhetetlen választ adott")
+            raise HttpError(503, "az ellenőrző értelmezhetetlen választ adott", kod="matek.ellenorzo_ertelmezhetetlen")
         if r.get("allapot") == "nem_ellenorizheto" and "homokozó: homokozo_hiba" in str(r.get("ok", "")):
-            raise HttpError(503, "A CAS-homokozó nem érhető el: " + str(r.get("ok")))
+            raise HttpError(503, "A CAS-homokozó nem érhető el: " + str(r.get("ok")), kod="matek.cas_nem_elerheto", param={"ok": str(r.get("ok"))})
         ki = {"ok": True, **{k: v for k, v in r.items() if k != "ok"}}
         if r.get("ok"):
             ki["indok"] = r["ok"]                    # az ellenőrző `ok` szövege (miért nem ellenőrizhető) — az `ok` itt a válasz jele
@@ -84,7 +84,7 @@ class Ellenorzo:
             p = subprocess.Popen(self.parancs, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                  env=env, cwd=str(self.cfg.root), text=True, start_new_session=True)
         except OSError as exc:
-            raise HttpError(503, f"az ellenőrző nem indult el: {exc}") from None
+            raise HttpError(503, f"az ellenőrző nem indult el: {exc}", kod="matek.ellenorzo_nem_indult", param={"hiba": str(exc)}) from None
         idokorlat = float(self.beall["levezetes_idokorlat_s"])
         try:
             ki, hiba = p.communicate(json.dumps(keres, ensure_ascii=False), timeout=idokorlat)
@@ -94,15 +94,15 @@ class Ellenorzo:
             except (ProcessLookupError, PermissionError):
                 p.kill()
             p.communicate()
-            raise HttpError(503, f"az ellenőrzés időkorlátba ütközött ({idokorlat:g} s)") from None
+            raise HttpError(503, f"az ellenőrzés időkorlátba ütközött ({idokorlat:g} s)", kod="matek.idokorlat", param={"mp": f"{idokorlat:g}"}) from None
         if p.returncode == KERES_HIBA:
-            raise HttpError(500, "az ellenőrző elutasította a kérést: " + ki.strip()[:300])
+            raise HttpError(500, "az ellenőrző elutasította a kérést: " + ki.strip()[:300], kod="matek.ellenorzo_elutasitotta", param={"hiba": ki.strip()[:300]})
         if p.returncode != 0:
-            raise HttpError(503, f"az ellenőrző hibásan lépett ki ({p.returncode}): {hiba.strip()[-300:]}")
+            raise HttpError(503, f"az ellenőrző hibásan lépett ki ({p.returncode}): {hiba.strip()[-300:]}", kod="matek.ellenorzo_kilepes", param={"kilepes": p.returncode, "hiba": hiba.strip()[-300:]})
         try:
             return json.loads(ki)
         except ValueError:
-            raise HttpError(503, "az ellenőrző értelmezhetetlen választ adott") from None
+            raise HttpError(503, "az ellenőrző értelmezhetetlen választ adott", kod="matek.ellenorzo_ertelmezhetetlen") from None
 
 
 def _ellenorzo(app) -> Ellenorzo:

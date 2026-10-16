@@ -7,6 +7,7 @@
 //   hiba / ütközés / eltűnt   →  itt semmi: a fejlécben a meglévő, soha nem rejtett jel áll (25. döntés, C38)
 //   nincs még mentés (megnyitás után) → semmi
 
+import { t } from '../../lib/i18n';
 import type { MentesAllapot } from './dokumentum.svelte';
 
 /** Ennyi ideig erősebb a „Mentve” a mentés után. */
@@ -29,14 +30,14 @@ export interface Jelzes {
 export function mentesJelzes(allapot: MentesAllapot | undefined, utolsoMentes: number | null, most: number, mentesKezdet: number | null = null): Jelzes {
   switch (allapot) {
     case 'piszkos':
-      return { fajta: 'pont', szoveg: '', cimke: 'Módosítva, a mentés következik' };
+      return { fajta: 'pont', szoveg: '', cimke: t('Módosítva, a mentés következik') };
     case 'mentes':
       return mentesKezdet !== null && most - mentesKezdet >= LASSU_MS
-        ? { fajta: 'mentes', szoveg: 'Mentés…', cimke: 'Mentés folyamatban' }
-        : { fajta: 'pont', szoveg: '', cimke: 'Mentés folyamatban' };
+        ? { fajta: 'mentes', szoveg: t('Mentés…'), cimke: t('Mentés folyamatban') }
+        : { fajta: 'pont', szoveg: '', cimke: t('Mentés folyamatban') };
     case 'tiszta':
       if (utolsoMentes === null) return { fajta: 'nincs', szoveg: '', cimke: '' };
-      return { fajta: most - utolsoMentes < ERES_MS ? 'mentve-eros' : 'mentve', szoveg: 'Mentve', cimke: 'Mentve' };
+      return { fajta: most - utolsoMentes < ERES_MS ? 'mentve-eros' : 'mentve', szoveg: t('Mentve'), cimke: t('Mentve') };
     default:
       return { fajta: 'nincs', szoveg: '', cimke: '' };
   }

@@ -5,6 +5,7 @@
   amíg az egér az alsó szélen áll, vagy a fókusz benne van (F6, ⌘P „Állapotsor megjelenítése”).
 -->
 <script lang="ts">
+  import { t, locale } from '../lib/i18n';
   import { onMount } from 'svelte';
   import { allapotsorLathato, csend, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
   import { feladatsor } from '../lib/vezerlo/feladatsor.svelte';
@@ -18,13 +19,13 @@
   import Jelenlet from './vezerlo/Jelenlet.svelte';
 
   const { felulet, fajlok, kapcsolat } = kornyezet();
-  const szam = new Intl.NumberFormat('hu-HU');
+  const szam = $derived(new Intl.NumberFormat(locale()));
 
   const indexSzoveg = $derived.by(() => {
     const ix = fajlok.index;
     if (!ix) return '';
-    if (ix.hiba) return 'Index: hiba';
-    if (!ix.kesz) return 'Indexelés…';
+    if (ix.hiba) return t('Index: hiba');
+    if (!ix.kesz) return t('Indexelés…');
     return `${szam.format(fajlok.jegyzetek)} jegyzet`;
   });
   let gomb: HTMLButtonElement | undefined = $state();
@@ -54,7 +55,7 @@
   class:rejtett={!lathato}
   data-regio="allapotsor"
   data-regio-rejtett={lathato ? undefined : ''}
-  aria-label="Állapotsor"
+  aria-label={t('Állapotsor')}
   bind:this={sav}
   onfocusin={() => (fokuszBenne = true)}
   onfocusout={(e) => {
@@ -63,7 +64,7 @@
 >
   <IkonGomb
     ikon={PanelLeft}
-    cimke="Oldalsáv"
+    cimke={t('Oldalsáv')}
     billentyu="Mod+Alt+1"
     kicsi
     lenyomva={felulet.oldalsav.nyitva}
@@ -71,7 +72,7 @@
   />
   <div class="elemek">
     {#if kapcsolat.allapot === 'megszakadt'}
-      <span class="elem figyelmeztetes" role="status"><span class="pont"></span>Nincs kapcsolat a core-ral, újrapróbálás…</span>
+      <span class="elem figyelmeztetes" role="status"><span class="pont"></span>{t('Nincs kapcsolat a core-ral, újrapróbálás…')}</span>
     {/if}
     {#if !felulet.oldalsav.nyitva}<span class="elem"><Jelenlet /></span>{/if}
     <span class="elem" role="status" title={fajlok.index?.hiba ?? undefined}>{indexSzoveg}</span>
@@ -80,10 +81,10 @@
     type="button"
     class="ertesites-gomb"
     bind:this={gomb}
-    aria-label={ertesitesek.olvasatlan ? `Értesítések, ${ertesitesek.olvasatlan} új` : 'Értesítések'}
+    aria-label={ertesitesek.olvasatlan ? t('Értesítések, {n} új', { n: ertesitesek.olvasatlan }) : t('Értesítések')}
     aria-expanded={felulet.ertesitesPanel}
     aria-controls="ertesites-elozmeny"
-    title="Értesítések"
+    title={t('Értesítések')}
     onclick={() => regiszter.futtat('ertesites.elozmeny', 'gomb')}
   >
     <Ikon ikon={Bell} meret={14} />
@@ -91,7 +92,7 @@
   </button>
   <IkonGomb
     ikon={PanelRight}
-    cimke="Jobb panel"
+    cimke={t('Jobb panel')}
     billentyu="Mod+Alt+2"
     kicsi
     lenyomva={felulet.jobbPanel.nyitva}

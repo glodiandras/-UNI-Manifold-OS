@@ -1,3 +1,4 @@
+import { t } from '../lib/i18n';
 // Pozíció-tudatos JSON-elemző a canvashoz (C14). A bájthű foltozás alapja: minden érték, objektum-tag és
 // tömbelem a szövegbeli helyével jön, így az író (`iro.ts`) csak a megváltozott részt cseréli, a többi
 // karakter (behúzás, kulcssorrend, a nem érintett stringek escape-alakja, a záró sorvég) marad.
@@ -80,19 +81,19 @@ export function elemez(s: string): JErtek {
         try {
           return JSON.parse(s.slice(k, i)) as string;
         } catch {
-          return hiba('hibás escape a szövegben', k);
+          return hiba(t('hibás escape a szövegben'), k);
         }
       }
       if (c === 92) i += 2;
-      else if (c < 0x20) return hiba('vezérlőkarakter a szövegben');
+      else if (c < 0x20) return hiba(t('vezérlőkarakter a szövegben'));
       else i++;
     }
-    return hiba('lezáratlan szöveg', k);
+    return hiba(t('lezáratlan szöveg'), k);
   };
 
   const ertek = (): JErtek => {
     ures();
-    if (i >= s.length) return hiba('váratlan vége a szövegnek');
+    if (i >= s.length) return hiba(t('váratlan vége a szövegnek'));
     const c = s[i];
     if (c === '{') return obj();
     if (c === '[') return tomb();
@@ -109,13 +110,13 @@ export function elemez(s: string): JErtek {
     }
     SZAM.lastIndex = i;
     const m = SZAM.exec(s);
-    if (!m) return hiba(`váratlan karakter: ${JSON.stringify(c)}`);
+    if (!m) return hiba(t('váratlan karakter: {c}', { c: JSON.stringify(c) }));
     i += m[0].length;
     return { t: 'prim', kezd: k, veg: i, ertek: Number(m[0]) };
   };
 
   const melyebb = () => {
-    if (++melyseg > MAX_MELYSEG) hiba('túl mély szerkezet');
+    if (++melyseg > MAX_MELYSEG) hiba(t('túl mély szerkezet'));
   };
 
   const obj = (): JObj => {
@@ -130,12 +131,12 @@ export function elemez(s: string): JErtek {
     }
     for (;;) {
       ures();
-      if (s[i] !== '"') hiba('kulcs (idézőjeles szöveg) kellene');
+      if (s[i] !== '"') hiba(t('kulcs (idézőjeles szöveg) kellene'));
       const kulcsKezd = i;
       const kulcs = szoveg();
       const kulcsVeg = i;
       ures();
-      if (s[i] !== ':') hiba('kettőspont kellene');
+      if (s[i] !== ':') hiba(t('kettőspont kellene'));
       i++;
       tagok.push({ kulcs, kulcsKezd, kulcsVeg, ertek: ertek() });
       ures();
@@ -148,7 +149,7 @@ export function elemez(s: string): JErtek {
         melyseg--;
         return { t: 'obj', kezd, veg: i, tagok };
       }
-      hiba('vessző vagy } kellene');
+      hiba(t('vessző vagy } kellene'));
     }
   };
 
@@ -174,13 +175,13 @@ export function elemez(s: string): JErtek {
         melyseg--;
         return { t: 'tomb', kezd, veg: i, elemek };
       }
-      hiba('vessző vagy ] kellene');
+      hiba(t('vessző vagy ] kellene'));
     }
   };
 
   const gyoker = ertek();
   ures();
-  if (i < s.length) hiba('fölösleges szöveg a JSON után');
+  if (i < s.length) hiba(t('fölösleges szöveg a JSON után'));
   return gyoker;
 }
 

@@ -5,6 +5,7 @@
 //   (50 − 15·d) > részsorozat (20 + egymás utáni és szókezdő betűk) > találat csak az útban (25–30).
 // Ha egy szó sehol nem illeszkedik, az elem kiesik. A kiemelés az eredeti név UTF-16-indexeiben jön vissza.
 
+import { locale } from '../i18n';
 export interface Jelolt<T> {
   ertek: T;
   nev: string;
@@ -204,7 +205,17 @@ function osszevon(tart: [number, number][]): [number, number][] {
   return ki;
 }
 
-const rendezo = new Intl.Collator('hu', { sensitivity: 'base', numeric: true });
+let rendezoKod = '';
+let rendezoCache: Intl.Collator | null = null;
+const rendezo = {
+  compare: (a: string, b: string) => {
+    if (!rendezoCache || rendezoKod !== locale()) {
+      rendezoKod = locale();
+      rendezoCache = new Intl.Collator(rendezoKod, { sensitivity: 'base', numeric: true });
+    }
+    return rendezoCache.compare(a, b);
+  },
+};
 
 export class FuzzyIndex<T> {
   private readonly elemek: Elokeszitett<T>[];

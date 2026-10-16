@@ -5,6 +5,8 @@
 // Ha a futó app mellett a felület újrafordult, a lap lusta chunkjai (Mermaid, JSXGraph, pdf.js, a C++-nyelv) eltűntek: a
 // bukott lusta import ezt itt ellenőrzi, és egy értesítés újratöltést kínál.
 
+import { t } from '../i18n';
+
 import { hibaSzoveg, kerdez } from '../core/api';
 import { feluletUjabbAdiszken, futoEpitesLekerdezes, type EpitesAllapotValasz } from '../core/epites';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
@@ -57,12 +59,13 @@ export function feluletFrissultJelez(): void {
   ertesitesek.ertesit({
     kulcs: 'felulet-frissult',
     szint: 'figyelmeztetes',
-    cim: 'A felület frissült',
+    cim: t('A felület frissült'),
     szoveg:
-      'A futó lap egy korábbi fordításból való: a diagramok, a grafikonok és a PDF-ek csak újratöltés után töltődnek be. ' +
-      'A jegyzetek újratöltés előtt mentődnek.',
+      t('A futó lap egy korábbi fordításból való: a diagramok, a grafikonok és a PDF-ek csak újratöltés után töltődnek be.') +
+      ' ' +
+      t('A jegyzetek újratöltés előtt mentődnek.'),
     idotartam: 0,
-    muvelet: { nev: 'Újratöltés', futtat: () => void ujratolt() },
+    muvelet: { nev: t('Újratöltés'), futtat: () => void ujratolt() },
   });
 }
 
@@ -72,8 +75,8 @@ async function ujratolt(): Promise<void> {
   if (szerkesztok.dokumentumok.lista().some((d) => !d.csakOlvashato && d.mentetlen)) {
     ertesitesek.ertesit({
       szint: 'hiba',
-      cim: 'Az újratöltés elmaradt',
-      szoveg: 'Van még mentetlen változás: előbb rendezd a mentési hibát, utána tölts újra.',
+      cim: t('Az újratöltés elmaradt'),
+      szoveg: t('Van még mentetlen változás: előbb rendezd a mentési hibát, utána tölts újra.'),
     });
     return;
   }

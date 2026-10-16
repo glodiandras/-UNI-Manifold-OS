@@ -5,6 +5,7 @@
   ütemez semmit, így a nézet CPU-használata nulla.
 -->
 <script lang="ts">
+  import { t, tp } from '../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import { Maximize, Network, SlidersHorizontal } from '../lib/ikon/ikonok';
   import Ikon from '../lib/ikon/Ikon.svelte';
@@ -376,14 +377,18 @@
 
   const cimke = $derived(
     adat
-      ? `Gráfnézet: ${adat.n} fájl és ${adat.iranyitott.length / 2} kapcsolat${mod === 'helyi' && kozeppontUt ? `, helyi gráf: ${fajlNev(kozeppontUt)}, ${melyseg} lépés` : ''}. + és − nagyít, nyilak mozgatnak, 0 a teljes nézet, Enter megnyitja a kijelölt jegyzetet.`
-      : 'Gráfnézet',
+      ? t('Gráfnézet: {n} fájl és {el} kapcsolat{helyi}. + és − nagyít, nyilak mozgatnak, 0 a teljes nézet, Enter megnyitja a kijelölt jegyzetet.', {
+          n: adat.n,
+          el: adat.iranyitott.length / 2,
+          helyi: mod === 'helyi' && kozeppontUt ? t(', helyi gráf: {fajl}, {m} lépés', { fajl: fajlNev(kozeppontUt), m: melyseg }) : '',
+        })
+      : t('Gráfnézet'),
   );
   const tooltipAdat = $derived(tooltip && adat && tooltip.i < adat.n ? tooltip : null);
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<div class="graf" role="group" aria-label="Gráf" onkeydown={nezetBillentyu}>
+<div class="graf" role="group" aria-label={t('Gráf')} onkeydown={nezetBillentyu}>
   <!-- svelte-ignore a11y_no_interactive_element_to_noninteractive_role -->
   <!-- a vászon billentyűzettel kezelhető (nagyítás, mozgatás, megnyitás): `application`, magyar leírással -->
   <canvas bind:this={vaszon} class="vaszon" tabindex="0" role="application" aria-label={cimke} data-fokusz-cel></canvas>
@@ -394,19 +399,19 @@
     <i class="p-kijelolt"></i><i class="p-felulet"></i><i class="p-szoveg"></i><i class="p-talalat"></i>
   </div>
 
-  <div class="eszkoztar" role="toolbar" aria-label="Gráf eszközök">
-    <div class="szegmens" role="group" aria-label="Gráf módja">
-      <button type="button" aria-pressed={mod === 'globalis'} onclick={() => modValt('globalis')}>Globális</button>
-      <button type="button" aria-pressed={mod === 'helyi'} disabled={mod !== 'helyi' && kozeppontValaszt() === null} onclick={() => modValt('helyi')}>Helyi</button>
+  <div class="eszkoztar" role="toolbar" aria-label={t('Gráf eszközök')}>
+    <div class="szegmens" role="group" aria-label={t('Gráf módja')}>
+      <button type="button" aria-pressed={mod === 'globalis'} onclick={() => modValt('globalis')}>{t('Globális')}</button>
+      <button type="button" aria-pressed={mod === 'helyi'} disabled={mod !== 'helyi' && kozeppontValaszt() === null} onclick={() => modValt('helyi')}>{t('Helyi')}</button>
     </div>
     {#if mod === 'helyi'}
-      <div class="szegmens" role="group" aria-label="Lépések száma a középponttól">
+      <div class="szegmens" role="group" aria-label={t('Lépések száma a középponttól')}>
         {#each [1, 2, 3] as m (m)}
           <button
             type="button"
             aria-pressed={melyseg === m}
-            title={`${m} lépés`}
-            aria-label={`${m} lépés`}
+            title={tp('{n} lépés', m)}
+            aria-label={tp('{n} lépés', m)}
             onclick={() => {
               nezetAllapot({ melyseg: m });
               ujIllesztes();
@@ -423,8 +428,8 @@
         aria-expanded={keresoNyitva && talalatok.length > 0}
         aria-controls="graf-talalatok"
         aria-activedescendant={keresoNyitva && talalatok.length ? `graf-t-${keresoAktiv}` : undefined}
-        aria-label="Keresés a gráfban"
-        placeholder="Ugrás csúcshoz…"
+        aria-label={t('Keresés a gráfban')}
+        placeholder={t('Ugrás csúcshoz…')}
         spellcheck="false"
         autocomplete="off"
         bind:value={keresoSzoveg}
@@ -433,7 +438,7 @@
         onkeydown={keresoBillentyu}
       />
       {#if keresoNyitva && talalatok.length && adat}
-        <ul id="graf-talalatok" class="talalatok" role="listbox" aria-label="Találatok">
+        <ul id="graf-talalatok" class="talalatok" role="listbox" aria-label={t('Találatok')}>
           {#each talalatok as i, q (i)}
             <li id={`graf-t-${q}`} role="option" aria-selected={q === keresoAktiv}>
               <button type="button" tabindex="-1" class:aktiv={q === keresoAktiv} onmousedown={(e) => (e.preventDefault(), void ugras(i))}>
@@ -445,8 +450,8 @@
         </ul>
       {/if}
     </div>
-    <IkonGomb ikon={Maximize} cimke="Teljes nézet" onclick={() => rajzolo?.teljesNezet()} />
-    <IkonGomb ikon={SlidersHorizontal} cimke="Szűrők, színek és erők" lenyomva={panelNyitva} onclick={() => nezetAllapot({ panel: !panelNyitva })} />
+    <IkonGomb ikon={Maximize} cimke={t('Teljes nézet')} onclick={() => rajzolo?.teljesNezet()} />
+    <IkonGomb ikon={SlidersHorizontal} cimke={t('Szűrők, színek és erők')} lenyomva={panelNyitva} onclick={() => nezetAllapot({ panel: !panelNyitva })} />
   </div>
 
   {#if panelNyitva && adat && szuro && szin}
@@ -455,13 +460,13 @@
 
   <div class="allapot" role="status" aria-live="polite">
     {#if grafAdat.hiba}
-      <span class="hiba">A gráf nem tölthető be: {grafAdat.hiba}</span>
+      <span class="hiba">{t('A gráf nem tölthető be: {hiba}', { hiba: grafAdat.hiba })}</span>
     {:else if !adat}
-      <span>{grafAdat.betoltve ? '' : 'Gráf betöltése…'}</span>
+      <span>{grafAdat.betoltve ? '' : t('Gráf betöltése…')}</span>
     {:else if adat.n === 0}
-      <span>A vaultban még nincs fájl.</span>
+      <span>{t('A vaultban még nincs fájl.')}</span>
     {:else}
-      <span>{szuro?.csucsDb ?? 0} / {adat.n} csúcs · {lathatoEl} él</span>
+      <span>{t('{db} / {n} csúcs · {el} él', { db: szuro?.csucsDb ?? 0, n: adat.n, el: lathatoEl })}</span>
     {/if}
   </div>
 

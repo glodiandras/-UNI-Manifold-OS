@@ -15,6 +15,8 @@
 //   mentetlen()            a core halálakor: a mentetlen dokumentumok `[{ut, allapot, hiba, szoveg}]` — NEM ment, NEM zár, és nem
 //                          kapcsolja be a „leáll” réteget (az újraindítás után a szerkesztés megy tovább; a héj ebből kérdez és másol)
 
+import { t } from '../i18n';
+
 import { ertesitesek, type Szint } from '../ertesites/ertesites.svelte';
 import { rendszerErtesites } from '../ertesites/rendszer';
 import { leall } from './leall.svelte';
@@ -70,7 +72,7 @@ export function hidTelepit(f: HidFuggosegek, cel: Window = window): () => void {
     naptarEngedely: (v: unknown) => f.naptarFogad(v),
     mentes: async (): Promise<KilepesJelentes> => {
       // a „leáll” réteg előbb, mint bármi más: a mentés alatt begépelt szöveg a core leállásával elveszne (T121)
-      leall.be('Mentés a kilépés előtt…');
+      leall.be(t('Mentés a kilépés előtt…'));
       f.mentesElokeszit();
       const [, jelentes] = await Promise.all([f.mentesKi(), f.kilepesMentes()]);
       // a tracker-puffer a dokumentumok mentése UTÁN (a mentés késleltetése és a karakterszám is bekerül); a hibája nem viszi el a jelentést

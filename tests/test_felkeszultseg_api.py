@@ -113,7 +113,7 @@ class NincsNaptarApiTest(ApiTest):
         kod, d = self.k("GET", "/api/felkeszultseg?datum=" + DATUM)
         self.assertEqual(kod, 200)
         self.assertEqual(d["dolgozatok"], [])
-        self.assertIn("naptár", d["hiba"])
+        self.assertIn("calendar", d["hiba"])
 
     def test_reszlet(self):
         self.assertEqual(self.k("GET", "/api/felkeszultseg/dolgozat?datum=" + DATUM + "&azon=x")[0], 404)

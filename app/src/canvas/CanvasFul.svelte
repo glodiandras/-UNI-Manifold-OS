@@ -4,6 +4,7 @@
   olvasható JSON Canvas-ként, a hiba helye és szövege látszik, és a canvas csak olvasható (a nézet nem ír).
 -->
 <script lang="ts">
+  import { t, tp } from '../lib/i18n';
   import { onMount, untrack } from 'svelte';
   import { ApiHiba } from '../lib/core/api';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -40,8 +41,8 @@
         if (!el) return;
         hiba =
           e instanceof ApiHiba && e.statusz === 404
-            ? 'A canvas nincs meg (törölték vagy áthelyezték).'
-            : `A canvas nem tölthető be: ${e instanceof Error ? e.message : e}`;
+            ? t('A canvas nincs meg (törölték vagy áthelyezték).')
+            : t('A canvas nem tölthető be: {hiba}', { hiba: e instanceof Error ? e.message : String(e) });
       },
     );
     return () => {
@@ -64,11 +65,11 @@
       const ok = await vagolapra(sajat);
       ertesitesek.ertesit({
         szint: 'info',
-        cim: 'A lemezen lévő változat betöltve',
-        szoveg: ok ? 'A saját szöveged a vágólapon van.' : 'A canvas visszaállt a lemezen lévő változatra.',
+        cim: t('A lemezen lévő változat betöltve'),
+        szoveg: ok ? t('A saját szöveged a vágólapon van.') : t('A canvas visszaállt a lemezen lévő változatra.'),
       });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A lemezen lévő változat nem tölthető be', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A lemezen lévő változat nem tölthető be'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
   const olvasas = $derived.by(() => {
@@ -78,11 +79,11 @@
   const allapotSzoveg = $derived.by(() => {
     switch (dok?.allapot) {
       case 'mentes':
-        return 'Mentés…';
+        return t('Mentés…');
       case 'hiba':
-        return 'Mentési hiba';
+        return t('Mentési hiba');
       case 'eltunt':
-        return 'A fájl eltűnt';
+        return t('A fájl eltűnt');
       default:
         return '';
     }
@@ -97,18 +98,18 @@
     </p>
     <div class="jelek" role="status">
       {#if dok?.csakOlvashato || olvasas?.hiba}
-        <span class="jel figyelmeztetes" title={dok?.csakOlvashato ?? olvasas?.hiba ?? undefined}>Csak olvasható</span>
+        <span class="jel figyelmeztetes" title={dok?.csakOlvashato ?? olvasas?.hiba ?? undefined}>{t('Csak olvasható')}</span>
       {/if}
       {#if olvasas?.figyelmeztetesek.length}
-        <span class="jel" title={olvasas.figyelmeztetesek.join('\n')}>{olvasas.figyelmeztetesek.length} eltérés a spectől</span>
+        <span class="jel" title={olvasas.figyelmeztetesek.join('\n')}>{tp('{n} eltérés a spectől', olvasas.figyelmeztetesek.length)}</span>
       {/if}
       {#if dok?.allapot === 'utkozes'}
-        <button type="button" class="jel hiba gomb" onclick={() => (utkozesNyitva = true)}>Ütközés — döntés kell</button>
+        <button type="button" class="jel hiba gomb" onclick={() => (utkozesNyitva = true)}>{t('Ütközés — döntés kell')}</button>
       {:else if allapotSzoveg}
         <span class="jel" class:hiba={dok?.allapot !== 'mentes'} title={dok?.hiba ?? undefined}>{allapotSzoveg}</span>
         {#if dok?.allapot === 'hiba'}
           <!-- a core elutasította a mentést (pl. 400), vagy a mentés újra és újra elbukik: a lemezen lévő változat a kiút (T030) -->
-          <button type="button" class="jel gomb" onclick={lemezenLevoBetolt}>A lemezen lévő betöltése</button>
+          <button type="button" class="jel gomb" onclick={lemezenLevoBetolt}>{t('A lemezen lévő betöltése')}</button>
         {/if}
       {/if}
     </div>
@@ -119,12 +120,12 @@
   {:else if forras && olvasas?.hiba}
     <div class="olvasasi-hiba" role="alert">
       <p>{olvasas.hiba}</p>
-      <p class="halvany">A fájl változatlan marad; javítsd Obsidianban vagy szövegszerkesztőben, és a nézet magától újratölt.</p>
+      <p class="halvany">{t('A fájl változatlan marad; javítsd Obsidianban vagy szövegszerkesztőben, és a nézet magától újratölt.')}</p>
     </div>
   {:else if hiba}
     <p class="betoltes hiba" role="alert">{hiba}</p>
   {:else}
-    <p class="betoltes" role="status">Betöltés…</p>
+    <p class="betoltes" role="status">{t('Betöltés…')}</p>
   {/if}
 
   {#if dok?.allapot === 'utkozes' && utkozesNyitva && aktiv}

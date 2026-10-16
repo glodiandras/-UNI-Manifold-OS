@@ -4,6 +4,7 @@
   és az elutasított javaslatok. Minden a `{state}/asszisztens.json`-ban él, a vaultba nem kerül; egyenként és egyben is törölhető.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { asszisztensApi } from '../../lib/asszisztens/api';
   import { hangolasSzoveg, helyzetSzoveg } from '../../lib/asszisztens/megjelenites';
@@ -61,57 +62,57 @@
 </script>
 
 <section class="tanult" aria-labelledby="tanult-cim">
-  <h3 id="tanult-cim">Mit tanult az asszisztens</h3>
-  <p class="halvany">Helyben, ezen a gépen tárolja; a vaultba nem ír. Bármelyik tételt törölheted, akkor elfelejti.</p>
-  {#if adat && !adat.kapcsolo}<p class="halvany" role="status">Az asszisztens ki van kapcsolva: most nem tanul és nem javasol.</p>{/if}
+  <h3 id="tanult-cim">{t('Mit tanult az asszisztens')}</h3>
+  <p class="halvany">{t('Helyben, ezen a gépen tárolja; a vaultba nem ír. Bármelyik tételt törölheted, akkor elfelejti.')}</p>
+  {#if adat && !adat.kapcsolo}<p class="halvany" role="status">{t('Az asszisztens ki van kapcsolva: most nem tanul és nem javasol.')}</p>{/if}
 
   {#if ures}
-    <p class="halvany">Még nem tanult semmit.</p>
+    <p class="halvany">{t('Még nem tanult semmit.')}</p>
   {:else if adat}
     {#if adat.mintak.length}
-      <h4>Elfogadott szövegfolytatások</h4>
+      <h4>{t('Elfogadott szövegfolytatások')}</h4>
       <ul>
         {#each adat.mintak as m (m.elotte)}
           <li>
             <span class="minta">…{m.elotte}<b>{m.szoveg}</b></span>
-            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label="A szövegminta törlése: {m.elotte}"
-              onclick={() => void torol('minta', m.elotte)}>Törlés</button>
+            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label={t('A szövegminta törlése: {minta}', { minta: m.elotte })}
+              onclick={() => void torol('minta', m.elotte)}>{t('Törlés')}</button>
           </li>
         {/each}
       </ul>
     {/if}
     {#if adat.muveletek.length}
-      <h4>Ismétlődő műveletek</h4>
+      <h4>{t('Ismétlődő műveletek')}</h4>
       <ul>
         {#each adat.muveletek as m (m.kulcs)}
           <li>
-            <span>{m.muvelet_nev} „{m.ertek}” · {m.mappa || 'a vault gyökere'} · {m.db}× {#if !m.tanult}<span class="halvany">(megfigyelés)</span>{/if}</span>
-            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label="A művelet-minta törlése: {m.ertek}"
-              onclick={() => void torol('muvelet', m.kulcs)}>Törlés</button>
+            <span>{m.muvelet_nev} „{m.ertek}” · {m.mappa || t('a vault gyökere')} · {m.db}× {#if !m.tanult}<span class="halvany">{t('(megfigyelés)')}</span>{/if}</span>
+            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label={t('A művelet-minta törlése: {minta}', { minta: m.ertek })}
+              onclick={() => void torol('muvelet', m.kulcs)}>{t('Törlés')}</button>
           </li>
         {/each}
       </ul>
     {/if}
     {#if adat.hangolas.length}
-      <h4>Mikor javasol (a döntéseidből)</h4>
+      <h4>{t('Mikor javasol (a döntéseidből)')}</h4>
       <ul>
         {#each adat.hangolas as h (h.kulcs)}
           <li>
-            <span>{h.tipus_nev}, {helyzetSzoveg(h.helyzet)}: {h.elfogad} igen / {h.elutasit} nem · {hangolasSzoveg(h.szint)}</span>
-            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label="A hangolás törlése: {h.tipus_nev}, {helyzetSzoveg(h.helyzet)}"
-              onclick={() => void torol('hangolas', h.kulcs)}>Törlés</button>
+            <span>{h.tipus_nev}, {helyzetSzoveg(h.helyzet)}: {t('{igen} igen / {nem} nem', { igen: h.elfogad, nem: h.elutasit })} · {hangolasSzoveg(h.szint)}</span>
+            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label={t('A hangolás törlése: {tipus}, {helyzet}', { tipus: h.tipus_nev, helyzet: helyzetSzoveg(h.helyzet) })}
+              onclick={() => void torol('hangolas', h.kulcs)}>{t('Törlés')}</button>
           </li>
         {/each}
       </ul>
     {/if}
     {#if adat.elutasitott.length}
-      <h4>Elutasított javaslatok (egy ideig nem térnek vissza)</h4>
+      <h4>{t('Elutasított javaslatok (egy ideig nem térnek vissza)')}</h4>
       <ul>
         {#each adat.elutasitott as e (e.kulcs)}
           <li>
             <span>{e.cim || e.kulcs}</span>
-            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label="Az elutasítás törlése: {e.cim || e.kulcs}"
-              onclick={() => void torol('elutasitott', e.kulcs)}>Törlés</button>
+            <button type="button" class="m-gomb semleges suru" disabled={foglalt} aria-label={t('Az elutasítás törlése: {cim}', { cim: e.cim || e.kulcs })}
+              onclick={() => void torol('elutasitott', e.kulcs)}>{t('Törlés')}</button>
           </li>
         {/each}
       </ul>
@@ -119,22 +120,22 @@
   {/if}
 
   <details>
-    <summary>Új szövegfolytatás tanítása</summary>
-    <p class="halvany">A folytatás csak akkor jelenik meg, ha a kurzor előtti szöveg pontosan erre az előzményre végződik. Tab elfogadja, Esc elveti.</p>
-    <label>Előzmény (8–100 karakter)<textarea bind:value={elotte} maxlength="100" rows="2"></textarea></label>
-    <label>Elfogadott folytatás<textarea bind:value={szoveg} maxlength="800" rows="3"></textarea></label>
-    <button type="button" class="m-gomb semleges" disabled={foglalt || elotte.trim().length < 8 || !szoveg.trim()} onclick={() => void tanit()}>Minta elfogadása</button>
+    <summary>{t('Új szövegfolytatás tanítása')}</summary>
+    <p class="halvany">{t('A folytatás csak akkor jelenik meg, ha a kurzor előtti szöveg pontosan erre az előzményre végződik. Tab elfogadja, Esc elveti.')}</p>
+    <label>{t('Előzmény (8–100 karakter)')}<textarea bind:value={elotte} maxlength="100" rows="2"></textarea></label>
+    <label>{t('Elfogadott folytatás')}<textarea bind:value={szoveg} maxlength="800" rows="3"></textarea></label>
+    <button type="button" class="m-gomb semleges" disabled={foglalt || elotte.trim().length < 8 || !szoveg.trim()} onclick={() => void tanit()}>{t('Minta elfogadása')}</button>
   </details>
 
   {#if megerosit}
-    <p class="kerdes" role="alert">Mindent elfelejt, amit eddig tanult? Ez nem vonható vissza.</p>
+    <p class="kerdes" role="alert">{t('Mindent elfelejt, amit eddig tanult? Ez nem vonható vissza.')}</p>
     <div class="sor">
-      <button type="button" class="m-gomb semleges" disabled={foglalt} onclick={() => void torol('mind')}>Igen, mindent törlök</button>
-      <button type="button" class="m-gomb semleges" disabled={foglalt} onclick={() => (megerosit = false)}>Mégse</button>
+      <button type="button" class="m-gomb semleges" disabled={foglalt} onclick={() => void torol('mind')}>{t('Igen, mindent törlök')}</button>
+      <button type="button" class="m-gomb semleges" disabled={foglalt} onclick={() => (megerosit = false)}>{t('Mégse')}</button>
     </div>
   {:else}
     <div class="sor">
-      <button type="button" class="m-gomb semleges" disabled={foglalt || ures || !adat} onclick={() => (megerosit = true)}>Mind törlése…</button>
+      <button type="button" class="m-gomb semleges" disabled={foglalt || ures || !adat} onclick={() => (megerosit = true)}>{t('Mind törlése…')}</button>
     </div>
   {/if}
   {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}

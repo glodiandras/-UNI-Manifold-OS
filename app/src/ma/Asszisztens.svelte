@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { t, tp } from '../lib/i18n';
   import { asszisztensMa as m } from '../lib/asszisztens/adat.svelte';
   import { fajtaCim } from '../lib/asszisztens/megjelenites';
   import type { HigieniaTetel } from '../lib/asszisztens/tipusok';
@@ -35,9 +36,9 @@
 
   const tetelek = $derived(m.osszegzes?.uj_tetelek ?? []);
 
-  function tetelNyit(t: HigieniaTetel, e: MouseEvent) {
-    felulet.munkaterulet.megnyit(t.ut, nyitasMod(e));
-    if (t.sor) szerkesztok.ugras(t.ut, t.sor);
+  function tetelNyit(tetel: HigieniaTetel, e: MouseEvent) {
+    felulet.munkaterulet.megnyit(tetel.ut, nyitasMod(e));
+    if (tetel.sor) szerkesztok.ugras(tetel.ut, tetel.sor);
   }
 
   async function javaslatNyit(e: MouseEvent) {
@@ -49,39 +50,39 @@
 
 {#if higienia || javaslat}
   <section aria-labelledby="ma-asszisztens">
-    <h2 id="ma-asszisztens">Asszisztens</h2>
+    <h2 id="ma-asszisztens">{t('Asszisztens')}</h2>
     {#if javaslat}
-      <div class="doboz" role="group" aria-label="Heti szokás-javaslat">
+      <div class="doboz" role="group" aria-label={t('Heti szokás-javaslat')}>
         <p>{javaslat.szoveg}</p>
         <div class="gombok">
           {#if javaslat.legutobbi_ut}
             <button type="button" class="m-gomb semleges gomb" disabled={m.foglalt} onclick={(e) => void javaslatNyit(e)} title={javaslat.legutobbi_ut}>
-              Megnyitás: {fajlNev(javaslat.legutobbi_ut)}
+              {t('Megnyitás:')} {fajlNev(javaslat.legutobbi_ut)}
             </button>
           {/if}
-          <button type="button" class="m-gomb semleges gomb" disabled={m.foglalt} onclick={() => void m.szokasDontes('elutasit')}>Nem kell</button>
+          <button type="button" class="m-gomb semleges gomb" disabled={m.foglalt} onclick={() => void m.szokasDontes('elutasit')}>{t('Nem kell')}</button>
         </div>
       </div>
     {/if}
     {#if higienia}
-      <div class="doboz" role="group" aria-label="Jegyzethigiénia">
+      <div class="doboz" role="group" aria-label={t('Jegyzethigiénia')}>
         <p>
-          Jegyzethigiénia: <strong>{higienia.uj} új észrevétel</strong> <span class="halvany">(összesen {higienia.ossz})</span>
+          {t('Jegyzethigiénia:')} <strong>{tp('{n} új észrevétel', higienia.uj)}</strong> <span class="halvany">({t('összesen {n}', { n: higienia.ossz })})</span>
         </p>
         <div class="gombok">
           <button type="button" class="m-gomb semleges gomb" aria-expanded={reszletek} onclick={() => (reszletek = !reszletek)}>
-            {reszletek ? 'Elrejtés' : 'Áttekintés'}
+            {reszletek ? t('Elrejtés') : t('Áttekintés')}
           </button>
-          <button type="button" class="m-gomb semleges gomb" disabled={m.foglalt} onclick={() => void m.latva()}>Láttam</button>
+          <button type="button" class="m-gomb semleges gomb" disabled={m.foglalt} onclick={() => void m.latva()}>{t('Láttam')}</button>
         </div>
         {#if reszletek}
           <ul class="lista" role="list">
-            {#each tetelek as t (t.azonosito)}
+            {#each tetelek as tetel (tetel.azonosito)}
               <li>
-                <button type="button" class="sor-gomb" onclick={(e) => tetelNyit(t, e)} title={t.ut}>
-                  <span class="cimke">{fajtaCim(t.fajta)}</span>
-                  <span class="szoveg">{t.uzenet}</span>
-                  <span class="halvany">{fajlNev(t.ut)}</span>
+                <button type="button" class="sor-gomb" onclick={(e) => tetelNyit(tetel, e)} title={tetel.ut}>
+                  <span class="cimke">{fajtaCim(tetel.fajta)}</span>
+                  <span class="szoveg">{tetel.uzenet}</span>
+                  <span class="halvany">{fajlNev(tetel.ut)}</span>
                 </button>
               </li>
             {/each}

@@ -21,6 +21,7 @@ import sys
 
 from . import tasks
 from .config import Config
+from .hibakod import kodol
 
 TIPUS = "grafikon_beiras"
 AUTOMATIKUS = "grafikon_automatikus"
@@ -35,19 +36,19 @@ def _rel_md(ut) -> bool:
 
 def _terv(cfg: Config, p: dict, stop: str):
     if not isinstance(p, dict):
-        raise tasks.Invalid("A paraméterek JSON-objektum kellenek.")
+        raise kodol(tasks.Invalid("A paraméterek JSON-objektum kellenek."), "grafikon_feladat.parameterek_json_objektum_kellenek")
     for kulcs in ("proba", "modell_ag"):
         if not isinstance(p.get(kulcs, False), bool):
-            raise tasks.Invalid(f"A `{kulcs}` igaz vagy hamis lehet.")
+            raise kodol(tasks.Invalid(f"A `{kulcs}` igaz vagy hamis lehet."), "grafikon_feladat.kulcs_igaz_hamis_lehet", {"kulcs": kulcs})
     if p.get("modell_ag") and not p.get("proba"):
-        raise tasks.Invalid("A `modell_ag` kézzel csak `proba` mellett kérhető (az éles modell-ág a beállítás kapcsolója).")
+        raise kodol(tasks.Invalid("A `modell_ag` kézzel csak `proba` mellett kérhető (az éles modell-ág a beállítás kapcsolója)."), "grafikon_feladat.modell_ag_kezzel_csak_proba")
     utak = p.get("utak")
     if utak is not None:
         from .automatika import kisero_elotag, tartalmi_ut
         elotag = kisero_elotag(cfg)
         if (not isinstance(utak, list) or not 1 <= len(utak) <= MAX_UT
                 or not all(_rel_md(u) and tartalmi_ut(u, elotag) for u in utak)):
-            raise tasks.Invalid(f"Az `utak` 1–{MAX_UT} tartalmi jegyzet relatív útja legyen.")
+            raise kodol(tasks.Invalid(f"Az `utak` 1–{MAX_UT} tartalmi jegyzet relatív útja legyen."), "grafikon_feladat.utak_1_max_ut_tartalmi", {"MAX_UT": MAX_UT})
     argv = [sys.executable, "-B", str(cfg.path("modulok") / "grafikon" / "__main__.py"), "automatikus", "--eles",
             "--stop-fajl", stop]
     for u in utak or ():
@@ -59,11 +60,11 @@ def _terv(cfg: Config, p: dict, stop: str):
     if "max" in p:
         m = p["max"]
         if isinstance(m, bool) or not isinstance(m, int) or not 1 <= m <= MAX_JEGYZET:
-            raise tasks.Invalid(f"A `max` 1–{MAX_JEGYZET} egész szám legyen.")
+            raise kodol(tasks.Invalid(f"A `max` 1–{MAX_JEGYZET} egész szám legyen."), "grafikon_feladat.max_1_max_jegyzet_egesz", {"MAX_JEGYZET": MAX_JEGYZET})
         argv += ["--max", str(m)]
-    figyelmeztetes = ["Próbamód: a blokkok a vault APFS-klónjára kerülnek, a vaultba nem."] if p.get("proba") else []
+    figyelmeztetes = ['Trial mode: the blocks go to an APFS clone of the workspace, not to the workspace itself.'] if p.get("proba") else []
     return ([tasks.Step("Grafikonok a képletek alá", argv, str(cfg.root))],
-            "A frissen szerkesztett jegyzetek biztosan felismert képletei alá ```plot blokk kerül (gépi írás, visszavonható).",
+            'A ```plot block is added under each reliably recognised formula in recently edited notes (automated write, can be undone).',
             figyelmeztetes)
 
 

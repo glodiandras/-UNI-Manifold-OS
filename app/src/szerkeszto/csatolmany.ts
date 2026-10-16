@@ -1,4 +1,5 @@
 // CX-004: import a kurzorhoz; a feltöltés alatti szerkesztés leképezi a beszúrási pontot.
+import { t } from '../lib/i18n';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { ApiHiba, kerdez } from '../lib/core/api';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -11,7 +12,7 @@ function base64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(String(r.result).split(',', 2)[1]);
-    r.onerror = () => reject(new Error('A fájl nem olvasható.'));
+    r.onerror = () => reject(new Error(t('A fájl nem olvasható.')));
     r.readAsDataURL(blob);
   });
 }
@@ -38,10 +39,10 @@ export async function fajlImport(fajl: File, cel: { forras?: string; mappa?: str
     const r = await darabKuld({ ...cel, nev: fajl.name, azon, offset, adat: await base64(fajl.slice(offset, offset + meret)),
       vege: offset + meret >= fajl.size });
     azon = r.azon;
-    if (r.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Csatolmány bemásolva', szoveg: r.figyelmeztetes });
+    if (r.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Csatolmány bemásolva'), szoveg: r.figyelmeztetes });
     if (r.kesz && r.ut) return r.ut;
   }
-  throw new Error('A feltöltés nem fejeződött be.');
+  throw new Error(t('A feltöltés nem fejeződött be.'));
 }
 
 export function csatolmanyBovitmeny(ut: string) {
@@ -61,13 +62,13 @@ export function csatolmanyBovitmeny(ut: string) {
         for (const f of fajlok) utak.push(await fajlImport(f, { forras: ut }));
         const celok = await Promise.all(utak.map((u) => linkek.linkCel(u, ut)));
         if (!this.el || this.view.state.readOnly) {
-          ertesitesek.ertesit({ szint: 'info', cim: 'A csatolmány a vaultban van', szoveg: utak.join(', ') });
+          ertesitesek.ertesit({ szint: 'info', cim: t('A csatolmány a vaultban van'), szoveg: utak.join(', ') });
           return;
         }
         const szoveg = celok.map((c, i) => `${/\.(png|jpg|jpeg|gif|webp|heic|pdf|mp4|mov|mp3|wav|svg)$/i.test(utak[i]) ? '!' : ''}[[${c}]]`).join('\n');
         this.view.dispatch({ changes: { from: p.poz, insert: szoveg }, selection: { anchor: p.poz + szoveg.length }, userEvent: 'input.paste' });
       } catch (e) {
-        ertesitesek.ertesit({ szint: 'hiba', cim: 'A csatolmány nem illeszthető be', szoveg: e instanceof Error ? e.message : String(e) });
+        ertesitesek.ertesit({ szint: 'hiba', cim: t('A csatolmány nem illeszthető be'), szoveg: e instanceof Error ? e.message : String(e) });
       } finally { this.pontok.delete(p); }
     }
   }, {

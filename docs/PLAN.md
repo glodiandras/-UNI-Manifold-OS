@@ -20,6 +20,8 @@ A részletes auditok (fájl:sor hivatkozásokkal, a terv bizonyítéka) a `docs/
 | P7 | **A mérés (kalibráció) a felhasználó dolga**, de a felületről szakértelem nélkül indítható: AI-letöltő, „Test this model” gomb, haladás, eredmény a küszöbhöz mérve. |
 | P8 | Aláírás: első körben **ad-hoc** (a Developer ID + notarizációs út előkészítve, a kiadási ellenőrzőlista kötelezőnek jelöli a nyilvános kiadáshoz). *(Feltételezés — a kérdésre nem érkezett közvetlen válasz.)* |
 | P9 | Minden kód az `[UNI] Manifold-OS` repóba kerül; a v2-ből **másolat** készül, a v2 érintetlen. A modellek, a `var/`, a `runtime/`, a stagingek és az aranyhalmazok **nem** kerülnek a repóba. |
+| P10 | **Egyszerű használat és megbízható engineering az első.** A felhasználó pontosítása (2026-10-16): a v2 használható, de még nem jobb az Obsidiannál; önmagában a funkciók megtartása nem elég. A napi jegyzetelés, mentés és visszaállás, keresés, navigáció, indulás és beállítások legyenek könnyen érthetők és kiszámíthatók. A fázisok készültségét végigjátszható felhasználói folyamatokkal és a hibás működés elleni regressziós kapukkal kell igazolni. Az AI meglévő képességei megmaradnak; további képességbővítésük a szerkesztő és az alapműködés minősége után következik. |
+| P11 | **Automatikus tartalmi nyelvfelismerés.** A felhasználó pontosítása (2026-10-16): a szerkesztő a tényleges szövegből ismerje fel a használt nyelvet, kézi nyelvválasztás nélkül. A kezelőfelület továbbra is angol; az editor helyesírása ettől független, alapból automatikus. A felismerés helyben fut, gépelés után késleltetve, kódot/képletet nem tekint prózának; rövid vagy vegyes nyelvű szövegnél nem erőltet bizonytalan nyelvet. A workspace nyelve a sablonok és a generált tartalom alapértéke lehet, de nem írhatja felül az editor automatikus felismerését. |
 
 ---
 
@@ -198,6 +200,8 @@ Minden fázis végén: tesztek futnak, a változott fájlok és a maradék kock�
 | **F11 Szerkesztő-paritás az Obsidiannal** | az Obsidian-paritás audit (`docs/plan/parity/`, 14 alrendszer, cáfolással ellenőrzött hiánylista) „must” és „should” tételeinek megvalósítása, a kritikus top-25 sorrendjében; minden tétel egy ellenőrzőlista-sor, teszttel | 4–6 agent alrendszerenként (opus a szerkesztő-magra: élő nézet, linkek, tulajdonságok; sonnet a többire) | a „must” lista 100 %, a „should” ≥ 80 %, a meglévő Manifold-erősségek sértetlenek (regressziós kapu) |
 
 A F6 mérési része **a felhasználó feladata** (valódi modellekkel, tétlen gépen); a kód csak a folyamatot teszi egyszerűvé. Az F10 és az F11 az F5 után, az F6-tal párhuzamosan is futhat (diszjunkt fájlok).
+
+**P10 szerinti prioritás (2026-10-16):** az elkezdett F4 lezárása után F5, majd F11 napi szerkesztési és navigációs hiányai következnek. A kiadáshoz szükséges F6 modelltelepítés és mérési biztonság továbbra is a terv része; új AI-képesség nem előzi meg az editor minőségi kapuit. A fázisok számozása és tartalma megmarad, a függőségi sorrend ennek megfelelően F5 után a szerkesztőre összpontosít.
 
 ---
 

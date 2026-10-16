@@ -3,6 +3,7 @@
 // A kattintás a forrásba visz (a blokk aktív lesz, a jelölés látszik), kivéve a saját vezérlőket
 // (jelölőnégyzet, másolás, callout-összecsukó).
 
+import { t } from '../../lib/i18n';
 import { syntaxTree } from '@codemirror/language';
 import { type EditorView, WidgetType } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
@@ -288,7 +289,7 @@ export class JeloloWidget extends WidgetType {
     e.type = 'checkbox';
     e.className = 'cm-feladat-jelolo';
     e.checked = this.kesz;
-    e.setAttribute('aria-label', this.kesz ? 'Feladat: nincs kész' : 'Feladat: kész');
+    e.setAttribute('aria-label', this.kesz ? t('Feladat: nincs kész') : t('Feladat: kész'));
     e.addEventListener('mousedown', (ev) => ev.preventDefault());
     e.addEventListener('click', (ev) => {
       ev.preventDefault();
@@ -422,7 +423,7 @@ function hajtoGomb(view: EditorView, hely: HTMLElement, csukva: boolean): HTMLBu
   b.type = 'button';
   b.className = 'callout-hajto' + (csukva ? '' : ' nyitva');
   b.setAttribute('aria-expanded', String(!csukva));
-  b.setAttribute('aria-label', csukva ? 'Callout kibontása' : 'Callout összecsukása');
+  b.setAttribute('aria-label', csukva ? t('Callout kibontása') : t('Callout összecsukása'));
   b.appendChild(ikonElem(ChevronRight, 16));
   b.addEventListener('mousedown', (ev) => ev.preventDefault());
   b.addEventListener('click', (ev) => {

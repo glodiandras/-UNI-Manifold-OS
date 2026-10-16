@@ -5,6 +5,8 @@
 // azonosító → érték és attribútumok. A tábla lefedettségét teszt őrzi a vendorált könyvtár azonosítóira (`magyar-l10n.test.ts`):
 // egy új pdf.js új azonosítót hozva a teszt elbukik, amíg nincs lefordítva vagy a kivétel-listán. Hálózat, eval, script nincs.
 
+import { locale, nyelv, t, tk } from '../../lib/i18n';
+
 type Args = Record<string, unknown>;
 type Szoveg = string | ((a: Args) => string);
 
@@ -14,18 +16,18 @@ interface Bejegyzes {
 }
 
 const ANNOTACIO_TIPUS: Record<string, string> = {
-  Comment: 'Megjegyzés',
-  Key: 'Kulcs',
-  Note: 'Jegyzet',
-  Help: 'Súgó',
-  NewParagraph: 'Új bekezdés',
-  Paragraph: 'Bekezdés',
-  Insert: 'Beszúrás',
+  Comment: tk('Megjegyzés'),
+  Key: tk('Kulcs'),
+  Note: tk('Jegyzet'),
+  Help: tk('Súgó'),
+  NewParagraph: tk('Új bekezdés'),
+  Paragraph: tk('Bekezdés'),
+  Insert: tk('Beszúrás'),
 };
 
 const datumIdo = (a: Args): string => {
   const d = new Date(Number(a.dateObj));
-  return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat('hu', { dateStyle: 'short', timeStyle: 'medium' }).format(d);
+  return Number.isNaN(d.getTime()) ? '' : new Intl.DateTimeFormat(locale(), { dateStyle: 'short', timeStyle: 'medium' }).format(d);
 };
 
 const cimke = (aria: Szoveg): Bejegyzes => ({ attr: { 'aria-label': aria } });
@@ -34,58 +36,58 @@ const cimEsCimke = (t: Szoveg): Bejegyzes => ({ attr: { title: t, 'aria-label': 
 
 /** Azonosító → magyar szöveg (a pdf.js `viewer.ftl` angol szövegeinek párja; csak a néző és a jegyzet-réteg azonosítói). */
 export const MAGYAR: Readonly<Record<string, Bejegyzes>> = {
-  'pdfjs-page-landmark': cimke((a) => `${a.page ?? ''}. oldal`),
-  'pdfjs-text-annotation-type': { attr: { alt: (a) => `[${ANNOTACIO_TIPUS[String(a.type)] ?? String(a.type)} megjegyzés]` } },
+  'pdfjs-page-landmark': cimke((a) => t('{page}. oldal', { page: String(a.page ?? '') })),
+  'pdfjs-text-annotation-type': { attr: { alt: (a) => t('[{tipus} megjegyzés]', { tipus: ANNOTACIO_TIPUS[String(a.type)] ? t(ANNOTACIO_TIPUS[String(a.type)]) : String(a.type) }) } },
   'pdfjs-annotation-date-time-string': { ertek: datumIdo },
-  'pdfjs-show-comment-button': cim('Megjegyzés megjelenítése'),
-  'pdfjs-comment-floating-button': cimEsCimke('Megjegyzés'),
-  'pdfjs-comment-floating-button-label': { ertek: 'Megjegyzés' },
-  'pdfjs-highlight-floating-button1': cimEsCimke('Kiemelés'),
-  'pdfjs-highlight-floating-button-label': { ertek: 'Kiemelés' },
-  'pdfjs-editor-add-comment-button': cim('Megjegyzés hozzáadása'),
-  'pdfjs-free-text2': { attr: { 'aria-label': 'Szövegszerkesztő', 'default-content': 'Kezdj el gépelni…' } },
-  'pdfjs-editor-highlight-editor': cimke('Kiemelés-szerkesztő'),
-  'pdfjs-editor-ink-editor': cimke('Rajz-szerkesztő'),
-  'pdfjs-editor-stamp-editor': cimke('Kép-szerkesztő'),
-  'pdfjs-editor-signature-editor1': { attr: { 'aria-description': (a) => `Aláírás-szerkesztő: ${a.description ?? ''}` } },
-  'pdfjs-editor-remove-ink-button': cim('Rajz eltávolítása'),
-  'pdfjs-editor-remove-freetext-button': cim('Szöveg eltávolítása'),
-  'pdfjs-editor-remove-stamp-button': cim('Kép eltávolítása'),
-  'pdfjs-editor-remove-highlight-button': cim('Kiemelés eltávolítása'),
-  'pdfjs-editor-remove-signature-button': cim('Aláírás eltávolítása'),
-  'pdfjs-editor-color-picker-free-text-input': cim('Szövegszín módosítása'),
-  'pdfjs-editor-color-picker-ink-input': cim('Rajzszín módosítása'),
-  'pdfjs-editor-colorpicker-button': cim('Szín módosítása'),
-  'pdfjs-editor-colorpicker-dropdown': cimke('Színek'),
-  'pdfjs-editor-colorpicker-yellow': cim('Sárga'),
-  'pdfjs-editor-colorpicker-green': cim('Zöld'),
-  'pdfjs-editor-colorpicker-blue': cim('Kék'),
-  'pdfjs-editor-colorpicker-pink': cim('Rózsaszín'),
-  'pdfjs-editor-colorpicker-red': cim('Piros'),
-  'pdfjs-editor-resizer-top-left': cimke('Bal felső sarok — átméretezés'),
-  'pdfjs-editor-resizer-top-middle': cimke('Felső közép — átméretezés'),
-  'pdfjs-editor-resizer-top-right': cimke('Jobb felső sarok — átméretezés'),
-  'pdfjs-editor-resizer-middle-right': cimke('Jobb közép — átméretezés'),
-  'pdfjs-editor-resizer-bottom-right': cimke('Jobb alsó sarok — átméretezés'),
-  'pdfjs-editor-resizer-bottom-middle': cimke('Alsó közép — átméretezés'),
-  'pdfjs-editor-resizer-bottom-left': cimke('Bal alsó sarok — átméretezés'),
-  'pdfjs-editor-resizer-middle-left': cimke('Bal közép — átméretezés'),
-  'pdfjs-editor-highlight-added-alert': { ertek: 'Kiemelés hozzáadva' },
-  'pdfjs-editor-freetext-added-alert': { ertek: 'Szöveg hozzáadva' },
-  'pdfjs-editor-ink-added-alert': { ertek: 'Rajz hozzáadva' },
-  'pdfjs-editor-stamp-added-alert': { ertek: 'Kép hozzáadva' },
-  'pdfjs-editor-signature-added-alert': { ertek: 'Aláírás hozzáadva' },
-  'pdfjs-editor-alt-text-button': cimke('Helyettesítő szöveg'),
-  'pdfjs-editor-alt-text-button-label': { ertek: 'Helyettesítő szöveg' },
-  'pdfjs-editor-alt-text-edit-button': cimke('Helyettesítő szöveg szerkesztése'),
-  'pdfjs-editor-alt-text-decorative-tooltip': { ertek: 'Díszítőelemnek jelölve' },
-  'pdfjs-editor-new-alt-text-added-button': cimke('Helyettesítő szöveg hozzáadva'),
-  'pdfjs-editor-new-alt-text-added-button-label': { ertek: 'Helyettesítő szöveg hozzáadva' },
-  'pdfjs-editor-new-alt-text-missing-button': cimke('Hiányzó helyettesítő szöveg'),
-  'pdfjs-editor-new-alt-text-missing-button-label': { ertek: 'Hiányzó helyettesítő szöveg' },
-  'pdfjs-editor-new-alt-text-to-review-button': cimke('Helyettesítő szöveg ellenőrzése'),
-  'pdfjs-editor-new-alt-text-to-review-button-label': { ertek: 'Helyettesítő szöveg ellenőrzése' },
-  'pdfjs-editor-new-alt-text-generated-alt-text-with-disclaimer': { ertek: (a) => `Automatikusan készült: ${a.generatedAltText ?? ''}` },
+  'pdfjs-show-comment-button': cim(tk('Megjegyzés megjelenítése')),
+  'pdfjs-comment-floating-button': cimEsCimke(tk('Megjegyzés')),
+  'pdfjs-comment-floating-button-label': { ertek: tk('Megjegyzés') },
+  'pdfjs-highlight-floating-button1': cimEsCimke(tk('Kiemelés')),
+  'pdfjs-highlight-floating-button-label': { ertek: tk('Kiemelés') },
+  'pdfjs-editor-add-comment-button': cim(tk('Megjegyzés hozzáadása')),
+  'pdfjs-free-text2': { attr: { 'aria-label': tk('Szövegszerkesztő'), 'default-content': tk('Kezdj el gépelni…') } },
+  'pdfjs-editor-highlight-editor': cimke(tk('Kiemelés-szerkesztő')),
+  'pdfjs-editor-ink-editor': cimke(tk('Rajz-szerkesztő')),
+  'pdfjs-editor-stamp-editor': cimke(tk('Kép-szerkesztő')),
+  'pdfjs-editor-signature-editor1': { attr: { 'aria-description': (a) => t('Aláírás-szerkesztő: {leiras}', { leiras: String(a.description ?? '') }) } },
+  'pdfjs-editor-remove-ink-button': cim(tk('Rajz eltávolítása')),
+  'pdfjs-editor-remove-freetext-button': cim(tk('Szöveg eltávolítása')),
+  'pdfjs-editor-remove-stamp-button': cim(tk('Kép eltávolítása')),
+  'pdfjs-editor-remove-highlight-button': cim(tk('Kiemelés eltávolítása')),
+  'pdfjs-editor-remove-signature-button': cim(tk('Aláírás eltávolítása')),
+  'pdfjs-editor-color-picker-free-text-input': cim(tk('Szövegszín módosítása')),
+  'pdfjs-editor-color-picker-ink-input': cim(tk('Rajzszín módosítása')),
+  'pdfjs-editor-colorpicker-button': cim(tk('Szín módosítása')),
+  'pdfjs-editor-colorpicker-dropdown': cimke(tk('Színek')),
+  'pdfjs-editor-colorpicker-yellow': cim(tk('Sárga')),
+  'pdfjs-editor-colorpicker-green': cim(tk('Zöld')),
+  'pdfjs-editor-colorpicker-blue': cim(tk('Kék')),
+  'pdfjs-editor-colorpicker-pink': cim(tk('Rózsaszín')),
+  'pdfjs-editor-colorpicker-red': cim(tk('Piros')),
+  'pdfjs-editor-resizer-top-left': cimke(tk('Bal felső sarok — átméretezés')),
+  'pdfjs-editor-resizer-top-middle': cimke(tk('Felső közép — átméretezés')),
+  'pdfjs-editor-resizer-top-right': cimke(tk('Jobb felső sarok — átméretezés')),
+  'pdfjs-editor-resizer-middle-right': cimke(tk('Jobb közép — átméretezés')),
+  'pdfjs-editor-resizer-bottom-right': cimke(tk('Jobb alsó sarok — átméretezés')),
+  'pdfjs-editor-resizer-bottom-middle': cimke(tk('Alsó közép — átméretezés')),
+  'pdfjs-editor-resizer-bottom-left': cimke(tk('Bal alsó sarok — átméretezés')),
+  'pdfjs-editor-resizer-middle-left': cimke(tk('Bal közép — átméretezés')),
+  'pdfjs-editor-highlight-added-alert': { ertek: tk('Kiemelés hozzáadva') },
+  'pdfjs-editor-freetext-added-alert': { ertek: tk('Szöveg hozzáadva') },
+  'pdfjs-editor-ink-added-alert': { ertek: tk('Rajz hozzáadva') },
+  'pdfjs-editor-stamp-added-alert': { ertek: tk('Kép hozzáadva') },
+  'pdfjs-editor-signature-added-alert': { ertek: tk('Aláírás hozzáadva') },
+  'pdfjs-editor-alt-text-button': cimke(tk('Helyettesítő szöveg')),
+  'pdfjs-editor-alt-text-button-label': { ertek: tk('Helyettesítő szöveg') },
+  'pdfjs-editor-alt-text-edit-button': cimke(tk('Helyettesítő szöveg szerkesztése')),
+  'pdfjs-editor-alt-text-decorative-tooltip': { ertek: tk('Díszítőelemnek jelölve') },
+  'pdfjs-editor-new-alt-text-added-button': cimke(tk('Helyettesítő szöveg hozzáadva')),
+  'pdfjs-editor-new-alt-text-added-button-label': { ertek: tk('Helyettesítő szöveg hozzáadva') },
+  'pdfjs-editor-new-alt-text-missing-button': cimke(tk('Hiányzó helyettesítő szöveg')),
+  'pdfjs-editor-new-alt-text-missing-button-label': { ertek: tk('Hiányzó helyettesítő szöveg') },
+  'pdfjs-editor-new-alt-text-to-review-button': cimke(tk('Helyettesítő szöveg ellenőrzése')),
+  'pdfjs-editor-new-alt-text-to-review-button-label': { ertek: tk('Helyettesítő szöveg ellenőrzése') },
+  'pdfjs-editor-new-alt-text-generated-alt-text-with-disclaimer': { ertek: (a) => t('Automatikusan készült: {szoveg}', { szoveg: String(a.generatedAltText ?? '') }) },
 };
 
 /** A tartalmilag nem használt (a nézőnek nem látható) azonosítók: nincs ilyen felület, ezért nincs fordítás — a teszt ezt a
@@ -95,7 +97,7 @@ export const KIVETEL: readonly string[] = [];
 const SABLON = /\{\s*\$(\w+)\s*\}/g;
 
 function szoveg(s: Szoveg, args: Args): string {
-  return typeof s === 'function' ? s(args) : s.replace(SABLON, (_, k: string) => String(args[k] ?? ''));
+  return typeof s === 'function' ? s(args) : t(s).replace(SABLON, (_, k: string) => String(args[k] ?? ''));
 }
 
 function argok(elem: Element): Args {
@@ -119,7 +121,7 @@ export class MagyarL10n {
   private szunet = 0;
 
   getLanguage(): string {
-    return 'hu';
+    return nyelv.kod;
   }
 
   getDirection(): 'ltr' {

@@ -4,26 +4,27 @@
   egyszer tölt a szakasz megnyitásakor (modellt nem tölt, workert nem indít); a „Frissítés” újrakérdez.
 -->
 <script lang="ts">
+  import { t, tk } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { ApiHiba } from '../../lib/core/api';
   import { vezerloApi } from '../../lib/vezerlo/api';
   import type { ModellAttekintes, ModellFeladat, RouterDontes } from '../../lib/vezerlo/tipusok';
 
   const NEV: Record<string, string> = {
-    ocr_kezi: 'Füzet átírása',
-    ocr_keplet: 'Képlet felismerése',
-    fuzet_fejezet: 'Füzet: fejezet (1. lépés)',
-    fuzet_valaszto: 'Füzet: jegyzet (2. lépés)',
-    atirat: 'Hangátirat',
-    szoveg: 'Szöveg: összefoglaló, kártya',
-    kviz: 'Kvíz',
-    matek: 'Matek-megoldás',
-    matek_cas: 'Megoldás (CAS-ellenőrzött)',
-    matek_ellenorzo: 'Levezetés ellenőrzése',
-    grafikon: 'Grafikon',
-    beagyazas: 'Keresés: beágyazás',
-    rerank: 'Keresés: újrarangsorolás',
-    osztalyozas: 'Osztályozás',
+    ocr_kezi: tk('Füzet átírása'),
+    ocr_keplet: tk('Képlet felismerése'),
+    fuzet_fejezet: tk('Füzet: fejezet (1. lépés)'),
+    fuzet_valaszto: tk('Füzet: jegyzet (2. lépés)'),
+    atirat: tk('Hangátirat'),
+    szoveg: tk('Szöveg: összefoglaló, kártya'),
+    kviz: tk('Kvíz'),
+    matek: tk('Matek-megoldás'),
+    matek_cas: tk('Megoldás (CAS-ellenőrzött)'),
+    matek_ellenorzo: tk('Levezetés ellenőrzése'),
+    grafikon: tk('Grafikon'),
+    beagyazas: tk('Keresés: beágyazás'),
+    rerank: tk('Keresés: újrarangsorolás'),
+    osztalyozas: tk('Osztályozás'),
   };
 
   let adat = $state.raw<ModellAttekintes | null>(null);
@@ -45,7 +46,7 @@
   onMount(() => void frissit());
 
   const dontesSzoveg = (d: RouterDontes): string =>
-    d.modell ? d.modell : d.var_tavolra ? 'a távol-keretre vár' : 'nincs kalibrált modell';
+    d.modell ? d.modell : d.var_tavolra ? t('a távol-keretre vár') : t('nincs kalibrált modell');
 
   const kalibraltDb = (f: ModellFeladat): number => f.sorok.filter((s) => s.kalibralt && s.aktualis).length;
 
@@ -54,21 +55,20 @@
 </script>
 
 {#if hiba && !adat}
-  <p class="hiba" role="alert">A router-tábla nem érhető el: {hiba}</p>
+  <p class="hiba" role="alert">{t('A router-tábla nem érhető el: {hiba}', { hiba })}</p>
 {:else if !adat}
-  <p class="halvany" role="status">Töltődik…</p>
+  <p class="halvany" role="status">{t('Töltődik…')}</p>
 {:else}
   <p class="halvany">
-    Munka közben a {adat.keretek.munka} GB-os, tartós tétlenségben a {adat.keretek.tavol} GB-os keretbe férő legjobb
-    kalibrált modell fut. ✓ = kalibrált (élesben futhat).
+    {t('Munka közben a {munka} GB-os, tartós tétlenségben a {tavol} GB-os keretbe férő legjobb kalibrált modell fut. ✓ = kalibrált (élesben futhat).', { munka: adat.keretek.munka, tavol: adat.keretek.tavol })}
   </p>
   <ul class="feladatok">
     {#each adat.feladatok as f (f.feladat)}
       <li class="feladat">
         <div class="fej">
-          <span class="nev">{NEV[f.feladat] ?? f.feladat}</span>
-          <span class="dontes" title={`munka: ${f.dontes.munka.indok}\ntávol: ${f.dontes.tavol.indok}`}>
-            munka: <b>{dontesSzoveg(f.dontes.munka)}</b> · távol: <b>{dontesSzoveg(f.dontes.tavol)}</b>
+          <span class="nev">{NEV[f.feladat] ? t(NEV[f.feladat]) : f.feladat}</span>
+          <span class="dontes" title={`${t('munka: {indok}', { indok: f.dontes.munka.indok })}\n${t('távol: {indok}', { indok: f.dontes.tavol.indok })}`}>
+            {t('munka:')} <b>{dontesSzoveg(f.dontes.munka)}</b> · {t('távol:')} <b>{dontesSzoveg(f.dontes.tavol)}</b>
           </span>
         </div>
         {#if f.sorok.length}
@@ -76,25 +76,25 @@
             <tbody>
               {#each f.sorok as s (s.modell)}
                 <tr class:regi={!s.aktualis}>
-                  <td class="jel" aria-label={s.kalibralt && s.aktualis ? 'kalibrált' : 'mért'}>{s.kalibralt && s.aktualis ? '✓' : ''}</td>
+                  <td class="jel" aria-label={s.kalibralt && s.aktualis ? t('kalibrált') : t('mért')}>{s.kalibralt && s.aktualis ? '✓' : ''}</td>
                   <td class="modell">{s.modell}</td>
                   <td class="szam">{s.pontszam.toFixed(3)}</td>
-                  <td class="keret">{s.keret === 'tavol' ? 'távol' : s.keret}{s.csucs_gb ? ` · ${s.csucs_gb} GB` : ''}</td>
-                  <td class="verzio" title={`${s.aranyhalmaz_verzio} · ${s.megjegyzes}`}>{rovidVerzio(f.feladat, s.aranyhalmaz_verzio)}{s.aktualis ? "" : " (elavult)"}</td>
+                  <td class="keret">{s.keret === 'tavol' ? t('távol') : s.keret}{s.csucs_gb ? ` · ${s.csucs_gb} GB` : ''}</td>
+                  <td class="verzio" title={`${s.aranyhalmaz_verzio} · ${s.megjegyzes}`}>{rovidVerzio(f.feladat, s.aranyhalmaz_verzio)}{s.aktualis ? '' : ` ${t('(elavult)')}`}</td>
                 </tr>
               {/each}
             </tbody>
           </table>
         {:else}
-          <p class="halvany">Nincs mért sor{f.aktualis_verzio ? '' : ' (nincs aranyhalmaza)'}.</p>
+          <p class="halvany">{t('Nincs mért sor')}{f.aktualis_verzio ? '' : ` ${t('(nincs aranyhalmaza)')}`}.</p>
         {/if}
         {#if f.sorok.length && !kalibraltDb(f)}
-          <p class="halvany">Nincs kalibrált modell: élesben nem fut.</p>
+          <p class="halvany">{t('Nincs kalibrált modell: élesben nem fut.')}</p>
         {/if}
       </li>
     {/each}
   </ul>
-  <button type="button" class="gomb" disabled={tolt} onclick={frissit}>Frissítés</button>
+  <button type="button" class="gomb" disabled={tolt} onclick={frissit}>{t('Frissítés')}</button>
 {/if}
 
 <style>

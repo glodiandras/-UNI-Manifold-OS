@@ -2,6 +2,7 @@
 // ugyanazon az azonosítón: ⌘P és a jegyzet helyi menüje). Az `App.svelte` hívja egyszer.
 
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
+import { t, tk } from '../lib/i18n';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import { jegyzetOsztalyRenderelok } from '../szerkeszto/beagyazas/regiszter';
@@ -21,26 +22,27 @@ function hibaSzoveg(e: unknown): string {
 export async function kvizEbbol(indit: (ut: string) => Promise<unknown> = kvizGeneral): Promise<void> {
   const p = szerkesztok.aktiv;
   if (!p || !p.ut.toLowerCase().endsWith('.md')) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy jegyzetet', szoveg: 'A kvíz a nyitott jegyzetből készül.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Nyiss meg egy jegyzetet'), szoveg: t('A kvíz a nyitott jegyzetből készül.') });
     return;
   }
   if (kvizUt(p.ut) || kiseroUt(p.ut)) {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Ez egy kísérőjegyzet', szoveg: 'Kvíz a forrásjegyzetből készül, nem a kvízből vagy a kártyákból.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Ez egy kísérőjegyzet'), szoveg: t('Kvíz a forrásjegyzetből készül, nem a kvízből vagy a kártyákból.') });
     return;
   }
   try {
     await p.mentes();
     await indit(p.ut);
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: 'A kvíz készítése nem indult el', szoveg: hibaSzoveg(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A kvíz készítése nem indult el'), szoveg: hibaSzoveg(e) });
     return;
   }
   ertesitesek.ertesit({
     szint: 'info',
-    cim: 'Kvíz készül',
+    cim: t('Kvíz készül'),
     szoveg:
-      'A modell kérdéseket javasol a jegyzetből; ami átmegy a kapukon, a kvízjegyzetbe kerül, a jegyzetbe egy beágyazó sor (visszavonható). ' +
-      'Ha a kvíz modellje csak tétlenségben futhat, akkor készül el, amikor nem dolgozol.',
+      t('A modell kérdéseket javasol a jegyzetből; ami átmegy a kapukon, a kvízjegyzetbe kerül, a jegyzetbe egy beágyazó sor (visszavonható).') +
+      ' ' +
+      t('Ha a kvíz modellje csak tétlenségben futhat, akkor készül el, amikor nem dolgozol.'),
   });
 }
 
@@ -48,7 +50,7 @@ export function kvizTelepit(reg?: Regiszter, felulet?: Felulet): () => void {
   const le = [jegyzetOsztalyRenderelok.regisztral(kvizRenderelo)];
   if (reg && felulet) {
     const jegyzetNyitva = () => !!felulet.munkaterulet.aktivFul?.ut?.toLowerCase().endsWith('.md');
-    le.push(reg.regisztralMind([{ id: 'kviz.ebbol', nev: 'Kvíz ebből', kategoria: 'Jegyzet', elerheto: jegyzetNyitva, futtat: () => kvizEbbol() }]));
+    le.push(reg.regisztralMind([{ id: 'kviz.ebbol', nev: tk('Kvíz ebből'), kategoria: tk('Jegyzet'), elerheto: jegyzetNyitva, futtat: () => kvizEbbol() }]));
   }
   return () => le.forEach((f) => f());
 }

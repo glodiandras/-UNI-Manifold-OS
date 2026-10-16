@@ -34,7 +34,7 @@ def utvonalak(r) -> None:
 
     def ismeretlen(k):
         k.egesz("limit", None, 1, 10_000)
-        raise HttpError(404, "nincs ilyen végpont")
+        raise HttpError(404, "nincs ilyen végpont", kod="index.api.nincs_vegpont")
     r.get(re.compile(r"/api/vault/.*", re.S), ismeretlen)
 
     r.post("/api/vault/feloldas", lambda k: {"eredmenyek": k.app.index.feloldas(k.torzs().get("forras"),

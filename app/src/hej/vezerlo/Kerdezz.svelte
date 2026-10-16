@@ -2,6 +2,7 @@
      blokkjára vagy fejezetére mutató linkkel és a jegyzet szó szerinti mondatával. Forrás nélkül nem válaszol. A válasz a vaultba
      nem íródik; a kattintás a forrás sorára nyit. -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onDestroy } from 'svelte';
   import { kornyezet } from '../../lib/kornyezet';
   import { kerdezzAllapot as a, vegeSzoveg, type KerdezzMondat } from '../../lib/kereses/kerdezz.svelte';
@@ -27,14 +28,14 @@
     void a.kerdez(szoveg);
   }}
 >
-  <label class="cimke" for="kerdezz-mezo">Kérdés a jegyzeteidhez</label>
+  <label class="cimke" for="kerdezz-mezo">{t('Kérdés a jegyzeteidhez')}</label>
   <input id="kerdezz-mezo" type="text" bind:value={szoveg} maxlength="2000" autocomplete="off" spellcheck="false" />
   <div class="sor">
     {#if a.fut}
-      <button type="button" class="m-gomb semleges gomb" onclick={() => a.megszakit()}>Állj</button>
-      <span class="halvany" aria-live="polite">{a.mondatok.length ? 'Válaszol…' : a.forrasok.length ? 'Gondolkodik…' : 'Forrásokat keres…'}</span>
+      <button type="button" class="m-gomb semleges gomb" onclick={() => a.megszakit()}>{t('Állj')}</button>
+      <span class="halvany" aria-live="polite">{a.mondatok.length ? t('Válaszol…') : a.forrasok.length ? 'Gondolkodik…' : t('Forrásokat keres…')}</span>
     {:else}
-      <button type="submit" class="m-gomb semleges gomb" disabled={!szoveg.trim()}>Kérdezz</button>
+      <button type="submit" class="m-gomb semleges gomb" disabled={!szoveg.trim()}>{t('Kérdezz')}</button>
     {/if}
   </div>
 </form>
@@ -42,7 +43,7 @@
 {#if a.hiba}<p class="hiba" role="alert">{a.hiba}</p>{/if}
 
 {#if a.mondatok.length}
-  <ol class="valasz" aria-label="Válasz">
+  <ol class="valasz" aria-label={t('Válasz')}>
     {#each a.mondatok as m, i (i)}
       <li>
         <p class="mondat">{m.mondat}</p>
@@ -55,11 +56,11 @@
 
 {#if a.vege}
   {#if a.vege.allapot !== 'kesz'}<p class="halvany">{vegeSzoveg(a.vege)}</p>{/if}
-  {#if a.vege.proba && a.vege.allapot === 'kesz'}<p class="halvany">Próba: a modell erre a feladatra nem kalibrált.</p>{/if}
+  {#if a.vege.proba && a.vege.allapot === 'kesz'}<p class="halvany">{t('Próba: a modell erre a feladatra nem kalibrált.')}</p>{/if}
 {/if}
 
 {#if a.forrasok.length && (a.vege?.allapot === 'nincs_modell' || (!a.fut && !a.mondatok.length))}
-  <ul class="forrasok" aria-label="Források">
+  <ul class="forrasok" aria-label={t('Források')}>
     {#each a.forrasok as f (f.szam)}
       <li>
         <button type="button" class="forras" title={f.ut} onclick={(e) => nyit(f.ut, f.sor_kezd, e)}>

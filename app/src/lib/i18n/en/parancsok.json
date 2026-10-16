@@ -1,0 +1,15 @@
+{
+  "Téma": "Theme",
+  "Általános": "General",
+  "Fül": "Tab",
+  "Navigáció": "Navigation",
+  "Fókusz": "Focus",
+  "Parancspaletta": "Command palette",
+  "Parancs keresése…": "Search commands…",
+  "Parancs keresése": "Search commands",
+  "Nincs ilyen parancs: „{lekerdezes}”": "No command matches “{lekerdezes}”",
+  "választás": "select",
+  "futtatás": "run",
+  "bezárás": "close",
+  "A parancs nem sikerült: {nev}": "Command failed: {nev}"
+}

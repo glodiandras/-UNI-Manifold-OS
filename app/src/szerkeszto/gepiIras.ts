@@ -7,6 +7,7 @@
 //
 // A próba-kör (`proba: true`) a klónra írt: itt nem tölt újra és nem értesít (a vezérlő mutatja).
 
+import { t, tp } from '../lib/i18n';
 import { ApiHiba, kerdez } from '../lib/core/api';
 import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -21,7 +22,7 @@ interface Kor {
 const ERTESITES_MS = 15000;
 
 function fajlok(n: number): string {
-  return `${n} fájl`;
+  return tp('{n} fájl', n);
 }
 
 export function gepiIrasFigyel(kapcsolat: CoreKapcsolat, dk: Dokumentumok = szerkesztok.dokumentumok): () => void {
@@ -41,12 +42,12 @@ export function gepiIrasFigyel(kapcsolat: CoreKapcsolat, dk: Dokumentumok = szer
       });
       korok.delete(kor);
       for (const ut of utak) void dk.kap(ut)?.kulsoValtozas();
-      ertesitesek.ertesit({ szint: 'siker', cim: 'Gépi írás visszavonva', szoveg: fajlok(utak.length), idotartam: 4000 });
+      ertesitesek.ertesit({ szint: 'siker', cim: t('Gépi írás visszavonva'), szoveg: fajlok(utak.length), idotartam: 4000 });
     } catch (e) {
       const erintett = e instanceof ApiHiba && Array.isArray(e.adat.fajlok) ? ` (${(e.adat.fajlok as string[]).join(', ')})` : '';
       ertesitesek.ertesit({
         szint: 'hiba',
-        cim: 'A visszavonás nem sikerült',
+        cim: t('A visszavonás nem sikerült'),
         szoveg: (e instanceof Error ? e.message : String(e)) + erintett,
         idotartam: 0,
       });
@@ -91,9 +92,9 @@ export function gepiIrasFigyel(kapcsolat: CoreKapcsolat, dk: Dokumentumok = szer
       ertesitesek.ertesit({
         kulcs: `gepi:${kor}`,
         szint: 'info',
-        cim: 'Gépi írás',
-        szoveg: k.shak.length === 1 ? `${uzenet} · ${fajlok(k.utak.size)}` : `${k.shak.length} tétel · ${fajlok(k.utak.size)} · ${uzenet}`,
-        muvelet: { nev: 'Visszavonás', futtat: () => void visszavon(kor) },
+        cim: t('Gépi írás'),
+        szoveg: k.shak.length === 1 ? t('{uzenet} · {fajlok}', { uzenet, fajlok: fajlok(k.utak.size) }) : t('{n} tétel · {fajlok} · {uzenet}', { n: k.shak.length, fajlok: fajlok(k.utak.size), uzenet }),
+        muvelet: { nev: t('Visszavonás'), futtat: () => void visszavon(kor) },
         idotartam: ERTESITES_MS,
       });
     }),

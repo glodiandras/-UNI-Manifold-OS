@@ -4,6 +4,7 @@
   (`link.ut`), a kattintás ugyanúgy nyit, mint a jegyzetben: ⌘ új fül, ⌘⌥ osztás, feloldatlan linknél új jegyzet.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { Check } from '../lib/ikon/ikonok';
   import { kulsoLink } from '../szerkeszto/linkek/kulso';
@@ -16,7 +17,7 @@
    *  feloldott link a teljes útjával ebből nyílik, így a sor saját fájljára mutató link is navigál (nem „önlink”). */
   let { ertek, forras, ez = null }: { ertek: Ertek; forras: string; ez?: string | null } = $props();
   const f = $derived(fajta(ertek));
-  const t = $derived(ertek !== null && typeof ertek === 'object' ? ertek : null);
+  const tv = $derived(ertek !== null && typeof ertek === 'object' ? ertek : null);
 
   function linkKattint(e: MouseEvent, l: { cel: string; ut: string | null; alcel?: string; kulso?: boolean }) {
     e.preventDefault();
@@ -32,34 +33,34 @@
 {#if f === 'ures'}
   <span class="ures"></span>
 {:else if f === 'logikai'}
-  <span class="m-jelolo jelolo" class:be={ertek === true} role="img" aria-label={ertek ? 'igen' : 'nem'}>
+  <span class="m-jelolo jelolo" class:be={ertek === true} role="img" aria-label={ertek ? t('igen') : t('nem')}>
     {#if ertek}<Ikon ikon={Check} meret={14} />{/if}
   </span>
 {:else if f === 'szam'}
   <span class="szam">{szamSzoveg(ertek as number)}</span>
 {:else if f === 'szoveg'}
   <span class="szoveg" title={ertek as string}>{ertek}</span>
-{:else if t?.t === 'lista'}
+{:else if tv?.t === 'lista'}
   <span class="lista">
-    {#each t.e as x, i (i)}
+    {#each tv.e as x, i (i)}
       <span class="elem"><Cella ertek={x} {forras} {ez} /></span>
     {/each}
   </span>
-{:else if t?.t === 'datum'}
-  <span class="datum" title={t.iso}>{datumSzoveg(t.iso, t.ido)}</span>
-{:else if t?.t === 'link'}
+{:else if tv?.t === 'datum'}
+  <span class="datum" title={tv.iso}>{datumSzoveg(tv.iso, tv.ido)}</span>
+{:else if tv?.t === 'link'}
   <a
     class="link"
-    class:hianyzo={!t.ut && !t.kulso}
-    href={t.kulso ? t.cel : '#'}
-    title={t.alcel ? `${t.cel} › ${t.alcel}` : t.cel}
-    onclick={(e) => linkKattint(e, t)}>{t.nev}{t.alcel ? ` › ${t.alcel}` : ''}</a
+    class:hianyzo={!tv.ut && !tv.kulso}
+    href={tv.kulso ? tv.cel : '#'}
+    title={tv.alcel ? `${tv.cel} › ${tv.alcel}` : tv.cel}
+    onclick={(e) => linkKattint(e, tv)}>{tv.nev}{tv.alcel ? ` › ${tv.alcel}` : ''}</a
   >
-{:else if t?.t === 'cimke'}
-  <span class="cimke">{t.v}</span>
-{:else if t?.t === 'hiba'}
-  <span class="hiba" title={t.u}>Hiba</span>
-{:else if t?.t === 'kep'}
+{:else if tv?.t === 'cimke'}
+  <span class="cimke">{tv.v}</span>
+{:else if tv?.t === 'hiba'}
+  <span class="hiba" title={tv.u}>{t('Hiba')}</span>
+{:else if tv?.t === 'kep'}
   <span class="szoveg" title={ertekSzoveg(ertek)}>{ertekSzoveg(ertek)}</span>
 {:else}
   <span class="szoveg" title={ertekSzoveg(ertek)}>{ertekSzoveg(ertek)}</span>

@@ -3,6 +3,7 @@
   teljes nézet a Használat nézet-fülben, az adatok exportja és törlése alul.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { regiszter } from '../../lib/parancsok/regiszter';
   import Adatkezeles from '../../lib/tracker/Adatkezeles.svelte';
@@ -19,17 +20,17 @@
 </script>
 
 {#if modell.hiba && !adat}
-  <p class="hiba" role="alert">A használati adat nem érhető el: {modell.hiba}</p>
+  <p class="hiba" role="alert">{t('A használati adat nem érhető el: {hiba}', { hiba: modell.hiba })}</p>
 {:else if !adat}
-  <p class="halvany" role="status">Betöltés…</p>
+  <p class="halvany" role="status">{t('Betöltés…')}</p>
 {:else}
-  {#if modell.hiba}<p class="hiba" role="alert">A frissítés nem sikerült ({modell.hiba}): a korábban betöltött adat látszik.</p>{/if}
+  {#if modell.hiba}<p class="hiba" role="alert">{t('A frissítés nem sikerült ({hiba}): a korábban betöltött adat látszik.', { hiba: modell.hiba })}</p>{/if}
   <dl>
-    <dt>Gépelés p95</dt>
-    <dd>{adat.kesleltetes.gepeles.db ? `≤ ${msSzoveg(adat.kesleltetes.gepeles.p95_ms)}` : 'még nincs minta'}</dd>
-    <dt>Mentés p95</dt>
-    <dd>{adat.kesleltetes.mentes.db ? `≤ ${msSzoveg(adat.kesleltetes.mentes.p95_ms)}` : 'még nincs minta'}</dd>
-    <dt>Memóriaőr-szünet</dt>
+    <dt>{t('Gépelés p95')}</dt>
+    <dd>{adat.kesleltetes.gepeles.db ? `≤ ${msSzoveg(adat.kesleltetes.gepeles.p95_ms)}` : t('még nincs minta')}</dd>
+    <dt>{t('Mentés p95')}</dt>
+    <dd>{adat.kesleltetes.mentes.db ? `≤ ${msSzoveg(adat.kesleltetes.mentes.p95_ms)}` : t('még nincs minta')}</dd>
+    <dt>{t('Memóriaőr-szünet')}</dt>
     <dd>{szamSzoveg(adat.szunetek.memoria.db)}</dd>
   </dl>
   {#if adat.parancsok.length}
@@ -39,9 +40,9 @@
       {/each}
     </ol>
   {:else}
-    <p class="halvany">Még nincs rögzített parancshasználat.</p>
+    <p class="halvany">{t('Még nincs rögzített parancshasználat.')}</p>
   {/if}
-  <button type="button" class="m-gomb semleges gomb" onclick={reszletek}>Részletek</button>
+  <button type="button" class="m-gomb semleges gomb" onclick={reszletek}>{t('Részletek')}</button>
   <Adatkezeles />
 {/if}
 

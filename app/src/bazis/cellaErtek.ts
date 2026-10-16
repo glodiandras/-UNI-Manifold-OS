@@ -3,6 +3,7 @@
 
 import { datumBevitel, ertekSzoveg, LINK_KULCSOK, linkke, listaBevitel, listaElemek, szamBevitel } from '../szerkeszto/tulajdonsagok/ertek';
 import type { TulajdonsagTipus } from '../szerkeszto/tulajdonsagok/tipusok';
+import { t } from '../lib/i18n';
 
 export type Fajta = 'szoveg' | 'szam' | 'datum' | 'datumido' | 'lista' | 'jelolo' | 'valaszto';
 
@@ -57,7 +58,7 @@ export function bevitelbol(f: Fajta, szoveg: string, kulcs: string): Bevitel {
   switch (f) {
     case 'szam': {
       const n = szamBevitel(szoveg);
-      return n === undefined ? { hiba: 'Ez nem szám.' } : { ertek: n === null ? '' : n };
+      return n === undefined ? { hiba: t('Ez nem szám.') } : { ertek: n === null ? '' : n };
     }
     case 'lista': {
       const elemek = listaBevitel(szoveg);

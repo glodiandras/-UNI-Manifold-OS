@@ -8,6 +8,7 @@
   import { onMount, tick, untrack } from 'svelte';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+  import { locale, t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { Captions, CaptionsOff, FileMusic, Maximize, Pause, PictureInPicture2, Play, RotateCcw, RotateCw, Volume2, VolumeX } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
@@ -98,7 +99,7 @@
 
   function kapcsol() {
     if (!media) return;
-    if (media.paused) void media.play().catch((e: Error) => (hiba = `A lejátszás nem indult: ${e.message}`));
+    if (media.paused) void media.play().catch((e: Error) => (hiba = t('A lejátszás nem indult: {hiba}', { hiba: e.message })));
     else media.pause();
   }
 
@@ -126,7 +127,7 @@
 
   async function beszur() {
     const r = await idokodBeszur(ut, media?.currentTime ?? ido);
-    if (r) ertesitesek.ertesit({ szint: 'siker', cim: `Időkód beszúrva: ${idoSzoveg(media?.currentTime ?? ido)}`, szoveg: fajlNev(r.ut), idotartam: 2000 });
+    if (r) ertesitesek.ertesit({ szint: 'siker', cim: t('Időkód beszúrva: {ido}', { ido: idoSzoveg(media?.currentTime ?? ido) }), szoveg: fajlNev(r.ut), idotartam: 2000 });
   }
 
   function parancs(p: MediaParancs) {
@@ -244,7 +245,7 @@
         if (el) atirat = a;
       },
       (e: Error) => {
-        if (el) atiratHiba = `Az átirat nem tölthető be: ${e.message}`;
+        if (el) atiratHiba = t('Az átirat nem tölthető be: {hiba}', { hiba: e.message });
       },
     );
     return () => {
@@ -286,8 +287,10 @@
     const kod = media?.error?.code;
     hiba =
       kod === 4
-        ? 'A WebKit ezt a formátumot nem tudja lejátszani (a formátum-átalakítás a beolvasás feladata).'
-        : `A média nem tölthető be${media?.error?.message ? `: ${media.error.message}` : ''}.`;
+        ? t('A WebKit ezt a formátumot nem tudja lejátszani (a formátum-átalakítás a beolvasás feladata).')
+        : media?.error?.message
+          ? t('A média nem tölthető be: {hiba}.', { hiba: media.error.message })
+          : t('A média nem tölthető be.');
   }
 
   function leiroNyit(e: MouseEvent) {
@@ -296,14 +299,14 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<article class="lejatszo" class:hang onkeydown={billentyu} aria-label={`Lejátszó: ${fajlNev(ut)}`}>
+<article class="lejatszo" class:hang onkeydown={billentyu} aria-label={t('Lejátszó: {nev}', { nev: fajlNev(ut) })}>
   <header class="fejlec">
     <p class="morzsa" title={ut}>
       <span class="morzsa-ikon"><JegyzetIkon {ut} tipus={hang ? 'hang' : 'video'} meret={14} /></span>
       {#if mappa(ut)}<span class="mappa">{`${mappa(ut).replaceAll('/', ' / ')} / `}</span>{/if}<span class="nev">{fajlNev(ut)}</span>
     </p>
     {#if atirat?.leiro}
-      <button type="button" class="link-gomb" onclick={leiroNyit} title="A forrásleíró jegyzet megnyitása osztásban (⌘: új fülben)">Forrásleíró jegyzet</button>
+      <button type="button" class="link-gomb" onclick={leiroNyit} title={t('A forrásleíró jegyzet megnyitása osztásban (⌘: új fülben)')}>{t('Forrásleíró jegyzet')}</button>
     {/if}
   </header>
 
@@ -353,10 +356,10 @@
         {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
       </div>
 
-      <div class="vezerlok" role="group" aria-label="Lejátszás">
-        <IkonGomb ikon={RotateCcw} cimke={`Vissza ${UGRAS} másodpercet`} billentyu="J" onclick={() => ugrik(ido - UGRAS)} />
-        <IkonGomb ikon={lejatszik ? Pause : Play} cimke={lejatszik ? 'Szünet' : 'Lejátszás'} billentyu="K" onclick={kapcsol} />
-        <IkonGomb ikon={RotateCw} cimke={`Előre ${UGRAS} másodpercet`} billentyu="L" onclick={() => ugrik(ido + UGRAS)} />
+      <div class="vezerlok" role="group" aria-label={t('Lejátszás')}>
+        <IkonGomb ikon={RotateCcw} cimke={t('Vissza {n} másodpercet', { n: UGRAS })} billentyu="J" onclick={() => ugrik(ido - UGRAS)} />
+        <IkonGomb ikon={lejatszik ? Pause : Play} cimke={lejatszik ? t('Szünet') : t('Lejátszás')} billentyu="K" onclick={kapcsol} />
+        <IkonGomb ikon={RotateCw} cimke={t('Előre {n} másodpercet', { n: UGRAS })} billentyu="L" onclick={() => ugrik(ido + UGRAS)} />
         <span class="ido" aria-live="off">{idoSzoveg(huzas ?? ido)} / {idoSzoveg(hossz)}</span>
         <div class="savhely">
           <div class="puffer" style:width={hossz ? `${(puffer / hossz) * 100}%` : '0'}></div>
@@ -367,7 +370,7 @@
             max={hossz || 0}
             step="0.1"
             value={huzas ?? ido}
-            aria-label="Pozíció"
+            aria-label={t('Pozíció')}
             aria-valuetext={`${idoSzoveg(huzas ?? ido)} / ${idoSzoveg(hossz)}`}
             oninput={(e) => (huzas = Number(e.currentTarget.value))}
             onchange={(e) => {
@@ -376,8 +379,8 @@
             }}
           />
         </div>
-        <label class="sebesseg" title="Lejátszási sebesség (⇧< / ⇧>)">
-          <span class="rejtett">Sebesség</span>
+        <label class="sebesseg" title={t('Lejátszási sebesség (⇧< / ⇧>)')}>
+          <span class="rejtett">{t('Sebesség')}</span>
           <select
             value={sebesseg}
             onchange={(e) => {
@@ -385,27 +388,27 @@
               allapotMent();
             }}
           >
-            {#each SEBESSEGEK as s (s)}<option value={s}>{String(s).replace('.', ',')}×</option>{/each}
+            {#each SEBESSEGEK as s (s)}<option value={s}>{s.toLocaleString(locale())}×</option>{/each}
           </select>
         </label>
-        <IkonGomb ikon={nemitva || hangero === 0 ? VolumeX : Volume2} cimke={nemitva ? 'Hang be' : 'Némítás'} billentyu="M" lenyomva={nemitva} onclick={() => (nemitva = !nemitva)} />
-        <input class="hangero" type="range" min="0" max="1" step="0.05" bind:value={hangero} aria-label="Hangerő" />
+        <IkonGomb ikon={nemitva || hangero === 0 ? VolumeX : Volume2} cimke={nemitva ? t('Hang be') : t('Némítás')} billentyu="M" lenyomva={nemitva} onclick={() => (nemitva = !nemitva)} />
+        <input class="hangero" type="range" min="0" max="1" step="0.05" bind:value={hangero} aria-label={t('Hangerő')} />
         {#if !hang}
-          <IkonGomb ikon={felirat ? Captions : CaptionsOff} cimke="Felirat a képen" billentyu="C" lenyomva={felirat} disabled={!atirat?.cuek.length} onclick={() => parancs('felirat')} />
-          {#if tamogatott.kepAKepben}<IkonGomb ikon={PictureInPicture2} cimke="Kép a képben" onclick={kepAKepben} />{/if}
-          {#if tamogatott.teljes}<IkonGomb ikon={Maximize} cimke="Teljes képernyő" onclick={teljesKepernyo} />{/if}
+          <IkonGomb ikon={felirat ? Captions : CaptionsOff} cimke={t('Felirat a képen')} billentyu="C" lenyomva={felirat} disabled={!atirat?.cuek.length} onclick={() => parancs('felirat')} />
+          {#if tamogatott.kepAKepben}<IkonGomb ikon={PictureInPicture2} cimke={t('Kép a képben')} onclick={kepAKepben} />{/if}
+          {#if tamogatott.teljes}<IkonGomb ikon={Maximize} cimke={t('Teljes képernyő')} onclick={teljesKepernyo} />{/if}
         {/if}
-        <button type="button" class="beszur" onclick={() => void beszur()} title="Az időkód linkként az aktív jegyzetbe (⇧⌘I)">Időkód a jegyzetbe</button>
+        <button type="button" class="beszur" onclick={() => void beszur()} title={t('Az időkód linkként az aktív jegyzetbe (⇧⌘I)')}>{t('Időkód a jegyzetbe')}</button>
       </div>
     </section>
 
-    <aside class="atirat" bind:this={lista} aria-label="Átirat">
+    <aside class="atirat" bind:this={lista} aria-label={t('Átirat')}>
       <div class="atirat-fej">
-        <span class="atirat-cim">Átirat</span>
-        {#if atirat?.vtt}<span class="atirat-jel" title={atirat.vtt}>{atirat.gepi ? 'gépi' : 'kiadói'}{atirat.nyelv ? ` · ${atirat.nyelv}` : ''}</span>{/if}
+        <span class="atirat-cim">{t('Átirat')}</span>
+        {#if atirat?.vtt}<span class="atirat-jel" title={atirat.vtt}>{atirat.gepi ? t('gépi') : t('kiadói')}{atirat.nyelv ? ` · ${atirat.nyelv}` : ''}</span>{/if}
       </div>
       {#if atirat?.cuek.length}
-        <input class="szuro" type="search" placeholder="Szűrés az átiratban" aria-label="Szűrés az átiratban" bind:value={szuro} />
+        <input class="szuro" type="search" placeholder={t('Szűrés az átiratban')} aria-label={t('Szűrés az átiratban')} bind:value={szuro} />
         <ol
           class="mondatok"
           onwheel={() => (kovetesSzunetIg = Date.now() + KOVETES_SZUNET_MS)}
@@ -420,12 +423,12 @@
               </button>
             </li>
           {:else}
-            <li class="ures">Nincs ilyen mondat.</li>
+            <li class="ures">{t('Nincs ilyen mondat.')}</li>
           {/each}
         </ol>
       {:else}
         <p class="ures">
-          {atiratHiba ?? atirat?.figyelmeztetes ?? (atirat ? 'Ehhez a médiához nincs átirat.' : 'Az átirat betöltése…')}
+          {atiratHiba ?? atirat?.figyelmeztetes ?? (atirat ? t('Ehhez a médiához nincs átirat.') : t('Az átirat betöltése…'))}
         </p>
       {/if}
     </aside>

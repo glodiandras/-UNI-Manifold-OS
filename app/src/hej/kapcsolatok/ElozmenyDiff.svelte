@@ -3,6 +3,7 @@
   vagy ez és a jelenlegi. Innen indul a visszaállítás is („Visszaállítás erre a verzióra”, megerősítés után).
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import type { MergeView } from '@codemirror/merge';
   import { onDestroy, onMount } from 'svelte';
   import Ikon from '../../lib/ikon/Ikon.svelte';
@@ -69,9 +70,9 @@
   });
 
   const balCim = $derived(
-    mod === 'elozo' ? (valtozat?.elozo_ok === 'nincs' || !bejegyzes.elozo ? 'Még nem létezett' : 'Az előző változat') : 'Ez a változat',
+    mod === 'elozo' ? (valtozat?.elozo_ok === 'nincs' || !bejegyzes.elozo ? t('Még nem létezett') : t('Az előző változat')) : t('Ez a változat'),
   );
-  const jobbCim = $derived(mod === 'elozo' ? 'Ez a változat' : 'A jelenlegi (a szerkesztőben)');
+  const jobbCim = $derived(mod === 'elozo' ? t('Ez a változat') : t('A jelenlegi (a szerkesztőben)'));
 
   async function visszaallit() {
     dolgozik = true;
@@ -84,23 +85,23 @@
   const megjegyzes = $derived.by(() => {
     if (!valtozat) return '';
     const o = valtozat.szoveg_ok;
-    if (o === 'kodolas') return 'A változat nem érvényes UTF-8, az összevetés nem érhető el.';
-    if (o === 'nagy') return 'A változat túl nagy az összevetéshez.';
-    if (o === 'nincs' && bejegyzes.statusz === 'D') return 'Ebben a pillanatképben a jegyzet törölve lett.';
+    if (o === 'kodolas') return t('A változat nem érvényes UTF-8, az összevetés nem érhető el.');
+    if (o === 'nagy') return t('A változat túl nagy az összevetéshez.');
+    if (o === 'nincs' && bejegyzes.statusz === 'D') return t('Ebben a pillanatképben a jegyzet törölve lett.');
     return '';
   });
 </script>
 
-<Atfedes cimke="A jegyzet egy korábbi változata" nev="elozmeny" {onbezar} szeles>
+<Atfedes cimke={t('A jegyzet egy korábbi változata')} nev="elozmeny" {onbezar} szeles>
   <div class="diff">
     <header class="fej">
       <div class="cim">
         <h2>{bejegyzes.cimke}</h2>
-        <p>{elozmenyIdo(bejegyzes.datum)}{bejegyzes.kor ? ` · ${bejegyzes.kor}` : ''}{bejegyzes.regi_ut ? ` · átnevezve: ${bejegyzes.regi_ut} → ${bejegyzes.ut_akkor}` : ''}</p>
+        <p>{elozmenyIdo(bejegyzes.datum)}{bejegyzes.kor ? ` · ${bejegyzes.kor}` : ''}{bejegyzes.regi_ut ? ` · ${t('átnevezve: {regi} → {uj}', { regi: bejegyzes.regi_ut, uj: bejegyzes.ut_akkor })}` : ''}</p>
       </div>
-      <div class="mod" role="group" aria-label="Összevetés">
-        <button type="button" aria-pressed={mod === 'elozo'} onclick={() => (mod = 'elozo')}>az előzővel</button>
-        <button type="button" aria-pressed={mod === 'jelenlegi'} onclick={() => (mod = 'jelenlegi')}>a jelenlegivel</button>
+      <div class="mod" role="group" aria-label={t('Összevetés')}>
+        <button type="button" aria-pressed={mod === 'elozo'} onclick={() => (mod = 'elozo')}>{t('az előzővel')}</button>
+        <button type="button" aria-pressed={mod === 'jelenlegi'} onclick={() => (mod = 'jelenlegi')}>{t('a jelenlegivel')}</button>
       </div>
     </header>
 
@@ -109,16 +110,16 @@
 
     <div class="oszlopfej" aria-hidden="true"><span>{balCim}</span><span>{jobbCim}</span></div>
     <div class="merge" bind:this={hely}>
-      {#if !valtozat && !hiba}<p class="toltes" role="status">Betöltés…</p>{/if}
+      {#if !valtozat && !hiba}<p class="toltes" role="status">{t('Betöltés…')}</p>{/if}
     </div>
 
     <footer class="gombok">
       {#if megerosit}
-        <p class="figy">A jegyzet erre a változatra áll vissza; a mostani szöveg az előzményekben megmarad, és a visszaállítás is visszavonható.</p>
-        <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = false)}>Mégse</button>
-        <button type="button" class="m-gomb gomb elsodleges" disabled={dolgozik} onclick={visszaallit}>Visszaállítás</button>
+        <p class="figy">{t('A jegyzet erre a változatra áll vissza; a mostani szöveg az előzményekben megmarad, és a visszaállítás is visszavonható.')}</p>
+        <button type="button" class="m-gomb semleges gomb" disabled={dolgozik} onclick={() => (megerosit = false)}>{t('Mégse')}</button>
+        <button type="button" class="m-gomb gomb elsodleges" disabled={dolgozik} onclick={visszaallit}>{t('Visszaállítás')}</button>
       {:else}
-        <button type="button" class="m-gomb semleges gomb" onclick={onbezar}>Bezárás</button>
+        <button type="button" class="m-gomb semleges gomb" onclick={onbezar}>{t('Bezárás')}</button>
         <button
           type="button"
           class="m-gomb gomb elsodleges"
@@ -126,7 +127,7 @@
           title={oka ?? undefined}
           onclick={() => (megerosit = true)}
         >
-          <Ikon ikon={RotateCcw} meret={14} /> Visszaállítás erre a verzióra
+          <Ikon ikon={RotateCcw} meret={14} /> {t('Visszaállítás erre a verzióra')}
         </button>
       {/if}
     </footer>

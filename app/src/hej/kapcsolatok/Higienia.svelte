@@ -5,6 +5,7 @@
   (`GET /api/higienia?ut=`: egyetlen indexelt lekérdezés), ez a komponens csak megjeleníti.
 -->
 <script lang="ts">
+  import { t, tp } from '../../lib/i18n';
   import { fajtaCim } from '../../lib/asszisztens/megjelenites';
   import type { HigieniaTetel } from '../../lib/asszisztens/tipusok';
   import Ikon from '../../lib/ikon/Ikon.svelte';
@@ -23,27 +24,27 @@
 {#if hiba}
   <p class="hiba" role="alert">{hiba}</p>
 {:else if !tetelek.length}
-  <p class="ures" role="status">Nincs észrevétel ebben a jegyzetben.</p>
+  <p class="ures" role="status">{t('Nincs észrevétel ebben a jegyzetben.')}</p>
 {:else}
-  <ul class="lista" aria-label="A jegyzet higiénia-észrevételei">
-    {#each lathato as t (t.azonosito)}
+  <ul class="lista" aria-label={t('A jegyzet higiénia-észrevételei')}>
+    {#each lathato as it (it.azonosito)}
       <li>
-        {#if t.sor}
-          <button type="button" class="elem" title="{fajtaCim(t.fajta)} — ugrás a {t.sor}. sorra" onclick={(e) => onnyit(t.sor!, e)}>
-            <span class="jel" class:hiba-szint={t.szint === 'hiba'}><Ikon ikon={t.szint === 'hiba' ? CircleAlert : TriangleAlert} meret={14} /></span>
-            <span class="szoveg">{t.uzenet}</span>
-            <span class="sor">{t.sor}.</span>
+        {#if it.sor}
+          <button type="button" class="elem" title={t('{fajta} — ugrás a {sor}. sorra', { fajta: fajtaCim(it.fajta), sor: it.sor })} onclick={(e) => onnyit(it.sor!, e)}>
+            <span class="jel" class:hiba-szint={it.szint === 'hiba'}><Ikon ikon={it.szint === 'hiba' ? CircleAlert : TriangleAlert} meret={14} /></span>
+            <span class="szoveg">{it.uzenet}</span>
+            <span class="sor">{it.sor}.</span>
           </button>
         {:else}
-          <div class="elem statikus" title={fajtaCim(t.fajta)}>
+          <div class="elem statikus" title={fajtaCim(it.fajta)}>
             <span class="jel"><Ikon ikon={TriangleAlert} meret={14} /></span>
-            <span class="szoveg">{t.uzenet}</span>
+            <span class="szoveg">{it.uzenet}</span>
           </div>
         {/if}
       </li>
     {/each}
   </ul>
-  {#if tetelek.length > MAX}<p class="ures">… és még {tetelek.length - MAX} észrevétel.</p>{/if}
+  {#if tetelek.length > MAX}<p class="ures">{tp('… és még {n} észrevétel.', tetelek.length - MAX)}</p>{/if}
 {/if}
 
 <style>

@@ -12,6 +12,7 @@ import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
 import { tulajdonsagApi } from '../szerkeszto/tulajdonsagok/api';
 import { blokkCsere, fmBlokk } from '../szerkeszto/tulajdonsagok/fm';
 import type { SemaProblema, TulajdonsagApi, TulajdonsagTipus } from '../szerkeszto/tulajdonsagok/tipusok';
+import { t } from '../lib/i18n';
 
 export interface CellaOlvasat {
   /** a frontmatterben ténylegesen álló kulcs (kis-nagybetűben a fájl írása) */
@@ -71,8 +72,8 @@ export async function cellaIr(
   }
   try {
     if (dok.csakOlvashato) return { ok: false, elutasitva: dok.csakOlvashato };
-    if (dok.allapot === 'utkozes') return { ok: false, elutasitva: 'A jegyzet közben megváltozott a lemezen; előbb az ütközést kell feloldani.' };
-    if (dok.allapot === 'eltunt') return { ok: false, elutasitva: 'A jegyzet közben eltűnt (törölték vagy áthelyezték).' };
+    if (dok.allapot === 'utkozes') return { ok: false, elutasitva: t('A jegyzet közben megváltozott a lemezen; előbb az ütközést kell feloldani.') };
+    if (dok.allapot === 'eltunt') return { ok: false, elutasitva: t('A jegyzet közben eltűnt (törölték vagy áthelyezték).') };
     const blokk = fmBlokk(dok.szoveg);
     const kuldott = blokk?.szoveg ?? null;
     const r = await api.modosit(
@@ -82,11 +83,11 @@ export async function cellaIr(
       megerosit,
     );
     if ((fmBlokk(dok.szoveg)?.szoveg ?? null) !== kuldott) {
-      return { ok: false, elutasitva: 'A jegyzet közben megváltozott; a nézet frissül, próbáld újra.' };
+      return { ok: false, elutasitva: t('A jegyzet közben megváltozott; a nézet frissül, próbáld újra.') };
     }
     if (!r.ok) {
       if (r.megerositheto) return { ok: false, fuggo: r.problemak };
-      return { ok: false, elutasitva: r.problemak[0]?.uzenet ?? 'A módosítás nem írható.' };
+      return { ok: false, elutasitva: r.problemak[0]?.uzenet ?? t('A módosítás nem írható.') };
     }
     if (r.fm_uj !== null && r.valtozas) {
       const c = blokkCsere(blokk, r.fm_uj);
@@ -100,7 +101,7 @@ export async function cellaIr(
     // változás a szerkesztés része (⌘Z), pillanatkép a szerkesztés lezárásakor lesz.
     const egyedul = dok.nezetSzam === 0;
     const m = await dok.ment(egyedul ? { pillanat: true } : {});
-    if (!m.ok) return { ok: false, elutasitva: dok.hiba ?? 'A mentés nem sikerült; a változás nem került a fájlba.' };
+    if (!m.ok) return { ok: false, elutasitva: dok.hiba ?? t('A mentés nem sikerült; a változás nem került a fájlba.') };
     return { ok: true, pillanat: m.pillanat ?? null };
   } catch (e) {
     return { ok: false, elutasitva: e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e) };
@@ -119,21 +120,21 @@ export function cellaErtesites(nev: string, kulcs: string, pillanat: string | nu
   if (!pillanat) return;
   ertesitesek.ertesit({
     szint: 'info',
-    cim: `${kulcs} módosítva`,
+    cim: t('{kulcs} módosítva', { kulcs }),
     szoveg: nev,
     idotartam: 6000,
     muvelet: {
-      nev: 'Visszavonás',
+      nev: t('Visszavonás'),
       futtat: () => {
         pillanatVisszavon(pillanat).then(
           () => {
-            ertesitesek.ertesit({ szint: 'siker', cim: 'Visszavonva', szoveg: `${nev} · ${kulcs}`, idotartam: 3000 });
+            ertesitesek.ertesit({ szint: 'siker', cim: t('Visszavonva'), szoveg: `${nev} · ${kulcs}`, idotartam: 3000 });
             utana?.();
           },
           (e) =>
             ertesitesek.ertesit({
               szint: 'hiba',
-              cim: 'A visszavonás nem sikerült',
+              cim: t('A visszavonás nem sikerült'),
               szoveg: e instanceof Error ? e.message : String(e),
             }),
         );

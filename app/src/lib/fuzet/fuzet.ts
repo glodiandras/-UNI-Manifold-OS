@@ -3,6 +3,8 @@
 // fotók célja a megnyitott jegyzet (a választó nem fut). A figyelt mappák feldolgozása és az ellenőrző kör is innen indul (⌘P).
 // A vaultba a felület nem ír: a lánc a gépi-írás szolgáltatáson át, tételenként visszavonhatóan.
 
+import { t, tk } from '../i18n';
+
 import { kerdez } from '../core/api';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
 import type { Parancs } from '../parancsok/regiszter';
@@ -29,14 +31,14 @@ export interface Inditas {
 export async function fuzetFeltolt(fajlok: File[], cel?: string | null, keres = kerdez): Promise<Inditas | null> {
   const kepek = fajlok.filter(fuzetKep);
   if (!kepek.length) {
-    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Nincs füzetfotó', szoveg: 'JPEG, PNG vagy HEIC kép kell.' });
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Nincs füzetfotó'), szoveg: t('JPEG, PNG vagy HEIC kép kell.') });
     return null;
   }
   const kulcs = 'fuzet-feltoltes';
   let csoport: string | undefined;
   try {
     for (const [i, f] of kepek.entries()) {
-      ertesitesek.ertesit({ kulcs, cim: `Füzetfotók feltöltése… ${i + 1}/${kepek.length}`, idotartam: 0 });
+      ertesitesek.ertesit({ kulcs, cim: t('Füzetfotók feltöltése… {i}/{n}', { i: i + 1, n: kepek.length }), idotartam: 0 });
       const r = await keres<{ csoport: string }>('/api/fuzet/bejovo', {
         metodus: 'POST',
         torzs: { nev: f.name, adat: await base64(f), ...(csoport ? { csoport } : {}) },
@@ -52,12 +54,12 @@ export async function fuzetFeltolt(fajlok: File[], cel?: string | null, keres = 
     ertesitesek.ertesit({
       kulcs,
       szint: 'siker',
-      cim: cel ? `${kepek.length} fotó → az aktív jegyzet` : `${kepek.length} füzetfotó feldolgozásra vár`,
-      szoveg: 'A lánc a háttérben fut (vezérlő, ⌘⇧M); tételenként visszavonható.',
+      cim: cel ? t('{n} fotó → az aktív jegyzet', { n: kepek.length }) : t('{n} füzetfotó feldolgozásra vár', { n: kepek.length }),
+      szoveg: t('A lánc a háttérben fut (vezérlő, ⌘⇧M); tételenként visszavonható.'),
     });
     return { id: d.id, feltoltve: kepek.length };
   } catch (e) {
-    ertesitesek.ertesit({ kulcs, szint: 'hiba', cim: 'A füzetfotók feltöltése nem sikerült', szoveg: e instanceof Error ? e.message : String(e) });
+    ertesitesek.ertesit({ kulcs, szint: 'hiba', cim: t('A füzetfotók feltöltése nem sikerült'), szoveg: e instanceof Error ? e.message : String(e) });
     return null;
   }
 }
@@ -77,9 +79,9 @@ export function fajlValaszt(): Promise<File[]> {
 async function feladat(tipus: string, cim: string, keres = kerdez): Promise<void> {
   try {
     await keres('/api/feladatok', { metodus: 'POST', torzs: { tipus, parameterek: {} }, idokorlat: 10_000 });
-    ertesitesek.ertesit({ szint: 'siker', cim, szoveg: 'A vezérlőben követhető (⌘⇧M).' });
+    ertesitesek.ertesit({ szint: 'siker', cim: t(cim), szoveg: t('A vezérlőben követhető (⌘⇧M).') });
   } catch (e) {
-    ertesitesek.ertesit({ szint: 'hiba', cim: `${cim}: nem indult`, szoveg: e instanceof Error ? e.message : String(e) });
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('{cim}: nem indult', { cim: t(cim) }), szoveg: e instanceof Error ? e.message : String(e) });
   }
 }
 
@@ -88,28 +90,28 @@ export function fuzetParancsok(aktivJegyzet: () => string | null): Parancs[] {
   return [
     {
       id: 'fuzet.feldolgoz',
-      nev: 'Füzetfotók feldolgozása (a figyelt mappák új fotói)',
-      kategoria: 'Füzet',
-      futtat: () => feladat('fuzet_lanc', 'A füzetfotók feldolgozása elindult'),
+      nev: tk('Füzetfotók feldolgozása (a figyelt mappák új fotói)'),
+      kategoria: tk('Füzet'),
+      futtat: () => feladat('fuzet_lanc', tk('A füzetfotók feldolgozása elindult')),
     },
     {
       id: 'fuzet.hozzaad',
-      nev: 'Füzetfotók hozzáadása…',
-      kategoria: 'Füzet',
+      nev: tk('Füzetfotók hozzáadása…'),
+      kategoria: tk('Füzet'),
       futtat: async () => void fuzetFeltolt(await fajlValaszt()),
     },
     {
       id: 'fuzet.aktivba',
-      nev: 'Füzetfotók beszúrása az aktív jegyzetbe…',
-      kategoria: 'Füzet',
+      nev: tk('Füzetfotók beszúrása az aktív jegyzetbe…'),
+      kategoria: tk('Füzet'),
       elerheto: () => !!aktivJegyzet()?.endsWith('.md'),
       futtat: async () => void fuzetFeltolt(await fajlValaszt(), aktivJegyzet()),
     },
     {
       id: 'fuzet.ellenoriz',
-      nev: 'Füzet-bekötések ellenőrzése',
-      kategoria: 'Füzet',
-      futtat: () => feladat('fuzet_ellenoriz', 'A füzet-bekötések ellenőrzése elindult'),
+      nev: tk('Füzet-bekötések ellenőrzése'),
+      kategoria: tk('Füzet'),
+      futtat: () => feladat('fuzet_ellenoriz', tk('A füzet-bekötések ellenőrzése elindult')),
     },
   ];
 }

@@ -7,6 +7,7 @@
   dupla kattintásra / ↩ / F2-re szerkeszthető (a jegyzet frontmatterébe, a nyitott dokumentumon át).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { onMount, tick } from 'svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { ArrowDown, ArrowUp, Ellipsis } from '../lib/ikon/ikonok';
@@ -216,28 +217,28 @@
       akciok.set(id, fn);
     };
     const jel = rendezesJel(o.id);
-    hozzaad('novekvo', 'Rendezés növekvő', () => muvelet(rendezesIrany(nezetIndex, o.id, 'ASC')), { kijelolt: jel?.irany === 'ASC' });
-    hozzaad('csokkeno', 'Rendezés csökkenő', () => muvelet(rendezesIrany(nezetIndex, o.id, 'DESC')), { kijelolt: jel?.irany === 'DESC' });
-    if (jel) hozzaad('rendezes-torol', 'Rendezés törlése', () => muvelet(rendezesBeallit(nezetIndex, rendezes.filter((r) => r.property !== o.id))));
+    hozzaad('novekvo', t('Rendezés növekvő'), () => muvelet(rendezesIrany(nezetIndex, o.id, 'ASC')), { kijelolt: jel?.irany === 'ASC' });
+    hozzaad('csokkeno', t('Rendezés csökkenő'), () => muvelet(rendezesIrany(nezetIndex, o.id, 'DESC')), { kijelolt: jel?.irany === 'DESC' });
+    if (jel) hozzaad('rendezes-torol', t('Rendezés törlése'), () => muvelet(rendezesBeallit(nezetIndex, rendezes.filter((r) => r.property !== o.id))));
     const cs = valasz.nezet?.beallitas?.groupBy as { property?: string } | undefined;
-    if (cs?.property === o.id) hozzaad('csoport-ki', 'Csoportosítás megszüntetése', () => muvelet(csoportBeallit(nezetIndex, null)));
-    else hozzaad('csoport', 'Csoportosítás ezzel', () => muvelet(csoportBeallit(nezetIndex, o.id)));
+    if (cs?.property === o.id) hozzaad('csoport-ki', t('Csoportosítás megszüntetése'), () => muvelet(csoportBeallit(nezetIndex, null)));
+    else hozzaad('csoport', t('Csoportosítás ezzel'), () => muvelet(csoportBeallit(nezetIndex, o.id)));
     const aktualis = valasz.osszesitok[o.id]?.nev ?? null;
     const egyedi = valasz.fajl?.osszesitok ?? [];
-    hozzaad('osszesito', 'Összesítő', () => {}, {
+    hozzaad('osszesito', t('Összesítő'), () => {}, {
       almenu: () => [
-        { id: 'o-nincs', nev: 'Nincs', kijelolt: aktualis === null },
-        ...OSSZESITOK.map((s) => ({ id: `o-${s.nev}`, nev: s.felirat, jelzo: s.nev, kijelolt: aktualis === s.nev })),
+        { id: 'o-nincs', nev: t('Nincs'), kijelolt: aktualis === null },
+        ...OSSZESITOK.map((s) => ({ id: `o-${s.nev}`, nev: t(s.felirat), jelzo: s.nev, kijelolt: aktualis === s.nev })),
         ...egyedi.map((n) => ({ id: `o-${n}`, nev: n, kijelolt: aktualis === n })),
       ],
     });
     for (const s of [...OSSZESITOK.map((x) => x.nev), ...egyedi]) akciok.set(`o-${s}`, () => muvelet(osszesitoBeallit(nezetIndex, o.id, s)));
     akciok.set('o-nincs', () => muvelet(osszesitoBeallit(nezetIndex, o.id, null)));
-    hozzaad('atnevez', 'Átnevezés…', () => atnevezKezd(o));
+    hozzaad('atnevez', t('Átnevezés…'), () => atnevezKezd(o));
     const azonok = oszlopAzonok(valasz);
-    if (i > 0) hozzaad('balra', 'Mozgatás balra', () => muvelet(sorrendBeallit(nezetIndex, oszlopMozgat(azonok, o.id, i - 1))));
-    if (i < azonok.length - 1) hozzaad('jobbra', 'Mozgatás jobbra', () => muvelet(sorrendBeallit(nezetIndex, oszlopMozgat(azonok, o.id, i + 1))));
-    hozzaad('elrejt', 'Oszlop elrejtése', () => muvelet(sorrendBeallit(nezetIndex, azonok.filter((a) => a !== o.id))), { veszely: false });
+    if (i > 0) hozzaad('balra', t('Mozgatás balra'), () => muvelet(sorrendBeallit(nezetIndex, oszlopMozgat(azonok, o.id, i - 1))));
+    if (i < azonok.length - 1) hozzaad('jobbra', t('Mozgatás jobbra'), () => muvelet(sorrendBeallit(nezetIndex, oszlopMozgat(azonok, o.id, i + 1))));
+    hozzaad('elrejt', t('Oszlop elrejtése'), () => muvelet(sorrendBeallit(nezetIndex, azonok.filter((a) => a !== o.id))), { veszely: false });
     lebegoMenu({ focus: fokusz }, x, y, elemek, akciok, `${o.nev} oszlop`);
   }
 
@@ -372,7 +373,7 @@
   onscroll={(e) => (gorgetes = e.currentTarget.scrollTop)}
   style:max-height={magassag ? `${magassag}px` : null}
   role="table"
-  aria-label="Adatbázis-nézet"
+  aria-label={t('Adatbázis-nézet')}
   aria-rowcount={elemek.length + 1}
   tabindex="-1"
 >
@@ -401,7 +402,7 @@
             <input
               class="atnevezo"
               type="text"
-              aria-label="{o.nev} új neve"
+              aria-label={t('{nev} új neve', { nev: o.nev })}
               bind:value={atnevezett.nev}
               onkeydown={(e) => {
                 if (e.key === 'Enter') atnevezKesz(true);
@@ -411,7 +412,7 @@
               onblur={() => atnevezKesz(true)}
             />
           {:else}
-            <button type="button" class="fejlec-gomb" disabled={!irhato} onclick={(e) => fejlecKattint(e, o)} title="{o.id} — kattintás: rendezés, ⇧: több kulcs">
+            <button type="button" class="fejlec-gomb" disabled={!irhato} onclick={(e) => fejlecKattint(e, o)} title={`${o.id} — ${t('kattintás: rendezés, ⇧: több kulcs')}`}>
               <span class="fejlec-nev">{o.nev}</span>
               {#if jel}
                 <span class="irany" aria-hidden="true">
@@ -420,7 +421,7 @@
               {/if}
             </button>
             {#if irhato}
-              <button type="button" class="fejlec-menu" aria-label="{o.nev} oszlop menü" onclick={(e) => menuGomb(e, o, i)}>
+              <button type="button" class="fejlec-menu" aria-label={t('{nev} oszlop menü', { nev: o.nev })} onclick={(e) => menuGomb(e, o, i)}>
                 <Ikon ikon={Ellipsis} meret={14} />
               </button>
             {/if}
@@ -431,7 +432,7 @@
               class="atmeret"
               role="separator"
               aria-orientation="vertical"
-              aria-label="{o.nev} oszlop szélessége"
+              aria-label={t('{nev} oszlop szélessége', { nev: o.nev })}
               aria-valuenow={szelessegek[i]}
               aria-valuemin={60}
               aria-valuemax={900}
@@ -455,7 +456,7 @@
             {#each valasz.oszlopok as o, ci (o.id)}
               <div class="cella csoport-cella" role="cell">
                 {#if ci === 0}
-                  <strong class="csoport-cim">{e.cs.cimke || 'Nincs érték'}</strong>
+                  <strong class="csoport-cim">{e.cs.cimke || t('Nincs érték')}</strong>
                   <span class="csoport-db">{e.cs.db}</span>
                 {/if}
                 {#if e.cs.osszesitok[o.id]}
@@ -498,7 +499,7 @@
                     }}
                   />
                 {:else if ir && o.tipus === 'checkbox'}
-                  <button type="button" class="jelolo-gomb" aria-label="{o.nev} váltása" onclick={() => szerkesztKezd(e.sor, o)}>
+                  <button type="button" class="jelolo-gomb" aria-label={t('{nev} váltása', { nev: o.nev })} onclick={() => szerkesztKezd(e.sor, o)}>
                     <Cella ertek={e.sor.cellak[ci] ?? null} forras={e.sor.ut} {ez} />
                   </button>
                 {:else}
@@ -512,7 +513,7 @@
       <div style:height="{a.lent}px" aria-hidden="true"></div>
     </div>
     {#if elemek.length === 0}
-      <p class="ures" role="status">Nincs a feltételeknek megfelelő fájl.</p>
+      <p class="ures" role="status">{t('Nincs a feltételeknek megfelelő fájl.')}</p>
     {/if}
     {#if vanOsszesito}
       <div class="lablec" role="row" style:grid-template-columns={sablon}>

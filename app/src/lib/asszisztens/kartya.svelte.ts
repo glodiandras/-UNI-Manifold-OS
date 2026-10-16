@@ -4,6 +4,8 @@
 // (⌘Z egy lépés); a címke a tulajdonság-szerkesztő `modosit` útján (a séma-sértő érték nem íródik csendben, 22(b));
 // a sablon a „Sablon beszúrása” meglévő útján. A döntés a core hangolásába megy (fajta × helyzet).
 
+import { t, tk } from '../i18n';
+
 import { isolateHistory } from '@codemirror/commands';
 import type { EditorView } from '@codemirror/view';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
@@ -34,7 +36,7 @@ function vegere(view: EditorView, szoveg: string): void {
 
 /** Az elfogadás végrehajtása. `true`: bekerült; szöveg: miért nem (értesítésnek). */
 export async function kartyaAlkalmaz(view: EditorView, j: KartyaJavaslat, s: KartyaSegedek): Promise<true | string> {
-  if (view.state.readOnly) return 'A jegyzet csak olvasható.';
+  if (view.state.readOnly) return t('A jegyzet csak olvasható.');
   const m = j.muvelet;
   if (m.fajta === 'szakasz') {
     vegere(view, m.szoveg);
@@ -43,28 +45,28 @@ export async function kartyaAlkalmaz(view: EditorView, j: KartyaJavaslat, s: Kar
   if (m.fajta === 'link') {
     const doc = view.state.doc;
     const cel = await s.linkCel(m.cel);
-    if (view.state.doc !== doc) return 'Közben változott a jegyzet; a javaslat elmaradt.';
-    vegere(view, `Kapcsolódó: [[${cel}]]`);
+    if (view.state.doc !== doc) return t('Közben változott a jegyzet; a javaslat elmaradt.');
+    vegere(view, t('Kapcsolódó: [[{cel}]]', { cel }));
     return true;
   }
   if (m.fajta === 'sablon') {
-    if (!s.sablon) return 'A sablon most nem szúrható be.';
+    if (!s.sablon) return t('A sablon most nem szúrható be.');
     await s.sablon(m.ut);
     return true;
   }
   // címke: a tulajdonság-szerkesztő egyetlen írási útja (a nyitott dokumentum frontmatter-blokkjának cseréje)
   const api = s.tulajdonsag ?? tulajdonsagApi();
   const fm = fmBlokk(view.state.doc);
-  if (!fm) return 'A jegyzetnek nincs tulajdonság-blokkja; a címkét a tulajdonság-panelen adhatod hozzá.';
+  if (!fm) return t('A jegyzetnek nincs tulajdonság-blokkja; a címkét a tulajdonság-panelen adhatod hozzá.');
   const e = await api.elemez(s.ut, fm.szoveg);
-  const t = e.tulajdonsagok.find((x) => x.tipus === 'tags' || x.kulcs.toLowerCase() === 'tags');
-  const kulcs = t?.kulcs ?? 'Tags';
-  const regi = Array.isArray(t?.ertek) ? (t!.ertek as unknown[]).map(String) : typeof t?.ertek === 'string' && t.ertek ? [t.ertek] : [];
+  const tul = e.tulajdonsagok.find((x) => x.tipus === 'tags' || x.kulcs.toLowerCase() === 'tags');
+  const kulcs = tul?.kulcs ?? 'Tags';
+  const regi = Array.isArray(tul?.ertek) ? (tul!.ertek as unknown[]).map(String) : typeof tul?.ertek === 'string' && tul.ertek ? [tul.ertek] : [];
   if (regi.some((c) => c.replace(/^#/, '').toLowerCase() === m.ertek.toLowerCase())) return true;
   const r = await api.modosit(s.ut, fm.szoveg, { muvelet: 'beallit', kulcs, ertek: [...regi, m.ertek] }, false);
-  if (!r.ok || r.fm_uj === null) return r.problemak[0]?.uzenet ?? 'A címke a séma szerint nem írható be csendben; a tulajdonság-panelen megerősítheted.';
+  if (!r.ok || r.fm_uj === null) return r.problemak[0]?.uzenet ?? t('A címke a séma szerint nem írható be csendben; a tulajdonság-panelen megerősítheted.');
   const most = fmBlokk(view.state.doc);
-  if (most?.szoveg !== fm.szoveg) return 'Közben változott a jegyzet tulajdonsága; a javaslat elmaradt.';
+  if (most?.szoveg !== fm.szoveg) return t('Közben változott a jegyzet tulajdonsága; a javaslat elmaradt.');
   const c = blokkCsere(most, r.fm_uj);
   if (c) view.dispatch({ changes: c, annotations: isolateHistory.of('full'), userEvent: 'input.complete' });
   return true;
@@ -119,11 +121,11 @@ export class KartyaAllapot {
     if (!a || this.foglalt) return;
     this.foglalt = true;
     try {
-      const r = a.view.dom.isConnected ? await kartyaAlkalmaz(a.view, a.javaslat, a.segedek) : 'A jegyzet közben bezárult.';
+      const r = a.view.dom.isConnected ? await kartyaAlkalmaz(a.view, a.javaslat, a.segedek) : t('A jegyzet közben bezárult.');
       if (r === true) this.kuld(a, 'elfogad');
-      else ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'A javaslat nem került be', szoveg: r });
+      else ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A javaslat nem került be'), szoveg: r });
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A javaslat nem került be', szoveg: e instanceof Error ? e.message : String(e) });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A javaslat nem került be'), szoveg: e instanceof Error ? e.message : String(e) });
     } finally {
       this.foglalt = false;
       if (this.aktiv === a) this.elrejt(null);
@@ -144,7 +146,7 @@ export const kartyaAllapot = new KartyaAllapot();
 export function kartyaParancsok(): Parancs[] {
   const van = () => !!kartyaAllapot.aktiv;
   return [
-    { id: 'asszisztens.kartya-igen', nev: 'Asszisztens: a javaslat elfogadása', kategoria: 'Asszisztens', elerheto: van, futtat: () => kartyaAllapot.igen() },
-    { id: 'asszisztens.kartya-nem', nev: 'Asszisztens: a javaslat elutasítása', kategoria: 'Asszisztens', elerheto: van, futtat: () => kartyaAllapot.nem() },
+    { id: 'asszisztens.kartya-igen', nev: tk('Asszisztens: a javaslat elfogadása'), kategoria: tk('Asszisztens'), elerheto: van, futtat: () => kartyaAllapot.igen() },
+    { id: 'asszisztens.kartya-nem', nev: tk('Asszisztens: a javaslat elutasítása'), kategoria: tk('Asszisztens'), elerheto: van, futtat: () => kartyaAllapot.nem() },
   ];
 }

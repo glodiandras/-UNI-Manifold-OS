@@ -14,6 +14,7 @@ from .adat import Tar
 from .ertekek import ErtekKeretHiba, IdokeretHiba
 from .lekerdezes import MAX_SOR, futtat
 from .modell import betolt, hiba, modosit
+from ..hibakod import kodol
 
 _UTOLSO_MAX = 2000               # a megszakítás-nyilvántartás legfeljebb ennyi nézetet tart (a legrégebbi esik ki)
 
@@ -50,20 +51,20 @@ class Bazisok:
         `ok: false` és a `hibak`). 400: hiányzó szöveg; 503: az index nincs kész."""
         szoveg = t.get("szoveg")
         if not isinstance(szoveg, str):
-            raise Invalid("hiányzik a `.base` szövege (szoveg)")
+            raise kodol(Invalid("hiányzik a `.base` szövege (szoveg)"), "bazis.api.hianyzik_base_szovege_szoveg")
         nezet = t.get("nezet")
         if nezet is not None and not isinstance(nezet, (str, int)) or isinstance(nezet, bool):
-            raise Invalid("a nézet sorszám vagy név")
+            raise kodol(Invalid("a nézet sorszám vagy név"), "bazis.api.nezet_sorszam_nev")
         ez = t.get("ez")
         ez = norm_path(ez) if ez else None
         max_sor = t.get("max_sor", MAX_SOR)
         if not isinstance(max_sor, int) or isinstance(max_sor, bool) or not 1 <= max_sor <= MAX_SOR:
-            raise Invalid(f"a max_sor 1 és {MAX_SOR} közti egész")
+            raise kodol(Invalid(f"a max_sor 1 és {MAX_SOR} közti egész"), "bazis.api.max_sor_1_max_sor", {"MAX_SOR": MAX_SOR})
         kerdes, azon = t.get("kerdes"), t.get("azon")
         if kerdes is not None and (not isinstance(kerdes, int) or isinstance(kerdes, bool)):
-            raise Invalid("a kerdes sorszám (egész)")
+            raise kodol(Invalid("a kerdes sorszám (egész)"), "bazis.api.kerdes_sorszam_egesz")
         if azon is not None and (not isinstance(azon, str) or len(azon) > 200):
-            raise Invalid("az azon legfeljebb 200 karakteres szöveg")
+            raise kodol(Invalid("az azon legfeljebb 200 karakteres szöveg"), "bazis.api.azon_legfeljebb_200_karakteres_szoveg")
         self.index._kesz_vagy_hiba()
         bazis, hibak = betolt(szoveg)
         if bazis.vegzetes:
@@ -98,9 +99,9 @@ class Bazisok:
         `szoveg_uj` a régi szöveg."""
         szoveg, muvelet = t.get("szoveg"), t.get("muvelet")
         if not isinstance(szoveg, str):
-            raise Invalid("hiányzik a `.base` szövege (szoveg)")
+            raise kodol(Invalid("hiányzik a `.base` szövege (szoveg)"), "bazis.api.hianyzik_base_szovege_szoveg")
         if not isinstance(muvelet, dict):
-            raise Invalid("hiányzik a művelet (muvelet)")
+            raise kodol(Invalid("hiányzik a művelet (muvelet)"), "bazis.api.hianyzik_muvelet_muvelet")
         uj, hibak, valtozas = modosit(szoveg, muvelet)
         return {"ok": not hibak, "szoveg_uj": uj, "valtozas": valtozas, "hibak": hibak}
 

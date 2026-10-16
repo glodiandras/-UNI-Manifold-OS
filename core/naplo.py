@@ -39,11 +39,11 @@ def datum_ertek(szoveg) -> date:
     if szoveg is None or szoveg == "":
         return date.today()
     if not isinstance(szoveg, str) or not _DATUM.match(szoveg):
-        raise HttpError(400, "a `datum` ÉÉÉÉ-HH-NN alakú")
+        raise HttpError(400, "a `datum` ÉÉÉÉ-HH-NN alakú", kod="naplo.datum_alak")
     try:
         return date.fromisoformat(szoveg)
     except ValueError:
-        raise HttpError(400, "érvénytelen `datum`") from None
+        raise HttpError(400, "érvénytelen `datum`", kod="naplo.datum_ervenytelen") from None
 
 
 def napi_ut(cfg, nap: date) -> str:

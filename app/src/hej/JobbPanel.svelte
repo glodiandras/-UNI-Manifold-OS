@@ -4,6 +4,7 @@
   (`lib/vault/kapcsolatok.svelte.ts`); a feloldás nem itt történik (L42).
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import { JegyzetHigienia } from '../lib/asszisztens/adat.svelte';
@@ -122,9 +123,9 @@
     if (ful?.ut) nyit(ful.ut, sor, e);
   }
 
-  async function linkel(forras: string, t: Emlites) {
+  async function linkel(forras: string, em: Emlites) {
     if (!ful?.ut) return;
-    if (await emlitesLinkel(ful.ut, forras, t)) void k.frissit(ful.ut);
+    if (await emlitesLinkel(ful.ut, forras, em)) void k.frissit(ful.ut);
   }
 
   function kimenoNyit(l: KimenoLink, e: MouseEvent) {
@@ -136,7 +137,7 @@
     if (!ful?.ut) return;
     const ut = await jegyzetLetrehoz(ful.ut, l.cel_nyers);
     if (ut) {
-      ertesitesek.ertesit({ szint: 'siker', cim: 'Új jegyzet', szoveg: ut, idotartam: 3000 });
+      ertesitesek.ertesit({ szint: 'siker', cim: t('Új jegyzet'), szoveg: ut, idotartam: 3000 });
       felulet.munkaterulet.megnyit(ut, 'ujful');
     }
   }
@@ -151,7 +152,7 @@
   class:atfedes
   data-regio="jobb"
   data-regio-rejtett={lathato ? undefined : ''}
-  aria-label="Jegyzet-kapcsolatok"
+  aria-label={t('Jegyzet-kapcsolatok')}
   inert={!lathato}
   bind:this={aside}
   onfocusout={fokuszKi}
@@ -160,37 +161,37 @@
   <header class="fejlec">
     <IkonGomb
       ikon={PanelRight}
-      cimke={atfedes ? 'Jobb panel rögzítése' : 'Jobb panel elrejtése'}
+      cimke={atfedes ? t('Jobb panel rögzítése') : t('Jobb panel elrejtése')}
       billentyu="Mod+Alt+2"
       onclick={() => regiszter.futtat('hej.jobb-panel', 'gomb')}
     />
   </header>
   <div class="tartalom gorgeto">
     {#if !ful?.ut}
-      <p class="ures">Nincs megnyitott fájl.</p>
+      <p class="ures">{t('Nincs megnyitott fájl.')}</p>
     {:else}
       {#if k.hiba}<p class="hiba" role="alert">{k.hiba}</p>{/if}
-      <Szakasz cim={`Visszahivatkozások${darabVissza ? ` (${darabVissza})` : ''}`} ikon={Link2} bind:nyitva={felulet.jobbPanel.visszahivatkozasok}>
+      <Szakasz cim={t('Visszahivatkozások') + (darabVissza ? ` (${darabVissza})` : '')} ikon={Link2} bind:nyitva={felulet.jobbPanel.visszahivatkozasok}>
         <Visszahivatkozasok forrasok={k.visszahivatkozasok} onnyit={nyit} />
       </Szakasz>
-      <Szakasz cim={`Linkeletlen említések${darabEml ? ` (${darabEml})` : ''}`} ikon={Unlink} bind:nyitva={felulet.jobbPanel.emlitesek}>
+      <Szakasz cim={t('Linkeletlen említések') + (darabEml ? ` (${darabEml})` : '')} ikon={Unlink} bind:nyitva={felulet.jobbPanel.emlitesek}>
         <Emlitesek forrasok={k.emlitesek} onlinkel={linkel} onnyit={nyit} />
       </Szakasz>
-      <Szakasz cim="Kimenő linkek" ikon={ArrowRight} bind:nyitva={felulet.jobbPanel.kimeno}>
+      <Szakasz cim={t('Kimenő linkek')} ikon={ArrowRight} bind:nyitva={felulet.jobbPanel.kimeno}>
         <KimenoLinkek linkek={k.kimeno} info={(u) => fajlok.info(u)} onnyit={kimenoNyit} onletrehoz={letrehoz} />
       </Szakasz>
-      <Szakasz cim="Vázlat" ikon={ListTree} bind:nyitva={felulet.jobbPanel.vazlat}>
+      <Szakasz cim={t('Vázlat')} ikon={ListTree} bind:nyitva={felulet.jobbPanel.vazlat}>
         <Vazlat />
       </Szakasz>
-      <Szakasz cim="Előzmények" ikon={FileClock} bind:nyitva={felulet.jobbPanel.elozmenyek}>
+      <Szakasz cim={t('Előzmények')} ikon={FileClock} bind:nyitva={felulet.jobbPanel.elozmenyek}>
         <Elozmenyek ut={ful.ut} nyitva={felulet.jobbPanel.elozmenyek && lathato} />
       </Szakasz>
       {#if vezerloKapcsolok.ertek.asszisztens}
-        <Szakasz cim={`Higiénia${higieniaTetelek.length ? ` (${higieniaTetelek.length})` : ''}`} ikon={ListChecks} bind:nyitva={felulet.jobbPanel.higienia}>
+        <Szakasz cim={t('Higiénia') + (higieniaTetelek.length ? ` (${higieniaTetelek.length})` : '')} ikon={ListChecks} bind:nyitva={felulet.jobbPanel.higienia}>
           <Higienia tetelek={higieniaTetelek} hiba={higienia.hiba} onnyit={higieniaNyit} />
         </Szakasz>
       {/if}
-      <Szakasz cim="Hasonló jegyzetek" ikon={Network} bind:nyitva={felulet.jobbPanel.hasonlo}>
+      <Szakasz cim={t('Hasonló jegyzetek')} ikon={Network} bind:nyitva={felulet.jobbPanel.hasonlo}>
         <Hasonlok valasz={hasonlo.valasz} betolt={hasonlo.betolt} hiba={hasonlo.hiba} onnyit={hasonloNyit} />
       </Szakasz>
     {/if}

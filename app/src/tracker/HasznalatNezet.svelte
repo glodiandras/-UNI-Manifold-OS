@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t, tk, tp } from '../lib/i18n';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
   import Adatkezeles from '../lib/tracker/Adatkezeles.svelte';
@@ -22,37 +23,37 @@
 
   const adat = $derived(modell.adat);
   const KESLELTETESEK = [
-    { kulcs: 'gepeles', cim: 'Gépelés', leiras: 'a billentyű leütésétől a szerkesztő frissítéséig (a képernyő frissítésére várás nélkül)' },
-    { kulcs: 'mentes', cim: 'Mentés', leiras: 'az automatikus mentés kérésétől a válaszig' },
+    { kulcs: 'gepeles', cim: tk('Gépelés'), leiras: tk('a billentyű leütésétől a szerkesztő frissítéséig (a képernyő frissítésére várás nélkül)') },
+    { kulcs: 'mentes', cim: tk('Mentés'), leiras: tk('az automatikus mentés kérésétől a válaszig') },
   ] as const;
 </script>
 
 <div class="hasznalat olvasas">
   <header>
-    <h1>Használat</h1>
-    <div class="csoport" role="group" aria-label="Tartomány">
+    <h1>{t('Használat')}</h1>
+    <div class="csoport" role="group" aria-label={t('Tartomány')}>
       {#each [7, 30, 90] as n (n)}
-        <button type="button" aria-pressed={modell.napok === n} onclick={() => modell.valt(n)}>{n} nap</button>
+        <button type="button" aria-pressed={modell.napok === n} onclick={() => modell.valt(n)}>{tp('{n} nap', n)}</button>
       {/each}
     </div>
   </header>
-  <p class="lab">Mit használsz, mit vonsz vissza, hol lassú — a V2.1 rangsorához. Csak azonosítók és számok, jegyzettartalom nincs benne.</p>
+  <p class="lab">{t('Mit használsz, mit vonsz vissza, hol lassú — a V2.1 rangsorához. Csak azonosítók és számok, jegyzettartalom nincs benne.')}</p>
 
   {#if modell.hiba && !adat}
-    <p class="hiba" role="alert">A használati adat nem tölthető be: {modell.hiba}</p>
+    <p class="hiba" role="alert">{t('A használati adat nem tölthető be:')} {modell.hiba}</p>
   {:else if modell.hiba}
-    <p class="hiba" role="alert">A frissítés nem sikerült ({modell.hiba}): a korábban betöltött adat látszik.</p>
+    <p class="hiba" role="alert">{t('A frissítés nem sikerült ({hiba}): a korábban betöltött adat látszik.', { hiba: modell.hiba })}</p>
   {/if}
   {#if !vezerloKapcsolok.ertek.tracker}
-    <p class="figy" role="status">A Tracker ki van kapcsolva: új adat nem gyűlik. A korábbi adatok látszanak.</p>
+    <p class="figy" role="status">{t('A Tracker ki van kapcsolva: új adat nem gyűlik. A korábbi adatok látszanak.')}</p>
   {/if}
 
   {#if adat}
     <section aria-labelledby="h-parancs">
-      <h2 id="h-parancs">Parancsok</h2>
+      <h2 id="h-parancs">{t('Parancsok')}</h2>
       {#if adat.parancsok.length}
         <table>
-          <thead><tr><th>Parancs</th><th class="szam">Használat</th><th>Honnan</th></tr></thead>
+          <thead><tr><th>{t('Parancs')}</th><th class="szam">{t('Használat')}</th><th>{t('Honnan')}</th></tr></thead>
           <tbody>
             {#each adat.parancsok.slice(0, 25) as p (p.parancs)}
               <tr>
@@ -68,17 +69,17 @@
             {/each}
           </tbody>
         </table>
-        {#if adat.parancsok.length > 25}<p class="lab">A leggyakoribb 25 a {adat.parancsok.length}-ból.</p>{/if}
+        {#if adat.parancsok.length > 25}<p class="lab">{t('A leggyakoribb 25 a {n}-ból.', { n: adat.parancsok.length })}</p>{/if}
       {:else}
-        <p class="ures">Még nincs rögzített parancshasználat.</p>
+        <p class="ures">{t('Még nincs rögzített parancshasználat.')}</p>
       {/if}
     </section>
 
     <section aria-labelledby="h-gepi">
-      <h2 id="h-gepi">Gépi írások funkciónként</h2>
+      <h2 id="h-gepi">{t('Gépi írások funkciónként')}</h2>
       {#if adat.gepi.length}
         <table>
-          <thead><tr><th>Funkció</th><th class="szam">Írás</th><th class="szam">Visszavonás</th><th class="szam">Elfogadás</th></tr></thead>
+          <thead><tr><th>{t('Funkció')}</th><th class="szam">{t('Írás')}</th><th class="szam">{t('Visszavonás')}</th><th class="szam">{t('Elfogadás')}</th></tr></thead>
           <tbody>
             {#each adat.gepi as g (g.funkcio)}
               <tr>
@@ -91,47 +92,47 @@
           </tbody>
         </table>
       {:else}
-        <p class="ures">Még nem írt gép a vaultba.</p>
+        <p class="ures">{t('Még nem írt gép a vaultba.')}</p>
       {/if}
     </section>
 
     <section aria-labelledby="h-kes">
-      <h2 id="h-kes">Késleltetés</h2>
+      <h2 id="h-kes">{t('Késleltetés')}</h2>
       {#each KESLELTETESEK as k (k.kulcs)}
         {@const v = adat.kesleltetes[k.kulcs]}
         <div class="kes">
-          <h3>{k.cim} <small>{k.leiras}</small></h3>
+          <h3>{t(k.cim)} <small>{t(k.leiras)}</small></h3>
           {#if v.db > 0 && v.vedrok}
             <p class="osszeg">
               <span>p50 ≤ <b>{msSzoveg(v.p50_ms)}</b></span>
               <span>p95 ≤ <b>{msSzoveg(v.p95_ms)}</b></span>
               <span>max <b>{msSzoveg(v.max_ms)}</b></span>
-              <span class="halvany">{szamSzoveg(v.db)} minta</span>
+              <span class="halvany">{tp('{n} minta', v.db, { n: szamSzoveg(v.db) })}</span>
             </p>
-            <Kesleltetes vedrok={v.vedrok} hatarok={adat.vedrok_ms} p50={v.p50_ms} p95={v.p95_ms} leiras="{k.cim} késleltetésének eloszlása" />
+            <Kesleltetes vedrok={v.vedrok} hatarok={adat.vedrok_ms} p50={v.p50_ms} p95={v.p95_ms} leiras={t('{nev} késleltetésének eloszlása', { nev: t(k.cim) })} />
           {:else}
-            <p class="ures">Még nincs minta.</p>
+            <p class="ures">{t('Még nincs minta.')}</p>
           {/if}
         </div>
       {/each}
-      <p class="lab">A p50 és a p95 a vödör felső határa (ms): a minták fele, illetve 95 %-a ennél nem lassabb.</p>
+      <p class="lab">{t('A p50 és a p95 a vödör felső határa (ms): a minták fele, illetve 95 %-a ennél nem lassabb.')}</p>
     </section>
 
     <section aria-labelledby="h-szunet">
-      <h2 id="h-szunet">Memóriaőr</h2>
+      <h2 id="h-szunet">{t('Memóriaőr')}</h2>
       <dl class="szunet">
-        <div><dt>Memória-szünet</dt><dd>{szamSzoveg(adat.szunetek.memoria.db)} <small>{idoSzoveg(adat.szunetek.memoria.mp)}</small></dd></div>
-        <div><dt>Hűtési szünet</dt><dd>{szamSzoveg(adat.szunetek.hutes.db)}</dd></div>
+        <div><dt>{t('Memória-szünet')}</dt><dd>{szamSzoveg(adat.szunetek.memoria.db)} <small>{idoSzoveg(adat.szunetek.memoria.mp)}</small></dd></div>
+        <div><dt>{t('Hűtési szünet')}</dt><dd>{szamSzoveg(adat.szunetek.hutes.db)}</dd></div>
       </dl>
     </section>
 
     <section aria-labelledby="h-adat">
-      <h2 id="h-adat">Adatok</h2>
-      <p class="lab">Az exportot a core a személyes mappába írja, és a vágólapra is másolja. A törlés csak a tracker adatát érinti.</p>
+      <h2 id="h-adat">{t('Adatok')}</h2>
+      <p class="lab">{t('Az exportot a core a személyes mappába írja, és a vágólapra is másolja. A törlés csak a tracker adatát érinti.')}</p>
       <Adatkezeles />
     </section>
   {:else if !modell.hiba}
-    <p class="ures" role="status">Betöltés…</p>
+    <p class="ures" role="status">{t('Betöltés…')}</p>
   {/if}
 </div>
 

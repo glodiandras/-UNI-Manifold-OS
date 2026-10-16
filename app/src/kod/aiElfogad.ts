@@ -6,6 +6,7 @@
 import { ChangeSet } from '@codemirror/state';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
+import { t, tk } from '../lib/i18n';
 import type { Dokumentum } from '../szerkeszto/dokumentum/dokumentum.svelte';
 import { csere } from '../szerkeszto/dokumentum/kulonbseg';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
@@ -15,10 +16,10 @@ import { kodFutasok } from './futas.svelte';
 import { cppMegmutat, kodCel, mentesKivar, type KodCel } from './muveletek';
 
 const UZENET: Record<string, string> = {
-  nincs_kalibralt: 'A C++ AI-hoz még nincs kalibrált modell (a `kod` mérése után kapcsol be).',
-  nincs_eszkoztar: 'Nincs C++ eszköztár: bin/mos cpp telepit --igen',
-  foglalt: 'Már fut egy AI-kérés: várd meg a végét, vagy szakítsd meg.',
-  megerosites_kell: 'A teljes megoldás csak megerősítéssel kérhető.',
+  nincs_kalibralt: tk('A C++ AI-hoz még nincs kalibrált modell (a `kod` mérése után kapcsol be).'),
+  nincs_eszkoztar: tk('Nincs C++ eszköztár: bin/mos cpp telepit --igen'),
+  foglalt: tk('Már fut egy AI-kérés: várd meg a végét, vagy szakítsd meg.'),
+  megerosites_kell: tk('A teljes megoldás csak megerősítéssel kérhető.'),
 };
 
 /** Egy AI-kérés indítása az aktív `.cpp` fülről vagy feladat-jegyzetből. */
@@ -27,7 +28,7 @@ export async function aiKer(felulet: Felulet, mod: AIMod, megerosit = false, cel
   const jegyzet = cel.jegyzet ?? kodFutasok.jegyzetValasztas.get(cel.ut) ?? null;
   for (const u of [cel.ut, jegyzet].filter((x): x is string => !!x))
     if (!(await mentesKivar(u))) {
-      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: 'Az AI-kérés nem indult', szoveg: `A fájl nincs mentve (${u}).` });
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Az AI-kérés nem indult'), szoveg: t('A fájl nincs mentve ({ut}).', { ut: u }) });
       return false;
     }
   let r = await kodAI.indit(mod, cel.ut, jegyzet, megerosit);
@@ -41,10 +42,10 @@ export async function aiKer(felulet: Felulet, mod: AIMod, megerosit = false, cel
     return true;
   }
   if (r.kod === 'tobbertelmu') {
-    ertesitesek.ertesit({ szint: 'info', cim: 'Melyik feladat?', szoveg: 'Több jegyzet ágyazza be ezt a fájlt: előbb futtasd a ⌘R-t, és válassz.' });
+    ertesitesek.ertesit({ szint: 'info', cim: t('Melyik feladat?'), szoveg: t('Több jegyzet ágyazza be ezt a fájlt: előbb futtasd a ⌘R-t, és válassz.') });
     return false;
   }
-  ertesitesek.ertesit({ szint: r.kod === 'foglalt' ? 'info' : 'hiba', cim: 'Az AI-kérés nem indult', szoveg: UZENET[r.kod] ?? r.uzenet });
+  ertesitesek.ertesit({ szint: r.kod === 'foglalt' ? 'info' : 'hiba', cim: t('Az AI-kérés nem indult'), szoveg: UZENET[r.kod] ? t(UZENET[r.kod]) : r.uzenet });
   return false;
 }
 
@@ -60,11 +61,11 @@ async function dokumentumon(ut: string, valtoztat: (d: Dokumentum) => ChangeSet 
   }
   try {
     if (d.csakOlvashato) return { ok: false, uzenet: d.csakOlvashato };
-    if (d.allapot === 'utkozes' || d.allapot === 'eltunt') return { ok: false, uzenet: 'A fájl közben megváltozott vagy eltűnt; előbb azt kell rendezni.' };
+    if (d.allapot === 'utkozes' || d.allapot === 'eltunt') return { ok: false, uzenet: t('A fájl közben megváltozott vagy eltűnt; előbb azt kell rendezni.') };
     const cs = valtoztat(d);
     if (cs) d.valtozott(cs, cs.apply(d.szoveg), null, true);
     const m = await d.ment(d.nezetSzam === 0 ? { pillanat: true } : {});
-    return m.ok ? { ok: true } : { ok: false, uzenet: d.hiba ?? 'A mentés nem sikerült.' };
+    return m.ok ? { ok: true } : { ok: false, uzenet: d.hiba ?? t('A mentés nem sikerült.') };
   } finally {
     await dk.elenged(d);
   }

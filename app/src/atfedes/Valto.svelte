@@ -3,6 +3,7 @@
   módosítás szerint; gépeléskor ékezetfüggetlen, elírástűrő keresés, a legutóbbiak előnyt kapnak.
 -->
 <script lang="ts">
+  import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { fajlIkon } from '../lib/ikon/fajlIkon';
   import { kornyezet } from '../lib/kornyezet';
@@ -49,10 +50,10 @@
 
   const ures = $derived(
     fajlok.index && !fajlok.index.kesz
-      ? 'Az index még épül…'
+      ? t('Az index még épül…')
       : lekerdezes.trim()
-        ? `Nincs találat erre: „${lekerdezes.trim()}”`
-        : 'A vault üres.',
+        ? t('Nincs találat erre: „{kif}”', { kif: lekerdezes.trim() })
+        : t('A vault üres.'),
   );
 
   function bezar() {
@@ -65,13 +66,13 @@
   }
 </script>
 
-<Atfedes cimke="Gyorsváltó" nev="valto" onbezar={bezar}>
+<Atfedes cimke={t('Gyorsváltó')} nev="valto" onbezar={bezar}>
   <ListaValaszto
     elemek={talalatok}
     kulcs={(t) => t.ertek.ut}
     bind:lekerdezes
-    helyorzo="Fájl keresése…"
-    cimke="Fájl keresése"
+    helyorzo={t('Fájl keresése…')}
+    cimke={t('Fájl keresése')}
     {ures}
     onvalaszt={valaszt}
     onbezar={bezar}
@@ -82,11 +83,11 @@
       <span class="ut">{mappa(t.ertek.ut)}</span>
     {/snippet}
     {#snippet lablec()}
-      <span><kbd>↑↓</kbd> választás</span>
-      <span><kbd>↩</kbd> megnyitás</span>
-      <span><Billentyu akkord="Mod+Enter" /> új fülben</span>
-      <span><Billentyu akkord="Mod+Alt+Enter" /> osztásban</span>
-      <span><kbd>esc</kbd> bezárás</span>
+      <span><kbd>↑↓</kbd> {t('választás')}</span>
+      <span><kbd>↩</kbd> {t('megnyitás')}</span>
+      <span><Billentyu akkord="Mod+Enter" /> {t('új fülben')}</span>
+      <span><Billentyu akkord="Mod+Alt+Enter" /> {t('osztásban')}</span>
+      <span><kbd>esc</kbd> {t('bezárás')}</span>
     {/snippet}
   </ListaValaszto>
 </Atfedes>

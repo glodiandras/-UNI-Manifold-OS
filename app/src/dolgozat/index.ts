@@ -4,6 +4,7 @@ import type { CoreKapcsolat } from '../lib/core/ws.svelte';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { nezetek } from '../lib/elrendezes/nezetek.svelte';
 import { GraduationCap } from '../lib/ikon/ikonok';
+import { tk } from '../lib/i18n';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import Dolgozat from './Dolgozat.svelte';
 import { dolgozatAdat } from './modell.svelte';
@@ -18,8 +19,8 @@ export function dolgozatTelepit(reg: Regiszter, felulet: Felulet, kapcsolat: Cor
   const leParancsok = reg.regisztralMind([
     {
       id: 'dolgozat.megnyit',
-      nev: 'Dolgozat-felkészültség',
-      kategoria: 'Tanulás',
+      nev: tk('Dolgozat-felkészültség'),
+      kategoria: tk('Tanulás'),
       ikon: GraduationCap,
       futtat: () => {
         felulet.atfedes = null;

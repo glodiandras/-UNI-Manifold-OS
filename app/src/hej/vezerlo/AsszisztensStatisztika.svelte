@@ -4,6 +4,7 @@
   darabszámot tárol (útvonal és szöveg nélkül), a Tracker- és az Asszisztens-kapcsoló alatt; törölve a küszöb az alapra áll.
 -->
 <script lang="ts">
+  import { t, tp } from '../../lib/i18n';
   import { onMount } from 'svelte';
   import { asszisztensMa, asszisztensStatisztika as stat } from '../../lib/asszisztens/adat.svelte';
   import { aranySzoveg, kuszobSzoveg, STATISZTIKA_CIM, szamolvaSzoveg } from '../../lib/asszisztens/megjelenites';
@@ -31,21 +32,21 @@
   async function torol() {
     if (await stat.torol()) {
       megerosit = false;
-      ertesitesek.ertesit({ szint: 'info', cim: 'Az Asszisztens statisztikája törölve', idotartam: 4000 });
+      ertesitesek.ertesit({ szint: 'info', cim: t('Az Asszisztens statisztikája törölve'), idotartam: 4000 });
     }
   }
 </script>
 
 {#if stat.hiba && !a}
-  <p class="hiba" role="alert">A statisztika nem érhető el: {stat.hiba}</p>
+  <p class="hiba" role="alert">{t('A statisztika nem érhető el: {hiba}', { hiba: stat.hiba })}</p>
 {:else if a}
-  <h3>Javaslatok statisztikája <span class="halvany">(utolsó {a.ablak_nap} nap)</span></h3>
+  <h3>{t('Javaslatok statisztikája')} <span class="halvany">{t('(utolsó {n} nap)', { n: a.ablak_nap })}</span></h3>
   {#if !a.kapcsolo.tracker}
-    <p class="halvany" role="status">A Tracker ki van kapcsolva: új statisztika nem gyűlik, a küszöb alap.</p>
+    <p class="halvany" role="status">{t('A Tracker ki van kapcsolva: új statisztika nem gyűlik, a küszöb alap.')}</p>
   {/if}
   <table>
     <thead>
-      <tr><th scope="col">Fajta</th><th scope="col">Elfogadva</th><th scope="col">Elutasítva</th><th scope="col">Arány</th><th scope="col">Küszöb</th></tr>
+      <tr><th scope="col">{t('Fajta')}</th><th scope="col">{t('Elfogadva')}</th><th scope="col">{t('Elutasítva')}</th><th scope="col">{t('Arány')}</th><th scope="col">{t('Küszöb')}</th></tr>
     </thead>
     <tbody>
       {#each FAJTAK as f (f)}
@@ -60,31 +61,31 @@
       {/each}
     </tbody>
   </table>
-  <p class="halvany">Csak darabszám, helyben; útvonalat és szöveget nem tárol.</p>
+  <p class="halvany">{t('Csak darabszám, helyben; útvonalat és szöveget nem tárol.')}</p>
   {#if megerosit}
-    <p class="kerdes" role="alert">Biztosan törlöd az Asszisztens statisztikáját? A küszöb az alapra áll. Ez nem vonható vissza.</p>
+    <p class="kerdes" role="alert">{t('Biztosan törlöd az Asszisztens statisztikáját? A küszöb az alapra áll. Ez nem vonható vissza.')}</p>
     <div class="sor">
-      <button type="button" class="m-gomb semleges gomb veszely" disabled={stat.foglalt} onclick={() => void torol()}>Igen, törlés</button>
-      <button type="button" class="m-gomb semleges gomb" disabled={stat.foglalt} onclick={() => (megerosit = false)}>Mégse</button>
+      <button type="button" class="m-gomb semleges gomb veszely" disabled={stat.foglalt} onclick={() => void torol()}>{t('Igen, törlés')}</button>
+      <button type="button" class="m-gomb semleges gomb" disabled={stat.foglalt} onclick={() => (megerosit = false)}>{t('Mégse')}</button>
     </div>
   {:else}
     <div class="sor">
-      <button type="button" class="m-gomb semleges gomb" disabled={stat.foglalt} onclick={() => (megerosit = true)}>Statisztika törlése…</button>
+      <button type="button" class="m-gomb semleges gomb" disabled={stat.foglalt} onclick={() => (megerosit = true)}>{t('Statisztika törlése…')}</button>
     </div>
   {/if}
   {#if stat.hiba}<p class="hiba" role="alert">{stat.hiba}</p>{/if}
 {/if}
 
 {#if h?.kesz}
-  <h3>Jegyzethigiénia</h3>
+  <h3>{t('Jegyzethigiénia')}</h3>
   <p>
-    {h.ossz} észrevétel{h.uj ? `, ebből ${h.uj} új` : ''}{h.szamolva ? ` · számolva: ${szamolvaSzoveg(h.szamolva)}` : ''}.
+    {tp('{n} észrevétel', h.ossz)}{h.uj ? `, ${t('ebből {n} új', { n: h.uj })}` : ''}{h.szamolva ? ` · ${t('számolva: {mikor}', { mikor: szamolvaSzoveg(h.szamolva) })}` : ''}.
   </p>
-  {#if h.szunetel}<p class="halvany" role="status">A számítás vár: aktív használat alatt nem fut.</p>{/if}
+  {#if h.szunetel}<p class="halvany" role="status">{t('A számítás vár: aktív használat alatt nem fut.')}</p>{/if}
 {:else if h && !h.kapcsolo}
-  <p class="halvany">A higiénia-riport az Asszisztens kikapcsolva nem számolódik.</p>
+  <p class="halvany">{t('A higiénia-riport az Asszisztens kikapcsolva nem számolódik.')}</p>
 {:else if h}
-  <p class="halvany" role="status">A higiénia-riport az app indulása után, tétlenségben készül el.</p>
+  <p class="halvany" role="status">{t('A higiénia-riport az app indulása után, tétlenségben készül el.')}</p>
 {/if}
 
 

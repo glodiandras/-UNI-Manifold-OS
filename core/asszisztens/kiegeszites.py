@@ -43,7 +43,7 @@ class Kiegeszites:
     def torol_minta(self, elotte):
         """Egy szövegminta törlése (a „Mit tanult” lista egy sora): az előzménye azonosítja."""
         if not isinstance(elotte, str):
-            raise HttpError(400, 'Az `elotte` a törlendő minta előzménye.')
+            raise HttpError(400, 'Az `elotte` a törlendő minta előzménye.', kod="asszisztens.kiegeszites.elotte_kell")
         van = any(m['elotte'] == elotte for m in self.mintak()['mintak'])
         if van:
             with self._zar:
@@ -56,7 +56,7 @@ class Kiegeszites:
         if (not isinstance(elotte, str) or not 8 <= len(elotte.strip()) <= 100
                 or len(elotte) > 100 or not isinstance(szoveg, str)
                 or not szoveg.strip() or len(szoveg) > 800 or '\x00' in elotte + szoveg):
-            raise HttpError(400, 'Adj meg 8–100 karakteres előzményt és legfeljebb 800 karakteres folytatást.')
+            raise HttpError(400, 'Adj meg 8–100 karakteres előzményt és legfeljebb 800 karakteres folytatást.', kod="asszisztens.kiegeszites.elozmeny_hossz")
         with self._zar:
             def ir(d):
                 regi = [m for m in self.mintak()['mintak'] if m['elotte'] != elotte]
@@ -71,13 +71,13 @@ class Kiegeszites:
         azon, elotte, utana = d.get('azon'), d.get('elotte'), d.get('utana', '')
         mod, kijeloles, kezi = d.get('mod', 'folytat'), d.get('kijeloles', ''), d.get('kezi', False)
         if not isinstance(azon, str) or not _AZON.fullmatch(azon):
-            raise HttpError(400, 'Érvénytelen kiegészítésazonosító.')
+            raise HttpError(400, 'Érvénytelen kiegészítésazonosító.', kod="asszisztens.kiegeszites.azonosito")
         if not isinstance(elotte, str) or not isinstance(utana, str) or len(elotte) > 6000 or len(utana) > 2000:
-            raise HttpError(400, 'A kiegészítés szövegkörnyezete túl hosszú vagy hiányzik.')
+            raise HttpError(400, 'A kiegészítés szövegkörnyezete túl hosszú vagy hiányzik.', kod="asszisztens.kiegeszites.szovegkornyezet")
         if mod not in MODOK:
-            raise HttpError(400, 'A mód folytat, kifejt vagy osszefoglal lehet.')
+            raise HttpError(400, 'A mód folytat, kifejt vagy osszefoglal lehet.', kod="asszisztens.kiegeszites.mod_ertek")
         if not isinstance(kijeloles, str) or len(kijeloles) > 4000 or not isinstance(kezi, bool):
-            raise HttpError(400, 'A kijelölés legfeljebb 4000 karakter, a `kezi` igaz vagy hamis.')
+            raise HttpError(400, 'A kijelölés legfeljebb 4000 karakter, a `kezi` igaz vagy hamis.', kod="asszisztens.kiegeszites.kijeloles_hossz")
         if not self.kapcsolo(): return {'szoveg': '', 'ok': 'Az asszisztens ki van kapcsolva.'}
         if mod == 'folytat' and not elotte.strip(): return {'szoveg': '', 'ok': ''}
         if mod != 'folytat' and not kijeloles.strip():
@@ -114,7 +114,7 @@ class Kiegeszites:
         """A javaslat eldobása. A látott javaslat kifejezett elvetése (Esc) elutasítás, az átírt vagy elhagyott javaslat
         csak kis súlyú „figyelmen kívül” a hangolásban; a még nem látott (folyó) kérés megszakítása nem számít."""
         if not isinstance(azon, str) or not _AZON.fullmatch(azon):
-            raise HttpError(400, 'Érvénytelen kiegészítésazonosító.')
+            raise HttpError(400, 'Érvénytelen kiegészítésazonosító.', kod="asszisztens.kiegeszites.azonosito")
         with self._zar:
             k = self._keresek.get(azon)
             if k:
@@ -131,7 +131,7 @@ class Kiegeszites:
         return {'ok': True}
 
     def elfogad(self, azon):
-        if not isinstance(azon, str): raise HttpError(400, 'Érvénytelen kiegészítésazonosító.')
+        if not isinstance(azon, str): raise HttpError(400, 'Érvénytelen kiegészítésazonosító.', kod="asszisztens.kiegeszites.azonosito")
         with self._zar:
             k = self._keresek.pop(azon, None)
             if not self.kapcsolo() or not k or k['torolt'] or not k['szoveg']:

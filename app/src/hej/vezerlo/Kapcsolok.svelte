@@ -1,11 +1,12 @@
 <!-- Az Asszisztens és a Tracker kapcsolója (C17; 10. döntés: alapból mindkettő be). -->
 <script lang="ts">
+  import { t, tk } from '../../lib/i18n';
   import { trackerKliens } from '../../lib/tracker/kliens.svelte';
   import { vezerloKapcsolok } from '../../lib/vezerlo/kapcsolok.svelte';
 
   const KAPCSOLOK = [
-    { nev: 'asszisztens', cim: 'Asszisztens', leiras: 'Az asszisztens javaslatai (linkek, szokásminta, hiányzó forrás-horgonyok). A kártyák, összefoglalók, grafikonok csak kifejezett kérésre készülnek.' },
-    { nev: 'tracker', cim: 'Tracker', leiras: 'Az app eseményeit számolja (aktív idő, szerkesztett karakter, parancshasználat, késleltetés); a vaulton kívül, helyben él, törölhető. Az appon kívüli tevékenységet nem látja.' },
+    { nev: 'asszisztens', cim: tk('Asszisztens'), leiras: tk('Az asszisztens javaslatai (linkek, szokásminta, hiányzó forrás-horgonyok). A kártyák, összefoglalók, grafikonok csak kifejezett kérésre készülnek.') },
+    { nev: 'tracker', cim: tk('Tracker'), leiras: tk('Az app eseményeit számolja (aktív idő, szerkesztett karakter, parancshasználat, késleltetés); a vaulton kívül, helyben él, törölhető. Az appon kívüli tevékenységet nem látja.') },
   ] as const;
 </script>
 
@@ -19,11 +20,11 @@
           checked={vezerloKapcsolok.ertek[k.nev]}
           onchange={(e) => void vezerloKapcsolok.allit(k.nev, e.currentTarget.checked)}
         />
-        <span class="cim">{k.cim}</span>
+        <span class="cim">{t(k.cim)}</span>
       </label>
-      <p>{k.leiras}</p>
+      <p>{t(k.leiras)}</p>
       {#if k.nev === 'tracker' && trackerKliens.nemFogad}
-        <p class="hiba" role="alert">A Tracker nem tud írni: {trackerKliens.nemFogad}. Új adat addig nem gyűlik.</p>
+        <p class="hiba" role="alert">{t('A Tracker nem tud írni: {ok}. Új adat addig nem gyűlik.', { ok: trackerKliens.nemFogad })}</p>
       {/if}
     </li>
   {/each}

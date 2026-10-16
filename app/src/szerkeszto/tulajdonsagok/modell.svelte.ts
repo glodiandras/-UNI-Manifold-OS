@@ -5,6 +5,7 @@
 // A séma szabálya (nem csendben): a `hiba` szintű probléma nem írható; a `sertes` szintű a mező alatt látszik, és csak
 // a „Mégis beírom” (`megerosit`) után kerül a dokumentumba.
 
+import { t } from '../../lib/i18n';
 import type { Text } from '@codemirror/state';
 import { ApiHiba } from '../../lib/core/api';
 import type { Csere } from '../dokumentum/kulonbseg';
@@ -78,7 +79,7 @@ export class TulajdonsagModell {
       const most = fmBlokk(this.szoveg())?.szoveg ?? null;
       if (most !== kuldott) {
         // közben a szerkesztőben is változott a frontmatter: a válasz elavult
-        this.hiba = 'A frontmatter közben megváltozott; próbáld újra.';
+        this.hiba = t('A frontmatter közben megváltozott; próbáld újra.');
         this.utolsoFm = undefined;
         await this.frissit();
         this.verzio++;
@@ -89,7 +90,7 @@ export class TulajdonsagModell {
         if (r.megerositheto) this.fuggo = { muvelet: m, problemak: r.problemak };
         else {
           const p = r.problemak[0];
-          this.elutasitott = { kulcs: p?.kulcs ?? m.kulcs, uzenet: p?.uzenet ?? 'A módosítás nem írható.' };
+          this.elutasitott = { kulcs: p?.kulcs ?? m.kulcs, uzenet: p?.uzenet ?? t('A módosítás nem írható.') };
           this.verzio++;
         }
         return false;

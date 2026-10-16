@@ -85,7 +85,7 @@ class NyitTest(_Alap):
         self.assertEqual(_worktree(cfg), str(self.v))                      # elavult (csak a külső eszközöket vezetné félre)
         uzenetek = workspace.nyit(cfg)
         self.assertEqual(len(uzenetek), 1)
-        self.assertIn("új helyen", uzenetek[0])
+        self.assertIn("new location", uzenetek[0])
         e = self.reg()["munkaterek"][self.id]
         self.assertEqual((e["vault"], e["kanonikus"], list(self.reg()["munkaterek"])),
                          (str(uj), workspace.kanonikus(uj), [self.id]))
@@ -135,7 +135,7 @@ class NyitTest(_Alap):
         self.assertEqual(ccfg.workspace_id, self.id)
         uzenetek = workspace.nyit(ccfg)
         self.assertEqual(len(uzenetek), 1)
-        self.assertIn("másolata", uzenetek[0])
+        self.assertIn("copy", uzenetek[0])
         uj_id = workspace.azonosit(masolat)
         self.assertRegex(uj_id, r"^[0-9a-f]{32}$")
         self.assertNotEqual(uj_id, self.id)

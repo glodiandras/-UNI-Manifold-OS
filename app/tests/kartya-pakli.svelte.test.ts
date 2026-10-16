@@ -6,8 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Kartya, KartyaApi } from '../src/kartya/api';
 import { IsmetlesMenet } from '../src/kartya/menet.svelte';
 import Pakli from '../src/kartya/Pakli.svelte';
+import { nyelv } from '../src/lib/i18n';
+import { tartalmiNyelv } from '../src/lib/munkater/nyelv.svelte';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  nyelv.beallit('hu');
+  tartalmiNyelv.beallit('');
+});
 
 const k = (azon: string): Kartya => ({
   azon, jegyzet: 'ATTCHMNTS - cards/A — kártyák.md', kerdes: `Mi a ${azon}?`, valasz: `Ez a ${azon}.`, forras: 'A#^m-1a2b',
@@ -24,6 +30,19 @@ function menet(kartyak: Kartya[]) {
 }
 
 describe('Pakli', () => {
+  it('angol kezelőfelület mellett a kérdés és a válasz a munkatér nyelvét kapja', async () => {
+    nyelv.beallit('en');
+    tartalmiNyelv.beallit('hu');
+    const { m } = menet([k('c-1')]);
+    await m.betolt();
+    const { container, getByRole } = render(Pakli, { props: { menet: m, cim: 'A — kártyák' } });
+    expect(container.querySelector('.pakli')?.getAttribute('lang')).toBe('en');
+    expect(container.querySelector('.pakli-kerdes')?.getAttribute('lang')).toBe('hu');
+    await fireEvent.click(getByRole('button', { name: /Answer/ }));
+    expect(container.querySelector('.pakli-valasz')?.getAttribute('lang')).toBe('hu');
+    expect(getByRole('button', { name: /Good/ })).toBeTruthy();
+  });
+
   it('kérdés, fordítás, értékelés gombbal', async () => {
     const { m, valasz } = menet([k('c-1'), k('c-2')]);
     await m.betolt();

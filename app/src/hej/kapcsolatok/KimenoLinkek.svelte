@@ -3,6 +3,7 @@
   létrejön az új jegyzet. Ugyanaz a cél egyszer szerepel (a beágyazás jelölve).
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import Ikon from '../../lib/ikon/Ikon.svelte';
   import { fajlIkon } from '../../lib/ikon/fajlIkon';
   import { Plus } from '../../lib/ikon/ikonok';
@@ -37,7 +38,7 @@
 </script>
 
 {#if !feloldott.length && !feloldatlan.length}
-  <p class="ures">A jegyzetből nem mutat link.</p>
+  <p class="ures">{t('A jegyzetből nem mutat link.')}</p>
 {/if}
 {#if feloldott.length}
   <ul>
@@ -46,7 +47,7 @@
         <button type="button" class="sor" title={l.cel ?? ''} onclick={(e) => onnyit(l, e)}>
           <Ikon ikon={fajlIkon(info(l.cel!)?.tipus)} meret={14} />
           <span class="nev">{fajlNev(l.cel!)}{l.alcel ? ` › ${l.alcel}` : ''}</span>
-          {#if l.beagyazas}<span class="jel">beágyazás</span>{/if}
+          {#if l.beagyazas}<span class="jel">{t('beágyazás')}</span>{/if}
           {#if l.tulajdonsag}<span class="jel">{l.tulajdonsag}</span>{/if}
         </button>
       </li>
@@ -54,11 +55,11 @@
   </ul>
 {/if}
 {#if feloldatlan.length}
-  <p class="cim">Feloldatlan</p>
+  <p class="cim">{t('Feloldatlan')}</p>
   <ul>
     {#each feloldatlan as l, i (i)}
       <li>
-        <button type="button" class="sor hianyzo" title="Új jegyzet létrehozása" onclick={() => onletrehoz(l)}>
+        <button type="button" class="sor hianyzo" title={t('Új jegyzet létrehozása')} onclick={() => onletrehoz(l)}>
           <Ikon ikon={Plus} meret={14} />
           <span class="nev">{l.cel_nyers.trim()}</span>
         </button>

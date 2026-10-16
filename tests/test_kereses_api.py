@@ -83,7 +83,7 @@ class ApiTest(unittest.TestCase):
         self.assertEqual((s, r["allapot"], r["ok"]), (200, "nincs_valasz", "nincs_eleg_forras"))
         s, r = self.k("POST", "/api/kereses/kerdezz", {"kerdes": "Hány évesen vették el a spártai fiúkat a családtól?"})
         self.assertEqual(s, 503)
-        self.assertIn("nincs kötve", r["error"] if "error" in r else json.dumps(r, ensure_ascii=False))
+        self.assertIn("not set up", r["error"] if "error" in r else json.dumps(r, ensure_ascii=False))
         self.assertEqual(self.lenyomat(), elotte)
 
     def test_hibas_kerések_es_titok(self):

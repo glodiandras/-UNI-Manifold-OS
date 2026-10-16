@@ -11,6 +11,7 @@
 // A beírandó cél a core `linkcel`-éből jön (a legrövidebb egyértelmű alak, L42): nincs saját rövidítési szabály.
 // A `[[` gépelésekor a záró `]]` is beíródik (a Backspace a párt együtt törli).
 
+import { t } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { type ChangeSpec, ChangeSet, type EditorState, Facet, type Extension, Prec, StateEffect, StateField } from '@codemirror/state';
 import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
@@ -224,8 +225,8 @@ async function blokkElemek(view: EditorView, q: Lekerdezes): Promise<Elem[]> {
       if (!b.id && b.elsoSor <= sorKurzor && sorKurzor <= b.utolsoSor) continue; // a saját sorára nem hivatkozunk
       elemek.push({
         id: `b:${b.elsoSor}`,
-        nev: szoveg.slice(0, 90) || '(üres)',
-        jelzo: b.id ? `^${b.id}` : 'új ^id',
+        nev: szoveg.slice(0, 90) || t('(üres)'),
+        jelzo: b.id ? `^${b.id}` : t('új ^id'),
         idKell: b.id ? undefined : b.index,
         beir: async () => ({ szoveg: `${q.cel}#^${b.id ?? ''}` }),
       });
@@ -374,8 +375,8 @@ function jelez(view: EditorView, id: string | null): void {
 function letrehoz(view: EditorView): TooltipView {
   const lista = new Map<string, Elem>();
   const menu = new Menu({
-    cimke: 'Link beszúrása',
-    ures: 'Nincs találat',
+    cimke: t('Link beszúrása'),
+    ures: t('Nincs találat'),
     onValaszt: (e) => {
       const el = lista.get(e.id);
       if (el) void alkalmaz(view, el);

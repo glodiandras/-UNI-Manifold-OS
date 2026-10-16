@@ -10,6 +10,7 @@
 //   - soha nem vakon: eltérő alap → 409 → ütközés; a gépi mentés addig áll, amíg a felhasználó nem dönt;
 //   - változás nélkül nincs írás.
 
+import { t } from '../../lib/i18n';
 import { ChangeSet, Text } from '@codemirror/state';
 import { ApiHiba } from '../../lib/core/api';
 import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
@@ -65,8 +66,8 @@ interface Nyugtazatlan {
 /** Miért csak olvasható egy fájl a tartalma miatt (magyar mondat), vagy `null`: a hibás bájtokat, illetve a vegyes sorvégeket a
  *  mentés felülírná (C08, bájthűség). */
 function csakOlvashatoOka(kodolasHiba: boolean, sorveg: Sorveg): string | null {
-  if (kodolasHiba) return 'A fájl nem érvényes UTF-8: a mentés a hibás bájtokat felülírná, ezért csak olvasható.';
-  if (sorveg === 'vegyes') return 'A fájlban vegyes sorvégek állnak: változatlanul nem írható vissza, ezért csak olvasható.';
+  if (kodolasHiba) return t('A fájl nem érvényes UTF-8: a mentés a hibás bájtokat felülírná, ezért csak olvasható.');
+  if (sorveg === 'vegyes') return t('A fájlban vegyes sorvégek állnak: változatlanul nem írható vissza, ezért csak olvasható.');
   return null;
 }
 
@@ -314,8 +315,8 @@ export class Dokumentum {
       // az ütközés-feloldás mentése nem ment át: a párbeszéd nyitva marad (T116)
       const foglalt = e instanceof ApiHiba && (e.statusz === 423 || e.statusz === 503);
       this.utkozesUzenet = foglalt
-        ? 'A core éppen a vaultot írja (a kör-zár foglalt): a lemezen lévő változat még nem került pillanatképbe, ezért várok.'
-        : `A mentés nem sikerült: ${uzenet}`;
+        ? t('A core éppen a vaultot írja (a kör-zár foglalt): a lemezen lévő változat még nem került pillanatképbe, ezért várok.')
+        : t('A mentés nem sikerült: {uzenet}', { uzenet });
       return { ok: false, foglalt, hiba: uzenet };
     }
     this.allapot = 'hiba';
@@ -328,8 +329,8 @@ export class Dokumentum {
       if (this.varakozasErtesites === null && this.hibaErtesites === null)
         this.varakozasErtesites = ertesitesek.ertesit({
           szint: 'info',
-          cim: 'Várakozás a zárra',
-          szoveg: `${this.ut} — a core éppen a vaultot írja (a zár foglalt); a mentést hamarosan újrapróbálom.`,
+          cim: t('Várakozás a zárra'),
+          szoveg: t('{ut} — a core éppen a vaultot írja (a zár foglalt); a mentést hamarosan újrapróbálom.', { ut: this.ut }),
         });
       this.utemez(UJRA_PROBA[Math.min(this.ujraProba++, UJRA_PROBA.length - 1)]);
       return { ok: false };
@@ -340,10 +341,10 @@ export class Dokumentum {
     if (this.hibaErtesites === null)
       this.hibaErtesites = ertesitesek.ertesit({
         szint: 'hiba',
-        cim: 'A mentés nem sikerült',
+        cim: t('A mentés nem sikerült'),
         szoveg: tartos
-          ? `${this.ut} — a core elutasította a mentést: ${uzenet}. A szöveg a szerkesztőben megvan; javítsd, vagy töltsd be a lemezen lévő változatot.`
-          : `${this.ut} — ${uzenet}. A szöveg a szerkesztőben megvan; újrapróbálom.`,
+          ? t('{ut} — a core elutasította a mentést: {uzenet}. A szöveg a szerkesztőben megvan; javítsd, vagy töltsd be a lemezen lévő változatot.', { ut: this.ut, uzenet })
+          : t('{ut} — {uzenet}. A szöveg a szerkesztőben megvan; újrapróbálom.', { ut: this.ut, uzenet }),
         idotartam: 0,
       });
     if (!tartos) this.utemez(UJRA_PROBA[Math.min(this.ujraProba++, UJRA_PROBA.length - 1)]);

@@ -327,7 +327,7 @@ class FeladatTest(unittest.TestCase):
         lepesek, osszeg, _ = videolanc._integralas_terv(
             self.cfg, {"mappak": ["Zanza/Történelem/A reformkor"], "tema_mappa": "D13 - CS50 "}, "/stop")
         self.assertEqual(lepesek[0].argv[-2:], ["--tema-mappa", "D13 - CS50"])
-        self.assertIn("„D13 - CS50/Média”", osszeg)
+        self.assertIn("‘D13 - CS50/Média’", osszeg)
         for p in ({"tema_mappa": "D13 - CS50"}, {"mappak": ["Zanza/Történelem/A reformkor"], "tema_mappa": "D13 - CS50/x"},
                   {"mappak": ["Zanza/Történelem/A reformkor"], "tema_mappa": "Q13 - Ismeretlen"},
                   {"mappak": ["Zanza/Történelem/A reformkor"], "tema_mappa": 5}):

@@ -6,6 +6,7 @@
   számol címkét.
 -->
 <script lang="ts">
+  import { t, tp, locale } from '../lib/i18n';
   import { onMount, tick } from 'svelte';
   import { ApiHiba, kerdez } from '../lib/core/api';
   import Ikon from '../lib/ikon/Ikon.svelte';
@@ -55,13 +56,13 @@
         { idokorlat: 8000 },
       );
       if (en !== sorszam) return;
-      talalat = d.talalatok.map((t) => t.ut).sort((a, b) => fajlNev(a).localeCompare(fajlNev(b), 'hu', { numeric: true }));
+      talalat = d.talalatok.map((t) => t.ut).sort((a, b) => fajlNev(a).localeCompare(fajlNev(b), locale(), { numeric: true }));
       osszes = d.osszes;
       hiba = null;
     } catch (e) {
       if (en !== sorszam) return;
       talalat = [];
-      hiba = e instanceof ApiHiba && e.statusz === 503 ? 'Az index még épül…' : e instanceof Error ? e.message : String(e);
+      hiba = e instanceof ApiHiba && e.statusz === 503 ? t('Az index még épül…') : e instanceof Error ? e.message : String(e);
     } finally {
       if (en === sorszam) betolt = false;
     }
@@ -133,10 +134,10 @@
 
 <div class="cimkek">
   <div class="fej">
-    <span class="cim">{cimkek.lista.length ? `${cimkek.lista.length} címke` : 'Címkék'}</span>
+    <span class="cim">{cimkek.lista.length ? tp('{n} címke', cimkek.lista.length) : t('Címkék')}</span>
   </div>
 
-  <div class="fa gorgeto" role="tree" aria-label="Címkék" tabindex="-1" bind:this={fa} onkeydown={billentyu}>
+  <div class="fa gorgeto" role="tree" aria-label={t('Címkék')} tabindex="-1" bind:this={fa} onkeydown={billentyu}>
     {#each sorok as s (s.kis)}
       <!-- a billentyűt a fa kezeli (↑↓←→ ↩ szóköz) -->
       <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -159,7 +160,7 @@
             type="button"
             class="nyil"
             tabindex="-1"
-            aria-label={nyitott.has(s.kis) ? 'Becsukás' : 'Kinyitás'}
+            aria-label={nyitott.has(s.kis) ? t('Becsukás') : t('Kinyitás')}
             onclick={(e) => (e.stopPropagation(), valt(s.kis))}
           >
             <Ikon ikon={nyitott.has(s.kis) ? ChevronDown : ChevronRight} meret={14} />
@@ -169,11 +170,11 @@
         {/if}
         <Ikon ikon={Tag} meret={14} />
         <span class="nev">{s.nev}</span>
-        <span class="db" title={s.db !== s.ossz ? `${s.db} jegyzet ezzel a címkével, ${s.ossz} a gyerekeivel együtt` : undefined}>{s.ossz}</span>
+        <span class="db" title={s.db !== s.ossz ? t('{db} jegyzet ezzel a címkével, {ossz} a gyerekeivel együtt', { db: s.db, ossz: s.ossz }) : undefined}>{s.ossz}</span>
       </div>
     {:else}
       <p class="ures">
-        {cimkek.hiba ?? (cimkek.betoltve ? 'A vaultban nincs címke.' : 'A címkék töltődnek…')}
+        {cimkek.hiba ?? (cimkek.betoltve ? t('A vaultban nincs címke.') : t('A címkék töltődnek…'))}
       </p>
     {/each}
   </div>
@@ -185,11 +186,11 @@
         <strong>{kivCsucs?.cimke ?? kivalasztott}</strong>
         <span class="db">{osszes}</span>
       </span>
-      <button type="button" class="zar" aria-label="A szűrés megszüntetése" title="A szűrés megszüntetése" onclick={() => (kivalasztott = null)}>
+      <button type="button" class="zar" aria-label={t('A szűrés megszüntetése')} title={t('A szűrés megszüntetése')} onclick={() => (kivalasztott = null)}>
         <Ikon ikon={X} meret={14} />
       </button>
     </div>
-    <ul class="lista gorgeto" aria-label="A címkéhez tartozó jegyzetek">
+    <ul class="lista gorgeto" aria-label={t('A címkéhez tartozó jegyzetek')}>
       {#each talalat as ut (ut)}
         <li>
           <button
@@ -205,7 +206,7 @@
           </button>
         </li>
       {:else}
-        <li class="ures" role="status">{hiba ?? (betolt ? 'Betöltés…' : 'Nincs jegyzet ezzel a címkével.')}</li>
+        <li class="ures" role="status">{hiba ?? (betolt ? t('Betöltés…') : t('Nincs jegyzet ezzel a címkével.'))}</li>
       {/each}
     </ul>
   {/if}

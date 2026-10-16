@@ -5,6 +5,7 @@
   (`/api/vault/elozmeny`); csak md-jegyzetnek van, és csak a megnyitott (nyitott) szakasznál töltődik.
 -->
 <script lang="ts">
+  import { t } from '../../lib/i18n';
   import { onMount, untrack } from 'svelte';
   import { ApiHiba, kerdez } from '../../lib/core/api';
   import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
@@ -41,7 +42,7 @@
     } catch (e) {
       if (en !== sorszam) return;
       lista = [];
-      hiba = e instanceof ApiHiba && e.statusz === 404 ? 'Az előzmények nem érhetők el (nincs pillanatkép-tároló).' : e instanceof Error ? e.message : String(e);
+      hiba = e instanceof ApiHiba && e.statusz === 404 ? t('Az előzmények nem érhetők el (nincs pillanatkép-tároló).') : e instanceof Error ? e.message : String(e);
     } finally {
       if (en === sorszam) betolt = false;
     }
@@ -85,14 +86,14 @@
       if (dok.allapot === 'utkozes' || dok.allapot === 'eltunt' || dok.csakOlvashato) {
         ertesitesek.ertesit({
           szint: 'figyelmeztetes',
-          cim: 'A visszaállítás előbb döntést kér',
-          szoveg: dok.csakOlvashato ?? 'A jegyzet ütközésben van vagy eltűnt: előbb azt kell lezárni.',
+          cim: t('A visszaállítás előbb döntést kér'),
+          szoveg: dok.csakOlvashato ?? t('A jegyzet ütközésben van vagy eltűnt: előbb azt kell lezárni.'),
         });
         return false;
       }
       const m = await dok.ment({ pillanat: true });
       if (!m.ok) {
-        ertesitesek.ertesit({ szint: 'hiba', cim: 'A jegyzet mentése nem sikerült', szoveg: 'A visszaállítás előtt a mostani szöveget el kell menteni.' });
+        ertesitesek.ertesit({ szint: 'hiba', cim: t('A jegyzet mentése nem sikerült'), szoveg: t('A visszaállítás előtt a mostani szöveget el kell menteni.') });
         return false;
       }
     }
@@ -101,9 +102,9 @@
       await dok?.kulsoValtozas();
       ertesitesek.ertesit({
         szint: 'siker',
-        cim: 'Visszaállítva',
-        szoveg: `${ut} — ${elozmenyIdo(b.datum)} állapota`,
-        muvelet: { nev: 'Visszavonás', futtat: () => void visszavon(r.sha) },
+        cim: t('Visszaállítva'),
+        szoveg: t('{ut} — {ido} állapota', { ut, ido: elozmenyIdo(b.datum) }),
+        muvelet: { nev: t('Visszavonás'), futtat: () => void visszavon(r.sha) },
         idotartam: 15000,
       });
       void tolt();
@@ -111,7 +112,7 @@
     } catch (e) {
       ertesitesek.ertesit({
         szint: 'hiba',
-        cim: 'A visszaállítás nem sikerült',
+        cim: t('A visszaállítás nem sikerült'),
         szoveg: e instanceof ApiHiba ? e.message : String(e),
         idotartam: 0,
       });
@@ -126,28 +127,28 @@
     try {
       await kerdez('/api/pillanat/vault/visszavonas', { metodus: 'POST', torzs: { sha }, idokorlat: 60000 });
       await dok?.kulsoValtozas();
-      ertesitesek.ertesit({ szint: 'siker', cim: 'A visszaállítás visszavonva', szoveg: ut, idotartam: 4000 });
+      ertesitesek.ertesit({ szint: 'siker', cim: t('A visszaállítás visszavonva'), szoveg: ut, idotartam: 4000 });
       void tolt();
     } catch (e) {
-      ertesitesek.ertesit({ szint: 'hiba', cim: 'A visszavonás nem sikerült', szoveg: e instanceof ApiHiba ? e.message : String(e), idotartam: 0 });
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('A visszavonás nem sikerült'), szoveg: e instanceof ApiHiba ? e.message : String(e), idotartam: 0 });
     }
   }
 </script>
 
 {#if !ut}
-  <p class="ures">Nincs megnyitott jegyzet.</p>
+  <p class="ures">{t('Nincs megnyitott jegyzet.')}</p>
 {:else if !md}
-  <p class="ures">Az előzmények a Markdown-jegyzetekhez állnak rendelkezésre.</p>
+  <p class="ures">{t('Az előzmények a Markdown-jegyzetekhez állnak rendelkezésre.')}</p>
 {:else if hiba}
   <p class="hiba" role="alert">{hiba}</p>
 {:else if !lista.length}
-  <p class="ures" role="status">{betolt ? 'Betöltés…' : 'Még nincs pillanatkép erről a jegyzetről.'}</p>
+  <p class="ures" role="status">{betolt ? t('Betöltés…') : t('Még nincs pillanatkép erről a jegyzetről.')}</p>
 {:else}
-  <ul class="lista" aria-label="A jegyzet pillanatképei">
+  <ul class="lista" aria-label={t('A jegyzet pillanatképei')}>
     {#each lista as b, i (b.sha)}
       <li>
         <button type="button" class="elem" title={b.targy} onclick={() => (megnyitott = b)}>
-          <span class="cimke">{b.cimke}{#if i === 0}<span class="jelenlegi">jelenlegi</span>{/if}</span>
+          <span class="cimke">{b.cimke}{#if i === 0}<span class="jelenlegi">{t('jelenlegi')}</span>{/if}</span>
           <span class="ido">{elozmenyIdo(b.datum)}{b.kor ? ` · ${b.kor}` : ''}</span>
         </button>
       </li>

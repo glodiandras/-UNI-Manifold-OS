@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { t } from '../lib/i18n';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
@@ -28,57 +29,59 @@
       cimke: napCimke(n.nap, bontas),
       ertek: n.aktiv_mp,
       terv: n.terv_mp || undefined,
-      cim: `${napSzoveg(n.nap, bontas)}: ${idoSzoveg(n.aktiv_mp)} aktív${n.terv_mp ? `, tervezett ${idoSzoveg(n.terv_mp)}` : ''}`,
+      cim: n.terv_mp
+        ? t('{nap}: {ido} aktív, tervezett {terv}', { nap: napSzoveg(n.nap, bontas), ido: idoSzoveg(n.aktiv_mp), terv: idoSzoveg(n.terv_mp) })
+        : t('{nap}: {ido} aktív', { nap: napSzoveg(n.nap, bontas), ido: idoSzoveg(n.aktiv_mp) }),
     })),
   );
-  const savok = $derived((adat?.tantargyak ?? []).map((t) => ({ nev: t.tantargy, ertek: t.aktiv_mp, szoveg: idoSzoveg(t.aktiv_mp) })));
-  const nincsAdat = (v: number, ok: boolean) => (ok || v > 0 ? szamSzoveg(v) : 'nincs adat');
+  const savok = $derived((adat?.tantargyak ?? []).map((x) => ({ nev: x.tantargy, ertek: x.aktiv_mp, szoveg: idoSzoveg(x.aktiv_mp) })));
+  const nincsAdat = (v: number, ok: boolean) => (ok || v > 0 ? szamSzoveg(v) : t('nincs adat'));
 </script>
 
 <div class="statisztika olvasas">
   <header>
-    <h1>Statisztika</h1>
+    <h1>{t('Statisztika')}</h1>
     <div class="vezerlok">
-      <div class="csoport" role="group" aria-label="Bontás">
-        <button type="button" aria-pressed={modell.bontas === 'nap'} onclick={() => modell.valt('nap')}>Nap</button>
-        <button type="button" aria-pressed={modell.bontas === 'het'} onclick={() => modell.valt('het')}>Hét</button>
+      <div class="csoport" role="group" aria-label={t('Bontás')}>
+        <button type="button" aria-pressed={modell.bontas === 'nap'} onclick={() => modell.valt('nap')}>{t('Nap')}</button>
+        <button type="button" aria-pressed={modell.bontas === 'het'} onclick={() => modell.valt('het')}>{t('Hét')}</button>
       </div>
-      <div class="csoport" role="group" aria-label="Tartomány">
-        <button type="button" aria-label="Korábbi tartomány" onclick={() => modell.lapoz(1)}>←</button>
+      <div class="csoport" role="group" aria-label={t('Tartomány')}>
+        <button type="button" aria-label={t('Korábbi tartomány')} onclick={() => modell.lapoz(1)}>←</button>
         <span class="tartomany">{adat ? `${napSzoveg(adat.tol)} – ${napSzoveg(adat.ig)}` : ''}</span>
-        <button type="button" aria-label="Későbbi tartomány" disabled={modell.lap === 0} onclick={() => modell.lapoz(-1)}>→</button>
+        <button type="button" aria-label={t('Későbbi tartomány')} disabled={modell.lap === 0} onclick={() => modell.lapoz(-1)}>→</button>
       </div>
     </div>
   </header>
 
   {#if modell.hiba && !adat}
-    <p class="hiba" role="alert">A statisztika nem tölthető be: {modell.hiba}</p>
+    <p class="hiba" role="alert">{t('A statisztika nem tölthető be:')} {modell.hiba}</p>
   {:else if modell.hiba}
-    <p class="hiba" role="alert">A frissítés nem sikerült ({modell.hiba}): a korábban betöltött adat látszik.</p>
+    <p class="hiba" role="alert">{t('A frissítés nem sikerült ({hiba}): a korábban betöltött adat látszik.', { hiba: modell.hiba })}</p>
   {/if}
   {#if !vezerloKapcsolok.ertek.tracker}
-    <p class="figy" role="status">A Tracker ki van kapcsolva: új adat nem gyűlik (a vezérlőben kapcsolható be). A korábbi adatok látszanak.</p>
+    <p class="figy" role="status">{t('A Tracker ki van kapcsolva: új adat nem gyűlik (a vezérlőben kapcsolható be). A korábbi adatok látszanak.')}</p>
   {/if}
 
   {#if adat}
     <dl class="osszegzes">
-      <div><dt>Aktív idő</dt><dd>{idoSzoveg(adat.osszes.aktiv_mp)}</dd></div>
+      <div><dt>{t('Aktív idő')}</dt><dd>{idoSzoveg(adat.osszes.aktiv_mp)}</dd></div>
       <div>
-        <dt>Szerkesztett karakter</dt>
+        <dt>{t('Szerkesztett karakter')}</dt>
         <dd>{szamSzoveg(adat.osszes.beszurt + adat.osszes.torolt)} <small>+{szamSzoveg(adat.osszes.beszurt)} / −{szamSzoveg(adat.osszes.torolt)}</small></dd>
       </div>
-      <div><dt>Kártyaválasz</dt><dd>{nincsAdat(adat.osszes.kartya, adat.elerheto.kartya)}</dd></div>
-      <div><dt>Kvíz</dt><dd>{nincsAdat(adat.osszes.kviz, adat.elerheto.kviz)}</dd></div>
-      <div><dt>Integrált tétel</dt><dd>{nincsAdat(adat.osszes.integralt, adat.elerheto.integralt)}</dd></div>
-      <div><dt>Tervezett tanulási idő</dt><dd>{adat.elerheto.terv ? idoSzoveg(adat.osszes.terv_mp) : 'nincs adat'}</dd></div>
+      <div><dt>{t('Kártyaválasz')}</dt><dd>{nincsAdat(adat.osszes.kartya, adat.elerheto.kartya)}</dd></div>
+      <div><dt>{t('Kvíz')}</dt><dd>{nincsAdat(adat.osszes.kviz, adat.elerheto.kviz)}</dd></div>
+      <div><dt>{t('Integrált tétel')}</dt><dd>{nincsAdat(adat.osszes.integralt, adat.elerheto.integralt)}</dd></div>
+      <div><dt>{t('Tervezett tanulási idő')}</dt><dd>{adat.elerheto.terv ? idoSzoveg(adat.osszes.terv_mp) : t('nincs adat')}</dd></div>
     </dl>
 
     <section aria-labelledby="st-ido">
-      <h2 id="st-ido">Aktív idő {bontas === 'nap' ? 'naponta' : 'hetente'}</h2>
-      <Oszlopok {oszlopok} leiras="Az aktív idő {bontas === 'nap' ? 'naponta' : 'hetente'}, a tervezett tanulási idővel jelölve" />
-      <p class="lab">Szaggatott vonal: a naptár tanulási blokkjainak tervezett ideje. Aktív idő: az ablak elöl van, és 60 mp-en belül volt bevitel.</p>
+      <h2 id="st-ido">{bontas === 'nap' ? t('Aktív idő naponta') : t('Aktív idő hetente')}</h2>
+      <Oszlopok {oszlopok} leiras={bontas === 'nap' ? t('Az aktív idő naponta, a tervezett tanulási idővel jelölve') : t('Az aktív idő hetente, a tervezett tanulási idővel jelölve')} />
+      <p class="lab">{t('Szaggatott vonal: a naptár tanulási blokkjainak tervezett ideje. Aktív idő: az ablak elöl van, és 60 mp-en belül volt bevitel.')}</p>
       <table>
-        <thead><tr><th>{bontas === 'nap' ? 'Nap' : 'Hét'}</th><th>Aktív</th><th>Karakter</th><th>Tervezett tanulás</th></tr></thead>
+        <thead><tr><th>{bontas === 'nap' ? t('Nap') : t('Hét')}</th><th>{t('Aktív')}</th><th>{t('Karakter')}</th><th>{t('Tervezett tanulás')}</th></tr></thead>
         <tbody>
           {#each adat.napok as n (n.nap)}
             <tr>
@@ -93,16 +96,16 @@
     </section>
 
     <section aria-labelledby="st-tantargy">
-      <h2 id="st-tantargy">Tantárgyanként</h2>
+      <h2 id="st-tantargy">{t('Tantárgyanként')}</h2>
       {#if savok.length}
-        <Savok {savok} leiras="Az aktív idő tantárgyanként" />
+        <Savok {savok} leiras={t('Az aktív idő tantárgyanként')} />
       {:else}
-        <p class="ures">Ebben a tartományban nincs rögzített aktív idő.</p>
+        <p class="ures">{t('Ebben a tartományban nincs rögzített aktív idő.')}</p>
       {/if}
     </section>
 
     <section aria-labelledby="st-jegyzet">
-      <h2 id="st-jegyzet">Legtöbbet használt jegyzetek</h2>
+      <h2 id="st-jegyzet">{t('Legtöbbet használt jegyzetek')}</h2>
       {#if adat.jegyzetek.length}
         <ul class="lista">
           {#each adat.jegyzetek as j (j.ut)}
@@ -110,11 +113,11 @@
           {/each}
         </ul>
       {:else}
-        <p class="ures">Még nincs adat.</p>
+        <p class="ures">{t('Még nincs adat.')}</p>
       {/if}
     </section>
   {:else if !modell.hiba}
-    <p class="ures" role="status">Betöltés…</p>
+    <p class="ures" role="status">{t('Betöltés…')}</p>
   {/if}
 </div>
 

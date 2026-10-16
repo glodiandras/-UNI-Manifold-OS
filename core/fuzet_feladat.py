@@ -17,6 +17,7 @@ import sys
 
 from . import kiserok, tasks
 from .config import Config
+from .hibakod import kodol
 
 LANC, AUTOMATIKUS, ELLENORIZ = "fuzet_lanc", "fuzet_automatikus", "fuzet_ellenoriz"
 CSOPORT = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -25,9 +26,9 @@ MAX_FOTO = 200
 
 def _alap(cfg: Config, p: dict, stop: str, parancs: str) -> list[str]:
     if not isinstance(p, dict):
-        raise tasks.Invalid("A paraméterek JSON-objektum kellenek.")
+        raise kodol(tasks.Invalid("A paraméterek JSON-objektum kellenek."), "fuzet_feladat.parameterek_json_objektum_kellenek")
     if not isinstance(p.get("proba", False), bool):
-        raise tasks.Invalid("A `proba` igaz vagy hamis lehet.")
+        raise kodol(tasks.Invalid("A `proba` igaz vagy hamis lehet."), "fuzet_feladat.proba_igaz_hamis_lehet")
     argv = [sys.executable, "-B", str(cfg.path("modulok") / "fuzet" / "__main__.py"), parancs, "--stop-fajl", stop]
     if p.get("proba"):
         argv.append("--proba")
@@ -38,7 +39,7 @@ def _max(p: dict, argv: list[str], kapcsolo: str) -> None:
     if "max" in p:
         m = p["max"]
         if isinstance(m, bool) or not isinstance(m, int) or not 1 <= m <= MAX_FOTO:
-            raise tasks.Invalid(f"A `max` 1–{MAX_FOTO} egész szám legyen.")
+            raise kodol(tasks.Invalid(f"A `max` 1–{MAX_FOTO} egész szám legyen."), "fuzet_feladat.max_1_max_foto_egesz", {"MAX_FOTO": MAX_FOTO})
         argv += [kapcsolo, str(m)]
 
 
@@ -48,23 +49,23 @@ def _lanc_terv(cfg: Config, p: dict, stop: str, automatikus: bool = False):
     cel = p.get("cel")
     if cel is not None:
         if automatikus or not isinstance(cel, str) or not cel.endswith(".md") or ".." in cel.split("/") or cel.startswith("/"):
-            raise tasks.Invalid("A `cel` a vault egy jegyzete (`.md`, vault-relatív út) lehet.")
+            raise kodol(tasks.Invalid("A `cel` a vault egy jegyzete (`.md`, vault-relatív út) lehet."), "fuzet_feladat.cel_vault_jegyzete_md_vault")
         if not (cfg.path("vault") / cel).is_file():
-            raise tasks.Invalid(f"Nincs ilyen jegyzet: {cel}")
+            raise kodol(tasks.Invalid(f"Nincs ilyen jegyzet: {cel}"), "fuzet_feladat.nincs_ilyen_jegyzet_cel", {"cel": cel})
         argv += ["--cel", cel]
     csoport = p.get("csoport")
     if csoport is not None:
         if automatikus or not isinstance(csoport, str) or not CSOPORT.fullmatch(csoport):
-            raise tasks.Invalid("A `csoport` a feltöltött fotók csoport-azonosítója.")
+            raise kodol(tasks.Invalid("A `csoport` a feltöltött fotók csoport-azonosítója."), "fuzet_feladat.csoport_feltoltott_fotok_csoport_azonositoja")
         argv.append(str(cfg.path("fuzet_bejovo") / csoport))
-    figyelm = ["Próbamód: az írás a vault APFS-klónjára megy, a fotók a helyükön maradnak."] if p.get("proba") else []
+    figyelm = ['Trial mode: the write goes to an APFS clone of the workspace and the photos stay where they are.'] if p.get("proba") else []
     cim = "Füzetfotók az aktív jegyzetbe" if cel else "Füzetfotók bekötése"
     fz = cfg.section("fuzet")
     szakasz, cel_mappa = fz.get("szakasz") or "Füzet", kiserok.kisero_mappa(cfg, "fuzet")
-    osszeg = (f"A fotók a megadott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek (gépi írás, visszavonható)."
+    osszeg = (f"Place the photos in the selected note's ‘## {szakasz}’ section, with formulas below them (machine write, undoable)."
               if cel else
-              f"Az új füzetfotók a választott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek; a fotó a "
-              f"„{cel_mappa}” alá költözik (gépi írás, fotónként visszavonható).")
+              f"Place new notebook photos in the selected note's ‘## {szakasz}’ section, with formulas below them; move the photos "
+              f"under ‘{cel_mappa}’ (machine write, undoable for each photo).")
     return [tasks.Step(cim, argv, str(cfg.root))], osszeg, figyelm
 
 
@@ -72,8 +73,8 @@ def _ellenoriz_terv(cfg: Config, p: dict, stop: str):
     argv = _alap(cfg, p, stop, "ellenoriz")
     _max(p, argv, "--limit")
     return ([tasks.Step("Füzet-bekötések ellenőrzése", argv, str(cfg.root))],
-            "A bekötött füzetfotók újradöntése; eltérésnél a beágyazás a jobb jegyzetbe költözik (gépi írás, visszavonható).",
-            ["Próbamód: csak javaslat, a vault nem változik."] if p.get("proba") else [])
+            'Notebook photos that were linked are re-judged. If the result differs, the embed moves to the better note (automated write, can be undone).',
+            ['Trial mode: suggestions only, the workspace does not change.'] if p.get("proba") else [])
 
 
 def regisztral() -> None:

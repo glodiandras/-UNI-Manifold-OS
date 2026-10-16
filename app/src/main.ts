@@ -8,12 +8,14 @@ import { hejnek } from './lib/core/hej';
 import { titokBetolt } from './lib/core/titok';
 import { Felulet, betolt } from './lib/elrendezes/felulet.svelte';
 import { alkalmaz } from './lib/elrendezes/tema';
+import { nyelvBetolt } from './lib/i18n';
 import './styles/tokens.css';
 import './styles/alap.css';
 import './styles/minta.css';
 
 titokBetolt(); // a héj injektálta API-titok (vagy a #titok= tartalék) — az első API-kérés előtt
 const betoltes = await betolt();
+nyelvBetolt(betoltes.allapot); // a felület nyelve (alap: angol) és a <html lang> — még az első festés előtt
 const felulet = new Felulet(betoltes.allapot);
 felulet.betoltve = betoltes.sikerult;
 felulet.munkaterulet.megnyitNezet('manifold'); // CX-007: induló áttekintő, a jegyzetfülek megőrzésével
