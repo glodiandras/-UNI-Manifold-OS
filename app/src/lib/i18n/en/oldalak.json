@@ -83,7 +83,7 @@
   "Az aktív idő tantárgyanként": "Active time by subject",
   "Az engedélyt a Manifold.app kéri; böngészőből nem kérhető.": "Manifold.app asks for the permission; it cannot be requested from a browser.",
   "Az eredmény megadásához": "To enter the result",
-  "Az exportot a core a személyes mappába írja, és a vágólapra is másolja. A törlés csak a tracker adatát érinti.": "The core writes the export to your personal folder and copies it to the clipboard. Deleting only affects tracker data.",
+  "Az exportot a core a személyes mappába írja, és a vágólapra is másolja. A törlés csak a tracker adatát érinti.": "Manifold writes the export to your personal folder and copies it to the clipboard. Deleting only affects tracker data.",
   "Az induló súlyokkal {n} lezárt dolgozaton mért hiba: átlagosan {mae} (négyzetes átlag {rmse}, torzítás {torzitas}).": "Error measured with the starting weights on {n} closed exams: {mae} on average (root mean square {rmse}, bias {torzitas}).",
   "Az itt látott naptár a {nap}-i állapot.": "The calendar shown here is as of {nap}.",
   "Az önkalibráció állapota nem tölthető be:": "The self-calibration status could not be loaded:",

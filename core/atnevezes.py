@@ -126,7 +126,7 @@ def helyreallit(cfg) -> list[str]:
             utkozo.append(f["ut"])
     if repo is not None and repo.live():
         repo.index_frissit()                # a visszaírt fájlok stat-adata ne zajoljon a git-indexben (T101)
-    elso = f"A rename was interrupted ({n['regi']} → {n['uj']}) when the core stopped during writing. "
+    elso = f"A rename was interrupted ({n['regi']} → {n['uj']}) when Manifold stopped during writing. "
     if visszaallt:
         uzenet = elso + "The vault was restored to its state before the rename. You can try renaming again."
     elif utkozo:
@@ -237,9 +237,15 @@ class Atnevezes:
                         blok.append(f"Már van ilyen nevű fájl: {uj}")
         return regi, uj, blok
 
-    def _uj_cel(self, fo_u: Feloldo, cel: str, vart: str, forras: str, fajta: str) -> str | None:
-        """Új cél-szöveg egy linkhez: stílusőrző, majd a rövid egyértelmű; mindig a feloldóval ellenőrizve."""
-        jeloltek = [vart] if fajta == "canvas_fajl" else linkek.uj_cel_szoveg(cel, vart)
+    def _link_forma(self) -> str:
+        """A beállított „New link format” (`beallitasok.fajlok.link_formatum`): a stílusőrző jelöltek tartaléka."""
+        return self.cfg.section("beallitasok").get("fajlok", {}).get("link_formatum", "rovid")
+
+    def _uj_cel(self, fo_u: Feloldo, cel: str, vart: str, forras: str, fajta: str, regi_ut: str | None = None) -> str | None:
+        """Új cél-szöveg egy linkhez: stílusőrző (rövid / relatív / teljes út marad az, ami volt), majd a beállított
+        formátum szerinti, végül a rövid egyértelmű; mindig a feloldóval ellenőrizve. A `forras` az **új** forrásút."""
+        jeloltek = [vart] if fajta == "canvas_fajl" else linkek.uj_cel_szoveg(cel, vart, forras, regi_ut)
+        jeloltek.append(linkek.cel_forma(fo_u, vart, forras, self._link_forma() if self is not None else "rovid"))   # `self is None`: a Bases-próbák kötetlen hívása
         jeloltek.append(linkek.rovid_cel(fo_u, vart, forras))
         tiltott = r"[)\n]" if fajta == "md" else r"[\]|#\n]"
         for j in dict.fromkeys(jeloltek):
@@ -357,7 +363,7 @@ class Atnevezes:
                     continue
                 vart = lek.get(t, t)
                 if utana != vart:
-                    szukseges.append((i, cel, vart, r["fajta"]))
+                    szukseges.append((i, cel, vart, r["fajta"], t))
             if szukseges or forras in bazisok:
                 self._fajl_terv(terv, forras, s2, sorok, szukseges, fo_e, fo_u, (bazisok.get(forras) or sorok[0])["hash"],
                                 forras in bazisok)
@@ -394,9 +400,9 @@ class Atnevezes:
                 terv.blokkolok.append(f"{forras}: a link-lista nem egyezik az indexszel — próbáld újra")
                 return
             cserek = []
-            for i, cel, vart, fajta in szukseges:
+            for i, cel, vart, fajta, regi_ut in szukseges:
                 t = refs[i]
-                j = self._uj_cel(fo_u, cel, vart, s2, fajta)
+                j = self._uj_cel(fo_u, cel, vart, s2, fajta, regi_ut)
                 if j is None:
                     terv.blokkolok.append(f"{forras}: a(z) „{cel.strip()}” link nem írható át egyértelműen")
                     continue
@@ -453,9 +459,9 @@ class Atnevezes:
             return None, []
         literal_cserek: dict[int, list[tuple[int, int, str]]] = {}
         szerk_ki = []
-        for i, cel, vart, fajta in szukseges:
+        for i, cel, vart, fajta, regi_ut in szukseges:
             li, a, b_, _, _ = refs[i]
-            j = self._uj_cel(fo_u, cel, vart, s2, fajta)
+            j = self._uj_cel(fo_u, cel, vart, s2, fajta, regi_ut)
             if j is None:
                 terv.blokkolok.append(f"{forras}: a(z) „{cel.strip()}” link nem írható át egyértelműen")
                 continue
@@ -754,7 +760,7 @@ class Atnevezes:
                 if kulso:   # C33: a próba közben külső író változtatta a fájlhalmazt — ütközés, nem programhiba
                     raise Hiba(409, "A vault közben változott (egy másik program fájlt hozott létre vagy törölt) — az átnevezés "
                                     "visszaállt, próbáld újra.", valtozott=True, proba_hibak=hibak, kulso=kulso[:10])
-                raise Hiba(500, "A referencia-próba hibát talált, az átnevezés visszaállt.", proba_hibak=hibak)
+                raise Hiba(409, "A referencia-próba hibát talált, az átnevezés visszaállt.", proba_hibak=hibak)   # ütközés (nem szerverhiba): kód `atnevezes.visszaallitva`
             utak = sorted({*t.fajlok, *t.lek, *t.lek.values()})
             trailerek = {snapshot.TRAILER_RUN: kor, snapshot.TRAILER_ITEM: t.uj, "Mos-Forras": FORRAS}
             regi_lemezen = os.path.relpath(p_regi, root)

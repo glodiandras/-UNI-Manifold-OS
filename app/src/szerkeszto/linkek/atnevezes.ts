@@ -184,6 +184,12 @@ export function atnevezesParancsok(felulet: Felulet): Parancs[] {
   const nyit = (mod: 'nev' | 'hely') => {
     const c = cel();
     if (!c) return;
+    const sor = faSor();
+    if (mod === 'nev' && sor) {
+      // a fa során az F2 helyben, szerkeszthető névvel indul (07-explorer-03); a terv-átfedés csak link-változásnál nyílik
+      felulet.faAtnevezKer = { ut: sor.ut, n: (felulet.faAtnevezKer?.n ?? 0) + 1 };
+      return;
+    }
     felulet.atnevezes = { ut: c.ut, mod, ...(c.mappa ? { mappa: true } : {}) };
     felulet.atfedes = 'atnevezes';
   };

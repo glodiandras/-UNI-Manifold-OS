@@ -6,16 +6,19 @@
   számol címkét.
 -->
 <script lang="ts">
-  import { t, tp, locale } from '../lib/i18n';
+  import { t, tk, tp, locale } from '../lib/i18n';
   import { onMount, tick } from 'svelte';
   import { ApiHiba, kerdez } from '../lib/core/api';
   import Ikon from '../lib/ikon/Ikon.svelte';
-  import { ChevronDown, ChevronRight, Tag, X } from '../lib/ikon/ikonok';
+  import { ArrowUpDown, ChevronDown, ChevronRight, Tag, X } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
+  import IkonGomb from '../lib/ui/IkonGomb.svelte';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
+  import type { ListaRendezes } from '../lib/elrendezes/felulet.svelte';
   import { cimkeFa, cimkek } from '../lib/vault/cimkek.svelte';
   import { fajlNev, mappa } from '../lib/vault/fajlok.svelte';
   import { nyitasMod } from '../szerkeszto/linkek/navigacio';
+  import { lebegoMenu } from '../szerkeszto/notion/menu';
 
   const { felulet, fajlok } = kornyezet();
 
@@ -24,7 +27,22 @@
   let fokuszKulcs = $state<string | null>(null);
   let fa: HTMLElement | undefined = $state();
 
-  const sorok = $derived(cimkeFa(cimkek.lista, nyitott));
+  const RENDEZES: { id: ListaRendezes; nev: string }[] = [
+    { id: 'nev', nev: tk('Címke neve (A–Z)') },
+    { id: 'nev-forditott', nev: tk('Címke neve (Z–A)') },
+    { id: 'db', nev: tk('Darabszám: csökkenő') },
+    { id: 'db-forditott', nev: tk('Darabszám: növekvő') },
+  ];
+  const rendezes = $derived(felulet.oldalsav.cimkeRendezes ?? 'nev');
+  const rendezesCim = $derived(t('Rendezés: {mod}', { mod: t(RENDEZES.find((r) => r.id === rendezes)?.nev ?? RENDEZES[0].nev) }));
+
+  function rendezesMenu(e: MouseEvent) {
+    const gomb = e.currentTarget as HTMLElement, r = gomb.getBoundingClientRect();
+    const akciok = new Map(RENDEZES.map((m) => [m.id, () => { felulet.oldalsav.cimkeRendezes = m.id; }]));
+    lebegoMenu({ focus: () => gomb.focus() }, r.left, r.bottom, RENDEZES.map((m) => ({ id: m.id, nev: t(m.nev), kijelolt: m.id === rendezes })), akciok, t('Címkék rendezése'));
+  }
+
+  const sorok = $derived(cimkeFa(cimkek.lista, nyitott, rendezes));
   const tabKulcs = $derived(sorok.some((s) => s.kis === fokuszKulcs) ? fokuszKulcs : (sorok[0]?.kis ?? null));
   const aktivUt = $derived(felulet.munkaterulet.aktivFul?.ut ?? null);
 
@@ -135,6 +153,7 @@
 <div class="cimkek">
   <div class="fej">
     <span class="cim">{cimkek.lista.length ? tp('{n} címke', cimkek.lista.length) : t('Címkék')}</span>
+    <IkonGomb ikon={ArrowUpDown} cimke={rendezesCim} aria-haspopup="listbox" kicsi onclick={rendezesMenu} />
   </div>
 
   <div class="fa gorgeto" role="tree" aria-label={t('Címkék')} tabindex="-1" bind:this={fa} onkeydown={billentyu}>
@@ -224,6 +243,7 @@
     flex: none;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     height: var(--magassag-sor);
     padding: 0 var(--t-3);
     color: var(--szoveg-halvany);

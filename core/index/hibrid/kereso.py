@@ -81,12 +81,12 @@ def szabad_szoveg(q: str) -> str:
 
     def bejar(x):
         f = x[0]
-        if f in ("szo", "kif"):
+        if f in ("szo", "kif", "reszszo"):
             ki.append(x[1])
         elif f in ("es", "vagy"):
             for y in x[1]:
                 bejar(y)
-        elif f == "op" and x[1] == "line" and isinstance(x[2], tuple):
+        elif f == "op" and x[1] in kereses.ALOP_OPERATOROK and isinstance(x[2], tuple):
             bejar(x[2])
     bejar(e)
     return " ".join(s for s in ki if s.strip())
@@ -132,16 +132,16 @@ class HibridKereso:
 
     # ------------------------------------------------------------------ lexikai ág
 
-    def _lexikai(self, c, q: str) -> dict:
+    def _lexikai(self, c, q: str, kornyezet: int = 0) -> dict:
         """`{utak, legalabb, osszes, szuro, szabad, talalatok}`: a lexikai ág jegyzetei (legjobb elöl)."""
         if normal.operatoros(q):
-            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat)
+            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet)
             utak = [t["ut"] for t in r["talalatok"]]
             return {"utak": utak, "legalabb": r["legalabb"], "osszes": r["osszes"], "szuro": set(utak),
                     "szabad": szabad_szoveg(q), "talalatok": {t["ut"]: t for t in r["talalatok"]}}
         fts = normal.fts_kerdes(q)
         if fts is None:                               # csak töltelékszó: a lexikai kereső dönt (a szókezdet-illesztéssel)
-            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat)
+            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet)
             utak = [t["ut"] for t in r["talalatok"]]
             return {"utak": utak, "legalabb": r["legalabb"], "osszes": r["osszes"], "szuro": None, "szabad": q,
                     "talalatok": {t["ut"]: t for t in r["talalatok"]}}
@@ -155,7 +155,7 @@ class HibridKereso:
 
     # ------------------------------------------------------------------ jegyzetszintű keresés
 
-    def keres(self, q: str, limit: int = 20, mod: str = "hibrid") -> dict:
+    def keres(self, q: str, limit: int = 20, mod: str = "hibrid", kornyezet: int = 0) -> dict:
         if not isinstance(q, str) or not q.strip():
             raise kodol(Invalid("üres keresés"), "hibrid.kereso.ures_kereses")
         if mod not in MODOK:
@@ -164,10 +164,10 @@ class HibridKereso:
         ok = "kert_lexikai" if mod == "lexikai" else self.miert_lexikai()
         if ok is not None:
             with self.index_olvaso() as c:
-                r = kereses.keres(c, q, limit, self.regex_idokorlat)
+                r = kereses.keres(c, q, limit, self.regex_idokorlat, kornyezet)
             return {**r, "mod": "lexikai", "ok": ok}
         with self.index_olvaso() as c:
-            lex = self._lexikai(c, q)
+            lex = self._lexikai(c, q, kornyezet)
         if not lex["szabad"].strip():
             talalatok = [dict(lex["talalatok"][u], agak={"lexikai": i}) for i, u in enumerate(lex["utak"][:limit], 1)]
             return {"q": q, "mod": "lexikai", "ok": "nincs_szabad_szo", "osszes": lex["osszes"],

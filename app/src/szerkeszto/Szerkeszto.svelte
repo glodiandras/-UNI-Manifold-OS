@@ -41,6 +41,7 @@
   import Tulajdonsagok from './tulajdonsagok/Tulajdonsagok.svelte';
   import { eloKurzorIgazit, eloTulajdonsagForras } from './tulajdonsagok/elo.svelte';
   import { szerkesztok, type Mod, type SzerkesztoPeldany } from './szerkesztok.svelte';
+  import { hajtasValtozott, hajtasVisszaallit, hajtottSorok } from './hajtogatas';
   import MentesJelzes from './MentesJelzes.svelte';
   import FajlCim from './FajlCim.svelte';
   import { csatolmanyBovitmeny } from './csatolmany';
@@ -153,7 +154,7 @@
           }), kartyaUtemezo(), kartyaUtemezoForras.of(kartyaBeallitas), csatolmanyBovitmeny(ut), eloTulajdonsagForras.of({ ut, nyitottsag: felulet.tulajdonsagok,
             kiegeszites: { fajlok: () => fajlok.lista, legutobbi: () => felulet.legutobbiFajlok } })],
           // C30b-mag: a linkeletlen említések javaslata (Tab/Esc); a kapcsoló élő értéke a core állapota (10. döntés)
-          javaslat: { ut, kapcsolo: () => vezerloKapcsolok.ertek.asszisztens, linkCel: javaslatLinkCel, kliens: alapKliens },
+          javaslat: { ut, kapcsolo: () => vezerloKapcsolok.ertek.asszisztens, linkCel: javaslatLinkCel, linkForma: (celUt: string) => linkek.linkForma(celUt, ut), kliens: alapKliens },
         });
     let state: EditorState;
     if (tarolt) {
@@ -173,6 +174,7 @@
       parent: cmHely,
       dispatchTransactions(trs, v) {
         v.update(trs);
+        if (trs.some(tr => hajtasValtozott(tr.startState, tr.state))) hajtasValtott();
         if (trs.some(tr => tr.docChanged || tr.selection))
           statisztikaUtemez(v);
         tartalmiKod = v.state.field(felismertNyelv);
@@ -192,6 +194,7 @@
       const g = tarolt.gorgetes;
       requestAnimationFrame(() => view && (view.scrollDOM.scrollTop = g));
     } else {
+      hajtasVisszaallit(view, ful.nezet?.hajtott ?? felulet.hajtasLekerdez(ut)); // a fül, különben a fájl mentett összecsukásai (a szöveg nem változik)
       const sor = Number(ful.nezet?.sor);
       if (Number.isFinite(sor) && sor > 1 && sor <= state.doc.lines)
         view.dispatch({ effects: EditorView.scrollIntoView(state.doc.line(sor).from, { y: 'start' }) });
@@ -213,6 +216,22 @@
     }, 1000);
   }
 
+  // az összecsukás nézet-állapot: az Olvasó azonnal követi, a fül tartós állapotába rövid késleltetéssel kerül (minden módban)
+  let hajtasIdozito: ReturnType<typeof setTimeout> | null = null;
+  function hajtasValtott() {
+    if (mod === 'olvaso') olvaso?.hajtasFrissit();
+    if (hajtasIdozito) clearTimeout(hajtasIdozito);
+    hajtasIdozito = setTimeout(() => {
+      hajtasIdozito = null;
+      if (view && ful.ut === ut) nezetAllapotIr({ hajtott: hajtottMentes(view.state) });
+      if (view) felulet.hajtasMent(ut, hajtottMentes(view.state)); // fájlonként is: másik fájl megnyitása vagy a fül bezárása után is megvan
+    }, 300);
+  }
+  function hajtottMentes(state: EditorState): number[] | undefined {
+    const h = hajtottSorok(state);
+    return h.length ? h : undefined;
+  }
+
   function felsoSor(): number {
     if (!view) return 1;
     const blokk = view.lineBlockAtHeight(Math.max(0, view.scrollDOM.getBoundingClientRect().top - view.documentTop));
@@ -223,10 +242,13 @@
     if (statisztikaIdozito) clearTimeout(statisztikaIdozito);
     statisztika.torol(fulId);
     if (allapotIdozito) clearTimeout(allapotIdozito);
+    if (hajtasIdozito) clearTimeout(hajtasIdozito);
     if (view) {
       const nyit = view.state.selection.main.head;
       // csak ha a fül még ezt a jegyzetet mutatja: másik fájl megnyitásakor a fül nézet-állapota már az újé
-      if (mod !== 'olvaso' && ful.ut === ut) nezetAllapotIr({ sor: felsoSor(), kurzor: nyit });
+      if (mod !== 'olvaso' && ful.ut === ut) nezetAllapotIr({ sor: felsoSor(), kurzor: nyit, hajtott: hajtottMentes(view.state) });
+      else if (ful.ut === ut) nezetAllapotIr({ hajtott: hajtottMentes(view.state) });
+      felulet.hajtasMent(ut, hajtottMentes(view.state));
       szerkesztok.tarol(fulId, { ut, allapot: view.state, gorgetes: view.scrollDOM.scrollTop });
       view.destroy();
       view = null;
@@ -262,7 +284,7 @@
     mod: () => mod,
     olvasoValt: () => modBeallit(mod === 'olvaso' ? felulet.szerkesztoMod : 'olvaso'),
     forrasValt: () => modBeallit(mod === 'elo' ? 'forras' : mod === 'forras' ? 'elo' : felulet.szerkesztoMod === 'elo' ? 'forras' : 'elo'),
-    keresesNyit: () => { if (mod === 'olvaso') void olvaso?.keresesNyit(); },
+    keresesNyit: (kezdo) => { if (mod === 'olvaso') void olvaso?.keresesNyit(kezdo); },
     mentes: async () => {
       await dok?.ment();
     },

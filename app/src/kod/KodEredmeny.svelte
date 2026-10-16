@@ -1,5 +1,5 @@
 <!--
-  A ⌘R eredménye a `.cpp` fül alján (C36a-UI): fejléc (fordítás, `n/m teszt átment`, mód, idő), a fordító
+  A ⌘R eredménye a kód-fül alján (C36a-UI, F10: minden nyelv; az értelmezett nyelveknél a „fordítás” szintaxis-ellenőrzés): fejléc (fordítás, `n/m teszt átment`, mód, idő), a fordító
   diagnosztikája (kattintásra a sorra ugrik), tesztenként egy sor (állapot, idő, memória); a nem átment teszt
   kinyitva a bemenettel, a várt és a kapott kimenettel (sorszintű diff a motor `diff.sorok`-jából), a futási vagy
   sanitizer-jelentéssel. Futás közben Megszakítás (a fülben Esc is). Csak tokenből rajzol (25. döntés).
@@ -13,11 +13,17 @@
 
   let {
     futas,
+    nyelvNev = '',
+    elemzes = false,
     leirasok = [],
     onugras,
     onmegszakit,
   }: {
     futas: Futas;
+    /** a nyelv neve a fejlécben (üres: nem látszik) */
+    nyelvNev?: string;
+    /** az „ellenőrzés” lépés csak szintaxis-vizsgálat (értelmezett nyelv) */
+    elemzes?: boolean;
     leirasok?: TesztLeiras[];
     onugras: (sor: number, oszlop?: number) => void;
     onmegszakit: () => void;
@@ -57,7 +63,7 @@
     if (futas.allapot === 'hiba') return t('Az ellenőrzés nem futott le');
     if (!fut) return '';
     if (futas.megszakitasKerve) return t('Megszakítás…');
-    if (!fordit) return t('Fordítás…');
+    if (!fordit) return elemzes ? t('Szintaxis-ellenőrzés…') : t('Fordítás…');
     return t('Teszt {i}/{n}…', { i: Math.min(futas.tesztek.length + 1, Math.max(osszDb, 1)), n: osszDb });
   });
 
@@ -86,10 +92,15 @@
       <Ikon ikon={nyitva ? ChevronDown : ChevronRight} meret={14} />
     </button>
     <div class="osszegzes" role="status" aria-live="polite">
+      {#if nyelvNev}<span class="jel halvany">{nyelvNev}</span>{/if}
       {#if fordit}
         <span class="jel" class:jo={fordit.ok} class:rossz={!fordit.ok}>
           <Ikon ikon={fordit.ok ? Check : X} meret={14} />
-          {fordit.ok ? t('Fordítás kész') : t('Fordítás sikertelen')}{fordit.ms ? ` · ${mp(fordit.ms)}` : ''}
+          {#if elemzes}
+            {fordit.ok ? t('Szintaxis rendben') : t('Szintaxis-hiba')}
+          {:else}
+            {fordit.ok ? t('Fordítás kész') : t('Fordítás sikertelen')}
+          {/if}{fordit.ms ? ` · ${mp(fordit.ms)}` : ''}
         </span>
         {#if fordit.figyelmeztetes_db > 0}
           <span class="jel figy">{tp('{n} figyelmeztetés', fordit.figyelmeztetes_db)}</span>
@@ -100,7 +111,7 @@
           {t('{atment}/{ossz} teszt átment', { atment: atmentDb, ossz: osszDb })}
         </span>
       {:else if !fut && fordit?.ok && osszDb === 0}
-        <span class="jel halvany">{t('Nincs teszt: csak a fordítás futott')}</span>
+        <span class="jel halvany">{elemzes ? t('Nincs teszt: csak a szintaxis-ellenőrzés futott') : t('Nincs teszt: csak a fordítás futott')}</span>
       {/if}
       {#if futas.mod === 'hibakereso'}<span class="jel halvany">{t('hibakereső mód')}</span>{/if}
       {#if fazis}<span class="jel halvany">{fazis}</span>{/if}

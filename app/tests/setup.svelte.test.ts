@@ -6,18 +6,30 @@ import { BeallitasokTar } from '../src/lib/beallitasok/allapot.svelte';
 import { alapBeallitasok, type BeallitasokValasz, type BeallitasokValtozas } from '../src/lib/beallitasok/tipusok';
 import { nyelv } from '../src/lib/i18n';
 import { naptarHid } from '../src/lib/naptar/hid.svelte';
+import { ModellTar } from '../src/lib/modellek/allapot.svelte';
+import { Feladatsor } from '../src/lib/vezerlo/feladatsor.svelte';
+import { feladat, lista, modell } from './modellek-fixture';
 
+import { json } from './modellek-fixture';
 function valasz(adat: unknown, statusz = 200) { return new Response(JSON.stringify(adat), { status: statusz, headers: { 'Content-Type': 'application/json' } }); }
 function alap(): BeallitasokValasz { return { verzio: 1, rev: 'rev-1', ertek: alapBeallitasok(), munkater: { id: 'teszt', nev: 'Example notes', vault: '/synthetic/Example notes' }, setup_szukseges: true, ujrainditas: [] }; }
 let lemez: BeallitasokValasz;
 let keresek: { rev: string; valtozas: BeallitasokValtozas }[];
 let kovetkezoHiba: number;
+let modellKeresek: string[];
+let modellValasz: () => Response;
+const AJANLOTT = () => [modell('alap_a', { ajanlott: true, meret_gb: 5.98 }), modell('alap_b', { ajanlott: true, szerep: 'kep', meret_gb: 1.5 }), modell('opcio', { ajanlott: false })];
 
 beforeEach(() => {
   nyelv.beallit('en');
-  lemez = alap(); keresek = []; kovetkezoHiba = 0;
+  lemez = alap(); keresek = []; kovetkezoHiba = 0; modellKeresek = []; modellValasz = () => json(lista(AJANLOTT()));
   naptarHid.fogad({ esemeny: 'nincs_dontes', emlekezteto: 'nincs_dontes' });
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.startsWith('/api/modellek')) {
+      modellKeresek.push(`${init?.method ?? 'GET'} ${url}`);
+      if (init?.method === 'POST') return json({ feladat: feladat(`f-${url.split('/')[3]}`, 'modell_letoltes') }, 202);
+      return url === '/api/modellek' ? modellValasz() : json(AJANLOTT().find((m) => url.endsWith(m.id)));
+    }
     expect(url).toBe('/api/beallitasok');
     if (init?.method !== 'PUT') return valasz(lemez);
     const keres = JSON.parse(String(init.body)) as typeof keresek[number];
@@ -35,12 +47,13 @@ async function megjelenit(plusz: { onai?: () => void; betoltetlen?: boolean } = 
   const tar = new BeallitasokTar();
   if (!plusz.betoltetlen) tar.fogad(structuredClone(lemez));
   const onbezar = vi.fn(); const onkesz = vi.fn();
-  const r = render(Setup, { props: { tar, onbezar, onkesz, onai: plusz.onai } });
+  const modelltar = new ModellTar(new Feladatsor());
+  const r = render(Setup, { props: { tar, modelltar, onbezar, onkesz, onai: plusz.onai } });
   await waitFor(() => expect(r.getByRole('heading', { name: 'Welcome to Manifold' })).toBeTruthy());
   const tovabb = async () => { await fireEvent.click(r.getByRole('button', { name: 'Continue' })); };
   const aiig = async () => { for (let i = 0; i < 4; i++) await tovabb(); };
   const keszig = async () => { await aiig(); await fireEvent.click(r.getByRole('button', { name: 'Continue without AI' })); await tovabb(); };
-  return { ...r, tar, onbezar, onkesz, tovabb, aiig, keszig };
+  return { ...r, tar, modelltar, onbezar, onkesz, tovabb, aiig, keszig };
 }
 
 describe('Setup actual workflow', () => {
@@ -145,14 +158,53 @@ describe('Setup actual workflow', () => {
     r.unmount(); await waitFor(() => expect(document.activeElement).toBe(opener)); opener.remove();
   });
 
-  it('opens AI tools only after successful setup when the user selected that action', async () => {
+  it('lists the recommended models on the AI step and downloads nothing until the button is pressed', async () => {
+    const r = await megjelenit(); await r.aiig();
+    await waitFor(() => expect(r.getByRole('list', { name: 'Recommended models' })).toBeTruthy());
+    expect(r.getByText('alap_a')).toBeTruthy(); expect(r.getByText('alap_b')).toBeTruthy(); expect(r.queryByText('opcio')).toBeNull();
+    expect(r.getByRole('button', { name: 'Install recommended models now' })).toBeTruthy();
+    expect(r.getByText(/7\.48 GB|7\.5 GB/)).toBeTruthy();
+    expect(modellKeresek).toEqual(['GET /api/modellek']);
+    await fireEvent.click(r.getByRole('button', { name: 'Continue without AI' }));
+    await r.tovabb(); await fireEvent.click(r.getByRole('button', { name: 'Start writing' }));
+    await waitFor(() => expect(r.onkesz).toHaveBeenCalled());
+    expect(modellKeresek.filter((k) => k.startsWith('POST'))).toEqual([]);
+  });
+
+  it('Install recommended models now starts one download per missing model and opens Model Manager after setup', async () => {
     const onai = vi.fn(); const r = await megjelenit({ onai }); await r.aiig();
-    await fireEvent.click(r.getByRole('button', { name: 'Review AI tools after setup' }));
+    await fireEvent.click(await r.findByRole('button', { name: 'Install recommended models now' }));
+    await waitFor(() => expect(modellKeresek.filter((k) => k.startsWith('POST'))).toEqual(['POST /api/modellek/alap_a/letoltes', 'POST /api/modellek/alap_b/letoltes']));
+    await waitFor(() => expect(r.getByText(/running in the background/)).toBeTruthy());
+    expect(r.queryByRole('button', { name: 'Continue without AI' })).toBeNull();
+    expect(onai).not.toHaveBeenCalled();
+    await fireEvent.click(r.getByRole('button', { name: 'Continue' }));
+    await r.tovabb();
+    await fireEvent.click(r.getByRole('button', { name: 'Start writing' }));
+    await waitFor(() => expect(onai).toHaveBeenCalledTimes(1));
+    expect(r.onkesz).toHaveBeenCalled();
+  });
+
+  it('opens Model Manager after successful setup when chosen, without starting a download', async () => {
+    const onai = vi.fn(); const r = await megjelenit({ onai }); await r.aiig();
+    await fireEvent.click(r.getByRole('button', { name: 'Open Model Manager after setup' }));
+    expect(r.getByRole('button', { name: 'Model Manager opens after setup' }).getAttribute('aria-pressed')).toBe('true');
     expect(onai).not.toHaveBeenCalled();
     await r.tovabb(); await r.tovabb();
     await fireEvent.click(r.getByRole('button', { name: 'Start writing' }));
     await waitFor(() => expect(onai).toHaveBeenCalledTimes(1));
-    expect(r.onkesz).toHaveBeenCalled();
+    expect(modellKeresek.filter((k) => k.startsWith('POST'))).toEqual([]);
+  });
+
+  it('a model-list failure shows the reason with an icon-bearing alert and Continue without AI still works', async () => {
+    modellValasz = () => json({ hiba: 'Synthetic list failure' }, 503);
+    const r = await megjelenit(); await r.aiig();
+    await waitFor(() => expect(r.getByRole('alert').textContent).toContain('model list is not available'));
+    expect(r.getByRole('alert').textContent).toContain('Settings › AI › Models');
+    await fireEvent.click(r.getByRole('button', { name: 'Continue without AI' }));
+    await r.tovabb(); await fireEvent.click(r.getByRole('button', { name: 'Start writing' }));
+    await waitFor(() => expect(r.onkesz).toHaveBeenCalled());
+    expect(keresek).toHaveLength(1);
   });
 
   it('blocks Escape and duplicate saves while the atomic save is in flight', async () => {

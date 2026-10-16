@@ -11,6 +11,7 @@ import { linkek } from '../../lib/vault/linkek.svelte';
 import type { Emlites } from '../../lib/vault/kapcsolatok.svelte';
 import { szerkesztok } from '../szerkesztok.svelte';
 import { emlitesLink } from '../asszisztens/javaslatSegedek';
+import { linkSzoveg } from './adat';
 
 /** A kódpont-szeletelés (a core kódpontban számol, a CodeMirror UTF-16-ban). */
 const cp = (s: string, a: number, b?: number) => Array.from(s).slice(a, b).join('');
@@ -37,10 +38,11 @@ export async function emlitesLinkel(celUt: string, forras: string, t: Emlites): 
     if (cp(sor.text, 0, 400) !== t.szoveg) return elavult(); // a sor közben megváltozott
     const emlitett = cp(sor.text, t.oszlop, t.oszlop + t.hossz);
     if (!emlitett) return elavult();
-    const cel = await linkek.linkCel(celUt, forras);
+    const forma = await linkek.linkForma(celUt, forras); // „New link format” és „Use [[Wikilinks]]” a core-tól (02-links-12/13)
     if (dok.szoveg !== szoveg) return elavult(); // közben gépelt
     const kezd = sor.from + cp(sor.text, 0, t.oszlop).length;
-    const cs = ChangeSet.of({ from: kezd, to: kezd + emlitett.length, insert: emlitesLink(cel, fajlNev(celUt), emlitett) }, szoveg.length);
+    const nev = fajlNev(celUt);
+    const cs = ChangeSet.of({ from: kezd, to: kezd + emlitett.length, insert: linkSzoveg(forma, { alias: emlitett === nev ? null : emlitett, nev }) }, szoveg.length);
     dok.valtozott(cs, cs.apply(szoveg), null, true); // nyitott szerkesztőnél az előzménybe kerül: a ⌘Z visszahozza (C29.7b)
     const eredmeny = await dok.ment();
     if (!eredmeny.ok) {

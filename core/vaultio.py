@@ -28,7 +28,7 @@ import unicodedata
 import weakref
 from pathlib import Path
 
-from . import cpp_teszt, frame, mediatipus, snapshot, tartos, utkapu
+from . import cpp_teszt, frame, kod_nyelvek, mediatipus, snapshot, tartos, utkapu
 from .config import Config
 from .hibakod import angol_uzenet
 from .index.feloldas import canvas_bajtbol
@@ -38,12 +38,29 @@ MAX_SZOVEG = 8 * 1024 * 1024            # ennél nagyobb szöveget nem töltünk
 TMP_UTOTAG = tartos.TMP_UTOTAG          # az ideiglenes fájl utótagja (a pillanatkép kizárja)
 FORRAS = "pult-szerkeszto"              # a szerkesztő commitjainak Mos-Forras trailere (L09)
 SZOVEGES = (".md", ".canvas", ".base", ".txt", ".vtt", ".srt", ".json", ".csv", ".yml", ".yaml")   # a gépi írás kapuja is (gepi_iras)
-OLVASHATO = SZOVEGES + (".cpp",)        # C36a: a C++ megoldás a szerkesztőnek olvasható; a gép `.cpp`-t nem ír (SZOVEGES nem bővül)
-IRHATO = (".md", ".base", ".canvas", ".cpp")   # a többi szöveges fájl csak olvasható (C12, C14, C36a)
+# F10: a kód-munkafelület forrásfájljai — az engedélyezett kiterjesztések EGYETLEN forrása a nyelvprofil-tábla
+# (`core/kod_nyelvek.py`: .cpp/.cc/.cxx, .c, .py, .js/.mjs/.cjs, .ts/.mts/.cts, .java, .go, .rs, .swift). A C36a-ban csak a `.cpp` volt
+# szerkeszthető; a lista bővítése nem nyit új írási utat: a forrás ugyanazon a mentési úton megy (atomikus csere, alap-hash/CAS,
+# pillanatkép, soremelés-megőrzés, rejtett szegmens tiltása), a gépi írás kapuja (`SZOVEGES`) pedig NEM bővül: gép forrást nem ír.
+# Kivétel: ami a pillanatképből bináris-ként kizárt (`mediatipus.BINARIS_KITERJESZTESEK`: így a TypeScript `.mts` aliasa, mert az
+# egyben AVCHD-videókonténer), az nem szerkeszthető forrás — pillanatkép és visszavonás nélküli írás az adatbiztonságot sértené.
+NEM_SZERKESZTHETO_FORRAS = tuple(k for k in kod_nyelvek.kiterjesztesek() if k in mediatipus.BINARIS_KITERJESZTESEK)
+FORRAS_KITERJESZTESEK = tuple(k for k in kod_nyelvek.kiterjesztesek() if k not in NEM_SZERKESZTHETO_FORRAS)
+OLVASHATO = SZOVEGES + FORRAS_KITERJESZTESEK   # C36a, F10: a forrás a szerkesztőnek olvasható
+IRHATO = (".md", ".base", ".canvas") + FORRAS_KITERJESZTESEK   # a többi szöveges fájl csak olvasható (C12, C14, C36a, F10)
 UJ_BASE = "views:\n  - type: table\n    name: Táblázat\n"   # az új `.base` tartalma (= `bazis.modell.UJ_SZOVEG`)
 UJ_CANVAS = "{}"                        # az új `.canvas` tartalma (az Obsidian új canvasának alakja, C14)
 
 _FELIRAT = {"md": "jegyzet", "base": "adatbázis-nézet", "canvas": "canvas", "cpp": "C++ forrás"}   # a commit-üzenet a fájltípus szerint
+
+
+def _felirat(rp: str) -> str:
+    """A commit-üzenet fájltípus-felirata: a jegyzet-típusoké, a forrásfájlé a nyelvprofil neve (`Python forrás`)."""
+    kit = _tipus(rp)
+    if kit in _FELIRAT:
+        return _FELIRAT[kit]
+    p = kod_nyelvek.nyelv_ut(rp)
+    return f"{p.nev} forrás" if p else "forrás"
 
 
 def _tipus(rp: str) -> str:
@@ -169,6 +186,10 @@ def norm_path(rp) -> str:
     if _UT_VEZERLO.search(rp) or any(r in ("", ".", "..") or r.startswith(".") for r in reszek):
         raise kodos(Invalid(f"érvénytelen út: {rp!r}"), "vault.ut_ervenytelen", ut=rp)      # a vezérlőkarakteres (újsoros, U+2028, …) út a commit-metaadatot hamisítaná (L13)
     return rp
+
+
+# Abszolút (vagy felhasználó-könyvtáras, meghajtó-betűs) mappamegadás: nem vault-relatív
+_ABSZOLUT_MAPPA = re.compile(r"[/\\~]|[A-Za-z]:")
 
 
 class Vault:
@@ -317,7 +338,7 @@ class Vault:
         A tartalom soremelését a fájléhoz igazítja (CRLF-es fájl CRLF marad)."""
         rp = self.kanonikus(norm_path(d.get("ut")))
         if not rp.lower().endswith(IRHATO):
-            raise kodos(Invalid("csak jegyzet (.md), adatbázis-nézet (.base), canvas (.canvas) vagy C++ forrás (.cpp) menthető"), "vault.menthetetlen_tipus")
+            raise kodos(Invalid("csak jegyzet (.md), adatbázis-nézet (.base), canvas (.canvas) vagy ismert nyelvű forráskód (pl. .cpp, .py) menthető"), "vault.menthetetlen_tipus")
         tartalom, alap = d.get("tartalom"), d.get("alap")
         if not isinstance(tartalom, str):
             raise kodos(Invalid("hiányzik a tartalom"), "vault.tartalom_hianyzik")
@@ -377,7 +398,7 @@ class Vault:
                 uzenet = "nem változott"
             if repo and d.get("pillanat"):
                 try:
-                    pillanat = repo.commit_machine(f"{_FELIRAT[_tipus(rp)]} szerkesztve a pultban: {rp}",
+                    pillanat = repo.commit_machine(f"{_felirat(rp)} szerkesztve a pultban: {rp}",
                                                    {snapshot.TRAILER_RUN: frame.new_id("SZERK"),
                                                     snapshot.TRAILER_ITEM: rp, "Mos-Forras": FORRAS}, [rp])
                 except snapshot.SnapshotError as e:      # K1: a fájl már a helyén — a válasz a fájlírásé
@@ -435,6 +456,15 @@ class Vault:
         return (hely if hely in ("root", "current", "folder") else "root",
                 mappa if isinstance(mappa, str) else "/")
 
+    def minden_kiterjesztes(self) -> bool:
+        """Az Obsidian `showUnsupportedFiles` kapcsolója az `.obsidian/app.json`-ból (csak olvasva; 07-explorer-12). Kulcs vagy olvasható
+        fájl nélkül az Obsidian alapja: hamis (a nem támogatott kiterjesztésű fájl a fán rejtve marad)."""
+        try:
+            adat = json.loads((self.root / ".obsidian" / "app.json").read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return False
+        return isinstance(adat, dict) and adat.get("showUnsupportedFiles") is True
+
     def link_jegyzet_helye(self, cel, forras, tipus: str = "md") -> dict:
         """A feloldatlan link (`[[cel]]` a `forras` jegyzetből) új jegyzetének helye — az Obsidian 1.14.4
         `createNewMarkdownFileFromLinktext`-je szerint (statikus olvasás; C31, T158): az útvonalas cél a **vault gyökeréhez**
@@ -467,7 +497,8 @@ class Vault:
             elotag = norm_path(forras).rpartition("/")[0]
             return {"mappa": elotag if self._abs(elotag).is_dir() else "", "nev": nev}
         if hely == "folder":
-            f = (fix or "").strip().strip("/")
+            f = (fix or "").strip()
+            f = "" if _ABSZOLUT_MAPPA.match(f) else f.strip("/")     # a beállított mappa vault-relatív; az abszolút nem érvényes
             if f:
                 try:
                     f = self.kanonikus(norm_path(f))
@@ -488,13 +519,26 @@ class Vault:
             d = {**{k: v for k, v in d.items() if k != "link"},
                  **self.link_jegyzet_helye(d["link"].get("cel"), d["link"].get("forras"), d.get("tipus") or "md")}
         tipus = d.get("tipus") or "md"
-        if tipus not in _FELIRAT:
+        if tipus == "forras":                            # F10: új forrásfájl a kód-munkafelület bármely nyelvén (`nyelv`: profil-azonosító)
+            profil = kod_nyelvek.profil(d["nyelv"]) if isinstance(d.get("nyelv"), str) else None
+            if profil is None:
+                raise kodos(Invalid("ismeretlen nyelv"), "vault.nyelv_ismeretlen")
+            kitok, kit, felirat = profil.kiterjesztesek, profil.kiterjesztesek[0], f"{profil.nev} forrás"
+        elif tipus not in _FELIRAT:
             raise kodos(Invalid("a tipus `md`, `base`, `canvas` vagy `cpp`"), "vault.tipus_hibas")
-        kit = "." + tipus
+        else:
+            kit = "." + tipus
+            kitok, felirat, profil = (kit,), _FELIRAT[tipus], None
+        if d.get("mappa") and (not isinstance(d["mappa"], str) or _ABSZOLUT_MAPPA.match(d["mappa"].strip())):
+            # a `norm_path` a vezető `/`-t levágná, így egy abszolút mappa csendben vault-relatívvá válna (és `mappa_keszit`
+            # mellett új mappa jönne létre a vaulton belül): a mappa vault-relatív út, abszolút nem fogadható el
+            raise kodos(Invalid("a `mappa` vault-relatív út kell legyen"), "vault.mappa_nem_relativ")
         mappa = self.kanonikus(norm_path(d.get("mappa"))) if d.get("mappa") else ""
         nev = nfc(str(d.get("nev") or "")).strip()
-        if nev.lower().endswith(kit):
-            nev = nev[:-len(kit)].rstrip()
+        for k in kitok:
+            if nev.lower().endswith(k):
+                nev = nev[:-len(k)].rstrip()
+                break
         if not nev or nev.startswith(".") or _TILTOTT_NEV.search(nev) or len(nev.encode("utf-8")) > 200:
             raise kodos(Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal'), "vault.nev_ervenytelen")
         rp = f"{mappa}/{nev}{kit}" if mappa else f"{nev}{kit}"
@@ -508,10 +552,11 @@ class Vault:
         p = self._abs(rp)
         if not mappat_keszit and (p.exists() or any(nfc(n).lower() == nfc(nev + kit).lower() for n in os.listdir(cel_mappa))):
             raise kodos(Invalid(f"már van ilyen nevű fájl: {rp}"), "vault.van_ilyen_fajl", ut=rp)
-        tartalom = {"base": UJ_BASE, "canvas": UJ_CANVAS, "cpp": cpp_teszt.cpp_vaz()}.get(tipus) \
+        tartalom = {"base": UJ_BASE, "canvas": UJ_CANVAS, "cpp": cpp_teszt.cpp_vaz(),
+                    "forras": profil and kod_nyelvek.forras_vaz(profil.azonosito)}.get(tipus) \
             or f"# {_H1_ELOTAG.sub('', nev)}\n"
         if d.get("tartalom") is not None:                # C15: sablonból kiértékelt váz a H1-váz helyett (C36a: a `.cpp` váza is)
-            if tipus not in ("md", "cpp") or not isinstance(d["tartalom"], str) \
+            if tipus not in ("md", "cpp", "forras") or not isinstance(d["tartalom"], str) \
                     or len(d["tartalom"].encode("utf-8")) > MAX_SZOVEG:
                 raise kodos(Invalid("a `tartalom` csak egy (nem túl nagy) szöveg lehet, és csak jegyzethez vagy C++ forráshoz"), "vault.tartalom_alak")
             tartalom = d["tartalom"]
@@ -529,7 +574,7 @@ class Vault:
             pillanat, figyelmeztetes = None, None
             if repo:
                 try:
-                    pillanat = repo.commit_machine(f"új {_FELIRAT[tipus]} a pultban: {rp}",
+                    pillanat = repo.commit_machine(f"új {felirat} a pultban: {rp}",
                                                    {snapshot.TRAILER_RUN: frame.new_id("SZERK"),
                                                     snapshot.TRAILER_ITEM: rp, "Mos-Forras": FORRAS}, [rp])
                 except snapshot.SnapshotError as e:      # K1: a fájl létrejött, a commit hibája figyelmeztetés

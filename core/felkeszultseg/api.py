@@ -14,6 +14,7 @@ from datetime import datetime, time
 
 from .. import naplo
 from ..utvonalak import HttpError
+from ..modell.hibaszerzodes import ai_mezo
 from . import ertekeles, forras, kalibracio, osszesit   # noqa: F401 — a `forras` import regisztrálja a javaslat-forrást a C29 horgán
 from .adat import Adatok
 
@@ -74,10 +75,12 @@ def _hivo(app, modell_nev):
             raise HttpError(400, f"A(z) {m.nev} nem `szoveg`-modell (a regiszter `feladat` listája).", kod="felkeszultseg.api.nem_szoveg_modell", param={"nev": m.nev})
         w = sz._worker()
         if w is None:
-            raise HttpError(503, "A modell-worker nem érhető el.", kod="felkeszultseg.api.worker_nem_erheto_el")
+            raise HttpError(503, "A modell-worker nem érhető el.", kod="felkeszultseg.api.worker_nem_erheto_el",
+                            ai=ai_mezo("szoveg", None, "felkeszultseg", kod="nincs_ai_runtime"))
         return WorkerModell(w.biztosit, proba_modell=m.nev), m.nev, False
     if sz.modell is None:
-        raise HttpError(503, "A szöveges értékelés modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="felkeszultseg.api.modell_nincs_kotve")
+        raise HttpError(503, "A szöveges értékelés modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="felkeszultseg.api.modell_nincs_kotve",
+                        ai=ai_mezo("szoveg", None, "felkeszultseg"))
     return sz.modell, None, bool(sz.kalibralt)
 
 

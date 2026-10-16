@@ -71,8 +71,8 @@ describe('t(): angol', () => {
   it('az `en` valódi szótára tartalmazza az api.ts állapotüzeneteit', () => {
     nyelv.beallit('en');
     expect(statuszUzenet(413)).toBe('The request is too large (413).');
-    expect(statuszUzenet(418)).toBe('The core returned an error (418).');
-    expect(tHaVan('A core válasza nem értelmezhető.')).toBe("The core's response could not be read.");
+    expect(statuszUzenet(418)).toBe('Manifold returned an error (418).');
+    expect(tHaVan('A core válasza nem értelmezhető.')).toBe("Manifold's response could not be read.");
     expect(tHaVan('van ilyen kulcs? nincs')).toBeUndefined();
   });
 });
@@ -199,10 +199,10 @@ describe('core-hibakód (ApiHiba.kod / param / hibaUzenet)', () => {
       throw new TypeError('Load failed');
     });
     const kapcsolat = (await hiba(kerdez('/x')))!;
-    expect(kapcsolat.message).toBe('The core is not reachable (the connection was lost).');
+    expect(kapcsolat.message).toBe('Manifold is not reachable (the connection was lost).');
     expect(kapcsolat.fajta).toBe('kapcsolat');
     expect(kapcsolat.idotullepes).toBe(false);
-    expect(hibaSzoveg(new TypeError('Failed to fetch'))).toBe('The core is not reachable (the connection was lost).');
+    expect(hibaSzoveg(new TypeError('Failed to fetch'))).toBe('Manifold is not reachable (the connection was lost).');
     nyelv.beallit('hu');
     vi.stubGlobal('fetch', async () => {
       throw new DOMException('x', 'AbortError');
@@ -225,7 +225,7 @@ describe('core-hibakód (ApiHiba.kod / param / hibaUzenet)', () => {
   it('a státuszüzenet a core `hiba` mezője nélkül, az aktív nyelven', async () => {
     nyelv.beallit('en');
     valasz(503, {});
-    expect((await hiba(kerdez('/x')))!.message).toBe('The core cannot handle the request right now (503).');
+    expect((await hiba(kerdez('/x')))!.message).toBe('Manifold cannot handle the request right now (503).');
   });
 });
 

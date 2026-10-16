@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Fulsor from '../src/hej/Fulsor.svelte';
 import HasznalatSzakasz from '../src/hej/vezerlo/HasznalatSzakasz.svelte';
 import StatisztikaSzakasz from '../src/hej/vezerlo/StatisztikaSzakasz.svelte';
+import { beallitasok } from '../src/lib/beallitasok/allapot.svelte';
+import { alapBeallitasok } from '../src/lib/beallitasok/tipusok';
 import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
 import { Felulet } from '../src/lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../src/lib/ertesites/ertesites.svelte';
@@ -404,7 +406,13 @@ describe('fülsor és telepítés', () => {
     expect(reg.kap('manifold.statisztika')).toBeTruthy();
     expect(reg.kap('manifold.hasznalat')).toBeTruthy();
     felulet.manifoldMegnyit();
+    reg.futtat('manifold.hasznalat', 'paletta');          // Developer mód nélkül a Használat nézet nem nyílik (F7)
+    expect(felulet.munkaterulet.aktivFul?.nezet?.tipus).not.toBe('hasznalat');
+    const ertek = alapBeallitasok();
+    ertek.fejleszto.mod = true;
+    beallitasok.fogad({ verzio: 1, rev: 'r', ertek, munkater: { id: 'x', nev: 'X', vault: '/v' }, setup_szukseges: false, ujrainditas: [] });
     reg.futtat('manifold.hasznalat', 'paletta');
+    beallitasok.adat = null;
     expect(felulet.manifoldLap).toBe(false);
     expect(felulet.manifoldRendszer).toBe(true); // CX-007: a Rendszer szakasz nem csukódik össze
     expect(felulet.munkaterulet.aktivFul?.nezet?.tipus).toBe('hasznalat');

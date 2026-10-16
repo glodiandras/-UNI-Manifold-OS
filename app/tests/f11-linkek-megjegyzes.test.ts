@@ -22,7 +22,7 @@ function nezet(doc: string, kurzor = doc.length, mod: 'elo' | 'forras' = 'elo'):
 describe('helyi Markdown-célok', () => {
   it.each([
     ['../Notes/A%20B.md#Els%C5%91%20r%C3%A9sz', { cel: '../Notes/A B.md', alcel: 'Első rész' }],
-    ['<A%23B%3FC.md#^block>', { cel: 'A#B?C.md', alcel: '^block' }],
+    ['<A%23B%3FC.md#^block>', { cel: 'A%23B%3FC.md', alcel: '^block' }], // decodeURI: a fenntartott jelek kódoltak maradnak (core md_reszek)
     ['#Heading', { cel: '', alcel: 'Heading' }],
     ['A%2520B.md', { cel: 'A%20B.md', alcel: null }],
     ['A\\(B\\).md', { cel: 'A(B).md', alcel: null }],

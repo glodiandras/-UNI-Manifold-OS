@@ -1,6 +1,7 @@
-// A C++ munkafelület műveletei (C36a-UI): az ellenőrzés (⌘R / ⇧⌘R) a mentés kivárásával, a formázás (⇧⌥F) egy
-// szerkesztő-tranzakcióban, az új feladat. A futtatás, a fordítás és az összevetés a core motorjáé (homokozóban, 53(b));
-// a felület `.cpp`-t csak a felhasználó szerkesztésével ír (a meglévő egyetlen írási úton), gép nem (53(d)).
+// A kód-munkafelület műveletei (C36a-UI, F10: minden nyelvre): az ellenőrzés (⌘R / ⇧⌘R) a mentés kivárásával, a formázás
+// (⇧⌥F, clang-format: C++) egy szerkesztő-tranzakcióban, az új C++ feladat. A futtatás, a fordítás és az összevetés a core
+// motorjáé (homokozóban, 53(b)); a felület forrást csak a felhasználó szerkesztésével ír (a meglévő egyetlen írási úton),
+// gép nem (53(d)).
 
 import { ApiHiba, kerdez } from '../lib/core/api';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
@@ -10,28 +11,40 @@ import { csere } from '../szerkeszto/dokumentum/kulonbseg';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
 import { kodFulok } from './aktiv.svelte';
 import { kodFutasok, type FutasMod } from './futas.svelte';
-
-/** A jegyzet beágyaz-e `.cpp`-t (csak felismerés, a feloldás a core-é, L42; a minta a `core/cpp_teszt.py`-é). */
-export const BEAGYAZOTT_CPP = /!\[\[[^\]|#\n]+?\.cpp(?:#[^\]|\n]*)?(?:\|[^\]\n]*)?\]\]/i;
+import { BEAGYAZOTT_KOD, jegyzetNyelve, kodNyelvek, motorUt, nyelvUt, type KodNyelv, type Motor } from './nyelvek.svelte';
 
 export interface KodCel {
-  /** amit a core-nak küldünk (`.cpp` vagy a feladat-jegyzet) */
+  /** amit a core-nak küldünk (a forrás vagy a feladat-jegyzet) */
   ut: string;
   /** a jegyzetből indított futás jegyzete */
   jegyzet: string | null;
 }
 
-/** A parancs célja: az aktív `.cpp` fül, vagy az aktív, `.cpp`-t beágyazó Markdown-jegyzet; különben nincs. */
+/** Az aktív Markdown-jegyzet szövege (a szerkesztő nézetéből, különben a nyitott dokumentumból). */
+function jegyzetSzoveg(ut: string): string | undefined {
+  const sz = szerkesztok.aktiv;
+  const v = sz && sz.ut === ut ? sz.nezet() : null;
+  return v ? v.state.doc.toString() : szerkesztok.dokumentumok.kap(ut)?.szoveg.toString();
+}
+
+/** A parancs célja: az aktív kód-fül, vagy az aktív, forrást (bármely ismert nyelvét) beágyazó Markdown-jegyzet; különben nincs. */
 export function kodCel(): KodCel | null {
   const k = kodFulok.aktiv;
   if (k) return { ut: k.ut, jegyzet: null };
   const sz = szerkesztok.aktiv;
   if (sz && /\.md$/i.test(sz.ut)) {
-    const v = sz.nezet();
-    const szoveg = v ? v.state.doc.toString() : szerkesztok.dokumentumok.kap(sz.ut)?.szoveg.toString();
-    if (szoveg && BEAGYAZOTT_CPP.test(szoveg)) return { ut: sz.ut, jegyzet: sz.ut };
+    const szoveg = jegyzetSzoveg(sz.ut);
+    if (szoveg && BEAGYAZOTT_KOD.test(szoveg)) return { ut: sz.ut, jegyzet: sz.ut };
   }
   return null;
+}
+
+/** A cél nyelve és motorja: a forrás kiterjesztéséből, jegyzetnél az első beágyazott forrásból (ahogy a core is választ). */
+export function celNyelve(cel: KodCel | null): { nyelv: KodNyelv | null; motor: Motor } {
+  if (!cel) return { nyelv: null, motor: 'cpp' };
+  if (!/\.md$/i.test(cel.ut)) return { nyelv: nyelvUt(cel.ut), motor: motorUt(cel.ut) };
+  const j = jegyzetNyelve(jegyzetSzoveg(cel.ut) ?? '');
+  return j ? { nyelv: j.nyelv, motor: j.motor } : { nyelv: null, motor: 'cpp' };
 }
 
 /** A nyitott dokumentum mentésének kivárása (⌘R előtt): igaz, ha utána nincs mentetlen változás. */
@@ -45,22 +58,22 @@ export async function mentesKivar(ut: string): Promise<boolean> {
 
 const varj = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** A `.cpp` fül előhozása: a már nyitott fül a paneljében előre kerül (a fókusz marad), különben osztásban nyílik. */
-export function cppMegmutat(felulet: Felulet, cpp: string): void {
+/** A forrás-fül előhozása: a már nyitott fül a paneljében előre kerül (a fókusz marad), különben osztásban nyílik. */
+export function forrasMegmutat(felulet: Felulet, forras: string): void {
   const mt = felulet.munkaterulet;
   for (const p of mt.panelek()) {
-    const f = p.fulek.find((x) => x.ut === cpp);
+    const f = p.fulek.find((x) => x.ut === forras);
     if (f) {
       p.aktiv = f.id;
       return;
     }
   }
   const eredeti = mt.aktivPanelId;
-  mt.megnyit(cpp, 'osztas');
+  mt.megnyit(forras, 'osztas');
   mt.aktival(eredeti);
 }
 
-/** Az ellenőrzés indítása. A jegyzetből indítva a `.cpp` fül előkerül (az eredmény ott látszik). */
+/** Az ellenőrzés indítása. A jegyzetből indítva a forrás-fül előkerül (az eredmény ott látszik). */
 export async function ellenoriz(felulet: Felulet, mod: FutasMod, cel: KodCel | null = kodCel(), jegyzet?: string): Promise<boolean> {
   if (!cel) return false;
   if (kodFutasok.fut) {
@@ -79,15 +92,16 @@ export async function ellenoriz(felulet: Felulet, mod: FutasMod, cel: KodCel | n
       });
       return false;
     }
-  let r = await kodFutasok.indit(cel.ut, mod, valasztott);
+  const { motor, nyelv } = celNyelve(cel);
+  let r = await kodFutasok.indit(cel.ut, mod, valasztott, motor, nyelv?.azonosito);
   // a mentetlen-jelzés a WS-en megy: a mentés után egy rövid ideig a core még a régit láthatja
   for (let i = 0; !r.ok && r.kod === 'mentetlen' && i < 3; i++) {
     await varj(250 * (i + 1));
-    r = await kodFutasok.indit(cel.ut, mod, valasztott);
+    r = await kodFutasok.indit(cel.ut, mod, valasztott, motor, nyelv?.azonosito);
   }
   if (r.ok) {
     kodFutasok.tobbertelmu = null;
-    if (!kodFulok.aktiv || kodFulok.aktiv.ut !== r.cpp) cppMegmutat(felulet, r.cpp);
+    if (!kodFulok.aktiv || kodFulok.aktiv.ut !== r.cpp) forrasMegmutat(felulet, r.cpp);
     return true;
   }
   switch (r.kod) {
@@ -96,6 +110,10 @@ export async function ellenoriz(felulet: Felulet, mod: FutasMod, cel: KodCel | n
       break;
     case 'nincs_eszkoztar':
       ertesitesek.ertesit({ szint: 'hiba', cim: t('Nincs C++ eszköztár'), szoveg: r.uzenet, idotartam: 0 });
+      break;
+    case 'nincs_eszkozlanc': // az általános motor: a core üzenete megmondja, mi hiányzik és mi a teendő
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('Hiányzik az eszközlánc'), szoveg: r.uzenet, idotartam: 0 });
+      void kodNyelvek.betolt(true);
       break;
     case 'foglalt':
       ertesitesek.ertesit({ szint: 'info', cim: t('Már fut egy ellenőrzés'), szoveg: r.uzenet });
@@ -106,11 +124,15 @@ export async function ellenoriz(felulet: Felulet, mod: FutasMod, cel: KodCel | n
   return false;
 }
 
-/** Formázás clang-formattal (a core a homokozóban futtatja): az eredmény egyetlen szerkesztő-tranzakció (⌘Z egy lépés). */
+/** Formázás clang-formattal (a core a homokozóban futtatja; C++): az eredmény egyetlen szerkesztő-tranzakció (⌘Z egy lépés). */
 export async function formaz(): Promise<boolean> {
   const k = kodFulok.aktiv;
   const v = k?.nezet();
   if (!k || !v) return false;
+  if (nyelvUt(k.ut)?.azonosito !== 'cpp') {
+    ertesitesek.ertesit({ szint: 'info', cim: t('A formázás kimaradt'), szoveg: t('A formázás (clang-format) csak C++ forráson érhető el.') });
+    return false;
+  }
   if (!k.irhato()) {
     ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A fájl most nem írható'), szoveg: t('A formázás kimaradt.') });
     return false;
@@ -134,17 +156,17 @@ export async function formaz(): Promise<boolean> {
   return true;
 }
 
-/** Új C++ feladat: a `.cpp` és a sablonos jegyzet a core-ban (két commit); utána a jegyzet nyílik, a `.cpp` osztásban. */
-export async function ujFeladat(felulet: Felulet, mappa: string, nev: string): Promise<{ ok: true } | { ok: false; hiba: string }> {
-  let d: { jegyzet: string; cpp: string; figyelmeztetes?: string | null };
+/** Új feladat a kód-munkafelület bármely nyelvén (alap: C++): a forrás és a jegyzet a core-ban (két commit); utána a jegyzet nyílik, a forrás osztásban. */
+export async function ujFeladat(felulet: Felulet, mappa: string, nev: string, nyelv = 'cpp'): Promise<{ ok: true } | { ok: false; hiba: string }> {
+  let d: { jegyzet: string; cpp: string; forras?: string; nyelv?: string; figyelmeztetes?: string | null };
   try {
-    d = await kerdez('/api/cpp/feladat', { metodus: 'POST', torzs: { mappa, nev }, idokorlat: 15000 });
+    d = await kerdez('/api/cpp/feladat', { metodus: 'POST', torzs: { mappa, nev, nyelv }, idokorlat: 15000 });
   } catch (e) {
     return { ok: false, hiba: e instanceof ApiHiba ? e.message : String(e) };
   }
   const mt = felulet.munkaterulet;
   mt.megnyit(d.jegyzet, mt.aktivFul?.ut ? 'ujful' : 'aktiv');
-  cppMegmutat(felulet, d.cpp);
+  forrasMegmutat(felulet, d.forras ?? d.cpp);
   if (d.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Az új feladat elkészült'), szoveg: d.figyelmeztetes });
   return { ok: true };
 }

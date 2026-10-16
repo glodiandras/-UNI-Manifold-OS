@@ -33,7 +33,7 @@ def start() -> int:
     except config.ConfigError as e:
         param = json_param(e.param)
         print(json.dumps({"hiba": e.kod, "param": param,
-                          "uzenet": angol_uzenet(e.kod, param, "The core could not start. Check its configuration.")},
+                          "uzenet": angol_uzenet(e.kod, param, "Manifold could not start. Check its configuration.")},
                          ensure_ascii=False), flush=True)
         print(f"[core] a konfiguráció nem tölthető be ({e.kod}): {e}", file=sys.stderr, flush=True)
         return KONFIG_HIBA_KILEPES

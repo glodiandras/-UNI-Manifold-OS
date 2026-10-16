@@ -1,6 +1,6 @@
 <!-- A gyors keresőablak és a tartós oldalsáv közös mezője, találati listája és billentyűzetmodellje. -->
 <script lang="ts">
-  import { t, tp } from '../i18n';
+  import { t, tk, tp } from '../i18n';
   import { openSearchPanel, SearchQuery, setSearchQuery } from '@codemirror/search';
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { modalisNyitva } from '../fokusz/hatokor';
@@ -10,6 +10,8 @@
   import { ertesitesek } from '../ertesites/ertesites.svelte';
   import { kornyezet } from '../kornyezet';
   import { keresoOldalsav, keresoSzavak, szoKiemeles } from '../kereses/kereso';
+  import { rendezTalalatok } from '../kereses/kerdes';
+  import { KERESES_RENDEZESEK, type KeresesRendezes } from '../elrendezes/felulet.svelte';
   import { fajlNev, mappa } from '../vault/fajlok.svelte';
   import { linkek } from '../vault/linkek.svelte';
   import {
@@ -28,6 +30,9 @@
   import Billentyu from '../ui/Billentyu.svelte';
   import JegyzetIkon from '../ui/JegyzetIkon.svelte';
   import { nyitasMod, type NyitasMod } from '../../szerkeszto/linkek/navigacio';
+  import { lebegoMenu } from '../../szerkeszto/notion/menu';
+  import { elonezetUtakra } from '../../szerkeszto/linkek/elonezet';
+  import { linkSzoveg } from '../../szerkeszto/linkek/adat';
   import { szerkesztok } from '../../szerkeszto/szerkesztok.svelte';
 
   let { dokkolt = false, lathato = true }: { dokkolt?: boolean; lathato?: boolean } = $props();
@@ -47,6 +52,8 @@
 
   let mezo: HTMLInputElement | undefined = $state();
   let lista: HTMLElement | undefined = $state();
+  // 02-links-09: ⌘-hover előnézet a találat fejlécén (`data-elonezet-ut`)
+  $effect(() => (lista ? elonezetUtakra(lista) : undefined));
   let aktiv = $state(0);
   let latszik = $state(LEPES);
 
@@ -54,7 +61,30 @@
 
   const kivagasok = $derived(felulet.kereso.kivagasok);
   const szavak = $derived(keresoSzavak(allapot.q));
-  const talalatok = $derived(allapot.eredmeny?.talalatok ?? []);
+  const rendezes = $derived<KeresesRendezes>(felulet.kereso.rendezes ?? 'relevancia');
+  const RENDEZES_NEV: Record<KeresesRendezes, string> = {
+    relevancia: tk('Relevancia'),
+    nev: tk('Fájlnév (A–Z)'),
+    'nev-forditott': tk('Fájlnév (Z–A)'),
+    modositva: tk('Módosítás: legújabb elöl'),
+    'modositva-regi': tk('Módosítás: legrégebbi elöl'),
+  };
+  const talalatok = $derived(rendezTalalatok(allapot.eredmeny?.talalatok ?? [], rendezes, fajlNev, (ut) => fajlok.info(ut)?.mtime));
+  function rendezesMenu(e: MouseEvent) {
+    const gomb = e.currentTarget as HTMLElement, r = gomb.getBoundingClientRect();
+    const akciok = new Map(KERESES_RENDEZESEK.map((m) => [m, () => { felulet.kereso.rendezes = m; }]));
+    lebegoMenu({ focus: () => gomb.focus() }, r.left, r.bottom, KERESES_RENDEZESEK.map((m) => ({ id: m, nev: t(RENDEZES_NEV[m]), kijelolt: m === rendezes })), akciok, t('A találatok sorrendje'));
+  }
+  const kisnagy = $derived(!!felulet.kereso.kisnagy);
+  const reszszo = $derived(!!felulet.kereso.reszszo);
+  const kontextus = $derived(!!felulet.kereso.kornyezet);
+  // a tartós kapcsolók a közös keresés-állapotra (overlay és dokkolt lista ugyanazt használja)
+  $effect(() => {
+    const m = { kisnagy, reszszo, kornyezet: kontextus };
+    untrack(() => allapot.modBeallit(m));
+  });
+  // a módosítási idő szerinti rendezéshez élő időbélyegek kellenek (a találatok fájljai a fa listájából)
+  $effect(() => { if (rendezes === 'modositva' || rendezes === 'modositva-regi') return fajlok.idobelyegeketFigyel(); });
   const kartyak = $derived(talalatok.slice(0, latszik));
 
   /** A fájlok kártyái: a kivágás sorok az azonos sorú egyezések egyesítésével; a lapos sorrend a billentyűzeté. */
@@ -160,12 +190,14 @@
     }
     const cel = talalatCel(f, h);
     try {
-      let szoveg = await linkek.linkCel(cel.ut, p.ut);
-      if (cel.horgony) szoveg += `#${cel.horgony}`;
+      // a link alakja a beállítás szerint: „New link format” és „Use [[Wikilinks]]” (core `linkcel`, 02-links-12/13)
+      const forma = await linkek.linkForma(cel.ut, p.ut, cel.horgony);
+      const nev = cel.ut.slice(cel.ut.lastIndexOf('/') + 1).replace(/\.md$/i, '');
+      const szoveg = linkSzoveg(forma, { alcel: cel.horgony ?? null, nev });
       const v = p.nezet();
       if (!v || !el || !lathato || !modulEngedelyezett('kereses') || v.state.readOnly || p.mod() === 'olvaso') return;
       bezar();
-      v.dispatch(v.state.update(v.state.replaceSelection(`[[${szoveg}]]`), { userEvent: 'input.link', scrollIntoView: true }));
+      v.dispatch(v.state.update(v.state.replaceSelection(szoveg), { userEvent: 'input.link', scrollIntoView: true }));
       await tick();
       v.focus();
     } catch (e) {
@@ -188,7 +220,7 @@
     for (let i = 0; i < 36 && document.querySelector('.fatyol'); i++) await new Promise(r => setTimeout(r, 20));
     if (felulet.atfedes !== null || modalisNyitva()) return;
     const p = szerkesztok.aktiv?.ut === ut ? szerkesztok.aktiv : null;
-    if (p?.mod() === 'olvaso') { p.keresesNyit?.(); return; }
+    if (p?.mod() === 'olvaso') { p.keresesNyit?.(q); return; }
     const v = p?.nezet();
     if (!v) return;
     openSearchPanel(v);
@@ -300,6 +332,21 @@
       </label>
     </div>
 
+    <div class="opciok" role="toolbar" aria-label={t('Keresési beállítások')}>
+      <button type="button" class="kapcs" aria-pressed={kisnagy} title={t('Kis- és nagybetű megkülönböztetése (match-case)')} onclick={() => (felulet.kereso.kisnagy = !kisnagy)}>
+        <span class="jel" aria-hidden="true">Aa</span> {t('Kis-/nagybetű')}
+      </button>
+      <button type="button" class="kapcs" aria-pressed={reszszo} title={t('A szó belsejében is találjon (részszó-illesztés)')} onclick={() => (felulet.kereso.reszszo = !reszszo)}>
+        <span class="jel" aria-hidden="true">*ab*</span> {t('Szón belül')}
+      </button>
+      <button type="button" class="kapcs" aria-pressed={kontextus} title={t('A találati sorok előtti és utáni sorok mutatása')} onclick={() => (felulet.kereso.kornyezet = !kontextus)}>
+        {t('Több környezet')}
+      </button>
+      <button type="button" class="kapcs rendezes" aria-haspopup="listbox" title={t('A találatok sorrendje')} onclick={rendezesMenu}>
+        {t('Rendezés')}: {t(RENDEZES_NEV[rendezes])}
+      </button>
+    </div>
+
     {#if allapot.hiba}
       <p class="hiba" role="alert">{allapot.hiba}</p>
     {/if}
@@ -317,6 +364,11 @@
             <dt>{t('path:mappa')}</dt><dd>{t('az útban;')} <code>{t('file:név')}</code> {t('a fájlnévben')}</dd>
             <dt>{t('tag:#címke')}</dt><dd>{t('címkével (az alcímkék is)')}</dd>
             <dt>line:(a b)</dt><dd>{t('ugyanabban a sorban')}</dd>
+            <dt>section:(a b)</dt><dd>{t('ugyanabban a szakaszban (címsortól a következő azonos vagy magasabb szintű címsorig)')}</dd>
+            <dt>{t('task:szó')}</dt><dd>{t('feladatban;')} <code>task-todo:</code> {t('nyitott,')} <code>task-done:</code> {t('kész feladatban')}</dd>
+            <dt>{t('[kulcs]')}</dt><dd>{t('tulajdonsággal;')} <code>{t('[kulcs:érték]')}</code> {t('az értékével (listánál elemenként)')}</dd>
+            <dt>match-case:(…)</dt><dd>{t('kis- és nagybetűre, ékezetre érzékenyen;')} <code>ignore-case:(…)</code> {t('visszakapcsol')}</dd>
+            <dt>{t('*szó')}</dt><dd>{t('a szó belsejében is (részszó);')} <code>substring:(…)</code> {t('a zárójelben minden szóra')}</dd>
             <dt>/regex/</dt><dd>{t('reguláris kifejezés a tartalomban')}</dd>
           </dl>
         </div>
@@ -336,6 +388,7 @@
                 tabindex="-1"
                 aria-selected={fi === aktiv}
                 title={k.fajl.ut}
+                data-elonezet-ut={fej.ut}
                 onpointermove={() => (aktiv = fi)}
                 onmousedown={(e) => e.preventDefault()}
                 onclick={(e) => kattint(e, k.fajl)}
@@ -363,7 +416,11 @@
                     onclick={(e) => kattint(e, k.fajl, h)}
                   >
                     <span class="sorszam">{helyCimke(h)}</span>
-                    <span class="sor">{#each darabok(h, 60, 150) as d, di (di)}{#if d.jelolt}<mark>{d.t}</mark>{:else}{d.t}{/if}{/each}</span>
+                    <span class="sor-blokk">
+                      {#if kontextus}{#each h.elotte ?? [] as l, li (li)}<span class="sor kontekst">{l || ' '}</span>{/each}{/if}
+                      <span class="sor">{#each darabok(h, 60, 150) as d, di (di)}{#if d.jelolt}<mark>{d.t}</mark>{:else}{d.t}{/if}{/each}</span>
+                      {#if kontextus}{#each h.utana ?? [] as l, li (li)}<span class="sor kontekst">{l || ' '}</span>{/each}{/if}
+                    </span>
                   </div>
                 {/each}
                 {#if k.tobb}<div class="tobb">{t('+{n} további sor', { n: k.tobb })}</div>{/if}
@@ -591,6 +648,50 @@
     line-height: var(--sor-ui);
     color: var(--szoveg-halvany);
     font-variant-numeric: tabular-nums;
+  }
+
+  .sor-blokk {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .sor.kontekst {
+    color: var(--szoveg-halvany);
+  }
+
+  .opciok {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--t-1) var(--t-2);
+    padding: var(--t-1) var(--t-5);
+    border-bottom: var(--keret-vastag) solid var(--keret);
+    font-size: var(--betu-kicsi);
+    color: var(--szoveg-masodlagos);
+  }
+
+  .dokkolt .opciok { padding: var(--t-1) var(--t-2); }
+
+  .kapcs {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--t-1);
+    height: var(--magassag-suru);
+    padding: 0 var(--t-2);
+    border-radius: var(--kerekites-kicsi);
+    color: var(--szoveg-masodlagos);
+  }
+
+  .kapcs:hover { background: var(--hatter-hover); color: var(--szoveg); }
+  .kapcs:focus-visible { outline: var(--fokusz-vastag) solid var(--fokusz-gyuru); outline-offset: var(--fokusz-tav-befele); }
+  .kapcs[aria-pressed='true'] { background: var(--hatter-kijelolt); color: var(--szoveg); font-weight: var(--suly-kozepes); }
+  .jel { font-family: var(--betu-mono); }
+
+  .rendezes {
+    margin-left: auto;
   }
 
   .sor {

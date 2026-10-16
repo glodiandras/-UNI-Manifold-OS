@@ -1,0 +1,37 @@
+{
+  "leiras": "RootLocator (F9): a Python (core/gyoker_kereso.py) és a Swift (shell/Sources/RootLocator.swift) közös esettáblája. A {t} a teszt ideiglenes mappája; a 'gyokerek' mappáiban a teszt érvényes gyökeret hoz létre (futtatható bin/mos + config/os.toml).",
+  "alakok": [
+    ["/Applications/Manifold.app/Contents/Resources/manifold", true],
+    ["/Applications/Manifold.app/Contents/Resources/manifold/", true],
+    ["/Users/x/Downloads/Manifold 2.app/Contents/Resources/manifold", true],
+    ["/Volumes/Disk/Manifold-OS", false],
+    ["/Volumes/Disk/Manifold.app", false],
+    ["/X.app/Contents/Resources/Manifold", false],
+    ["/X/Contents/Resources/manifold", false],
+    ["/X.app/Contents/Resources/manifold/sub", false],
+    ["/manifold", false],
+    ["/", false]
+  ],
+  "jeloltek": [
+    {"env": {"MOS_ROOT": "/R"}, "app": "/A/Manifold.app", "vart": ["/R", "/A/Manifold.app/Contents/Resources/manifold", "/A"]},
+    {"env": {"MOS_ROOT": ""}, "app": "/A/Manifold.app", "vart": ["/A/Manifold.app/Contents/Resources/manifold", "/A"]},
+    {"env": {}, "app": "/A b/Manifold 2.app", "vart": ["/A b/Manifold 2.app/Contents/Resources/manifold", "/A b"]}
+  ],
+  "elrendezesek": [
+    {"nev": "env", "gyokerek": ["R", "A/Manifold.app/Contents/Resources/manifold"], "env": {"MOS_ROOT": "{t}/R"},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/R", "mod": "env", "termek": false}},
+    {"nev": "csomag", "gyokerek": ["A/Manifold.app/Contents/Resources/manifold"], "env": {},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/A/Manifold.app/Contents/Resources/manifold", "mod": "csomag", "termek": true}},
+    {"nev": "checkout", "gyokerek": ["A"], "env": {},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/A", "mod": "checkout", "termek": false}},
+    {"nev": "csomag_megelozi_a_checkoutot", "gyokerek": ["A", "A/Manifold.app/Contents/Resources/manifold"], "env": {},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/A/Manifold.app/Contents/Resources/manifold", "mod": "csomag", "termek": true}},
+    {"nev": "ervenytelen_env_tovabblep", "gyokerek": ["A"], "env": {"MOS_ROOT": "{t}/nincs-ilyen"},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/A", "mod": "checkout", "termek": false}},
+    {"nev": "env_csomagra_mutat", "gyokerek": ["B/Masik.app/Contents/Resources/manifold"], "env": {"MOS_ROOT": "{t}/B/Masik.app/Contents/Resources/manifold"},
+     "app": "{t}/A/Manifold.app", "vart": {"gyoker": "{t}/B/Masik.app/Contents/Resources/manifold", "mod": "env", "termek": true}},
+    {"nev": "szokozos_ut", "gyokerek": ["Letoltesek/Manifold 2.app/Contents/Resources/manifold"], "env": {},
+     "app": "{t}/Letoltesek/Manifold 2.app", "vart": {"gyoker": "{t}/Letoltesek/Manifold 2.app/Contents/Resources/manifold", "mod": "csomag", "termek": true}},
+    {"nev": "nincs_gyoker", "gyokerek": [], "env": {}, "app": "{t}/A/Manifold.app", "vart": null}
+  ]
+}

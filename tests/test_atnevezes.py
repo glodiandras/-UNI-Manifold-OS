@@ -309,7 +309,7 @@ class BiztonsagTest(Alap):
         self.A._proba = staticmethod(lambda *a, **k: ["kitalált hiba"])
         with self.assertRaises(atnevezes.Hiba) as e:
             self.A.vegrehajt("Cél.md", "Új név.md", t["terv_hash"])
-        self.assertEqual(e.exception.kod, 500)
+        self.assertEqual(e.exception.kod, 409)
         self.assertEqual(e.exception.adat["proba_hibak"], ["kitalált hiba"])
         self.assertEqual(lenyomat(self.v), elotte)
         self.assertEqual(len(self.repo.log(5)), 1)
@@ -532,7 +532,7 @@ class EgyidejuSzerkesztesTest(Alap):
         self.A._proba = staticmethod(bukó_proba)
         with self.assertRaises(atnevezes.Hiba) as e:
             self.A.vegrehajt("Cél.md", "Új név.md", t["terv_hash"])
-        self.assertEqual(e.exception.kod, 500)
+        self.assertEqual(e.exception.kod, 409)
         self.assertEqual(self.olvas("Hivo.md"), idegen, "az idegen módosítást a visszaállítás nem tapossa el")
         self.assertTrue((self.v / "Cél.md").exists() and not (self.v / "Új név.md").exists(), "a név visszaállt")
         self.assertTrue((self.cfg.path("run") / atnevezes.NAPLO / "terv.json").is_file(), "a nem teljes visszaállítás naplót hagy")
@@ -1084,7 +1084,7 @@ class BazisAtnevezesTest(Alap):
         self.A._ir = lambda p, b, **k: None if p.name == "Könyvek.base" else eredeti(p, b, **k)     # a base nem íródik át
         with self.assertRaises(atnevezes.Hiba) as e:
             self.A.vegrehajt("Cél.md", "Új név.md", t["terv_hash"])
-        self.assertEqual(e.exception.kod, 500)
+        self.assertEqual(e.exception.kod, 409)
         self.assertTrue(any("Könyvek.base" in h for h in e.exception.adat["proba_hibak"]))
         self.assertEqual(lenyomat(self.v), elotte)
         self.assertEqual(len(self.repo.log(5)), 1)

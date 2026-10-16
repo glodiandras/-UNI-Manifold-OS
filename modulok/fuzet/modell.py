@@ -13,6 +13,7 @@ import json
 import os
 from pathlib import Path
 
+from core.hibakod import kodol
 from core.modell import beallitas as B
 from core.modell import kliens
 from core.modell.eval import keres_beallitas
@@ -26,8 +27,10 @@ def _nincs_modell(feladat: str, indok: str) -> NincsModell:
     """Az egyetlen szöveg, amellyel a lánc megáll, ha a feladatnak nincs kalibrált modellje (akár a router előzetes döntése, akár a
     worker 409-es válasza mondja)."""
     ok = f" ({indok})" if indok and "kalibrált modell" not in indok else ""
-    return NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell{ok}: élesben nem fut; próbához adj meg egy "
-                       "modellnevet (a Beállítások › AI listájából) és --proba-t")
+    e = NincsModell(f"a(z) „{feladat}” feladatra nincs kalibrált modell{ok}: élesben nem fut; próbához adj meg egy "
+                    "modellnevet (a Beállítások › AI listájából) és --proba-t")
+    # F6 hibaszerződés: a lánc egyszer, tisztán áll meg; a felület a kódból fordít (`nincs_kalibralt` / `csak_tavol`)
+    return kodol(e, "csak_tavol" if "tartós tétlenségben" in (indok or "") else "nincs_kalibralt", {"feladat": feladat})
 
 
 def _nincs_kalibralt(e: Exception) -> bool:

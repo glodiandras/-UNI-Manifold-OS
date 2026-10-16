@@ -1,25 +1,32 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { CircleAlert, FolderOpen, ShieldCheck } from 'lucide';
   import { beallitasok, type BeallitasokTar } from '../lib/beallitasok/allapot.svelte';
   import type { Beallitasok } from '../lib/beallitasok/tipusok';
   import { t, tk } from '../lib/i18n';
+  import { modellek, type ModellTar } from '../lib/modellek/allapot.svelte';
+  import { ALLAPOT_CIM, SZEREP_CIM, gbSzoveg } from '../lib/modellek/megjelenites';
+  import Ajanlott from '../modellek/Ajanlott.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { naptarHid } from '../lib/naptar/hid.svelte';
   import Atfedes from '../lib/ui/Atfedes.svelte';
   import BeallitasSor from '../lib/ui/BeallitasSor.svelte';
   import Kapcsolo from '../lib/ui/Kapcsolo.svelte';
+  import ImportFolyamat from '../import/ImportFolyamat.svelte';
   import { ELMENYEK, elmenyModulok, type Elmeny } from './elmeny';
 
-  let { tar = beallitasok, onbezar, onkesz, onai }: { tar?: BeallitasokTar; onbezar: () => void; onkesz?: () => void; onai?: () => void } = $props();
+  let { tar = beallitasok, modelltar = modellek, onbezar, onkesz, onai }: { tar?: BeallitasokTar; modelltar?: ModellTar; onbezar: () => void; onkesz?: () => void; onai?: () => void } = $props();
   const LEPESEK = [tk('Üdvözöl a Manifold'), tk('A munkatered'), tk('A jegyzetek nyelve'), tk('Válassz munkamódot'), tk('AI, amikor szükséged van rá'), tk('Adatvédelem és hozzáférés'), tk('Kezdődhet az írás')];
   let lepes = $state(0);
   let piszkozat = $state<Beallitasok | null>(null);
   let eredeti = $state<Beallitasok | null>(null);
   let cimElem = $state<HTMLHeadingElement>();
   let aiUtana = $state(false);
+  let telepitesIndult = $state(false);
+  let aiBetoltve = false;
   let naptarKeresve = $state(false);
   let alapRev = $state('');
+  let importNyitva = $state(false);
   let el = true;
 
   function atvesz() {
@@ -34,6 +41,16 @@
       if (el && tar.adat) { atvesz(); await tick(); cimElem?.focus(); }
     })();
     return () => { el = false; };
+  });
+
+  // az „AI” lépés első megnyitásakor olvassuk a modelllistát (csak olvas: semmit nem tölt le); a letöltés kattintásra indul (D3)
+  $effect(() => {
+    if (lepes === 4 && !aiBetoltve) { aiBetoltve = true; void modelltar.betolt(); }
+  });
+  $effect(() => {
+    const lista = modelltar.feladatsor.lista;
+    void modelltar.kovetes;
+    untrack(() => void modelltar.szinkron(lista));
   });
 
   async function valt(kovetkezo: number) {
@@ -69,7 +86,7 @@
     if (!siker || !el) return;
     onkesz?.();
     onbezar();
-    if (aiUtana) onai?.();
+    if (aiUtana || telepitesIndult) onai?.();
   }
 </script>
 
@@ -99,6 +116,15 @@
           </div>
           <p>{t('Ez a már megnyitott mappa lesz a munkatered. A jegyzetek, mellékletek és a meglévő Obsidian-beállítások megmaradnak.')}</p>
           <p class="halvany">{t('Másik mappát a Fájl menü Munkatér megnyitása parancsával választhatsz.')}</p>
+          {#if importNyitva}
+            <ImportFolyamat fajta="obsidian" onbezar={() => { importNyitva = false; }} onkesz={() => { importNyitva = false; }} />
+          {:else}
+            <div class="import-kartya" data-setup-import>
+              <strong>{t('import.setup.cim')}</strong>
+              <p class="halvany">{t('import.setup.leiras')}</p>
+              <button type="button" class="m-gomb semleges" onclick={() => { importNyitva = true; }}>{t('import.setup.gomb')}</button>
+            </div>
+          {/if}
         {:else if lepes === 2}
           <p>{t('A szerkesztő automatikusan felismeri az éppen írt szöveg nyelvét. Ehhez semmit sem kell beállítanod.')}</p>
           <fieldset>
@@ -120,11 +146,28 @@
         {:else if lepes === 4}
           <p class="bevezeto">{t('Az AI opcionális. A jegyzeteid most is használatra készek.')}</p>
           <p>{t('Az AI-eszközökhöz helyi modellek szükségesek. A modelleket külön kell beállítani és ellenőrizni, mielőtt jegyzeteket generálhatnak.')}</p>
-          <p>{t('Ez a varázsló nem tölt le modelleket. Később a Beállítások AI részében áttekintheted a rendelkezésre álló eszközöket.')}</p>
-          {#if onai}
-            <button type="button" class="m-gomb semleges" aria-pressed={aiUtana} onclick={() => { aiUtana = !aiUtana; }}>{aiUtana ? t('AI áttekintése beállítva') : t('AI-eszközök áttekintése a beállítás után')}</button>
+          <p>{t('setup.ai.csak_kattintasra')}</p>
+          {#if modelltar.hiba && !modelltar.lista}
+            <div class="hiba" role="alert"><Ikon ikon={CircleAlert} /><div><strong>{t('setup.ai.lista_hiba')}</strong><p>{modelltar.hiba}</p><p>{t('setup.ai.lista_hiba_teendo')}</p>
+              <button type="button" class="m-gomb semleges" disabled={modelltar.betoltes} onclick={() => void modelltar.betolt()}>{t('modellek.ujratolt')}</button></div></div>
+          {:else if !modelltar.lista}
+            <p role="status" class="halvany">{t('modellek.betoltes')}</p>
+          {:else}
+            <ul class="ajanlott-lista" aria-label={t('setup.ai.ajanlott_lista')}>
+              {#each modelltar.modellek.filter((m) => m.ajanlott) as m (m.id)}
+                <li><strong>{m.id}</strong> <span class="halvany">{SZEREP_CIM[m.szerep] ? t(SZEREP_CIM[m.szerep]) : m.szerep} · {gbSzoveg(m.meret_gb)} · {t(ALLAPOT_CIM[m.allapot])}{modelltar.aktiv(m, 'letoltes') ? ` · ${Math.round(modelltar.aktiv(m, 'letoltes')!.szazalek)} %` : ''}</span></li>
+              {/each}
+            </ul>
+            <Ajanlott tar={modelltar} most onindult={(db) => { if (db > 0) telepitesIndult = true; }} />
+            {#each modelltar.modellek.filter((m) => modelltar.uzenetek[m.id]?.fajta === 'hiba') as m (m.id)}
+              <p class="hiba" role="alert">{m.id}: {modelltar.uzenetek[m.id].szoveg}</p>
+            {/each}
           {/if}
-          <p class="halvany">{t('A folytatás nem indít el AI-feladatot, és nem változtatja meg a segéd beállítását.')}</p>
+          {#if telepitesIndult}<p role="status">{t('setup.ai.indult')}</p>{/if}
+          {#if onai}
+            <button type="button" class="m-gomb semleges" aria-pressed={aiUtana} onclick={() => { aiUtana = !aiUtana; }}>{aiUtana ? t('setup.ai.kezelo_beallitva') : t('setup.ai.kezelo_utan')}</button>
+          {/if}
+          <p class="halvany">{t('setup.ai.folytatas')}</p>
         {:else if lepes === 5}
           <p>{t('Te döntöd el, mi működjön a háttérben. A rendszerengedélyekhez külön hozzájárulás szükséges.')}</p>
           <BeallitasSor cim={t('Segéd|setup')} leiras={t('Helyi javaslatok a hivatkozásokhoz és a jegyzetek rendben tartásához.')}><Kapcsolo cimke={t('Segéd|setup')} bind:ertek={piszkozat.adatvedelem.asszisztens} /></BeallitasSor>
@@ -164,13 +207,13 @@
       {/if}
     </div>
 
-    {#if piszkozat}
+    {#if piszkozat && !importNyitva}
       <footer>
         <button type="button" class="m-gomb semleges" disabled={lepes === 0 || tar.mentes} onclick={() => void valt(lepes - 1)}>{t('Vissza')}</button>
         {#if lepes === LEPESEK.length - 1}
           <button type="button" class="m-gomb" disabled={tar.mentes || tar.utkozes} onclick={() => void befejez()}>{tar.mentes ? t('Beállítások mentése…|setup') : tar.hiba ? t('Mentés újra|setup') : t('Írás megkezdése')}</button>
         {:else}
-          <button type="button" class="m-gomb" onclick={() => void valt(lepes + 1)}>{lepes === 4 && !aiUtana ? t('Folytatás AI nélkül') : t('Tovább')}</button>
+          <button type="button" class="m-gomb" onclick={() => void valt(lepes + 1)}>{lepes === 4 && !aiUtana && !telepitesIndult ? t('Folytatás AI nélkül') : t('Tovább')}</button>
         {/if}
       </footer>
     {/if}
@@ -202,6 +245,10 @@
   small { display: block; margin-top: var(--t-1); font-size: var(--betu-kicsi); line-height: var(--sor-kicsi); }
   strong { font-weight: var(--suly-kozepes); }
   .naptar { margin-block: var(--t-3); }
+  .import-kartya { display: flex; flex-direction: column; align-items: flex-start; gap: var(--t-2); padding: var(--t-4); margin-top: var(--t-4); border: var(--keret-vastag) solid var(--keret); border-radius: var(--kerekites); }
+  .import-kartya p { margin: 0; }
+  .ajanlott-lista { margin: 0 0 var(--t-3); padding-inline-start: var(--t-5); }
+  .ajanlott-lista li { margin-block: var(--t-1); }
   .hiba { display: flex; align-items: flex-start; gap: var(--t-2); padding: var(--t-3); border-radius: var(--kerekites); background: var(--hiba-hatter); color: var(--hiba); }
   .hiba p { margin-block: var(--t-2); }
   dl { margin: var(--t-4) 0; }

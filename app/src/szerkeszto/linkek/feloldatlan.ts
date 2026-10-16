@@ -171,15 +171,22 @@ export function feloldatlanJelol(gyoker: HTMLElement, jel: AbortSignal): () => v
     if (idozito) clearTimeout(idozito);
     idozito = setTimeout(() => { idozito = null; frissit(); }, 25);
   });
+  // Tartalmi esemény (alias-mentés): a jelölés újraszámolódik akkor is, ha az Olvasó nem rajzol újra (04-embeds-07).
+  const tartalomLe = linkek.tartalomFigyel(() => {
+    if (idozito) clearTimeout(idozito);
+    idozito = setTimeout(() => { idozito = null; frissit(); }, 25);
+  });
   const leallit = () => {
     vege = true;
     sorszam++;
     ac?.abort();
     if (idozito) clearTimeout(idozito);
+    tartalomLe();
     figyelo.disconnect();
     jel.removeEventListener('abort', leallit);
   };
-  if (!jel.aborted) {
+  if (jel.aborted) tartalomLe();
+  else {
     jel.addEventListener('abort', leallit, { once: true });
     figyelo.observe(gyoker, { childList: true, subtree: true });
     frissit();

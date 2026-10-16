@@ -10,7 +10,7 @@ Inkrementális: a forrásban változatlan (méret + mtime) fájl az előző elle
 közbeni hash-sel és a másolat visszaolvasott ellenőrzésével.
 
 Nincs a mentésben (újratölthető, a jegyzék `kihagyva` mezője rögzíti): a modellek (`{models}`: `bin/mos models pull`,
-a `config/letoltes.toml` rögzített revízióival), a `var/venv` (`bin/mos runtime install`), a `runtime/`
+a `config/models.toml` rögzített revízióival), a `var/venv` (`bin/mos runtime install`), a `runtime/`
 (`bin/mos runtime fetch`, pinelt és sha256-tal ellenőrzött; az LLVM/SDK: `bin/mos cpp telepit`), az újraépíthető
 `{index}` (vault-index, keresési vektorok, PDF-szöveg; 33., 58(a), 73(b)), és a `[teljes_mentes] kihagy` utak-kulcsai
 (alapból a videólánc staging-ja és az `archive/`). Soha nem kerül bele (átmeneti): a `{tmp}`, `{cache}`, `{run}`,
@@ -50,7 +50,7 @@ EXTRAK = ('vault', 'vault_git', 'ytdlp_git', 'var', 'state', 'szemelyes', 'fuzet
           'feladatok_db', 'router_db', 'tanulas_db', 'automatika_db', 'felulet')
 # Újratölthető vagy újraépíthető: nem kerül a mentésbe, a jegyzék megnevezi a visszaállítás módját.
 KIHAGYOTT = {
-    'models': 'bin/mos models pull (a config/letoltes.toml rögzített revízióival)',
+    'models': 'bin/mos models pull (a config/models.toml rögzített revízióival)',
     'venv': 'bin/mos runtime install (a runtime/wheels-ből, hálózat nélkül)',
     'runtime': 'bin/mos runtime fetch, majd bin/mos runtime install (pinelt, sha256-tal ellenőrzött); C++: bin/mos cpp telepit',
     'index': 'újraépül: a core induláskor a vaultból építi a vault-indexet; a keresési vektorokat a vektorindex, '

@@ -9,6 +9,7 @@ import re
 import secrets
 import shutil
 import subprocess
+import sys
 import threading
 import time
 from pathlib import Path
@@ -159,6 +160,10 @@ def kovetett(repo, utak):
 
 
 def feltolt(app, d):
+    if isinstance(d, dict) and 'url' in d:
+        # 04-embeds-02: külső kép letöltése kifejezett kattintásra; ugyanaz a végpont és csatolmány-út (D3, `core/kulso_kep.py`)
+        from . import kulso_kep
+        return kulso_kep.letolt(app, d)
     v = app.vault
     azon = d.get('azon') or secrets.token_hex(16)
     if not isinstance(azon, str) or not _AZON.fullmatch(azon):
@@ -223,22 +228,64 @@ def feltolt(app, d):
                 repo = v.repo()
                 if repo:
                     repo.commit('kézi változások import előtt', {'Mos-Forras': 'kezi'})
-                for i in range(10000):
-                    jelolt = nev if i == 0 else f'{Path(nev).stem} {i}{Path(nev).suffix}'
-                    if any(vaultio.nfc(n).casefold() == jelolt.casefold() for n in os.listdir(cel_mappa)):
-                        continue
-                    cel = cel_mappa / jelolt
-                    try:
-                        tartos.rename_excl(atmeneti, cel)
-                    except FileExistsError:
-                        continue
-                    tartos.fsync_mappa(cel_mappa)
-                    break
-                else:
-                    raise HttpError(409, 'Nincs szabad fájlnév.', kod="csatolmany.nincs_szabad_fajlnev")
+                cel, _ = _nevre_helyez(atmeneti, cel_mappa, nev)
                 return _lezar(app, v, repo, cel, azon, eredmeny, part)
         finally:
             atmeneti.unlink(missing_ok=True)
+
+
+def _nevre_helyez(atmeneti: Path, cel_mappa: Path, nev: str, azonos: bytes | None = None) -> tuple[Path, bool]:
+    """Az ideiglenes fájl ütközésmentes átnevezése (`nev`, `nev 1`, …; a kör-zár alatt). Ha `azonos` adott, és egy jelölt név alatt
+    már pontosan ugyanez a tartalom áll, az a meglévő fájl (`True`): az ismételt letöltés nem duplikál."""
+    for i in range(10000):
+        jelolt = nev if i == 0 else f'{Path(nev).stem} {i}{Path(nev).suffix}'
+        foglalt = [n for n in os.listdir(cel_mappa) if vaultio.nfc(n).casefold() == jelolt.casefold()]
+        if foglalt:
+            if azonos is not None:
+                meglevo = cel_mappa / foglalt[0]
+                with contextlib.suppress(OSError):
+                    if (meglevo.is_file() and not meglevo.is_symlink() and meglevo.stat().st_size == len(azonos)
+                            and meglevo.read_bytes() == azonos):
+                        return meglevo, True
+            continue
+        cel = cel_mappa / jelolt
+        try:
+            tartos.rename_excl(atmeneti, cel)
+        except FileExistsError:
+            continue
+        tartos.fsync_mappa(cel_mappa)
+        return cel, False
+    raise HttpError(409, 'Nincs szabad fájlnév.', kod="csatolmany.nincs_szabad_fajlnev")
+
+
+def bajt_import(app, bajtok: bytes, nev: str, forras: str) -> dict:
+    """A core által már beolvasott bájtok (a kifejezett kattintásra letöltött külső kép, `core/kulso_kep.py`) importja ugyanazon az
+    úton, mint a feltöltésé: a `forras` jegyzet csatolmány-mappája, rejtett ideiglenes fájl a célmappában, kör-zár, kézi pillanat,
+    ütközésmentes név, gépi commit (visszavonható), index-frissítés. Azonos tartalmú meglévő fájl: nincs új fájl (`meglevo: true`)."""
+    v = app.vault
+    nev = nev_ellenor(nev)
+    mappa_rel = csatolmany_mappa(v, forras)
+    cel_mappa = v._abs(mappa_rel) if mappa_rel else v.root
+    cel_mappa.mkdir(parents=True, exist_ok=True)
+    atmeneti = tartos.tmp_ut(cel_mappa / nev)
+    try:
+        with atmeneti.open('xb') as ki:
+            ki.write(bajtok); ki.flush(); os.fsync(ki.fileno())
+        with _kor_zar(app.cfg):
+            if not atmeneti.is_file():
+                raise HttpError(409, 'A célmappa a feltöltés közben megváltozott. Próbáld újra.', kod="csatolmany.celmappa_megvaltozott")
+            repo = v.repo()
+            if repo:
+                repo.commit('kézi változások import előtt', {'Mos-Forras': 'kezi'})
+            cel, meglevo = _nevre_helyez(atmeneti, cel_mappa, nev, bajtok)
+            if meglevo:
+                return {'ok': True, 'kesz': True, 'ut': vaultio.nfc(cel.relative_to(v.root).as_posix()), 'meglevo': True,
+                        'figyelmeztetes': None}
+            r = _lezar(app, v, repo, cel)
+            r['meglevo'] = False
+            return r
+    finally:
+        atmeneti.unlink(missing_ok=True)
 
 
 def _vege_egyezik(part: Path, bajtok: bytes) -> bool:
@@ -251,8 +298,8 @@ def _vege_egyezik(part: Path, bajtok: bytes) -> bool:
         return False
 
 
-def _lezar(app, v, repo, cel: Path, azon: str, eredmeny: Path, part: Path) -> dict:
-    """A bemásolt fájl gépi commitja, a tartós visszaigazolás és az index frissítése (a kör-zár alatt)."""
+def _lezar(app, v, repo, cel: Path, azon: str | None = None, eredmeny: Path | None = None, part: Path | None = None) -> dict:
+    """A bemásolt fájl gépi commitja, a tartós visszaigazolás (darabolt feltöltésnél) és az index frissítése (a kör-zár alatt)."""
     rp = vaultio.nfc(cel.relative_to(v.root).as_posix())
     sha, figy = None, None
     if repo:
@@ -264,8 +311,10 @@ def _lezar(app, v, repo, cel: Path, azon: str, eredmeny: Path, part: Path) -> di
         except snapshot.SnapshotError:
             figy = 'A fájl bemásolódott, a szöveges pillanatkép nem sikerült.'
     r = {'ok': True, 'kesz': True, 'azon': azon, 'ut': rp, 'figyelmeztetes': figy}
-    tartos.atomi_ir(eredmeny, json.dumps(r, ensure_ascii=False).encode())
-    part.unlink(missing_ok=True)
+    if eredmeny is not None:
+        tartos.atomi_ir(eredmeny, json.dumps(r, ensure_ascii=False).encode())
+    if part is not None:
+        part.unlink(missing_ok=True)
     # A visszaigazolás előbb tartós: indexhiba miatti újraküldés sem duplikálhat.
     try:
         if not app.index.frissit([app.index.lemez_ut(rp)]):
@@ -364,7 +413,104 @@ def _kuka_hiba(valasz: dict, p: Path, gyoker: Path) -> tuple:
     return (hiba, {'kod': kod} if isinstance(kod, str) and re.fullmatch(r'[a-z_]{1,40}', kod) else {})
 
 
+def _szabad_masolat_nev(mappa_lemez: Path, nev: str) -> str:
+    """`<törzs> N<kit>` az első szabad N-nel (1-től), kis-nagybetű- és NFC-független ütközés-vizsgálattal (07-explorer-06)."""
+    p = Path(nev)
+    torzs, kit = (p.stem, p.suffix) if p.suffix else (p.name, '')
+    foglalt = {vaultio.nfc(n).casefold() for n in os.listdir(mappa_lemez)}
+    for i in range(1, 10000):
+        jelolt = f'{torzs} {i}{kit}'
+        if vaultio.nfc(jelolt).casefold() not in foglalt:
+            return jelolt
+    raise HttpError(409, 'Nincs szabad fájlnév.', kod="csatolmany.nincs_szabad_fajlnev")
+
+
+def masolat(app, d):
+    """07-explorer-06 „Make a copy”: a fájl bájtra azonos másolata ugyanabban a mappában, `<törzs> N<kit>` néven. Meglévő fájlt
+    nem ír felül (kizáró átnevezés), a vaulton kívülre és rejtett útra nem ír (`norm_path`), mappát nem másol. A szöveges
+    másolat gépi commitot kap (a visszavonás a meglévő pillanatkép-úton megy); a bináris nem (mint az import)."""
+    v = app.vault
+    rp = v.kanonikus(vaultio.norm_path(d.get('ut')))
+    with _kor_zar(app.cfg), contextlib.ExitStack() as verem:
+        forras = v.lemezen(rp)
+        if forras.is_symlink() or not forras.is_file():
+            raise HttpError(400, 'Csak fájl másolható.', kod="csatolmany.csak_fajl_masolhato")
+        z = vaultio._ut_zar(rp)
+        if not z.acquire(timeout=3):
+            raise HttpError(409, 'A fájl mentése még tart. Próbáld újra.', kod="csatolmany.fajl_mentese_tart")
+        verem.callback(z.release)
+        kulcs = vaultio.nfc(rp).casefold()
+        if any(vaultio.nfc(u).casefold() == kulcs for u in app.atnevezes.mentetlen()):
+            raise HttpError(409, 'A fájlban mentetlen dokumentum van.', kod="csatolmany.mentetlen_dokumentum")
+        cel_mappa = forras.parent
+        szulo = rp.rpartition('/')[0]
+        for _ in range(20):
+            nev = _szabad_masolat_nev(cel_mappa, forras.name)
+            cel = cel_mappa / nev
+            atmeneti = tartos.tmp_ut(cel)
+            try:
+                with forras.open('rb') as be, atmeneti.open('xb') as ki:
+                    shutil.copyfileobj(be, ki, 1024 * 1024)
+                    ki.flush(); tartos.fsync_teljes(ki.fileno())
+                try:
+                    tartos.rename_excl(atmeneti, cel)
+                except FileExistsError:
+                    continue
+                tartos.fsync_mappa(cel_mappa)
+                break
+            finally:
+                atmeneti.unlink(missing_ok=True)
+        else:
+            raise HttpError(409, 'Nincs szabad fájlnév.', kod="csatolmany.nincs_szabad_fajlnev")
+        uj_rp = vaultio.nfc(f'{szulo}/{nev}' if szulo else nev)
+        sha, figy = None, None
+        repo = v.repo()
+        if repo:
+            try:
+                utak = kovetett(repo, [uj_rp])
+                if utak:
+                    sha = repo.commit_machine('másolat a pultban: ' + uj_rp,
+                        {'Mos-Forras': vaultio.FORRAS, 'Mos-Kor': frame.new_id('MASOLAT'), 'Mos-Tetel': uj_rp}, utak)
+            except snapshot.SnapshotError:
+                figy = 'A másolat elkészült, a szöveges pillanatkép nem sikerült.'
+        try:
+            if not app.index.frissit([app.index.lemez_ut(uj_rp)]):
+                figy = figy or 'A másolat elkészült, az index frissítése még folyamatban van.'
+        except Exception:
+            figy = figy or 'A másolat elkészült, az index frissítése még várat magára.'
+    return {'ok': True, 'forras': rp, 'ut': uj_rp, 'pillanat': sha, 'figyelmeztetes': figy}
+
+
+def _finder_nyit(p: Path) -> None:
+    """`open -R`: a Finder megnyitja a szülőmappát és kijelöli az elemet (csak macOS)."""
+    try:
+        h = subprocess.run(['/usr/bin/open', '-R', str(p)], capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        raise HttpError(503, 'A Finder nem nyitható meg.', kod="csatolmany.finder_nem_nyilik") from None
+    if h.returncode != 0:
+        raise HttpError(503, 'A Finder nem nyitható meg.', kod="csatolmany.finder_nem_nyilik")
+
+
+def finder(app, d, nyit=None):
+    """07-explorer-07 „Reveal in Finder”: a vaulton belüli fájl vagy mappa kijelölése a Finderben. Semmit nem ír: a core csak a
+    vault-útvonalat oldja fel (`norm_path`, szimbolikus link sem vezethet kifelé, rejtett út tiltott), a megnyitást a rendszer
+    végzi. Nem macOS-en 501."""
+    v = app.vault
+    rp = v.kanonikus(vaultio.norm_path(d.get('ut')))
+    p = v.lemezen(rp)
+    if not os.path.lexists(p):
+        raise HttpError(404, 'Nincs ilyen fájl vagy mappa.', kod="csatolmany.nincs_fajl")
+    if nyit is None:
+        if sys.platform != 'darwin':
+            raise HttpError(501, 'A Finder csak macOS-en érhető el.', kod="csatolmany.finder_csak_macos")
+        nyit = _finder_nyit
+    nyit(p)
+    return {'ok': True}
+
+
 def utvonalak(r):
     r.post('/api/vault/import', lambda k: feltolt(k.app, k.torzs()))
     r.post('/api/vault/mappa', lambda k: uj_mappa(k.app, k.torzs()))
     r.post('/api/vault/kuka', lambda k: kuka(k.app, k.torzs()))
+    r.post('/api/vault/masolat', lambda k: masolat(k.app, k.torzs()))
+    r.post('/api/vault/finder', lambda k: finder(k.app, k.torzs()))

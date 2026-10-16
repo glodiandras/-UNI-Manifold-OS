@@ -1,12 +1,13 @@
 // A kártyák tartalma (C14): DOM-rajzolók a kártya törzsébe. A szövegkártya az Olvasó rajzolójával (ugyanaz az
 // elemző, mint a szerkesztőé), a jegyzetkártya a C10 beágyazás-motorjával (élő tartalom a core indexéből,
 // körkörösség- és mélységvédelem), a kép a kicsinyített változattal (a megjelenített méret vödre), a hang és a
-// videó natív elemmel. Minden rajzoló a lebontó függvényét adja vissza.
+// videó natív elemmel. Minden rajzoló a lebontó függvényét adja vissza. A jegyzet- és szövegkártya beágyazásai célonként
+// frissülnek a tartalmi eseményre (a többi kártya DOM-ja marad).
 
 import { KeresSor } from '../lib/core/keresSor';
 import { linkek } from '../lib/vault/linkek.svelte';
 import { fajlNev, type FajlTipus } from '../lib/vault/fajlok.svelte';
-import { beagyazasElem } from '../szerkeszto/beagyazas/rajzol';
+import { beagyazasElem, beagyazasFrissitesFigyel } from '../szerkeszto/beagyazas/rajzol';
 import { kepVodor } from '../szerkeszto/beagyazas/nagyito';
 import { obsidianElemzo } from '../szerkeszto/markdown/elemzo';
 import { dokumentumRenderel } from '../szerkeszto/olvaso/html';
@@ -44,7 +45,8 @@ export function szovegRajzol(kont: HTMLElement, szoveg: string, canvasUt: string
     }),
   );
   kont.replaceChildren(md);
-  return () => lusta.leall();
+  const le = beagyazasFrissitesFigyel(md);   // 04-embeds-07: a szövegkártya beágyazásai a céljuk változásakor frissülnek
+  return () => { le(); lusta.leall(); };
 }
 
 /** A jegyzetkártyák tartalmának kérés-sora (C33, T184; a C14-terv „legfeljebb 6 párhuzamos kéréssel”): közös minden vászonnak. */
@@ -63,7 +65,8 @@ export function jegyzetRajzol(kont: HTMLElement, ut: string, subpath: string | u
     ),
   );
   kont.replaceChildren(md);
-  return () => vezerlo.abort();
+  const le = beagyazasFrissitesFigyel(md);   // 04-embeds-07: a jegyzetkártya a jegyzet (vagy beágyazott célja) mentésekor frissül
+  return () => { le(); vezerlo.abort(); };
 }
 
 /** Kép a megjelenített szélességnek megfelelő vödörrel (`?w=`); a `kepernyoSzel` a kártya képernyőn mért szélessége. */

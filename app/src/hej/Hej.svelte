@@ -23,15 +23,20 @@
   import Ikonsav from './Ikonsav.svelte';
   import Oldalsav from './Oldalsav.svelte';
   import Osztas from './Osztas.svelte';
+  import Elrendezesek from '../atfedes/Elrendezesek.svelte';
+  import { nagyitasAlkalmaz } from '../lib/elrendezes/nagyitas';
 
   const { felulet } = kornyezet();
   let huzas = $state(false);
+  // UI-nagyítás (06-workspace-28): a mentett szorzó a gyökérelemre kerül
+  $effect(() => nagyitasAlkalmaz(felulet.nagyitas));
 </script>
 
 <LeallVedelem>
 <div
   class="hej"
   class:huzas
+  style:--ikonsav-sz={felulet.ikonsav.lathato ? 'var(--szelesseg-ikonsav)' : '0px'}
   style:--oldalsav-sz="{felulet.oldalsav.nyitva ? felulet.oldalsav.szelesseg : 0}px"
   style:--jobb-sz="{felulet.jobbPanel.nyitva ? felulet.jobbPanel.szelesseg : 0}px"
   style:--oldalsav-atfedes-sz="{felulet.oldalsav.szelesseg}px"
@@ -84,13 +89,15 @@
   <UjCppFeladat />
 {:else if felulet.atfedes === 'kulso-ai'}
   <KulsoAi />
+{:else if felulet.atfedes === 'elrendezesek'}
+  <Elrendezesek />
 {/if}
 </LeallVedelem>
 
 <style>
   .hej {
     display: grid;
-    grid-template-columns: var(--szelesseg-ikonsav) var(--oldalsav-sz) minmax(0, 1fr) var(--jobb-sz);
+    grid-template-columns: var(--ikonsav-sz, var(--szelesseg-ikonsav)) var(--oldalsav-sz) minmax(0, 1fr) var(--jobb-sz);
     grid-template-rows: minmax(0, 1fr) var(--allapotsor-hely);
     grid-template-areas:
       'ikon oldalsav munka jobb'

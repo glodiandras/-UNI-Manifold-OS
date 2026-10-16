@@ -18,22 +18,23 @@ import tomllib
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import config, csatolmany, tartos, workspace
+from . import config, csatolmany, fejleszto, tartos, workspace
 from .utvonalak import HttpError
 
 MODULOK = tuple("hivatkozasok vazlat tulajdonsagok gyorsvalto kereses perjel cimkek sablonok napi canvas bazis graf pdf media kartya kviz osszefoglalas matek kod fuzet video kerdezz asszisztens naptar felkeszultseg tracker".split())
 ALAP = {
     "altalanos": {"nyelv": "auto", "inditas": "utolso"},
     "szerkeszto": {"mod": "elo", "olvashato_szelesseg": True, "helyesiras": True, "tab_meret": 2, "perjel": True},
-    "fajlok": {"uj_mappa": "", "csatolmany_mappa": "", "sablon_mappa": "_Template", "napi_ut": "[Daily]/YYYY-MM-DD", "link_formatum": "rovid"},
+    "fajlok": {"uj_mappa": "", "csatolmany_mappa": "", "sablon_mappa": "_Template", "napi_ut": "[Daily]/YYYY-MM-DD", "link_formatum": "rovid", "wikilinkek": True},
     "megjelenes": {"tema": "rendszer", "betumeret": 16, "csend": False},
     "modulok": dict.fromkeys(MODULOK, True),
     "adatvedelem": {"asszisztens": True, "tracker": True, "ertesitesek": True, "naptar": False},
     "billentyuk": {}, "setup": {"kesz": False, "elmeny": "egyeni"},
+    "fejleszto": {"mod": False},
 }
 VALASZTEK = {
     ("altalanos", "nyelv"): ("auto", "hu", "en"), ("altalanos", "inditas"): ("utolso", "valaszto"),
-    ("szerkeszto", "mod"): ("elo", "forras"), ("fajlok", "link_formatum"): ("rovid", "relativ"),
+    ("szerkeszto", "mod"): ("elo", "forras"), ("fajlok", "link_formatum"): ("rovid", "relativ", "abszolut"),
     ("megjelenes", "tema"): ("rendszer", "vilagos", "sotet"),
     ("setup", "elmeny"): ("diak", "tudasmunka", "fejleszto", "kutato", "egyeni"),
 }
@@ -97,7 +98,7 @@ def ellenoriz(valtozas) -> dict:
                 _hiba(kulcs=nev)
             if isinstance(ertek, str) and (len(ertek) > 1000 or re.search(r"[\x00-\x1f\x7f]", ertek)):
                 _hiba(kulcs=nev)
-            if tabla == "fajlok" and kulcs != "link_formatum":
+            if tabla == "fajlok" and kulcs not in ("link_formatum", "wikilinkek"):
                 ellenorzendo = ertek
                 if kulcs == "uj_mappa" and ertek == ".":
                     ellenorzendo = ""
@@ -181,7 +182,10 @@ def _ertek(cfg, lemez: dict) -> dict:
 
 def _valasz(cfg, p: Path, nyers: bytes) -> dict:
     ertek = _ertek(cfg, _adat(nyers))
-    return {"verzio": 1, "rev": hashlib.sha256(nyers).hexdigest(), "ertek": ertek,
+    kenyszer = fejleszto.nezet_kenyszer()        # az indító ⌥-kattintása: ebben a munkamenetben be, a mentett érték változatlan
+    if kenyszer:
+        ertek["fejleszto"]["mod"] = True
+    return {**({"fejleszto_kenyszer": True} if kenyszer else {}), "verzio": 1, "rev": hashlib.sha256(nyers).hexdigest(), "ertek": ertek,
             "munkater": {"id": cfg.workspace_id or "", "nev": cfg.section("workspace").get("nev") or cfg.path("vault").name,
                           "vault": str(cfg.path("vault"))},
             "setup_szukseges": cfg.elrendezes == "termek" and not ertek["setup"]["kesz"], "ujrainditas": []}

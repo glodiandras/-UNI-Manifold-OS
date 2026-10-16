@@ -155,13 +155,49 @@ class TobbBlokkTest(unittest.TestCase):
 class VazTest(unittest.TestCase):
     def test_feladat_vaz_szerkezete(self):
         v = T.feladat_vaz("Összeg", "Informatics")
-        self.assertTrue(v.startswith("---\nTags:\n  - Informatics\nSource:\nStatus:\nNN:\nCanvas:\n---\n"))
-        self.assertIn("# Összeg\n", v)
+        self.assertTrue(v.startswith("---\nTags:\n  - Informatics\n---\n\n# Összeg\n"))
         self.assertIn("![[Összeg.cpp]]", v)
         self.assertIn("```teszt", v)
 
-    def test_cimke_nelkul_ures_tags(self):
-        self.assertTrue(T.feladat_vaz("X", None).startswith("---\nTags:\nSource:\n"))
+    def test_a_vaz_semleges_angol_es_nem_ir_a_fejleszto_semajat(self):
+        """F11: a felhasználó jegyzetébe nem kerül `NN`/`Canvas`/`Source`/`Status` kulcs és magyar szöveg (séma nélkül)."""
+        for tag in (None, "Informatics"):
+            v = T.feladat_vaz("X", tag)
+            for kulcs in ("NN:", "Canvas:", "Source:", "Status:"):
+                self.assertNotIn(kulcs, v, msg=kulcs)
+            for szo in ("Feladat", "Megoldás", "Bemenet és kimenet", "Írd", "Példa"):
+                self.assertNotIn(szo, v, msg=szo)
+            for szo in ("## Task", "## Input and output", "## Tests", "## Solution", "Example"):
+                self.assertIn(szo, v, msg=szo)
+
+    def test_cimke_es_sema_nelkul_nincs_frontmatter(self):
+        v = T.feladat_vaz("X", None)
+        self.assertTrue(v.startswith("# X\n"))
+        self.assertEqual(len(T.tesztek(v)), 1)
+
+    def test_a_munkater_semajanak_kulcsai_kerulnek_a_fejlecbe(self):
+        v = T.feladat_vaz("X", "Informatics", mezok=["Tags", "Source", "Status"])
+        self.assertTrue(v.startswith("---\nTags:\n  - Informatics\nSource:\nStatus:\n---\n\n# X\n"))
+        v = T.feladat_vaz("X", None, mezok=["Source", "Kulcs: rossz", "NN", "NN"])      # az érvénytelen kulcs kimarad, a kettős egyszer
+        self.assertTrue(v.startswith("---\nSource:\nNN:\n---\n"), v)
+        v = T.feladat_vaz("X", "Informatics", mezok=["Source"])                          # a címke a séma nélkül is bekerül
+        self.assertTrue(v.startswith("---\nTags:\n  - Informatics\nSource:\n---\n"), v)
+
+    def test_a_cimke_nyersen_nem_kerul_a_fejlecbe(self):
+        v = T.feladat_vaz("X", "a\nStatus: done")
+        self.assertNotIn("\nStatus: done", v)
+        self.assertEqual(v.count("\nStatus"), 0)
+
+    def test_minden_nyelv_vaza_a_sajat_kiterjesztesu_forrast_agyazza_be(self):
+        from core import kod_nyelvek as KN
+        for p in KN.PROFILOK:
+            with self.subTest(nyelv=p.azonosito):
+                v = T.feladat_vaz("Összeg", None, p.azonosito)
+                self.assertIn(f"![[Összeg{p.kiterjesztesek[0]}]]", v)
+                self.assertEqual(KN.beagyazott_forrasok(v), [f"Összeg{p.kiterjesztesek[0]}"])
+                self.assertEqual(len(T.tesztek(v)), 1)
+                self.assertIsNotNone(KN.forras_vaz(p.azonosito))
+        self.assertIsNone(KN.forras_vaz("cobol"))
 
     def test_a_vaz_peldateszt_ervenyes_es_a_ures_megoldas_buktatja(self):
         t = T.tesztek(T.feladat_vaz("X", None))

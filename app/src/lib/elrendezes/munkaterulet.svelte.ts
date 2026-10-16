@@ -24,6 +24,8 @@ export interface PanelCs {
   id: string;
   fulek: Ful[];
   aktiv: string | null;
+  /** Összekapcsolt fülcsoportok (06-workspace-08): az azonos azonosítójú panelek együtt nyitnak fájlt. */
+  kapcsolt?: string;
 }
 
 export interface OsztasCs {
@@ -139,7 +141,8 @@ export class Munkaterulet {
     return p.fulek.find((f) => f.id === p.aktiv) ?? null;
   }
 
-  /** Fájl megnyitása: az aktív fülben (alap), új fülben, vagy új panelben jobbra. */
+  /** Fájl megnyitása: az aktív fülben (alap), új fülben, vagy új panelben jobbra. Az összekapcsolt fülcsoportok (06-workspace-08)
+   *  ugyanazt a fájlt az aktív fülükben nyitják. */
   megnyit(ut: string, mod: MegnyitasMod = 'aktiv'): void {
     if (mod === 'osztas') {
       this.oszt('sor', false);
@@ -147,25 +150,33 @@ export class Munkaterulet {
       p.fulek[0].ut = ut;
     } else {
       const p = this.aktivPanel;
-      const mar = p.fulek.find((f) => f.ut === ut);
-      if (mar && mod === 'aktiv') {
-        p.aktiv = mar.id;
-      } else if (mod === 'aktiv' && this.aktivFul && !this.aktivFul.rogzitett && !nezetFul(this.aktivFul)) {
-        const f = this.aktivFul, h = this.elozmeny(f.id);
-        if (f.ut) h.vissza.push(this.masolat(f));
-        h.vissza = h.vissza.slice(-50);
-        h.elore = [];
-        this.multVerzio++;
-        f.ut = ut;
-        delete this.aktivFul.nezet; // a nézet-állapot az előző fájlé volt
-      } else {
-        const f: Ful = { id: azon('f'), ut };
-        const i = p.fulek.findIndex((x) => x.id === p.aktiv);
-        p.fulek.splice(i + 1, 0, f);
-        p.aktiv = f.id;
-      }
+      this.fajlNyit(p, ut, mod);
+      const kapcsolt = p.kapcsolt;
+      if (kapcsolt) for (const q of this.panelek()) if (q.id !== p.id && q.kapcsolt === kapcsolt) this.fajlNyit(q, ut, 'aktiv');
     }
     this.megnyitasUtan?.(ut);
+  }
+
+  /** A fájl megnyitása egy adott panelben (a kapcsolt panelek tükrözése nem hívja újra: nincs visszhang). */
+  private fajlNyit(p: PanelCs, ut: string, mod: 'aktiv' | 'ujful'): void {
+    const mar = p.fulek.find((f) => f.ut === ut);
+    const aktivFul = p.fulek.find((f) => f.id === p.aktiv) ?? null;
+    if (mar && mod === 'aktiv') {
+      p.aktiv = mar.id;
+    } else if (mod === 'aktiv' && aktivFul && !aktivFul.rogzitett && !nezetFul(aktivFul)) {
+      const f = aktivFul, h = this.elozmeny(f.id);
+      if (f.ut) h.vissza.push(this.masolat(f));
+      h.vissza = h.vissza.slice(-50);
+      h.elore = [];
+      this.multVerzio++;
+      f.ut = ut;
+      delete f.nezet; // a nézet-állapot az előző fájlé volt
+    } else {
+      const f: Ful = { id: azon('f'), ut };
+      const i = p.fulek.findIndex((x) => x.id === p.aktiv);
+      p.fulek.splice(i + 1, 0, f);
+      p.aktiv = f.id;
+    }
   }
 
   /**
@@ -248,6 +259,44 @@ export class Munkaterulet {
     for (const id of ids) this.bezar(panelId, id);
   }
 
+  /** A fül előzménye (06-workspace-24): a legközelebbi elöl; az elem `lepes`-e a kért lépésszám a `navigalLepes`-hez. */
+  elozmenyLista(fulId = this.aktivFul?.id, irany: -1 | 1 = -1): { lepes: number; ut: string | null }[] {
+    void this.multVerzio;
+    const h = fulId ? this.mult.get(fulId) : undefined;
+    if (!h) return [];
+    return [...(irany === -1 ? h.vissza : h.elore)].reverse().map((f, i) => ({ lepes: i + 1, ut: f.ut }));
+  }
+
+  /** Ugrás `n` lépést az előzményben (az `n`-edik elemhez); minden lépés a megszokott `navigal`. */
+  navigalLepes(irany: -1 | 1, n: number): void {
+    for (let i = 0; i < n && this.navigalhato(irany); i++) this.navigal(irany);
+  }
+
+  /** Két fülcsoport összekapcsolása (06-workspace-08): közös azonosítót kapnak; bármelyikben nyitott fájl a másikban is megnyílik. */
+  osszekapcsol(panelId: string, masikId: string): void {
+    const a = this.panel(panelId), b = this.panel(masikId);
+    if (!a || !b || a.id === b.id) return;
+    const kapcsolt = a.kapcsolt ?? b.kapcsolt ?? azon('k');
+    a.kapcsolt = kapcsolt;
+    b.kapcsolt = kapcsolt;
+  }
+
+  /** A fülcsoport kivétele a kapcsolatból; ha egyetlen társa maradt, az is szabad lesz. */
+  lekapcsol(panelId = this.aktivPanelId): void {
+    const p = this.panel(panelId);
+    const k = p?.kapcsolt;
+    if (!p || !k) return;
+    delete p.kapcsolt;
+    const tarsak = this.panelek().filter((q) => q.kapcsolt === k);
+    if (tarsak.length === 1) delete tarsak[0].kapcsolt;
+  }
+
+  /** A fülcsoport kapcsolt társai (a saját nélkül). */
+  kapcsoltTarsak(panelId: string): PanelCs[] {
+    const k = this.panel(panelId)?.kapcsolt;
+    return k ? this.panelek().filter((q) => q.id !== panelId && q.kapcsolt === k) : [];
+  }
+
   /** A következő / előző fül az aktív panelben, körbe. */
   lep(irany: 1 | -1): void {
     const p = this.aktivPanel;
@@ -317,6 +366,28 @@ export class Munkaterulet {
     if (forras.aktiv === fulId && forras !== cel) forras.aktiv = forras.fulek[Math.min(i, forras.fulek.length - 1)]?.id ?? null;
     this.aktivPanelId = cel.id;
     if (forras !== cel && !forras.fulek.length) this.uresPanel(forras);
+  }
+
+  /**
+   * Fül húzása egy panel szélére (06-workspace-02): a fül a cél panel `irany` oldalán új panelbe kerül (osztás). Az üressé
+   * váló forráspanel összehúzódik; a fül saját állapota (rögzítés, nézet, előzmény) megmarad. Önmagával nem oszt:
+   * a panel egyetlen füle a saját szélére húzva nem csinál semmit.
+   */
+  athelyezOsztasba(fulId: string, celPanelId: string, irany: 'bal' | 'jobb' | 'fel' | 'le'): boolean {
+    const forras = this.panelek().find((p) => p.fulek.some((f) => f.id === fulId));
+    const cel = this.panel(celPanelId);
+    if (!forras || !cel) return false;
+    if (forras === cel && cel.fulek.length < 2) return false;
+    const i = forras.fulek.findIndex((f) => f.id === fulId);
+    const [ful] = forras.fulek.splice(i, 1);
+    if (forras.aktiv === fulId) forras.aktiv = (forras.fulek[i] ?? forras.fulek[i - 1])?.id ?? null;
+    const uj = ujPanel([ful]);
+    const elol = irany === 'bal' || irany === 'fel';
+    const osztas: OsztasCs = { tipus: 'osztas', id: azon('o'), irany: irany === 'bal' || irany === 'jobb' ? 'sor' : 'oszlop', arany: 0.5, a: elol ? uj : cel, b: elol ? cel : uj };
+    this.csere(cel, osztas);
+    if (forras !== cel && !forras.fulek.length) this.uresPanel(forras);
+    this.aktivPanelId = uj.id;
+    return true;
   }
 
   aranyBeallit(osztasId: string, arany: number): void {
@@ -428,7 +499,9 @@ function ervenyes(x: unknown): { gyoker: Csomopont; aktivPanelId: string } | nul
       }
       if (!fulek.length) fulek.push({ id: azon('f'), ut: null });
       const aktiv = fulek.some((f) => f.id === c.aktiv) ? (c.aktiv as string) : fulek[0].id;
-      return { tipus: 'panel', id: c.id, fulek, aktiv };
+      const panel: PanelCs = { tipus: 'panel', id: c.id, fulek, aktiv };
+      if (typeof c.kapcsolt === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(c.kapcsolt)) panel.kapcsolt = c.kapcsolt;
+      return panel;
     }
     if (c.tipus === 'osztas' && (c.irany === 'sor' || c.irany === 'oszlop') && typeof c.arany === 'number') {
       const a = cs(c.a, mely + 1);

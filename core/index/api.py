@@ -19,7 +19,7 @@ def utvonalak(r) -> None:
         r.get(f"/api/vault/{nev}", kezelo)
 
     vegpont("index", lambda k, limit: k.app.index.allapot())
-    vegpont("fa", lambda k, limit: k.app.index.fa())
+    vegpont("fa", lambda k, limit: {**k.app.index.fa(), "beallitasok": {"minden_kiterjesztes": k.app.vault.minden_kiterjesztes()}})
     vegpont("jegyzet", lambda k, limit: k.app.index.jegyzet(k.q.get("ut")))
     vegpont("visszahivatkozasok", lambda k, limit: k.app.index.visszahivatkozasok(k.q.get("ut")))
     vegpont("emlitesek", lambda k, limit: k.app.index.emlitesek(k.q.get("ut"), limit))
@@ -28,7 +28,10 @@ def utvonalak(r) -> None:
     vegpont("graf", lambda k, limit: Etagos(*k.app.index.graf_valasz()))
     vegpont("graf-meta", lambda k, limit: Etagos(*graf_meta.graf_meta_valasz(k.app.index)))
     vegpont("graf-beallitasok", lambda k, limit: graf_meta.graf_beallitasok(k.app.index.root))
-    vegpont("linkcel", lambda k, limit: k.app.index.link_cel(k.q.get("ut"), k.q.get("forras")))
+    vegpont("linkcel", lambda k, limit: k.app.index.link_cel(k.q.get("ut"), k.q.get("forras"), k.q.get("alcel"), k.q.get("cel")))
+    vegpont("fejezetek", lambda k, limit: k.app.index.fejezetek_mind(k.q.get("q"), limit))
+    vegpont("feloldatlan", lambda k, limit: k.app.index.feloldatlan_szovegek(limit))
+    vegpont("kimeno-emlitesek", lambda k, limit: k.app.index.kimeno_emlitesek(k.q.get("ut"), k.app.asszisztens.emlitesek, limit))
     vegpont("beagyazas", lambda k, limit: k.app.index.beagyazas(k.q.get("forras"), k.q.get("cel"), k.q.get("alcel")))
     vegpont("aliasok", lambda k, limit: k.app.index.aliasok())
 

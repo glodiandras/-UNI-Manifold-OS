@@ -78,7 +78,9 @@ describe('a híd felülete (a héj ezekre épít)', () => {
 
   it('pontosan a héj által hívott függvények vannak meg, a leszedő eltünteti', () => {
     le = hidTelepit(fuggosegek());
-    expect(Object.keys(hid()).sort()).toEqual(['ertesitesKattintas', 'fokusz', 'hejUzenet', 'leallAllapot', 'mentes', 'mentetlen', 'naptarEngedely', 'parancs']);
+    // `mappaValasztas` (F8) az egyetlen kulcs, amelyet a FELÜLET hív a héjnak (nem a héj a felületnek): a natív mappaválasztó
+    // útvonal-szöveget ad vissza (tartalmat soha), felhasználói aktiváció nélkül nem nyílik — a fix lista ezért bővült, nem lazult.
+    expect(Object.keys(hid()).sort()).toEqual(['ertesitesKattintas', 'fokusz', 'hejUzenet', 'leallAllapot', 'mappaValasztas', 'mentes', 'mentetlen', 'naptarEngedely', 'parancs']);
     for (const k of Object.keys(hid())) expect(typeof hid()[k]).toBe('function');
     le();
     le = null;
@@ -104,6 +106,73 @@ describe('a híd felülete (a héj ezekre épít)', () => {
     expect(e?.szoveg).toContain('mentetlen');
     hid().hejUzenet({ nem: 'jó alak' }); // a hibás üzenet nem dob
     hid().hejUzenet(null);
+  });
+});
+
+describe('mappaValasztas(): a natív mappaválasztó (F8, import)', () => {
+  const webkit = (postMessage: (u: unknown) => unknown) => vi.stubGlobal('webkit', { messageHandlers: { mappaValaszto: { postMessage } } });
+  const aktivacio = (isActive: boolean) => Object.defineProperty(navigator, 'userActivation', { value: { isActive }, configurable: true });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (navigator as unknown as { userActivation?: unknown }).userActivation;
+  });
+
+  it('a választott abszolút útvonalat adja vissza, a kérés fix alakú, a cím vágott', async () => {
+    const kuld = vi.fn(async () => '/synthetic/Vault');
+    webkit(kuld);
+    le = hidTelepit(fuggosegek());
+    expect(await hid().mappaValasztas('Choose the Obsidian vault folder')).toBe('/synthetic/Vault');
+    expect(kuld).toHaveBeenCalledWith({ tipus: 'mappa-valaszto', cim: 'Choose the Obsidian vault folder' });
+    await hid().mappaValasztas('x'.repeat(500));
+    expect((kuld.mock.calls[1] as unknown as [{ cim: string }])[0].cim).toHaveLength(200);
+    await hid().mappaValasztas();
+    expect(kuld.mock.calls[2]).toEqual([{ tipus: 'mappa-valaszto' }]);
+    await hid().mappaValasztas({ tipus: 'masik' } as unknown as string);   // nem szöveg: nincs cím a kérésben
+    expect(kuld.mock.calls[3]).toEqual([{ tipus: 'mappa-valaszto' }]);
+  });
+
+  it('megszakításra (null), hibára, híd nélkül és érvénytelen válaszra null — soha nem dob', async () => {
+    le = hidTelepit(fuggosegek());
+    expect(await hid().mappaValasztas()).toBeNull();                       // böngésző: nincs csatorna
+    for (const v of [null, undefined, '', 'relativ/ut', '~/Vault', 5, {}, '/a\0b', '/' + 'x'.repeat(5000)]) {
+      webkit(async () => v);
+      expect(await hid().mappaValasztas()).toBeNull();
+    }
+    webkit(async () => { throw new Error('héj hiba'); });
+    expect(await hid().mappaValasztas()).toBeNull();
+  });
+
+  it('felhasználói aktiváció nélkül a kérés el sem megy', async () => {
+    const kuld = vi.fn(async () => '/synthetic/Vault');
+    webkit(kuld);
+    le = hidTelepit(fuggosegek());
+    aktivacio(false);
+    expect(await hid().mappaValasztas()).toBeNull();
+    expect(kuld).not.toHaveBeenCalled();
+    aktivacio(true);
+    expect(await hid().mappaValasztas()).toBe('/synthetic/Vault');
+  });
+
+  it('egyszerre egy panel: a második hívás azonnal null, a befejezés után újra nyílik', async () => {
+    let kesz!: (u: string | null) => void;
+    const kuld = vi.fn(() => new Promise<string | null>((r) => { kesz = r; }));
+    webkit(kuld);
+    le = hidTelepit(fuggosegek());
+    const elso = hid().mappaValasztas() as Promise<string | null>;
+    expect(await hid().mappaValasztas()).toBeNull();
+    expect(kuld).toHaveBeenCalledOnce();
+    kesz('/synthetic/A');
+    expect(await elso).toBe('/synthetic/A');
+    const masodik = hid().mappaValasztas() as Promise<string | null>;
+    kesz('/synthetic/B');
+    expect(await masodik).toBe('/synthetic/B');
+  });
+
+  it('a függőségként adott választó (teszt) felülírja a héj csatornáját', async () => {
+    const mas = vi.fn(async () => '/synthetic/Mas');
+    le = hidTelepit(fuggosegek({ mappaValasztas: mas }));
+    expect(await hid().mappaValasztas('cim')).toBe('/synthetic/Mas');
+    expect(mas).toHaveBeenCalledWith('cim');
   });
 });
 

@@ -1,0 +1,45 @@
+# Shipped gold sets (F6): the measurement sets that ship with the product and need no personal vault data.
+#
+# Only sets whose items live in the eval folder itself (no `{vault}` reads at measurement time) and are synthetic or
+# self-written belong here (5th audit §2.1–2.2). The other eval folders stay for developers who rebuild them from their own
+# vault; in the product they report `hianyzik` (no gold set) and the user can build an own set (Model Manager → Calibration).
+#
+#   mappa       the eval folder (modulok/eval/<mappa>/feladat.py)
+#   nyelv       language of the prompts and the expected answers
+#   licenc      licence of the items
+#   forras      synthetic | self-written | rephrased-public (the origin of the items, one word)
+#   ellenorizni optional: what still needs a human decision before the set may produce a calibrated signal in the product
+
+[halmaz.kod]
+mappa = "kod"
+nyelv = "hu"
+licenc = "Manifold (own work)"
+forras = "self-written"
+
+[halmaz.kiegeszites]
+mappa = "kiegeszites"
+nyelv = "hu"
+licenc = "Manifold (own work)"
+forras = "self-written"
+ellenorizni = "the set is still a draft (allapot = vazlat): it needs approval before a calibrated signal (K430/K431)"
+
+[halmaz.matek]
+mappa = "matek"
+nyelv = "hu"
+licenc = "to be confirmed"
+forras = "rephrased-public"
+ellenorizni = "licence of the rephrased public exam exercises (5th audit §2.1)"
+
+[halmaz.matek_cas]
+mappa = "matek_cas"
+nyelv = "hu"
+licenc = "to be confirmed"
+forras = "rephrased-public"
+ellenorizni = "uses the matek items: same licence question"
+
+[halmaz.matek_ellenorzo]
+mappa = "matek_ellenorzo"
+nyelv = "hu"
+licenc = "to be confirmed"
+forras = "rephrased-public"
+ellenorizni = "uses the matek items: same licence question"

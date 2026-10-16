@@ -95,7 +95,7 @@ describe('F11 tartós oldalsáv-keresés', () => {
     const p = { ut: 'Source.md', mod: () => 'elo', nezet: () => v } as never;
     szerkesztok.beallit(p);
     let kiad!: (s: string) => void;
-    const linkCel = vi.spyOn(linkek, 'linkCel').mockImplementation(() => new Promise(r => { kiad = r; }));
+    const linkCel = vi.spyOn(linkek, 'linkForma').mockImplementation(() => new Promise(r => { kiad = (cel) => r({ cel, alak: 'wiki', md: '' }); })); // 02-links-12/13: a link alakja a core formájából
     await fireEvent.keyDown(mezo(), { key: 'Enter', altKey: true });
     expect(linkCel).toHaveBeenCalledTimes(1); csakOlvashato = true; kiad('Target');
     await tick(); expect(dispatch).not.toHaveBeenCalled();

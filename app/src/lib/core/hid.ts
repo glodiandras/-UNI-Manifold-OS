@@ -14,12 +14,16 @@
 //                          tartozó műveletet futtatja (E10)
 //   mentetlen()            a core halálakor: a mentetlen dokumentumok `[{ut, allapot, hiba, szoveg}]` — NEM ment, NEM zár, és nem
 //                          kapcsolja be a „leáll” réteget (az újraindítás után a szerkesztés megy tovább; a héj ebből kérdez és másol)
+//   mappaValasztas(cim?)   a felület hívja (nem a héj): natív mappaválasztó az import képernyőkhöz (F8) → `Promise<abszolút útvonal | null>`;
+//                          `null` megszakításra, híd nélkül és felhasználói aktiváció nélkül. Csak útvonal-szöveget ad, tartalmat soha
+//                          (`mappavalasztas.ts`, `shell/Sources/MappaValaszto.swift`)
 
 import { t } from '../i18n';
 
 import { ertesitesek, type Szint } from '../ertesites/ertesites.svelte';
 import { rendszerErtesites } from '../ertesites/rendszer';
 import { leall } from './leall.svelte';
+import { mappaValasztas } from './mappavalasztas';
 
 /** A kilépés mentése a héjnak (a `szerkeszto/index.ts` `kilepesMentes`-e): `ok` csak ha minden jegyzet mentve van. */
 export interface KilepesJelentes {
@@ -40,6 +44,8 @@ export interface HidFuggosegek {
   trackerKi(): Promise<void>;
   /** a mentetlen dokumentumok szövegestül (a core halálakor a héj kérdéséhez és a vágólapos mentéshez) */
   mentetlenSzovegek(): MentetlenSzoveg[];
+  /** A natív mappaválasztó (alapból a héj `mappaValaszto` csatornája, `mappavalasztas.ts`); a teszt cserélheti. */
+  mappaValasztas?(cim?: string): Promise<string | null>;
 }
 
 export interface MentetlenSzoveg {
@@ -91,6 +97,8 @@ export function hidTelepit(f: HidFuggosegek, cel: Window = window): () => void {
       else leall.ki();
     },
     ertesitesKattintas: (azon: unknown) => rendszerErtesites.kattintas(azon),
+    mappaValasztas: (cim?: unknown): Promise<string | null> =>
+      (f.mappaValasztas ?? mappaValasztas)(typeof cim === 'string' ? cim : undefined).then((u) => (typeof u === 'string' && u ? u : null), () => null),
     hejUzenet: (u: unknown) => {
       const e = (u ?? {}) as { szint?: unknown; cim?: unknown; szoveg?: unknown };
       if (typeof e.cim !== 'string') return;

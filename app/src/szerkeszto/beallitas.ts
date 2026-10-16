@@ -36,6 +36,8 @@ import { elonezetPlugin, stilusPlugin } from './elo/sorok';
 import { OBSIDIAN_BOVITESEK } from './markdown/elemzo';
 import { autoParokBovitmeny } from './autoParok';
 import { feloldatlanLinkek } from './linkek/feloldatlan';
+import { hajtasBovitmeny } from './hajtogatas';
+import { fuggoBehuzas } from './elo/fuggoBehuzas';
 
 export type SzerkesztoMod = 'elo' | 'forras';
 
@@ -145,7 +147,9 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     search({ top: true }),
     keymap.of([...closeBracketsKeymap, indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap]),
     syntaxHighlighting(classHighlighter),
+    hajtasBovitmeny(), // címsor- és listaelem-összecsukás (nézet-állapot, a szöveg nem változik)
     stilusPlugin,
+    fuggoBehuzas, // a tördelt lista- és idézetsorok függő behúzása
     modKapcsolo.of(o.mod === 'elo' ? elonezetMod() : forrasMod()),
     irhatosagKapcsolo.of(EditorState.readOnly.of(o.csakOlvashato)),
     // háló: csak olvasható állapotban a programos beszúrások sem módosítják a dokumentumot (a selection és az effektek maradnak)

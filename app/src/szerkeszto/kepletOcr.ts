@@ -43,7 +43,7 @@ export async function kepletOcr(v: EditorView, keres = kerdez): Promise<boolean>
     v.focus();
     ertesitesek.ertesit(
       r.proba
-        ? { kulcs, szint: 'figyelmeztetes', cim: t('Képlet beszúrva — próba-modellel'), szoveg: t('{modell}: nem kalibrált, ellenőrizd.', { modell: r.modell ?? '' }) }
+        ? { kulcs, szint: 'figyelmeztetes', proba: true, cim: t('Képlet beszúrva — próba-modellel'), szoveg: t('{modell}: nem kalibrált, ellenőrizd.', { modell: r.modell ?? '' }) }
         : { kulcs, szint: 'siker', cim: t('Képlet beszúrva'), szoveg: r.modell ? t('Olvasta: {modell}', { modell: r.modell }) : undefined },
     );
     return true;

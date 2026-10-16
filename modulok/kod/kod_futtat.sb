@@ -1,0 +1,39 @@
+;; F10: one test run of an interpreted / VM language (Python, JavaScript/TypeScript, Java). Native binaries (C, C++, Go,
+;; Rust, Swift) run under the C36a run profile (modulok/homokozo/profil_futtat.sb) instead. Every path is a parameter.
+;;
+;; What the program may do: exec only the interpreter (EXE and its real path EXE_VALOS; EXE_2 is an optional launcher
+;; interpreter, by default the same as EXE), read the interpreter's runtime (OLVAS_1..OLVAS_4: the prefix, the program
+;; folder), read and write its own `MUNKA` folder, read stdin and write stdout/stderr (inherited pipes), start threads, signal
+;; itself. Not: network, any other program, fork, any file outside these (the vault, the home, the code tree).
+;; `file-read-metadata` is global: the EXISTENCE of a file can be learnt, not its content or a folder listing.
+(version 1)
+(deny default)
+
+(allow process-exec
+  (literal (param "EXE"))
+  (literal (param "EXE_VALOS"))
+  (literal (param "EXE_2")))
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (subpath "/usr/lib")
+  (subpath "/usr/share/zoneinfo")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (subpath "/private/var/db/timezone")
+  (literal "/private/etc/localtime")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random")
+  (subpath (param "OLVAS_1"))
+  (subpath (param "OLVAS_2"))
+  (subpath (param "OLVAS_3"))
+  (subpath (param "OLVAS_4"))
+  (subpath (param "MUNKA")))
+
+(allow file-write* (subpath (param "MUNKA")))
+(allow file-write-data (literal "/dev/null"))
+
+(allow signal (target self))

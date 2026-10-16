@@ -6,6 +6,7 @@ import { locale } from '../i18n';
 import { ApiHiba, kerdez } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 import { modulEngedelyezett } from '../beallitasok/allapot.svelte';
+import type { ListaRendezes } from '../elrendezes/felulet.svelte';
 
 export interface CimkeCsucs {
   /** a megjelenített teljes út (a leggyakoribb írásmód): `Fizika/Mechanika` */
@@ -25,29 +26,36 @@ export interface CimkeFaElem extends CimkeCsucs {
   van_gyerek: boolean;
 }
 
-/** A lapos listából a fa sorai megjelenítési sorrendben (a szülők előtt a gyerekeik), a `nyitott` kulcsokig lenyitva. */
-export function cimkeFa(lista: CimkeCsucs[], nyitott: ReadonlySet<string>): CimkeFaElem[] {
-  const rendezett = [...lista].sort((a, b) => a.kis.localeCompare(b.kis, locale(), { numeric: true }));
-  const szulok = new Set(rendezett.map((c) => c.kis));
-  const gyerekes = new Set<string>();
-  for (const c of rendezett) {
+/** A lapos listából a fa sorai megjelenítési sorrendben (a szülők előtt a gyerekeik), a `nyitott` kulcsokig lenyitva.
+ *  `rendezes` (03-properties-11): a testvérek sorrendje név (A–Z / Z–A) vagy darabszám (csökkenő / növekvő) szerint; a szülő mindig
+ *  a gyerekei előtt áll, az egyenlő darabszám név szerint dönt. */
+export function cimkeFa(lista: CimkeCsucs[], nyitott: ReadonlySet<string>, rendezes: ListaRendezes = 'nev'): CimkeFaElem[] {
+  const nevCmp = (a: CimkeCsucs, b: CimkeCsucs) => a.kis.localeCompare(b.kis, locale(), { numeric: true });
+  const cmp =
+    rendezes === 'nev-forditott' ? (a: CimkeCsucs, b: CimkeCsucs) => nevCmp(b, a)
+    : rendezes === 'db' ? (a: CimkeCsucs, b: CimkeCsucs) => b.ossz - a.ossz || nevCmp(a, b)
+    : rendezes === 'db-forditott' ? (a: CimkeCsucs, b: CimkeCsucs) => a.ossz - b.ossz || nevCmp(a, b)
+    : nevCmp;
+  const kulcsok = new Set(lista.map((c) => c.kis));
+  const gyerekek = new Map<string, CimkeCsucs[]>();
+  for (const c of lista) {
     const i = c.kis.lastIndexOf('/');
-    if (i > 0) gyerekes.add(c.kis.slice(0, i));
+    const szulo = i > 0 ? c.kis.slice(0, i) : '';
+    // gyökér: nincs `/`; olyan, amelynek a szülője hiányzik a listából, sosem látszik (mint eddig)
+    if (i > 0 && !kulcsok.has(szulo)) continue;
+    let l = gyerekek.get(szulo);
+    if (!l) gyerekek.set(szulo, (l = []));
+    l.push(c);
   }
   const ki: CimkeFaElem[] = [];
-  for (const c of rendezett) {
-    const reszek = c.kis.split('/');
-    // csak akkor látszik, ha minden őse nyitva van
-    let latszik = true;
-    for (let i = 1; i < reszek.length; i++) {
-      const os = reszek.slice(0, i).join('/');
-      if (!szulok.has(os) || !nyitott.has(os)) {
-        latszik = false;
-        break;
-      }
+  const bejar = (szulo: string, melyseg: number) => {
+    for (const c of (gyerekek.get(szulo) ?? []).sort(cmp)) {
+      const van = (gyerekek.get(c.kis)?.length ?? 0) > 0;
+      ki.push({ ...c, nev: c.cimke.slice(c.cimke.lastIndexOf('/') + 1), melyseg, van_gyerek: van });
+      if (van && nyitott.has(c.kis)) bejar(c.kis, melyseg + 1);
     }
-    if (latszik) ki.push({ ...c, nev: c.cimke.slice(c.cimke.lastIndexOf('/') + 1), melyseg: reszek.length - 1, van_gyerek: gyerekes.has(c.kis) });
-  }
+  };
+  bejar('', 0);
   return ki;
 }
 

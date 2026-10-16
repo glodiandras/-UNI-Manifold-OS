@@ -58,6 +58,7 @@ from .modell import aktivitas as modell_aktivitas
 from .modell import api as modell_api
 from .modell import beallitas as modell_beallitas
 from .modell import jelek as modell_jelek
+from .modell import halmaz
 from .modell import kalibracio, kapu, kliens
 from . import vezerlo
 from . import higienia
@@ -114,9 +115,10 @@ def automatikus_tiltott(t: tasks.TaskType) -> str | None:
 
 
 # A végpontokat regisztráló modulok (mindegyiknek van `utvonalak(r)` függvénye); a sorrend a mintaillesztés sorrendje
-from . import epites, csatolmany, teljes_mentes, termek_beallitasok, modulkapu, munkater_futo
+from . import epites, csatolmany, teljes_mentes, termek_beallitasok, modulkapu, munkater_futo, egeszseg, adatvedelem, demo
+from . import doku, importalas
 
-UTVONAL_MODULOK = (termek_beallitasok, epites, csatolmany, teljes_mentes, vaultio, atnevezes, tulajdonsagok, elozmeny, felulet, tasks, media, index_api, bazis_api, modell_api,
+UTVONAL_MODULOK = (termek_beallitasok, egeszseg, adatvedelem, demo, doku, importalas, epites, csatolmany, teljes_mentes, vaultio, atnevezes, tulajdonsagok, elozmeny, felulet, tasks, media, index_api, bazis_api, modell_api,
                    sablon, naplo, ma, atirat, pdfkiemeles, gepi_iras, tracker, naptar_api,
                    grafikon_api, higienia, asszisztens_api, kviz_api, felkeszultseg_api, cpp_utvonal, kereses_api,
                    matek_api, fuzet_api, kartya_api, osszefoglalas_api, video_api)
@@ -143,6 +145,7 @@ class App:
 
     def __init__(self, cfg: config.Config, start_delay: float | None = None, api_titok: str | None = None):
         self.cfg = cfg
+        halmaz.sajat_gyoker_beallit(cfg.path("install") / "eval-sajat")   # F6: a saját aranyhalmaz a router verziójában
         self.indulas_ido = time.time()      # a korábbi munkamenet maradékai ennél régebbiek (`frame.tmp_takaritas`)
         # CX-001: a futó mag ujjlenyomata — a kézfogás UTÁN, háttérszálon számolódik (`epites_szamol`, D8); addig None
         # (a `/api/rendszer/epites` „még nem ismert”-ként adja)
@@ -325,26 +328,26 @@ class App:
                 repo.biztosit_kornyezet()
             except (OSError, snapshot.SnapshotError) as e:
                 uzenetek.append(f"The Git environment of the {repo.name} snapshot store could not be secured "
-                                f"({type(e).__name__}). See the core log for details.")
+                                f"({type(e).__name__}). See the Manifold log for details.")
                 print(f"[recovery] {repo.name}: {e}", file=sys.stderr, flush=True)
         for repo in frame.live_repos(self.cfg).values():       # T020: egy megszakadt visszavonás/visszaállítás naplója
             try:
                 uzenetek += repo.visszavonas_helyreallit()
             except (OSError, ValueError, KeyError, snapshot.SnapshotError) as e:
                 uzenetek.append(f"Recovery of an interrupted undo in {repo.name} failed ({type(e).__name__}). "
-                                f"Its journal is preserved at: {repo.naplo_dir}. See the core log for details.")
+                                f"Its journal is preserved at: {repo.naplo_dir}. See the Manifold log for details.")
                 print(f"[recovery] undo {repo.name}: {e}", file=sys.stderr, flush=True)
         try:
             uzenetek += atnevezes.helyreallit(self.cfg)
         except (OSError, ValueError, KeyError) as e:      # a core ettől még induljon el
             uzenetek.append(f"Recovery of an interrupted rename failed ({type(e).__name__}). "
-                            f"Its journal is preserved at: {self.cfg.path('run') / atnevezes.NAPLO}. See the core log for details.")
+                            f"Its journal is preserved at: {self.cfg.path('run') / atnevezes.NAPLO}. See the Manifold log for details.")
             print(f"[recovery] rename: {e}", file=sys.stderr, flush=True)
         try:
             uzenetek += gepi_iras.helyreallit(self.cfg)
         except (OSError, ValueError, KeyError, snapshot.SnapshotError) as e:
             uzenetek.append(f"Recovery of an interrupted machine write failed ({type(e).__name__}). "
-                            f"Its journal is preserved at: {self.cfg.path('run') / gepi_iras.NAPLO}. See the core log for details.")
+                            f"Its journal is preserved at: {self.cfg.path('run') / gepi_iras.NAPLO}. See the Manifold log for details.")
             print(f"[recovery] machine write: {e}", file=sys.stderr, flush=True)
         if tmp_takarit:     # a T093-as újrapróba a kézfogás után fut: csak a core indulása ELŐTT keletkezett maradék törlődik
             uzenetek += frame.tmp_takaritas(self.cfg, elotte=getattr(self, "indulas_ido", None))
@@ -1163,7 +1166,7 @@ def _hiba_kezfogas(out, e: Exception) -> int:
     """A konfigurációs hiba első stdout-sora (`{"hiba": kod, "param": …, "uzenet": …}`) és a 78-as kilépési kód."""
     kod = getattr(e, "kod", None) or "konfig_hiba"
     param = json_param(getattr(e, "param", None))
-    uzenet = angol_uzenet(kod, param, "The core could not start. Check its configuration.")
+    uzenet = angol_uzenet(kod, param, "Manifold could not start. Check its configuration.")
     out.write(json.dumps({"hiba": kod, "param": param, "uzenet": uzenet}, ensure_ascii=False) + "\n")
     out.flush()
     print(f"[core] a core nem indul ({kod}): {e}", file=sys.stderr, flush=True)

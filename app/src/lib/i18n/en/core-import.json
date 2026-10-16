@@ -1,0 +1,17 @@
+{
+  "hiba.import.tilos": "The import cannot start: {akadaly}.",
+  "hiba.import.terv_valtozott": "The folders changed since the preview. Preview the import again.",
+  "hiba.import.ervenytelen_keres": "The import request is not valid ({mezo}).",
+  "hiba.import.fut": "This import is already running.",
+  "hiba.import.utkozes": "A file with different content already exists in the destination: {ut}.",
+  "hiba.import.forras_valtozik": "A source file kept changing during the import: {ut}.",
+  "hiba.import.beallitas_hibas": "This setting is not valid: {kulcs}.",
+  "hiba.import.munkater_csere": "The workspace changed on disk. Reopen it before importing.",
+  "hiba.import.munkater_hasznalatban": "Close the imported workspace before undoing the import.",
+  "hiba.import.visszafordit_utkozes": "The import cannot be undone because of {ut}. Nothing was changed.",
+  "hiba.import.nincs": "There is no such import.",
+  "hiba.import.fejleszto_mod": "This import is available in Developer mode only.",
+  "hiba.import.masolas_hiba": "The import stopped: {ok}. Resume it to continue, or undo it.",
+  "hiba.import.nem_fut": "This import is not running.",
+  "hiba.import.megszakitva": "The import was cancelled. Run the import again to continue, or undo it."
+}

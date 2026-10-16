@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- A hardened runtime kivételei (PLAN §7 „Aláírás”): csak Developer ID-aláírásnál használtak (packaging/alairas.py).
+     allow-jit: a Node (videó-modul); allow-unsigned-executable-memory: a numba; disable-library-validation: a Python a
+     venv saját (nem ugyanazzal a csapat-azonosítóval aláírt) bővítményeit tölti be. -->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.cs.allow-jit</key><true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+	<key>com.apple.security.cs.disable-library-validation</key><true/>
+</dict>
+</plist>

@@ -43,8 +43,10 @@ export function cimkeKeresheto(): boolean {
   return modulEngedelyezett('cimkek') && modulEngedelyezett('kereses');
 }
 
-/** Az egér-/billentyű-módosítókból a megnyitás módja: ⌘ (vagy ⌃) új fül, ⌘⌥ osztás. */
-export function nyitasMod(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean }): NyitasMod {
+/** Az egér-/billentyű-módosítókból a megnyitás módja: ⌘ (vagy ⌃) új fül, ⌘⌥ osztás; a középső gomb (`button === 1`) új fül
+ *  (⌥-szal osztás). */
+export function nyitasMod(e: { metaKey: boolean; ctrlKey: boolean; altKey: boolean; button?: number }): NyitasMod {
+  if (e.button === 1) return e.altKey ? 'osztas' : 'ujful';
   if ((e.metaKey || e.ctrlKey) && e.altKey) return 'osztas';
   if (e.metaKey || e.ctrlKey) return 'ujful';
   return 'aktiv';

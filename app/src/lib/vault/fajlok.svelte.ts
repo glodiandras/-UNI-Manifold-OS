@@ -52,6 +52,8 @@ export class VaultFajlok {
   hiba = $state<string | null>(null);
   /** Megjött-e már egyszer a lista (addig a hiányzó fájl nem „eltűnt”, csak még nem tudjuk). */
   betoltve = $state(false);
+  /** A vault `showUnsupportedFiles` beállítása (07-explorer-12): igaz esetén a nem támogatott kiterjesztések is látszanak a fán. */
+  mindenKiterjesztes = $state(false);
   private terkep = new Map<string, FajlInfo>();
   private fuzzy: FuzzyIndex<FajlInfo> | null = null;
   private idobelyegFigyelok = 0;
@@ -78,8 +80,9 @@ export class VaultFajlok {
       if (keres !== this.keresSorszam) return;
       this.index = index;
       if (!index.kesz) return;
-      const d = await kerdez<{ fajlok: FajlInfo[]; mappak?: string[] }>('/api/vault/fa', { idokorlat: 10000 });
+      const d = await kerdez<{ fajlok: FajlInfo[]; mappak?: string[]; beallitasok?: { minden_kiterjesztes?: boolean } }>('/api/vault/fa', { idokorlat: 10000 });
       if (keres !== this.keresSorszam) return;
+      this.mindenKiterjesztes = d.beallitasok?.minden_kiterjesztes === true;
       this.mappak = d.mappak ?? [];
       this.beallit(d.fajlok);
       this.hiba = null;

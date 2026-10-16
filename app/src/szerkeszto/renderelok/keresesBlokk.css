@@ -1,0 +1,137 @@
+/* A beágyazott keresés (```query): csak design-tokenekből. */
+
+.kereses-blokk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--t-2);
+  padding: var(--t-3) var(--t-4);
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites-nagy);
+  background: var(--hatter);
+  font-family: var(--betu-rendszer);
+  font-size: var(--betu-ui);
+  line-height: var(--sor-ui);
+  color: var(--szoveg-masodlagos);
+}
+
+.kereses-blokk-fej {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--t-2);
+  color: var(--szoveg-halvany);
+}
+
+.kereses-blokk-q {
+  font-family: var(--betu-mono);
+  color: var(--szoveg);
+  overflow-wrap: anywhere;
+}
+
+.kereses-blokk-db {
+  margin-left: auto;
+  font-size: var(--betu-kicsi);
+}
+
+.kereses-blokk-forras {
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites-kicsi);
+  color: var(--akcent-szoveg);
+  font-size: var(--betu-kicsi);
+}
+
+.kereses-blokk-forras:hover {
+  background: var(--hatter-hover);
+}
+
+.kereses-blokk-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--t-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kereses-blokk-fajl {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kereses-blokk-nev {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+  color: var(--szoveg);
+  font-weight: var(--suly-felkover);
+  text-align: left;
+}
+
+.kereses-blokk-nev:hover {
+  text-decoration: underline;
+}
+
+.kereses-blokk-sor {
+  display: flex;
+  gap: var(--t-2);
+  width: 100%;
+  padding: 0 var(--t-2);
+  border-radius: var(--kerekites-kicsi);
+  color: var(--szoveg-masodlagos);
+  text-align: left;
+}
+
+.kereses-blokk-sor:hover {
+  background: var(--hatter-hover);
+}
+
+.kereses-blokk-nev:focus-visible,
+.kereses-blokk-sor:focus-visible,
+.kereses-blokk-forras:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav-befele);
+}
+
+.kereses-blokk-sorszam {
+  flex: none;
+  min-width: 4ch;
+  text-align: right;
+  color: var(--szoveg-halvany);
+  font-variant-numeric: tabular-nums;
+}
+
+.kereses-blokk-szoveg {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kereses-blokk mark {
+  padding: 0 1px;
+  border-radius: var(--kerekites-jel);
+  background: var(--jeloles-hatter);
+  color: inherit;
+}
+
+.kereses-blokk-tobb,
+.kereses-blokk-ures {
+  margin: 0;
+  color: var(--szoveg-halvany);
+  font-size: var(--betu-kicsi);
+}
+
+.kereses-blokk-hiba {
+  display: flex;
+  align-items: center;
+  gap: var(--t-2);
+  padding: var(--t-2) var(--t-3);
+  border-radius: var(--kerekites);
+  background: var(--hiba-hatter);
+  color: var(--hiba);
+  overflow-wrap: anywhere;
+}

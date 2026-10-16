@@ -21,7 +21,8 @@ ARANY = REPO / "tests" / "adat" / "konfig" / "f2-hordozhato.json"
 # Az F3 új `[utak]` kulcsai (hordozható módban mind egy F2-útra esik)
 UJ_UTAK = {"install", "install_run", "install_state", "install_logs", "workspace", "backup_gyoker"}
 # Az F3 új szakaszai / levelei
-UJ_ELOTAGOK = ("_meta.", "elrendezes.", "telepites.", "pdf.nevek.")
+UJ_ELOTAGOK = ("_meta.", "elrendezes.", "telepites.", "pdf.nevek.",
+               "kod.")       # F10: a többnyelvű kód-munkafelület új `[kod]` / `[kod.eszkozok]` szakasza (a `[cpp]` változatlan)
 UJ_LEVELEK = {"sema.alap", "sema.mod"}
 # F5 public defaults are explicit additions; this gate still rejects any other
 # accidental key or change to the frozen F2-compatible configuration.
@@ -34,11 +35,12 @@ F5_LEVELEK = {**{f"modulok.{m}": True for m in F5_MODULOK},
               "beallitasok.szerkeszto.perjel": True, "beallitasok.fajlok.uj_mappa": "",
               "beallitasok.fajlok.csatolmany_mappa": "", "beallitasok.fajlok.sablon_mappa": "_Template",
               "beallitasok.fajlok.napi_ut": "[Daily]/YYYY-MM-DD", "beallitasok.fajlok.link_formatum": "rovid",
+              "beallitasok.fajlok.wikilinkek": True,
               "beallitasok.megjelenes.tema": "rendszer", "beallitasok.megjelenes.betumeret": 16,
               "beallitasok.megjelenes.csend": False, "beallitasok.adatvedelem.asszisztens": True,
               "beallitasok.adatvedelem.tracker": True, "beallitasok.adatvedelem.ertesitesek": True,
               "beallitasok.adatvedelem.naptar": False, "beallitasok.setup.kesz": False,
-              "beallitasok.setup.elmeny": "egyeni"}
+              "beallitasok.setup.elmeny": "egyeni", "beallitasok.fejleszto.mod": False}
 # Tervezett változás (F3-DESIGN §2.4): a `.manifold/` a vault pillanatkép-tárolójának kizárásában
 MANIFOLD_KIZARAS = ("pillanat.vault.kizar", ".manifold/")
 # A `v2-kompat` preset F3 előtti értékei (a presetből jönnek, és csak a preset értékével egyezhetnek)

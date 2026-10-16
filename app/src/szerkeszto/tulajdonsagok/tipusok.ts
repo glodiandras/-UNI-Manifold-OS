@@ -81,7 +81,9 @@ export interface Sema {
 
 export type Muvelet =
   | { muvelet: 'beallit'; kulcs: string; ertek: unknown; tipus?: TulajdonsagTipus }
-  | { muvelet: 'torol'; kulcs: string };
+  | { muvelet: 'torol'; kulcs: string }
+  /** 03-properties-07: a kulcs átnevezése ebben a jegyzetben (az érték, a sorrend érintetlen) */
+  | { muvelet: 'atnevez'; kulcs: string; uj_kulcs: string };
 
 /** Egy kulcsnév-javaslat (`GET /api/vault/tulajdonsagok/kulcsok`): `sema` a jegyzet osztályának séma-kulcsa, `db` a vaultban
  *  ezt a kulcsot viselő jegyzetek száma, `tipus` a vault `types.json` szerinti típus (ha van). */

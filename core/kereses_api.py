@@ -30,6 +30,7 @@ from pathlib import Path
 from .utvonalak import KESZ, HttpError, biztonsagi_fejlecek
 from .vaultio import Invalid
 from .hibakod import kodol
+from .modell.hibaszerzodes import ai_mezo
 
 _szolgalatok: "weakref.WeakKeyDictionary" = weakref.WeakKeyDictionary()
 _zar = threading.Lock()
@@ -139,7 +140,7 @@ class Szolgalat:
         bent = self.betoltve()
         return any(m is not None and getattr(m, "nev", None) not in bent for m in (self.beagyazo, self.reranker))
 
-    def hibrid(self, q, limit: int, mod: str) -> dict:
+    def hibrid(self, q, limit: int, mod: str, kornyezet: int = 0) -> dict:
         """A ⌘⇧F hibrid kérése (58(b), C25b): ha a kereső-modellek bent vannak, a hibrid válasz azonnal; ha nincsenek, a
         válasz **azonnal a lexikai** (`ok: "modell_betoltes_alatt"`), és ugyanez a kérés a háttérben a modellek
         betöltésével lefut (egyszerre egy); a felület ugyanazt a kérést megismétli, és a kész hibrid választ kapja. Egy
@@ -147,8 +148,8 @@ class Szolgalat:
         C25b), így a külön „melegítés” egymást ürítené ki."""
         self.worker_kot()
         if mod != "hibrid" or not isinstance(q, str) or not self.hianyzo_modell():
-            return self.kereso().keres(q, limit, mod)
-        kulcs = (q, limit)
+            return self.kereso().keres(q, limit, mod, kornyezet)
+        kulcs = (q, limit, kornyezet)
         with self._hatter_zar:
             kesz = self._hatter_kesz.pop(kulcs, None)
             if kesz is not None:
@@ -157,16 +158,16 @@ class Szolgalat:
             if not fut:
                 self._hatter = threading.Thread(target=self._hatter_fut, args=(kulcs,), name="kereses-hibrid", daemon=True)
                 self._hatter.start()
-        v = self.kereso(beagyazo=False, reranker=False).keres(q, limit, "hibrid")
+        v = self.kereso(beagyazo=False, reranker=False).keres(q, limit, "hibrid", kornyezet)
         v["ok"] = "modell_betoltes_alatt"
         return v
 
     def _hatter_fut(self, kulcs) -> None:
-        q, limit = kulcs
+        q, limit, kornyezet = kulcs
         try:
-            v = self.kereso().keres(q, limit, "hibrid")
+            v = self.kereso().keres(q, limit, "hibrid", kornyezet)
         except Exception as e:  # noqa: BLE001 — a háttérfutás hibája a következő kérésben lexikai válasz okaként látszik
-            v = {**self.kereso(beagyazo=False, reranker=False).keres(q, limit, "lexikai"), "ok": f"modell_hiba: {e}"}
+            v = {**self.kereso(beagyazo=False, reranker=False).keres(q, limit, "lexikai", kornyezet), "ok": f"modell_hiba: {e}"}
         with self._hatter_zar:
             self._hatter_kesz[kulcs] = v
             while len(self._hatter_kesz) > 8:
@@ -245,7 +246,7 @@ def utvonalak(r) -> None:
     def hibrid(k):
         mod = k.q.get("mod") or "hibrid"
         limit = k.egesz("limit", 20, 1, 1000)
-        v = szolgalat(k.app).hibrid(k.q.get("q"), limit, mod)
+        v = szolgalat(k.app).hibrid(k.q.get("q"), limit, mod, k.egesz("kornyezet", 0, 0, 5))
         return k.app.index.media_kiegeszit(v)           # C25c: a felirat-találat médiája (a másodpercre nyitáshoz)
 
     def kerdezz(k):
@@ -262,9 +263,11 @@ def utvonalak(r) -> None:
         try:
             v = K.valaszol(kerdes, kr, sz.modell, **kw)
         except KliensHiba as e:
-            raise HttpError(503, f"A „Kérdezz a vaulttól” modellje nem érhető el: {e}", kod="kereses_api.modell_nem_erheto_el", param={"e": e}) from None
+            raise HttpError(503, f"A „Kérdezz a vaulttól” modellje nem érhető el: {e}", kod="kereses_api.modell_nem_erheto_el", param={"e": e},
+                            ai=ai_mezo("szoveg", e, "kerdezz")) from None
         if v["allapot"] == "nincs_modell":
-            raise HttpError(503, "A „Kérdezz a vaulttól” modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="kereses_api.modell_nincs_kotve", forrasok=v["forrasok"])
+            raise HttpError(503, "A „Kérdezz a vaulttól” modellje nincs kötve (a router-táblában nincs kalibrált `szoveg` modell).", kod="kereses_api.modell_nincs_kotve", forrasok=v["forrasok"],
+                            ai=ai_mezo("szoveg", None, "kerdezz"))
         return v
 
     def hasonlo(k):

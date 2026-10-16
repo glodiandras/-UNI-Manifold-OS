@@ -15,12 +15,23 @@ from tests.helpers import REPO, alg_core, tmpdir
 # A döntéstábla: a core minden nem-GET végpontja VAGY a lépés-folyamat számára engedett (`lepes_kapu.ENGEDELYEZETT`), VAGY itt, tiltottként
 # szerepel. Egy új író végpont, amely egyik helyen sincs, bukó teszt: a hozzáadó dönti el, hívhatja-e egy lánc.
 TILTOTT = {
+    # F6: a Model Manager műveletei (letöltés, törlés, teszt, saját halmaz) csak felhasználói kérésre, gépi lépés nem hívja
+    ("POST", r"/api/modellek/([a-z0-9_]{1,64})/letoltes"), ("POST", r"/api/modellek/([a-z0-9_]{1,64})/letoltes/megszakitas"),
+    ("POST", r"/api/modellek/([a-z0-9_]{1,64})/torles"), ("POST", r"/api/modellek/([a-z0-9_]{1,64})/teszt"),
+    ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})"), ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})/jovahagyas"),
+    ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})/valasztas"), ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})/torles"),
     ('POST', '/api/vault/tulajdonsagok/tipus'),  # F11: explicit felhasználói vault-típusválasztás.
     ('PUT', '/api/beallitasok'),  # F5: Setup/privacy/modules are user choices, never machine-step actions.
+    # F8: import (Obsidian vault → new workspace, v2 settings) and its undo: only the user's wizard, never a machine step
+    ('POST', '/api/import/obsidian/elonezet'), ('POST', '/api/import/obsidian'), ('POST', '/api/import/visszafordit'),
+    ('POST', '/api/import/v2/elonezet'), ('POST', '/api/import/v2'),
+    ('POST', '/api/import/megszakit'),   # the "Cancel import" button: a running machine step must never cancel the user's import
     # CX: csak a felület indíthatja ezeket, gépi lépés nem.
     ('POST', '/api/vault/import'),
     ('POST', '/api/vault/mappa'),
     ('POST', '/api/vault/kuka'),
+    ('POST', '/api/vault/masolat'),   # F11 07-explorer-06: felületi fájlművelet
+    ('POST', '/api/vault/finder'),    # F11 07-explorer-07: felületi, nem ír
     ('PUT', '/api/felkeszultseg/keret'),
     ('POST', '/api/asszisztens/kiegeszites'),
     ('POST', '/api/asszisztens/kiegeszites/elvet'),
@@ -46,6 +57,9 @@ TILTOTT = {
     ("POST", "/api/asszisztens/statisztika/torles"), ("POST", "/api/asszisztens/szokas/dontes"),
     ("POST", "/api/cpp/ellenoriz"), ("POST", "/api/cpp/feladat"), ("POST", "/api/cpp/formaz"), ("POST", "/api/cpp/megszakit"),
     ("POST", "/api/cpp/ai"), ("POST", "/api/cpp/ai/megszakit"), ("POST", "/api/cpp/ai/tipp"),   # C36b: csak a felület kattintása
+    # F10/F11: a többnyelvű kód-munkafelület (csak a felület kattintása), a Health javítás és a demo alaphelyzet (megerősített felhasználói művelet)
+    ("POST", "/api/kod/ellenoriz"), ("POST", "/api/kod/megszakit"), ("POST", "/api/kod/ai"), ("POST", "/api/kod/ai/megszakit"),
+    ("POST", "/api/egeszseg/javitas"), ("POST", "/api/demo/alaphelyzet"),
     ("POST", "/api/grafikon/elemzes"), ("POST", "/api/kviz/jelol"), ("POST", "/api/kviz/kitoltes"), ("POST", "/api/kviz/megoldas"),
     ("POST", "/api/kereses/kerdezz"),                       # C25b: a felület kérdése; a lépés nem hívja (default-deny)
     ("POST", "/api/kereses/hasonlosag"),                    # C25c: nem ír, de a C30b felületé; a lépés nem hívja (default-deny)

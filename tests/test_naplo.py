@@ -4,6 +4,7 @@ import os
 import unicodedata
 import unittest
 from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 
 from core import naplo, snapshot, vaultio
@@ -169,6 +170,29 @@ class CreateKulcsokTest(Alap):
             self.vault.create({"mappa": ".rejtett/x", "nev": "J", "mappa_keszit": True})
         with self.assertRaises(vaultio.Invalid):
             self.vault.create({"mappa": "../kint", "nev": "J", "mappa_keszit": True})
+
+    def test_abszolut_mappa_nem_hoz_letre_mappat_a_vaulton_belul_sem(self):
+        """`POST /api/vault/uj`: az abszolút mappa nem válhat csendben vault-relatívvá (a `norm_path` a vezető `/`-t levágná)."""
+        kint = tmpdir()
+        self.addCleanup(kint.cleanup)
+        for mappa in (f"{kint.name}/ujmappa", "/etc/ujmappa", "\\\\kint\\ujmappa", "~/ujmappa", "C:/ujmappa", ["Lista"]):
+            for keszit in (True, False):
+                with self.subTest(mappa=mappa, keszit=keszit):
+                    with self.assertRaises(vaultio.Invalid) as e:
+                        self.vault.create({"mappa": mappa, "nev": "J", "mappa_keszit": keszit})
+                    self.assertEqual(e.exception.hiba_kod, "vault.mappa_nem_relativ")
+        self.assertFalse((self.v / "etc").exists() or (self.v / "ujmappa").exists() or (self.v / kint.name.lstrip("/")).exists())
+        self.assertFalse(Path(kint.name, "ujmappa").exists())
+
+    def test_szimlinkes_mappan_at_nem_keszul_mappa_a_vaulton_kivul(self):
+        kint = tmpdir()
+        self.addCleanup(kint.cleanup)
+        os.symlink(kint.name, self.v / "Kivezet")
+        for mappa in ("Kivezet", "Kivezet/ujmappa"):
+            with self.subTest(mappa=mappa):
+                with self.assertRaises(vaultio.Invalid):
+                    self.vault.create({"mappa": mappa, "nev": "J", "mappa_keszit": True})
+        self.assertEqual(os.listdir(kint.name), [])
 
     def test_tartalom_csak_jegyzethez_es_csak_szoveg(self):
         for d in ({"mappa": "", "nev": "J", "tipus": "base", "tartalom": "x"},

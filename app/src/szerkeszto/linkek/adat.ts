@@ -106,3 +106,23 @@ export function mediaHorgony(alcel: string | null | undefined): { t?: number; pa
   }
   return ki;
 }
+
+export interface LinkSzovegOpciok {
+  /** a megjelenítendő szöveg (`[[cel|alias]]`, `[alias](…)`) */
+  alias?: string | null;
+  /** a horgony a `#` nélkül (`Fejezet`, `^id`) */
+  alcel?: string | null;
+  beagyazas?: boolean;
+  /** a cél neve (jegyzetnél kiterjesztés nélkül): az md-link alapértelmezett felirata */
+  nev: string;
+}
+
+/** A beírandó link szövege a beállítások szerint (02-links-12/13): `[[cél#alcél|alias]]`, vagy a „Use [[Wikilinks]]” kikapcsolva
+ *  `[felirat](kódolt-cél.md#alcél)` — a cél és a kódolás a core `linkcel`-éből jön (`forma`), a felület csak összeilleszt. */
+export function linkSzoveg(forma: { cel: string; alak: 'wiki' | 'md'; md: string }, o: LinkSzovegOpciok): string {
+  const elo = o.beagyazas ? '!' : '';
+  const alcel = o.alcel?.trim() || '';
+  if (forma.alak !== 'md' || !forma.md) return `${elo}[[${forma.cel}${alcel ? `#${alcel}` : ''}${o.alias ? `|${o.alias}` : ''}]]`;
+  const felirat = (o.alias || `${o.nev}${alcel ? `#${alcel}` : ''}`).replace(/[[\]]/g, ' ').replace(/\s+/g, ' ').trim();
+  return `${elo}[${felirat}](${forma.md})`;
+}

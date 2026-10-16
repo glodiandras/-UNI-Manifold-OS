@@ -1,4 +1,5 @@
 import { modulEngedelyezett } from './allapot.svelte';
+import { fejlesztoMod, fejlesztoiParancs } from './fejleszto';
 import { MODULOK, type ModulId } from './tipusok';
 
 const KULON: Record<string, ModulId> = {
@@ -15,6 +16,7 @@ export function parancsModul(id: string): ModulId | undefined {
   return ELONEVEK[elso] ?? (MODULOK.includes(elso as ModulId) ? elso as ModulId : undefined);
 }
 export function parancsEngedelyezett(id: string): boolean {
+  if (fejlesztoiParancs(id) && !fejlesztoMod()) return false; // Developer mód nélkül a technikai parancs nem él (F7)
   const modul = parancsModul(id);
   return modul ? modulEngedelyezett(modul) : true;
 }

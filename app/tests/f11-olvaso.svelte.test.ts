@@ -27,7 +27,12 @@ it('a Reader egy külső célmentés után újraolvassa a beágyazást és megő
   await vi.waitFor(() => expect(container.querySelector('.beagyazas-torzs')?.textContent).toContain('First version'));
   const gorgeto = container.querySelector<HTMLElement>('.olvaso-gorgeto')!;
   gorgeto.scrollTop = 47;
-  szoveg = 'External update'; linkek.tartalomVerzio++;
+  const fetchHivas = vi.mocked(fetch).mock.calls.length;
+  szoveg = 'Unrelated'; linkek.tartalomValtozott(['Other.md']);   // 04-embeds-07: más cél mentése nem rajzol újra
+  await new Promise((r) => setTimeout(r, 20));
+  expect(vi.mocked(fetch).mock.calls.length).toBe(fetchHivas);
+  expect(container.querySelector('.beagyazas-torzs')?.textContent).toContain('First version');
+  szoveg = 'External update'; linkek.tartalomValtozott(['Target.md']);
   await vi.waitFor(() => expect(container.querySelector('.beagyazas-torzs')?.textContent).toContain('External update'));
   expect(gorgeto.scrollTop).toBe(47);
   expect(view.state.doc.toString()).toBe('![[Target]]');

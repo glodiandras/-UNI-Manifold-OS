@@ -8,6 +8,7 @@ import { t } from '../i18n';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 import { modulEngedelyezett } from '../beallitasok/allapot.svelte';
 import { ApiHiba, kerdez } from '../core/api';
+import { kerdesAlak } from './kerdes';
 
 export interface KeresesHely {
   /** 1-től */
@@ -209,6 +210,17 @@ export class VaultKereses {
   /** a jelentés szerinti rész modelljei töltődnek: addig a szó szerinti találatok látszanak, és a kérés megismétlődik */
   betoltes = $state(false);
 
+  /** A keresés módjai (08-search-03/05/11), a felület tartós beállításaiból: kis-nagybetű-érzékeny, szón belüli illesztés, több környezet. */
+  mod = $state({ kisnagy: false, reszszo: false, kornyezet: false });
+
+  /** A módok beállítása; változásnál a mostani lekérdezés azonnal újrafut. */
+  modBeallit(m: Partial<{ kisnagy: boolean; reszszo: boolean; kornyezet: boolean }>): void {
+    const uj = { kisnagy: m.kisnagy ?? this.mod.kisnagy, reszszo: m.reszszo ?? this.mod.reszszo, kornyezet: m.kornyezet ?? this.mod.kornyezet };
+    if (uj.kisnagy === this.mod.kisnagy && uj.reszszo === this.mod.reszszo && uj.kornyezet === this.mod.kornyezet) return;
+    this.mod = uj;
+    if (this.q.trim()) this.utemez(true);
+  }
+
   /** A „Jelentés szerint” kapcsoló: a mostani lekérdezés azonnal újrafut. */
   jelentesValt(be = !this.jelentes): void {
     this.jelentes = be;
@@ -253,12 +265,14 @@ export class VaultKereses {
     const vezerlo = (this.vezerlo = new AbortController());
     this.folyamat = true;
     try {
+      const kerdes = kerdesAlak(q, this.mod);
+      const kornyezet = this.mod.kornyezet ? 2 : 1;
       const ut = this.jelentes
-        ? `/api/kereses/hibrid?q=${encodeURIComponent(q)}&limit=${KERESES_LIMIT}&mod=hibrid`
-        : `/api/vault/kereses?q=${encodeURIComponent(q)}&limit=${KERESES_LIMIT}&kornyezet=1`;
+        ? `/api/kereses/hibrid?q=${encodeURIComponent(kerdes)}&limit=${KERESES_LIMIT}&mod=hibrid${this.mod.kornyezet ? `&kornyezet=${kornyezet}` : ''}`
+        : `/api/vault/kereses?q=${encodeURIComponent(kerdes)}&limit=${KERESES_LIMIT}&kornyezet=${kornyezet}`;
       const v = await kerdez<KeresesValasz>(ut, { idokorlat: 15000, jel: vezerlo.signal });
       if (sorszam !== this.sorszam || q !== this.q.trim()) return;
-      this.eredmeny = v;
+      this.eredmeny = kerdes === q ? v : { ...v, q }; // a válasz a felhasználó szövegét idézi, nem a csomagolt kérdést
       this.hiba = null;
       this.indexEpul = false;
       this.betoltes = this.jelentes && v.ok === 'modell_betoltes_alatt';

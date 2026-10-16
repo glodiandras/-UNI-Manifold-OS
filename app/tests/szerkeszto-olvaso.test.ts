@@ -47,16 +47,17 @@ describe('olvasó: szöveg és soron belüli elemek', () => {
     expect(d.querySelector<HTMLElement>('.beagyazas')!.dataset.cel).toBe('a.png');
   });
 
-  it('HTML: a `sub`/`sup` elem lesz, minden más szöveg marad (nincs futó HTML)', () => {
+  it('HTML: engedélylistás, szanitizált másolat; a szkript szöveg marad, eseménykezelő sosem kerül át (nincs futó HTML)', () => {
     const d = render('H<sub>2</sub>O és x<sup>2</sup>; <script>alert(1)</script> <img src=x onerror=alert(1)> <b onclick="x">b</b>\n\n<div onclick="alert(1)">blokk</div>');
     expect(d.querySelector('sub')!.textContent).toBe('2');
     expect(d.querySelector('sup')!.textContent).toBe('2');
     expect(d.querySelector('script')).toBeNull();
-    expect(d.querySelector('img')).toBeNull();
+    expect(d.querySelector('img[onerror], [onerror]')).toBeNull();
+    expect(d.querySelector<HTMLElement>('.beagyazas')!.dataset.cel).toBe('x');
     expect(d.querySelector('[onclick]')).toBeNull();
-    expect(d.querySelector('div[onclick]')).toBeNull();
+    expect(d.querySelector('b')!.textContent).toBe('b');
     expect(d.textContent).toContain('<script>alert(1)</script>');
-    expect(d.textContent).toContain('<div onclick="alert(1)">blokk</div>');
+    expect(d.querySelector('.html-blokk-render > div')!.textContent).toBe('blokk');
   });
 });
 

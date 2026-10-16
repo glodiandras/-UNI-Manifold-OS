@@ -4,6 +4,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/svelte';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beallitasok } from '../src/lib/beallitasok/allapot.svelte';
+import { alapBeallitasok } from '../src/lib/beallitasok/tipusok';
 import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
 import { Felulet } from '../src/lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../src/lib/ertesites/ertesites.svelte';
@@ -91,8 +93,16 @@ beforeEach(() => {
   });
 });
 
+/** Developer mód (F7): a technikai részletek (pid, build-jegyek) csak ekkor látszanak. */
+function fejlesztoMod(be: boolean): void {
+  const ertek = alapBeallitasok();
+  ertek.fejleszto.mod = be;
+  beallitasok.fogad({ verzio: 1, rev: 'r1', ertek, munkater: { id: 'synthetic', nev: 'Synthetic workspace', vault: '/synthetic/vault' }, setup_szukseges: false, ujrainditas: [] });
+}
+
 afterEach(() => {
   cleanup();
+  beallitasok.adat = null;
   document.body.textContent = '';
   vi.unstubAllGlobals();
   nyelv.beallit('hu');
@@ -119,6 +129,7 @@ describe('a szakaszok', () => {
   });
 
   it('a Rendszer szakasz csak nyitva kérdez a core-tól', async () => {
+    fejlesztoMod(true);
     valaszok['GET /api/vezerlo/rendszer'] = () =>
       valasz({
         memoria: { szabad_szazalek: 41, osszes_gb: 16, swap_mb: 0, core_rss_mb: 120 },
@@ -140,6 +151,30 @@ describe('a szakaszok', () => {
     valaszok['POST /api/feladatok'] = () => valasz(feladat('F-5', { tipus: 'mentes' }), 201);
     await fireEvent.click(screen.getByRole('button', { name: 'Mentés most' }));
     await waitFor(() => expect(kerelmek.some((k) => k.metodus === 'POST' && k.body?.tipus === 'mentes')).toBe(true));
+  });
+
+  it('Developer mód nélkül a Rendszer szakasz nem mutat pid-et, modellzárat, build-jegyet vagy folyamat-memóriát (F7)', async () => {
+    fejlesztoMod(false);
+    valaszok['GET /api/vezerlo/rendszer'] = () =>
+      valasz({
+        memoria: { szabad_szazalek: 41, osszes_gb: 16, swap_mb: 0, core_rss_mb: 120 },
+        modellzar: { szabad: false, tartalom: '', pid: 4242, repo: 'mlx/x', ido: '14:03:11', elavult: false },
+        worker: { fut: true, pid: 1, rss_mb: 2048, modell: 'qwen3_vl_4b', repo: 'r', keret_gb: 5, szunetek: 0, aktivitas: 'tetlen' },
+        ssd: { elerheto: true, kotet: 'Work', osszes_gb: 1000, szabad_gb: 420 },
+        mentes: { utolso: '2026-10-02T09:00:00', friss: true, tarolok: {}, mappa: '/x' },
+        kapcsolok: { asszisztens: true, tracker: true },
+      });
+    valaszok['GET /api/rendszer/epites'] = () => valasz({ ok: false, mag: 'abc', reszek: [{ resz: 'felulet', azonosito: 'x', friss: false }] });
+    const { context } = kornyezet();
+    render(ManifoldLap, { context });
+    await fireEvent.click(screen.getByRole('button', { name: 'Rendszer' }));
+    await screen.findByText(/41 % szabad/);
+    const lap = document.body.textContent ?? '';
+    expect(lap).not.toMatch(/pid|Modellzár|core:|worker|Mag:/);
+    expect(kerelmek.some((k) => k.url === '/api/rendszer/epites')).toBe(false);
+    expect(screen.queryByRole('button', { name: 'Használat' })).toBeNull();
+    fejlesztoMod(true);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Használat' })).toBeTruthy());
   });
 
   it('a Rendszer szakasz kimondja a belső lemezes mentés hibáját (C29.6/C29.7b: a core `mentes.hiba`-ja)', async () => {

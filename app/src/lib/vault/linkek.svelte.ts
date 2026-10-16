@@ -28,6 +28,32 @@ export interface BeagyazasAdat {
   alcel_hiba?: boolean;
 }
 
+/** A `GET /api/vault/linkcel` válasza: a cél a beállított formátumban, az `alak` (wiki | md) és a kész md-cél (kódolva). */
+export interface LinkCelAdat {
+  ut: string;
+  cel: string;
+  alak?: 'wiki' | 'md';
+  md?: string;
+}
+
+/** Tartalmi esemény: a megváltozott utak, vagy `null` (újrakapcsolódás, tömeges változás — minden érintett). */
+export type TartalomFigyelo = (utak: ReadonlySet<string> | null) => void;
+
+/** A core `linkcel` válasza: a beírandó cél a „New link format” szerint, az alak a „Use [[Wikilinks]]” szerint, és a kész
+ *  markdown-link célja (kódolva, `.md`-vel, a horgonnyal). A felület csak ezekből épít linket (`linkSzoveg`). */
+export interface LinkForma {
+  cel: string;
+  alak: 'wiki' | 'md';
+  md: string;
+}
+
+export interface VaultFejezet {
+  ut: string;
+  szint: number;
+  szoveg: string;
+  sor: number;
+}
+
 export interface Feloldott {
   cel: string;
   ut: string | null;
@@ -45,12 +71,30 @@ export class LinkSzolgaltatas {
   tartalomVerzio = $state(0);
   private readonly feloldasok = new Map<string, Feloldott>();
   private aliasok: Promise<Record<string, string[]>> | null = null;
+  private feloldatlan: Promise<string[]> | null = null;
   private tokenVaro: Promise<string | null> | null = null;
+  private readonly tartalomFigyelok = new Set<TartalomFigyelo>();
+
+  /** Feliratkozás a célonkénti tartalmi eseményre (04-embeds-07): a beágyazás csak a saját céljának változásakor frissül. */
+  tartalomFigyel(fn: TartalomFigyelo): () => void {
+    this.tartalomFigyelok.add(fn);
+    return () => { this.tartalomFigyelok.delete(fn); };
+  }
+
+  /** Tartalmi esemény: a `tartalomVerzio` nő, a feliratkozók megkapják az érintett utakat (`null`: mind). */
+  tartalomValtozott(utak: Iterable<string> | null): void {
+    this.tartalomVerzio++;
+    const halmaz = utak === null ? null : new Set(utak);
+    for (const fn of [...this.tartalomFigyelok]) {
+      try { fn(halmaz); } catch (e) { console.error(e); }
+    }
+  }
 
   /** A fájlszerkezet változott: a gyorsítótárak ürülnek. */
   ervenytelenit(): void {
     this.feloldasok.clear();
     this.aliasok = null;
+    this.feloldatlan = null;
     this.verzio++;
   }
 
@@ -58,15 +102,16 @@ export class LinkSzolgaltatas {
     const le1 = k.figyel('hello', (e) => {
       if (typeof e.media_token === 'string') this.mediaToken = e.media_token;
       this.ervenytelenit();
-      this.tartalomVerzio++;
+      this.tartalomValtozott(null);
     });
     const le2 = k.figyel('vault_valtozas', (e) => {
       const utak = (e.utak as string[] | undefined) ?? [];
       const torolt = (e.torolt as string[] | undefined) ?? [];
       this.aliasok = null; // az `aliases` bármely mentéssel változhat
+      this.feloldatlan = null; // egy mentés új, még nem létező link-célt is behozhat
       this.feloldasok.clear(); // egy meglévő jegyzet új aliasa korábban hiányzó célt is feloldhat
-      this.tartalomVerzio++;
       if (e.tomeges || torolt.length || utak.some((u) => !ismert(u))) this.ervenytelenit();
+      this.tartalomValtozott(e.tomeges ? null : [...utak, ...torolt]);
     });
     return () => {
       le1();
@@ -150,6 +195,49 @@ export class LinkSzolgaltatas {
   async linkCel(ut: string, forras: string): Promise<string> {
     const d = await kerdez<{ cel: string }>(`/api/vault/linkcel?ut=${q(ut)}&forras=${q(forras)}`, { idokorlat: 5000 });
     return d.cel;
+  }
+
+  /** A fájl link-adatai a `forras`-ból: a cél a beállított link-formátumban, az alak (wiki/md) és az md-cél (04-embeds-09). */
+  linkCelAdat(ut: string, forras: string): Promise<LinkCelAdat> {
+    return kerdez<LinkCelAdat>(`/api/vault/linkcel?ut=${q(ut)}&forras=${q(forras)}`, { idokorlat: 5000 });
+  }
+
+  /** A beírandó link adatai a `forras`-ból (a core: formátum, alak, md-cél). A `alcel` az md-célba kerülő horgony. Régi vagy hiányos
+   *  válasznál (`alak`/`md` nélkül) wikilink. */
+  async linkForma(ut: string, forras: string, alcel?: string | null): Promise<LinkForma> {
+    const d = await kerdez<{ cel: string; alak?: string; md?: string }>(
+      `/api/vault/linkcel?ut=${q(ut)}&forras=${q(forras)}${alcel ? `&alcel=${q(alcel)}` : ''}`,
+      { idokorlat: 5000 },
+    );
+    return { cel: d.cel, alak: d.alak === 'md' ? 'md' : 'wiki', md: d.md ?? '' };
+  }
+
+  /** Mint a `linkForma`, de még nem létező célra (`[[Új jegyzet]]`): a core csak a beállítást és a kódolást adja. */
+  async linkFormaHianyzo(cel: string, forras: string): Promise<LinkForma> {
+    const d = await kerdez<{ cel: string; alak?: string; md?: string }>(
+      `/api/vault/linkcel?cel=${q(cel)}&forras=${q(forras)}`,
+      { idokorlat: 5000 },
+    );
+    return { cel: d.cel, alak: d.alak === 'md' ? 'md' : 'wiki', md: d.md ?? '' };
+  }
+
+  /** A vaultban használt, de még nem létező link-célok szövegei (a `[[` javaslataihoz); a szerkezet/tartalom változásáig gyorsítótárazva. */
+  feloldatlanSzovegek(): Promise<string[]> {
+    this.feloldatlan ??= kerdez<{ szovegek: { cel: string }[] }>('/api/vault/feloldatlan?limit=300', { idokorlat: 8000 }).then(
+      (d) => d.szovegek.map((x) => x.cel),
+      (e) => {
+        this.feloldatlan = null;
+        if (e instanceof ApiHiba && (e.statusz === 503 || e.statusz === 404)) return [];
+        throw e;
+      },
+    );
+    return this.feloldatlan;
+  }
+
+  /** Az összes jegyzet fejezetei a szűrőre (a `[[##` kereséshez), a core szűrte és rangsorolta. */
+  async fejezetekMind(szuro: string, jel?: AbortSignal): Promise<VaultFejezet[]> {
+    const d = await kerdez<{ fejezetek: VaultFejezet[] }>(`/api/vault/fejezetek?q=${q(szuro)}&limit=300`, { idokorlat: 8000, jel });
+    return Array.isArray(d.fejezetek) ? d.fejezetek : [];
   }
 
   /** Beágyazás/előnézet tartalma: típus, feloldott fájl, jegyzetnél a szelet. */

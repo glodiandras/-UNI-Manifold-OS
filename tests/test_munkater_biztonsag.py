@@ -455,12 +455,15 @@ class CimkeTest(unittest.TestCase):
                            ("x: y", False), ("#c", False), ("true", False), ("2024", False), (" pad", False), ("a b", False)):
             ki = kiserok.yaml_cimke(tag)
             self.assertEqual(ki == tag, nyers, tag)
-            for vaz in (pdfkiemeles.vaz("T/x.pdf", tag), cpp_teszt.feladat_vaz("Nev", tag)):
+            # a PDF-kiemelés váza rögzített kulcskészletű; a feladat-váz fejléce a munkatér sémájából jön (`mezok`)
+            for vaz, kulcsok in ((pdfkiemeles.vaz("T/x.pdf", tag), ["Canvas", "NN", "Source", "Status", "Tags"]),
+                                 (cpp_teszt.feladat_vaz("Nev", tag, mezok=("Source", "Status")), ["Source", "Status", "Tags"]),
+                                 (cpp_teszt.feladat_vaz("Nev", tag), ["Tags"])):         # séma nélkül nincs NN / Canvas / Status
                 fm = re.match(r"---\n(.*?)\n---\n", vaz, re.S).group(1)
                 d = yaml.safe_load(fm)
                 self.assertEqual(d["Tags"], [tag], tag)                             # egyetlen címke
-                self.assertIsNone(d["Status"])                                      # nincs hamisított kulcs-érték
-                self.assertEqual(sorted(d), ["Canvas", "NN", "Source", "Status", "Tags"])
+                self.assertNotIn("Status", d) if "Status" not in kulcsok else self.assertIsNone(d["Status"])   # nincs hamisított kulcs-érték
+                self.assertEqual(sorted(d), kulcsok)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,9 @@
 <!--
-  A `.cpp` fül (C36a-UI): a forrás a `Dokumentum`-on át él (ugyanaz a mentés, ütközés, külső változás és kilépési mentés,
-  mint a jegyzeté: az egyetlen írási út), a szerkesztő egy C++-ra hangolt CodeMirror (`szerkeszto.ts`), alul a ⌘R
-  eredménye (`KodEredmeny`). A fül nem `SzerkesztoPeldany`: a Markdown-parancsok itt nem élnek; a ⌘S a `masNezet`-en át ment.
+  A kód-fül (C36a-UI, F10: minden nyelvre — a nyelv a fájl kiterjesztéséből jön): a forrás a `Dokumentum`-on át él (ugyanaz a
+  mentés, ütközés, külső változás és kilépési mentés, mint a jegyzeté: az egyetlen írási út), a szerkesztő egy kódra hangolt
+  CodeMirror (`szerkeszto.ts`), fent a nyelv és az eszközlánc állapota (`KodEszkozlanc`), alul a ⌘R eredménye (`KodEredmeny`:
+  fordítás / szintaxis, tesztek, kimenet; a sorhoz kötött hiba aláhúzva a szerkesztőben). A fül nem `SzerkesztoPeldany`: a
+  Markdown-parancsok itt nem élnek; a ⌘S a `masNezet`-en át ment.
 -->
 <script lang="ts">
   import { EditorState, Transaction } from '@codemirror/state';
@@ -32,12 +34,16 @@
   import KodAI from './KodAI.svelte';
   import KodEredmeny from './KodEredmeny.svelte';
   import { ellenoriz, mentesKivar } from './muveletek';
-  import { cppNyelv, diagnosztikaBeallit, kodBovitmenyek, kodIrhatosag, nyelvKapcsolo } from './szerkeszto';
+  import KodEszkozlanc from './KodEszkozlanc.svelte';
+  import { nyelvUt } from './nyelvek.svelte';
+  import { diagnosztikaBeallit, futasDiagnosztika, kodBovitmenyek, kodIrhatosag, kodNyelv, nyelvKapcsolo } from './szerkeszto';
 
   let { ful, aktiv }: NezetProps = $props();
   const { felulet } = kornyezet();
   const ut = untrack(() => ful.ut ?? '');
   const fulId = untrack(() => ful.id);
+  /** a fájl nyelve a kiterjesztésből (a core profilja szerint); a fül akkor is nyílik, ha ismeretlen volna */
+  const nyelv = nyelvUt(ut);
 
   let dok = $state.raw<Dokumentum | null>(null);
   let view = $state.raw<EditorView | null>(null);
@@ -64,7 +70,11 @@
       state = EditorState.create({
         doc: d.szoveg,
         selection: Number.isFinite(kurzor) && kurzor <= d.szoveg.length ? { anchor: kurzor } : undefined,
-        extensions: kodBovitmenyek({ csakOlvashato: !!d.csakOlvashato, cimke: t('C++ forrás: {nev}', { nev: fajlNev(ut) }) }),
+        extensions: kodBovitmenyek({
+          csakOlvashato: !!d.csakOlvashato,
+          cimke: t('Forráskód ({nyelv}): {nev}', { nyelv: nyelv?.nev ?? '', nev: fajlNev(ut) }),
+          nyelv: nyelv?.azonosito,
+        }),
       });
     }
     view = new EditorView({
@@ -84,9 +94,9 @@
       const g = tarolt.gorgetes;
       requestAnimationFrame(() => view && (view.scrollDOM.scrollTop = g));
     }
-    // a C++-nyelv lustán: a színezés a betöltés után kapcsol be
-    void cppNyelv().then((nyelv) => {
-      if (nyelv && view) view.dispatch({ effects: nyelvKapcsolo.reconfigure(nyelv) });
+    // a nyelv színezője lustán: a betöltés után kapcsol be
+    void kodNyelv(nyelv?.azonosito).then((szinezo) => {
+      if (szinezo && view) view.dispatch({ effects: nyelvKapcsolo.reconfigure(szinezo) });
     });
     if (aktiv) queueMicrotask(() => view?.focus());
   }
@@ -171,12 +181,12 @@
   const futas = $derived(kodFutasok.aktiv?.ut === ut ? kodFutasok.aktiv : null);
   const valasztas = $derived(kodFutasok.tobbertelmu?.ut === ut ? kodFutasok.tobbertelmu : null);
 
-  // a fordító diagnosztikája aláhúzásként (új futás indulásakor törlődik)
+  // a fordító / szintaxis-vizsgálat és a futási hiba sorhoz kötött üzenete aláhúzásként (új futás indulásakor törlődik)
   $effect(() => {
     const v = view;
     if (!v) return;
-    const lista = futas?.fordit?.diagnosztika ?? [];
-    untrack(() => diagnosztikaBeallit(v, lista));
+    const f = futas;
+    untrack(() => diagnosztikaBeallit(v, futasDiagnosztika(v.state.doc, f, nyelv?.nev ?? '')));
   });
 
   function esc(e: KeyboardEvent) {
@@ -241,9 +251,14 @@
         {/if}
       {/if}
     </div>
-    <IkonGomb ikon={Bug} cimke={t('Ellenőrzés hibakereső móddal')} billentyu="Mod+Shift+R" onclick={() => regiszter.futtat('kod.ellenorzes-hibakereso', 'gomb')} />
+    <KodEszkozlanc nyelv={nyelv?.azonosito ?? null} resz="jel" />
+    {#if nyelv?.hibakereso}
+      <IkonGomb ikon={Bug} cimke={t('Ellenőrzés hibakereső móddal')} billentyu="Mod+Shift+R" onclick={() => regiszter.futtat('kod.ellenorzes-hibakereso', 'gomb')} />
+    {/if}
     <IkonGomb ikon={Play} cimke={t('Ellenőrzés')} billentyu="Mod+R" onclick={() => regiszter.futtat('kod.ellenorzes', 'gomb')} />
   </header>
+
+  <KodEszkozlanc nyelv={nyelv?.azonosito ?? null} resz="panel" />
 
   {#if betoltesHiba}
     <p class="betoltes hiba" role="alert">{betoltesHiba}</p>
@@ -271,6 +286,8 @@
   {#if futas}
     <KodEredmeny
       {futas}
+      nyelvNev={nyelv?.nev ?? ''}
+      elemzes={!!nyelv?.elemzes}
       leirasok={kodFutasok.leirasok[futas.futas]}
       onugras={(sor, oszlop) => peldany.ugras(sor, oszlop)}
       onmegszakit={() => void kodFutasok.megszakit()}
@@ -279,6 +296,7 @@
 
   <KodAI
     {ut}
+    nyelv={nyelv?.azonosito ?? null}
     onker={(mod, megerosit) => void aiKer(felulet, mod, megerosit, { ut, jegyzet: null })}
     onugras={(sor) => peldany.ugras(sor)}
   />

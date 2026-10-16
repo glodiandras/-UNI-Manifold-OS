@@ -1,0 +1,147 @@
+{
+  "_leiras": "A kód-munkafelület nyelvei a felületen (a core/kod_nyelvek.py tükre; a tests/test_kod_ui_nyelvek.py őrzi az egyezést). Ne kézzel szerkeszd: a teszt kiírja az eltérést.",
+  "nem_szerkesztheto": [],
+  "nyelvek": [
+    {
+      "azonosito": "cpp",
+      "nev": "C++",
+      "kiterjesztesek": [
+        ".cpp",
+        ".cc",
+        ".cxx"
+      ],
+      "kerites": [
+        "cpp",
+        "c++",
+        "cc",
+        "cxx"
+      ],
+      "kalibracios_kulcs": "kod",
+      "motor": "cpp",
+      "hibakereso": true,
+      "elemzes": false
+    },
+    {
+      "azonosito": "c",
+      "nev": "C",
+      "kiterjesztesek": [
+        ".c"
+      ],
+      "kerites": [
+        "c"
+      ],
+      "kalibracios_kulcs": "kod_c",
+      "motor": "cpp",
+      "hibakereso": true,
+      "elemzes": false
+    },
+    {
+      "azonosito": "python",
+      "nev": "Python",
+      "kiterjesztesek": [
+        ".py"
+      ],
+      "kerites": [
+        "python",
+        "py",
+        "python3"
+      ],
+      "kalibracios_kulcs": "kod_python",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": true
+    },
+    {
+      "azonosito": "javascript",
+      "nev": "JavaScript",
+      "kiterjesztesek": [
+        ".js",
+        ".mjs",
+        ".cjs"
+      ],
+      "kerites": [
+        "javascript",
+        "js",
+        "node"
+      ],
+      "kalibracios_kulcs": "kod_javascript",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": true
+    },
+    {
+      "azonosito": "typescript",
+      "nev": "TypeScript",
+      "kiterjesztesek": [
+        ".ts",
+        ".cts"
+      ],
+      "kerites": [
+        "typescript",
+        "ts"
+      ],
+      "kalibracios_kulcs": "kod_typescript",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": true
+    },
+    {
+      "azonosito": "java",
+      "nev": "Java",
+      "kiterjesztesek": [
+        ".java"
+      ],
+      "kerites": [
+        "java"
+      ],
+      "kalibracios_kulcs": "kod_java",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": false
+    },
+    {
+      "azonosito": "go",
+      "nev": "Go",
+      "kiterjesztesek": [
+        ".go"
+      ],
+      "kerites": [
+        "go",
+        "golang"
+      ],
+      "kalibracios_kulcs": "kod_go",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": false
+    },
+    {
+      "azonosito": "rust",
+      "nev": "Rust",
+      "kiterjesztesek": [
+        ".rs"
+      ],
+      "kerites": [
+        "rust",
+        "rs"
+      ],
+      "kalibracios_kulcs": "kod_rust",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": false
+    },
+    {
+      "azonosito": "swift",
+      "nev": "Swift",
+      "kiterjesztesek": [
+        ".swift"
+      ],
+      "kerites": [
+        "swift"
+      ],
+      "kalibracios_kulcs": "kod_swift",
+      "motor": "nyelv",
+      "hibakereso": false,
+      "elemzes": false
+    }
+  ]
+}

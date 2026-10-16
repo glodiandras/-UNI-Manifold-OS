@@ -54,14 +54,20 @@ from pathlib import Path
 from .. import config
 from . import beallitas as B
 from . import ervenyesseg, kliens, revizio
-from . import kalibracio
+from . import kalibracio, kuszob, manifeszt
 from .kalibracio import vazlat
 
 BEALLITAS_MEZOK = ("max_tokens", "temperature", "gondolkodas", "repetition_penalty", "repetition_context_size")
 TURES_GB = 0.2                 # a mért csúcs és a regiszterbeli `csucs_gb` közti tűrés (a legacy mérése más keretben készült)
 
 
-def feladat_modul(cfg: config.Config, feladat: str):
+def feladat_modul(cfg: config.Config, feladat: str, halmaz: str = "szallitott"):
+    """A feladat aranyhalmaz-modulja; `halmaz = "sajat"`: a felhasználó saját halmazával (F6, `aranycsomag.sajat_modul`)."""
+    if halmaz == "sajat":
+        from .aranycsomag import sajat_modul
+        return sajat_modul(cfg, feladat)
+    if halmaz != "szallitott":
+        raise ValueError(f"ismeretlen halmaz: {halmaz}")
     ut = cfg.path("modulok") / "eval" / feladat / "feladat.py"
     if not ut.is_file():
         raise FileNotFoundError(f"nincs ilyen aranyhalmaz-feladat: {ut} (a feladat mappája: modulok/eval/<feladat>/)")
@@ -149,8 +155,8 @@ def _valaszt(mod_, cfg: config.Config, limit: int | None, tetel_idk: list[str] |
     return (tetelek[:limit] if limit else tetelek), osszes
 
 
-def _kimenet(cfg: config.Config, modell: str, kimenet: Path | None) -> Path:
-    return (Path(kimenet) if kimenet else cfg.path("runs") / "eval") / modell
+def _kimenet(cfg: config.Config, modell: str, kimenet: Path | None, halmaz: str = "szallitott") -> Path:
+    return (Path(kimenet) if kimenet else cfg.path("runs") / ("eval-sajat" if halmaz == "sajat" else "eval")) / modell
 
 
 def _hiv(u: str, modell: str, keres: dict, keret: str | None, mod: str) -> tuple[object, dict]:
@@ -187,9 +193,10 @@ def _feloldott(cfg: config.Config, modell: str, feladat: str, mod_, limit, tetel
 
 def futtat(cfg: config.Config, modell: str, feladat: str, u: str, keret: str | None = None, limit: int | None = None,
            mod: str = "auto", log=print, felulir: dict | None = None, kimenet: Path | None = None,
-           tetel_idk: list[str] | None = None) -> Path:
-    mod_ = feladat_modul(cfg, feladat)
-    ki = _kimenet(cfg, modell, kimenet) / f"{feladat}.jsonl"
+           tetel_idk: list[str] | None = None, halmaz: str = "szallitott", stop=None) -> Path:
+    """`stop()`: ha igaz, a folyó tétel után megáll (F6, „Test this model”: a feladatsor stop-fájlja); a kész sorok maradnak."""
+    mod_ = feladat_modul(cfg, feladat, halmaz)
+    ki = _kimenet(cfg, modell, kimenet, halmaz) / f"{feladat}.jsonl"
     ki.parent.mkdir(parents=True, exist_ok=True)
     _, tetelek, _ = _feloldott(cfg, modell, feladat, mod_, limit, tetel_idk, felulir)
     lenyomat = {t["id"]: t["beallitas"] for t in tetelek}
@@ -200,6 +207,9 @@ def futtat(cfg: config.Config, modell: str, feladat: str, u: str, keret: str | N
     for i, t in enumerate(tetelek, 1):
         if t["id"] in kesz:
             continue
+        if stop is not None and stop():
+            log(f"[eval] {modell} · {feladat}: megállítva ({i - 1}/{len(tetelek)}); folytatható")
+            break
         t0 = time.time()
         # a `vart` nem kerül a sorba (T046): az értékelés a pontozáskor az aktuális aranyból veszi; a `verzio` a generáláskor érvényes
         alap = {"id": t["id"], "verzio": mod_.VERZIO, "beallitas": t["beallitas"],
@@ -218,9 +228,9 @@ def futtat(cfg: config.Config, modell: str, feladat: str, u: str, keret: str | N
 
 
 def ertekel(cfg: config.Config, modell: str, feladat: str, limit: int | None = None, felulir: dict | None = None,
-            kimenet: Path | None = None, tetel_idk: list[str] | None = None) -> dict:
-    mod_ = feladat_modul(cfg, feladat)
-    d = _kimenet(cfg, modell, kimenet)
+            kimenet: Path | None = None, tetel_idk: list[str] | None = None, halmaz: str = "szallitott") -> dict:
+    mod_ = feladat_modul(cfg, feladat, halmaz)
+    d = _kimenet(cfg, modell, kimenet, halmaz)
     b, tetelek, osszes = _feloldott(cfg, modell, feladat, mod_, limit, tetel_idk, felulir)
     lenyomat = {t["id"]: t["beallitas"] for t in tetelek}
     utolso = {r["id"]: r for r in _jsonl(d / f"{feladat}.jsonl") if r.get("beallitas") == lenyomat.get(r["id"])}
@@ -237,7 +247,7 @@ def ertekel(cfg: config.Config, modell: str, feladat: str, limit: int | None = N
     for r in rekordok:
         sor_verziok[r.get("verzio")] = sor_verziok.get(r.get("verzio"), 0) + 1
     ert = {"modell": modell, "feladat": feladat, "router_feladat": getattr(mod_, "ROUTER_FELADAT", feladat),
-           "aranyhalmaz_verzio": mod_.VERZIO, "sor_verziok": sor_verziok, "n": len(rekordok), **mod_.pontoz(rekordok),
+           "aranyhalmaz_verzio": mod_.VERZIO, "mero": getattr(mod_, "MERO", "szallitott"), "sor_verziok": sor_verziok, "n": len(rekordok), **mod_.pontoz(rekordok),
            "ervenyes": erv["ervenyes"], "ervenyesseg": erv,
            # C19 (T050): csak a teljes, `--limit`/`--tetel` nélküli halmaz értékelése rögzíthető
            "tetelszam": osszes, "teljes": len(tetelek) == osszes and not limit and not tetel_idk,
@@ -284,7 +294,15 @@ def rogzit(cfg: config.Config, ert: dict, kalibralt: bool | None, megjegyzes: st
     if kalibralt and not ervenyes:
         raise ValueError("érvénytelen értékelés nem kaphat kalibrált jelet: "
                          + (ervenyesseg.osszegzes(ert["ervenyesseg"]) if ert.get("ervenyesseg") else "nincs kapu"))
+    if kalibralt:
+        # F6 (R2): a használati küszöb a kódban, kikényszerítve; a manifeszt `[kalibracio.*]` csak szigoríthat
+        dontes = kuszob.dont(ert["router_feladat"], ert, manifeszt.kalibracio_konfig(cfg))
+        if not dontes["kalibralhato"]:
+            raise ValueError("a küszöb-kapu nem engedi a kalibrált jelet: "
+                             + "; ".join(f"{o['kod']} {json.dumps(o['param'], ensure_ascii=False)}" for o in dontes["okok"]))
     alap = megjegyzes or f"mos eval, n={ert['n']}"
+    if ert.get("mero") == "sajat":
+        alap = "saját mérés (helyi aranyhalmaz); " + alap
     fig = csucs_figyelmeztetes(cfg, ert)
     if fig:
         alap += f"; FIGYELEM: {fig}"

@@ -41,6 +41,12 @@ class EvalTest(unittest.TestCase):
         d = self.cfg.path("modulok") / "eval" / "proba"
         d.mkdir(parents=True)
         (d / "feladat.py").write_text(FELADAT, encoding="utf-8")
+        # F6: a küszöb-kapu a kódban él (a `szoveg` 20 tételt kér); a 4 tételes álhalmazhoz a tesztben kisebb tételszám
+        from core.modell import kuszob, manifeszt
+        for p in (mock.patch.dict(kuszob.ALAP, {"szoveg": kuszob.Kuszob(0.40, 4)}),
+                  mock.patch.object(manifeszt, "kalibracio_konfig", return_value={})):
+            p.start()
+            self.addCleanup(p.stop)
         self.b = beallitas(self.cfg, helyreallas_mp=0.05)
         self.tabla = Tabla(self.b.router_db)
         self.addCleanup(self.tabla.close)
@@ -390,7 +396,7 @@ class BenchTest(unittest.TestCase):
 
 class RegiszterTest(unittest.TestCase):
     def test_a_letoltesi_lista_es_a_regiszter_egyezik(self):
-        with open(REPO / "config" / "letoltes.toml", "rb") as f:
+        with open(REPO / "config" / "models.toml", "rb") as f:
             letoltes = tomllib.load(f)["modell"]
         with open(REPO / "config" / "os.toml", "rb") as f:
             reg = tomllib.load(f)["modellek"]

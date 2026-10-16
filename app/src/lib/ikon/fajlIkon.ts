@@ -1,6 +1,7 @@
 import { t } from '../i18n';
 import type { IconNode } from 'lucide';
 import type { FajlTipus } from '../vault/fajlok.svelte';
+import { KOD_UT } from '../vault/kodFajl';
 import { Code, File, FileImage, FileMusic, FilePlay, FileText, LayoutDashboard, Table2 } from './ikonok';
 
 const IKONOK: Record<FajlTipus, IconNode> = {
@@ -15,9 +16,9 @@ const IKONOK: Record<FajlTipus, IconNode> = {
   egyeb: File,
 };
 
-/** A típus szerinti ikon; az `egyeb` típusú `.cpp` (C36a-UI: az index típusa nem változik) a kód-ikont kapja az út alapján. */
+/** A típus szerinti ikon; az `egyeb` típusú forrásfájl (C36a-UI, F10: az index típusa nem változik) a kód-ikont kapja az út alapján. */
 export function fajlIkon(tipus: FajlTipus | undefined, ut?: string | null): IconNode {
-  if ((tipus ?? 'egyeb') === 'egyeb' && ut && /\.cpp$/i.test(ut)) return Code;
+  if ((tipus ?? 'egyeb') === 'egyeb' && ut && KOD_UT.test(ut)) return Code;
   return IKONOK[tipus ?? 'egyeb'] ?? File;
 }
 

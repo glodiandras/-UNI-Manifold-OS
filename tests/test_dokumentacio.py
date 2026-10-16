@@ -8,7 +8,8 @@
 **Felhasználói dokumentáció** (`README.md`, angol termék-README; `docs/user/`, ha már van):
 - a README-ben hivatkozott konfigurációs kulcsok léteznek az `os.toml`-ban, a felsorolt `bin/mos` parancsok léteznek a
   `bin/mos`-ban, a relatív hivatkozások fájlokra mutatnak, és nincs benne fejlesztői (személyes) út;
-- a felület minden regisztrált billentyűje szerepel a `docs/user/HOTKEYS.md`-ben (ha a fájl még nincs: `[indokolt]` kihagyás).
+- a felület minden regisztrált billentyűje szerepel a `docs/user/HOTKEYS.md`-ben; a `docs/user/*.md` oldalak belső hivatkozásai
+  fájlokra mutatnak (a teljes, 16 oldalas felhasználói dokumentáció további kapui: `tests/test_felhasznaloi_doku.py`).
 A tesztek a dokumentum szövegét és a regisztert olvassák: szerverindítás, hálózat, valódi `var/` nincs."""
 import re
 import tomllib
@@ -21,7 +22,6 @@ from tests.test_utvonalak import KERESEK, lefedetlen
 DEV = REPO / "docs" / "dev"
 USER = REPO / "docs" / "user"
 HOTKEYS = USER / "HOTKEYS.md"
-INDOKOLT_FELHASZNALOI = "[indokolt] a felhasználói dokumentáció az F8-ban készül"
 
 ARCHITECTURE = (DEV / "ARCHITECTURE.md").read_text(encoding="utf-8")
 DONTESEK = (DEV / "DECISIONS-v2.md").read_text(encoding="utf-8")
@@ -160,6 +160,9 @@ def bin_mos_hivasok(szoveg: str) -> list[tuple[str, str | None]]:
 
 
 def relativ_celok(szoveg: str) -> list[str]:
+    """A dokumentum relatív hivatkozásainak céljai; a kódblokkban és a kódként írt példában álló `[x](y.md)` nem hivatkozás."""
+    szoveg = re.sub(r"^(```+|~~~+).*?^\1[ \t]*$", "", szoveg, flags=re.M | re.S)
+    szoveg = re.sub(r"`[^`\n]*`", "", szoveg)
     return re.findall(r"\]\((?!https?:|mailto:)([^)#\s]+)", szoveg)
 
 
@@ -185,6 +188,7 @@ class FelhasznaloiDokumentacioKinyerok(unittest.TestCase):
 
     def test_a_relativ_cel_kinyero(self):
         self.assertEqual(relativ_celok("[a](docs/A.md) [b](https://x.y/z) [c](B.md#fej) [d](mailto:a@b.c)"), ["docs/A.md", "B.md"])
+        self.assertEqual(relativ_celok("[a](A.md) és kódként `[b](B.md)`\n````\n```x\n[c](C.md)\n```\n````\n[d](D.md)"), ["A.md", "D.md"])
 
 
 class FelhasznaloiDokumentacio(unittest.TestCase):
@@ -221,8 +225,7 @@ class FelhasznaloiDokumentacio(unittest.TestCase):
                 self.assertTrue((REPO / cel).exists(), f"a README hivatkozása nem létező fájlra mutat: {cel}")
 
     def test_minden_regisztralt_billentyu_szerepel_a_hotkeys_dokumentumban(self):
-        if not HOTKEYS.is_file():
-            self.skipTest(INDOKOLT_FELHASZNALOI)
+        self.assertTrue(HOTKEYS.is_file(), "hiányzik a docs/user/HOTKEYS.md")
         billentyuk = regisztralt_billentyuk()
         self.assertGreaterEqual(len(billentyuk), 25, "a kinyerő nem talál billentyűket (megváltozott a regiszter alakja?)")
         szoveg = HOTKEYS.read_text(encoding="utf-8")
@@ -231,8 +234,7 @@ class FelhasznaloiDokumentacio(unittest.TestCase):
 
     def test_a_felhasznaloi_dokumentumok_hivatkozasai_leteznek(self):
         lapok = sorted(USER.glob("*.md")) if USER.is_dir() else []
-        if not lapok:
-            self.skipTest(INDOKOLT_FELHASZNALOI)
+        self.assertGreaterEqual(len(lapok), 1, "nincs felhasználói dokumentáció a docs/user alatt")
         for lap in lapok:
             for cel in sorted(set(relativ_celok(lap.read_text(encoding="utf-8")))):
                 with self.subTest(lap=lap.name, cel=cel):

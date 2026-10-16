@@ -21,6 +21,8 @@
   import { LustaRajzolo } from './olvaso/lusta';
   import { feloldatlanJelol } from './linkek/feloldatlan';
   import { OlvasoKereses } from './olvaso/kereses';
+  import { beagyazasFrissitesFigyel } from './beagyazas/rajzol';
+  import { olvasoHajtas } from './olvaso/hajtas';
 
   let { view, dok, ut, valtozat, nyelv = '' }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string } = $props();
 
@@ -36,7 +38,9 @@
   let keresoMezo: HTMLInputElement | undefined = $state();
   const elotag = `lj${Math.random().toString(36).slice(2, 8)}`;
 
-  export async function keresesNyit(): Promise<void> {
+  /** A kereső megnyitása; a `kezdo` előtölti a mezőt (pl. a ⌘⇧F ablak lekérdezéséből), különben a mező régi szövege marad. */
+  export async function keresesNyit(kezdo?: string): Promise<void> {
+    if (kezdo !== undefined && kezdo !== '') lekerdezes = kezdo;
     keresesNyitva = true;
     await tick();
     keresoMezo?.focus();
@@ -73,7 +77,13 @@
     const f = dokumentumRenderel(fa, { olvas: (a, b) => doc.sliceString(a, b), ut, lusta, elotag, csakOlvashato: state.readOnly || !!dok.csakOlvashato });
     tartalom.replaceChildren(f);
     feloldatlanJelol(tartalom, lusta.jel);
+    olvasoHajtas(tartalom, view);
     gorgeto.scrollTop = gorgetes;
+  }
+
+  /** A szerkesztő hajtás-állapotának változása (parancs, másik nézet): a gombok és a rejtés újra (újrarajzolás nélkül). */
+  export function hajtasFrissit(): void {
+    if (tartalom) olvasoHajtas(tartalom, view);
   }
 
   /** A legfelső látható blokk forrásbeli helye (a módváltás ide görget). */
@@ -124,6 +134,16 @@
     }
   }
 
+  /** Középső gomb a linken: új fül (02-links-08); más gomb (jobb) nem nyit. */
+  function kozepsoKattintas(e: MouseEvent) {
+    if (e.button === 1) linkNyit(e);
+  }
+
+  /** A középső gomb lenyomása a linken ne indítson automatikus görgetést (Windows/Linux). */
+  function kozepsoLe(e: MouseEvent) {
+    if (e.button === 1 && (e.target as HTMLElement).closest('.wikilink[data-cel], a.link[data-url]')) e.preventDefault();
+  }
+
   function billentyu(e: KeyboardEvent) {
     if (keresesNyitva && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); keresesBezar(); return; }
     if (e.key === 'Enter' && linkNyit(e)) return;
@@ -156,13 +176,15 @@
   onMount(() => {
     if (tartalom) kereses = new OlvasoKereses(tartalom, allapot => { talalatok = allapot; });
     rajzol();
-    return tartalom ? elonezetKapcsol(tartalom, domCel) : undefined;
+    if (!tartalom) return undefined;
+    // 04-embeds-07: más jegyzet tartalmi változása csak az érintett beágyazást rajzolja újra (a görgetés, a többi DOM marad)
+    const le = [elonezetKapcsol(tartalom, domCel), beagyazasFrissitesFigyel(tartalom)];
+    return () => { for (const f of le) f(); };
   });
 
   // a dokumentum változása (jelölőnégyzet, külső változás) után újrarajzol, kicsit késleltetve
   $effect(() => {
     void valtozat;
-    void linkek.tartalomVerzio;
     void linkek.verzio;
     void Object.values(beallitasok.ertek.modulok);
     if (kesleltetes) clearTimeout(kesleltetes);
@@ -195,6 +217,8 @@
     aria-label={t('Olvasó nézet')}
     tabindex="-1"
     onclick={kattintas}
+    onauxclick={kozepsoKattintas}
+    onmousedown={kozepsoLe}
     onkeydown={billentyu}
     onchange={valtas}
   ></article>

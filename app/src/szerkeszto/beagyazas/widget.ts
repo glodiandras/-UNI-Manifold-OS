@@ -1,16 +1,16 @@
 // A beágyazás a Live Preview-ban (C10): CodeMirror-widget a `beagyazas/rajzol.ts` renderelőjével. Egyedül álló
 // `![[…]]` sor blokk-widget, sor közepén álló inline (a jegyzet ott csak link-chip). A kattintás a forrásba
 // visz (a sor aktív lesz, a jelölés látszik), kivéve a saját vezérlőket (lejátszó, link, gomb). A `linkVerzio`
-// a widget azonosságában van: ha a fájlszerkezet változik (új fájl), a függő beágyazás újrafeloldódik.
+// a widget azonosságában van: ha a fájlszerkezet változik (új fájl), a függő beágyazás újrafeloldódik. A tartalmi változás
+// célonként frissít (04-embeds-07): a widget DOM-ja feliratkozik, és csak a saját (vagy beágyazott) célja változásakor rajzol újra.
 
 import { StateEffect } from '@codemirror/state';
 import { type EditorView, WidgetType } from '@codemirror/view';
 import { domCel } from '../linkek/elonezet';
 import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
 import type { LinkAdat } from '../linkek/adat';
-import { beagyazasElem } from './rajzol';
+import { beagyazasElem, beagyazasFrissitesFigyel } from './rajzol';
 import { beallitasok } from '../../lib/beallitasok/allapot.svelte';
-import { linkek } from '../../lib/vault/linkek.svelte';
 
 /** A fájlszerkezet változott: a Live Preview blokkdíszítései újraszámolódnak. */
 export const linkVerzioValt = StateEffect.define<number>();
@@ -21,10 +21,10 @@ const SAJAT_VEZERLO = 'a, button, video, audio, iframe, input, select, textarea,
 // Az eq alapján a CM új WidgetType-példánnyal is újrahasználhatja ugyanazt a DOM-ot.
 // Az élettartam ezért a DOM-hoz tartozik, nem a legutóbbi dekoráció objektumához.
 const megszakitok = new WeakMap<HTMLElement, AbortController>();
+const leiratkozasok = new WeakMap<HTMLElement, () => void>();
 
 export class BeagyazasWidget extends WidgetType {
   private readonly modulok = JSON.stringify(beallitasok.ertek.modulok);
-  private readonly tartalomVerzio = linkek.tartalomVerzio;
 
   constructor(
     readonly link: LinkAdat,
@@ -40,7 +40,6 @@ export class BeagyazasWidget extends WidgetType {
       m.blokk === this.blokk &&
       m.forras === this.forras &&
       m.verzio === this.verzio &&
-      m.tartalomVerzio === this.tartalomVerzio &&
       m.modulok === this.modulok &&
       m.link.cel === this.link.cel &&
       m.link.alcel === this.link.alcel &&
@@ -55,6 +54,7 @@ export class BeagyazasWidget extends WidgetType {
     kont.className = this.blokk ? 'cm-beagyazas' : 'cm-beagyazas cm-beagyazas-sorban';
     const megszakito = new AbortController();
     megszakitok.set(kont, megszakito);
+    leiratkozasok.set(kont, beagyazasFrissitesFigyel(kont));
     kont.appendChild(
       beagyazasElem(this.link, {
         forras: this.forras,
@@ -65,6 +65,15 @@ export class BeagyazasWidget extends WidgetType {
       }),
     );
     kont.addEventListener('mousedown', (ev: MouseEvent) => {
+      if (ev.button === 1) {
+        // középső gomb a beágyazott linken: új fül (02-links-08)
+        const kozep = domCel(ev.target as HTMLElement);
+        if (kozep) {
+          ev.preventDefault();
+          void linkMegnyit({ forras: kozep.forras, cel: kozep.link.cel, alcel: kozep.link.alcel }, nyitasMod(ev));
+        }
+        return;
+      }
       if (ev.button !== 0) return;
       const t = ev.target as HTMLElement;
       const wl = domCel(t);
@@ -85,6 +94,8 @@ export class BeagyazasWidget extends WidgetType {
   destroy(dom: HTMLElement) {
     megszakitok.get(dom)?.abort();
     megszakitok.delete(dom);
+    leiratkozasok.get(dom)?.();
+    leiratkozasok.delete(dom);
   }
 
   get estimatedHeight() {

@@ -16,7 +16,7 @@ export interface SzerkesztoPeldany {
   olvasoValt(): void;
   forrasValt(): void;
   /** Keresés a megjelenített Olvasó-szövegben, módváltás nélkül. */
-  keresesNyit?(): void;
+  keresesNyit?(kezdo?: string): void;
   mentes(): Promise<void>;
   pillanatkep(): Promise<void>;
   /** a szerkesztő mező fókuszban van-e (a formázó billentyűk csak ekkor élnek) */

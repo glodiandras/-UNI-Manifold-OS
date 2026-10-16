@@ -6,7 +6,9 @@
   import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
-  import { CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, Network, Pin, Plus, X, ArrowLeft, ArrowRight } from '../lib/ikon/ikonok';
+  import { CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, Link2, Network, Pin, Plus, X, ArrowLeft, ArrowRight } from '../lib/ikon/ikonok';
+  import { fulHuzas, HUZAS_TIPUS } from '../lib/elrendezes/fulHuzas.svelte';
+  import { panelKapcsolatMenu } from './panelKapcsolat';
   import { kornyezet } from '../lib/kornyezet';
   import { nezetFul, type Ful, type PanelCs } from '../lib/elrendezes/munkaterulet.svelte';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
@@ -14,8 +16,6 @@
   import { vagolapra } from '../szerkeszto/vagolap';
   import { regiszter } from '../lib/parancsok/regiszter';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
-
-  const HUZAS_TIPUS = 'application/x-manifold-ful';
 
   let { panel, aktivPanel, nezetId }: { panel: PanelCs; aktivPanel: boolean; nezetId: string } = $props();
   const { felulet, fajlok } = kornyezet();
@@ -38,6 +38,7 @@
     (f.nezet?.tipus === 'ma' || f.nezet?.tipus === 'manifold') ? CalendarDays : f.nezet?.tipus === 'dolgozat' ? GraduationCap : f.nezet?.tipus === 'statisztika' ? ChartNoAxesColumn : f.nezet?.tipus === 'hasznalat' ? Gauge : Network;
   const cim = (f: Ful) => (f.ut ? fajlNev(f.ut) : nezetFul(f) ? nezetCim(f) : t('Új fül'));
   const tabId = (f: Ful) => `ful-${f.id}`;
+  const kapcsolt = $derived(m.kapcsoltTarsak(panel.id).length > 0);
 
   function aktival(f: Ful) {
     m.aktival(panel.id, f.id);
@@ -77,6 +78,12 @@
     hozzaad('mind', t('Csoport nem rögzített füleinek bezárása'), () => m.bezarTobbit('mind', panel.id, f.id));
     hozzaad('oszt-jobbra', t('Osztás jobbra'), () => m.oszt('sor'));
     hozzaad('oszt-le', t('Osztás lefelé'), () => m.oszt('oszlop'));
+    if (panel.fulek.length > 1) {
+      hozzaad('ful-jobbra', t('Fül áthelyezése új csoportba jobbra'), () => void m.athelyezOsztasba(f.id, panel.id, 'jobb'));
+      hozzaad('ful-le', t('Fül áthelyezése új csoportba lefelé'), () => void m.athelyezOsztasba(f.id, panel.id, 'le'));
+    }
+    if (m.panelek().length > 1) hozzaad('kapcsol', t('Fülcsoport összekapcsolása…'), () => panelKapcsolatMenu(felulet, panel.id, x, y));
+    if (kapcsolt) hozzaad('lekapcsol', t('Fülcsoport leválasztása'), () => m.lekapcsol(panel.id));
     if (f.ut) {
       const ut = f.ut;
       hozzaad('megmutat', t('Megmutatás a fájlfában'), () => felulet.megmutatFaban(ut));
@@ -89,9 +96,34 @@
 
   function navigal(irany: -1 | 1) { m.aktival(panel.id); m.navigal(irany); }
 
+  /** A vissza/előre nyíl helyi menüje: az előzmény elemei, a kiválasztott n lépést ugrik (06-workspace-24). */
+  function elozmenyMenu(e: MouseEvent | KeyboardEvent, irany: -1 | 1) {
+    e.preventDefault();
+    const lista = m.elozmenyLista(panel.aktiv ?? undefined, irany).slice(0, 20);
+    if (!lista.length) return;
+    const gomb = e.currentTarget as HTMLElement, r = gomb.getBoundingClientRect();
+    const elemek: MenuElem[] = [], akciok = new Map<string, () => void>();
+    for (const l of lista) {
+      const id = `lep-${l.lepes}`;
+      elemek.push({ id, nev: l.ut ? fajlNev(l.ut) : t('Új fül') });
+      akciok.set(id, () => { m.aktival(panel.id); m.navigalLepes(irany, l.lepes); });
+    }
+    const x = e instanceof MouseEvent && e.clientX ? e.clientX : r.left, y = e instanceof MouseEvent && e.clientY ? e.clientY : r.bottom;
+    lebegoMenu({ focus: () => gomb.focus() }, x, y, elemek, akciok, irany === -1 ? t('Előzmények: vissza') : t('Előzmények: előre'));
+  }
+  const elozmenyBillentyu = (e: KeyboardEvent, irany: -1 | 1) => { if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) elozmenyMenu(e, irany); };
+
   function huzasKezd(e: DragEvent, f: Ful) {
     e.dataTransfer?.setData(HUZAS_TIPUS, f.id);
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+    fulHuzas.fulId = f.id; // a panelek szélzónái megjelennek (06-workspace-02)
+    const vege = () => {
+      fulHuzas.fulId = null;
+      window.removeEventListener('dragend', vege, true);
+      window.removeEventListener('drop', vege, true);
+    };
+    window.addEventListener('dragend', vege, true);
+    window.addEventListener('drop', vege, true);
   }
 
   function hely(e: DragEvent): number {
@@ -121,8 +153,9 @@
 </script>
 
 <div class="fulsor" class:aktiv-panel={aktivPanel} data-csend-halvanyul data-csend-terulet>
-  <IkonGomb ikon={ArrowLeft} cimke={t('Vissza az előző jegyzethez')} kicsi disabled={!m.navigalhato(-1, panel.aktiv ?? undefined)} onclick={() => navigal(-1)} />
-  <IkonGomb ikon={ArrowRight} cimke={t('Előre a következő jegyzethez')} kicsi disabled={!m.navigalhato(1, panel.aktiv ?? undefined)} onclick={() => navigal(1)} />
+  <IkonGomb ikon={ArrowLeft} cimke={t('Vissza az előző jegyzethez')} kicsi disabled={!m.navigalhato(-1, panel.aktiv ?? undefined)} onclick={() => navigal(-1)} oncontextmenu={(e) => elozmenyMenu(e, -1)} onkeydown={(e) => elozmenyBillentyu(e, -1)} />
+  <IkonGomb ikon={ArrowRight} cimke={t('Előre a következő jegyzethez')} kicsi disabled={!m.navigalhato(1, panel.aktiv ?? undefined)} onclick={() => navigal(1)} oncontextmenu={(e) => elozmenyMenu(e, 1)} onkeydown={(e) => elozmenyBillentyu(e, 1)} />
+  {#if kapcsolt}<span class="kapcsolt" title={t('Összekapcsolt fülcsoport')} role="img" aria-label={t('Összekapcsolt fülcsoport')}><Ikon ikon={Link2} meret={14} /></span>{/if}
   <div
     class="fulek"
     role="tablist"
@@ -196,6 +229,13 @@
     padding: 0 var(--t-2);
     border-bottom: var(--keret-vastag) solid var(--keret);
     background: var(--hatter);
+  }
+
+  .kapcsolt {
+    display: inline-grid;
+    place-items: center;
+    flex: none;
+    color: var(--szoveg-halvany);
   }
 
   .fulek {

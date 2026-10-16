@@ -1,21 +1,41 @@
 // A héj saját parancsai (C07). Minden gomb is ezeket futtatja, így a palettából és billentyűről ugyanaz
 // történik. A későbbi modulok a saját parancsaikat ugyanígy, a saját chatjükben regisztrálják.
 
-import { beallitasok } from './lib/beallitasok/allapot.svelte';
+import { beallitasok, modulEngedelyezett } from './lib/beallitasok/allapot.svelte';
 import type { BeallitasokValtozas } from './lib/beallitasok/tipusok';
 import { ertesitesek } from './lib/ertesites/ertesites.svelte';
-import type { Felulet } from './lib/elrendezes/felulet.svelte';
+import { NAGYITAS, type Felulet } from './lib/elrendezes/felulet.svelte';
 import { alkalmaz, type Tema } from './lib/elrendezes/tema';
 import { csend } from './lib/elrendezes/csend.svelte';
 import { rendszerErtesites } from './lib/ertesites/rendszer';
 import { regioFokusz, regioLep } from './lib/fokusz/fokusz';
-import { ChevronsDownUp, Columns2, Command, FilePlus, FileClock, Monitor, Moon, Network, PanelBottom, PanelLeft, PanelRight, Plus, Rows2, Search, SlidersHorizontal, Sun, Tag, X } from './lib/ikon/ikonok';
+import { ChevronsDownUp, Columns2, Command, FilePlus, FileClock, FolderOpen, LayoutGrid, Link2, ListTree, Monitor, Moon, Network, PanelBottom, PanelLeft, PanelRight, Plus, Rows2, Search, SlidersHorizontal, Sun, Tag, X, ZoomIn, ZoomOut } from './lib/ikon/ikonok';
 import { t, tk } from './lib/i18n';
 import { keresoMegnyit, keresoOldalsav } from './lib/kereses/kereso';
 import type { Parancs, Regiszter } from './lib/parancsok/regiszter';
+import { hejbenFut, hejnek } from './lib/core/hej';
+import { finderMegmutat, masolatKeszit } from './lib/vault/faMuveletek';
+import type { FaRendezes } from './lib/vault/fa';
+import { panelKapcsolatMenu } from './hej/panelKapcsolat';
+
+const FA_RENDEZES_PARANCSOK: [FaRendezes, string][] = [
+  ['nev', tk('Fájlfa rendezése: fájlnév (A–Z)')],
+  ['nev-forditva', tk('Fájlfa rendezése: fájlnév (Z–A)')],
+  ['modositva', tk('Fájlfa rendezése: módosítás, legújabb elöl')],
+  ['modositva-regi', tk('Fájlfa rendezése: módosítás, legrégebbi elöl')],
+  ['letrehozva', tk('Fájlfa rendezése: létrehozás, legújabb elöl')],
+  ['letrehozva-regi', tk('Fájlfa rendezése: létrehozás, legrégebbi elöl')],
+];
 
 export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
   const m = f.munkaterulet;
+  // a PDF-fül saját ⌘+/⌘−/⌘0 nagyítást kezel: ott a globális UI-nagyítás nem veszi el a billentyűt
+  const pdfAktiv = () => !!m.aktivFul?.ut?.toLowerCase().endsWith('.pdf');
+  const fanyit = () => {
+    f.atfedes = null;
+    f.oldalsav.nezet = 'fajlok';
+    if (!f.oldalsav.nyitva) csend.oldalsavAtfedes = true;
+  };
   const panelFokusz = (muvelet: () => void) => {
     muvelet();
     queueMicrotask(() => document.querySelector<HTMLElement>(`[data-panel-id="${m.aktivPanelId}"] [role="tabpanel"]`)?.focus({ preventScroll: true }));
@@ -78,6 +98,18 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
         f.atfedes = null;
         f.oldalsav.nyitva = true;
         f.oldalsav.nezet = 'cimkek';
+      },
+    },
+    {
+      id: 'tulajdonsagok.panel',
+      nev: tk('Tulajdonságok (összes tulajdonság)'),
+      kategoria: tk('Keresés'),
+      ikon: SlidersHorizontal,
+      elerheto: () => modulEngedelyezett('tulajdonsagok'),
+      futtat: () => {
+        f.atfedes = null;
+        f.oldalsav.nyitva = true;
+        f.oldalsav.nezet = 'tulajdonsagok';
       },
     },
     {
@@ -148,6 +180,24 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
       },
     },
     { id: 'fa.osszecsuk', nev: tk('Összes mappa összecsukása'), kategoria: tk('Fájl'), ikon: ChevronsDownUp, futtat: () => void (f.oldalsav.nyitott = []) },
+    { id: 'fa.kinyit-mind', nev: tk('Összes mappa kinyitása'), kategoria: tk('Fájl'), ikon: ListTree, futtat: () => { fanyit(); f.faKinyitKer++; } },
+    ...FA_RENDEZES_PARANCSOK.map(([mod, nev]): Parancs => ({ id: `fa.rendez-${mod}`, nev, kategoria: tk('Fájl'), elerheto: () => f.oldalsav.rendezes !== mod, futtat: () => void (f.oldalsav.rendezes = mod) })),
+    { id: 'fa.auto-megmutat', nev: tk('Az aktív fájl automatikus megmutatása be/ki'), kategoria: tk('Fájl'), futtat: () => void (f.oldalsav.autoMegmutat = !f.oldalsav.autoMegmutat) },
+    { id: 'fa.minden-fajl', nev: tk('Minden fájltípus mutatása a fában be/ki'), kategoria: tk('Fájl'), futtat: () => void (f.oldalsav.mindenFajl = !f.oldalsav.mindenFajl) },
+    { id: 'fa.finder', nev: tk('Megmutatás a Finderben'), kategoria: tk('Fájl'), elerheto: () => !!m.aktivFul?.ut, futtat: () => { const ut = m.aktivFul?.ut; if (ut) return void finderMegmutat(ut); } },
+    { id: 'fa.masolat', nev: tk('Másolat készítése'), kategoria: tk('Fájl'), elerheto: () => !!m.aktivFul?.ut, futtat: () => { const ut = m.aktivFul?.ut; if (ut) return void masolatKeszit(f, ut); } },
+    // UI-nagyítás (06-workspace-28)
+    { id: 'nezet.nagyit', nev: tk('Felület nagyítása'), kategoria: tk('Nézet'), billentyu: 'Mod+=', ikon: ZoomIn, elerheto: () => !pdfAktiv() && f.nagyitas < NAGYITAS.max, futtat: () => f.nagyit(NAGYITAS.lepes) },
+    { id: 'nezet.kicsinyit', nev: tk('Felület kicsinyítése'), kategoria: tk('Nézet'), billentyu: 'Mod+-', ikon: ZoomOut, elerheto: () => !pdfAktiv() && f.nagyitas > NAGYITAS.min, futtat: () => f.nagyit(-NAGYITAS.lepes) },
+    { id: 'nezet.nagyitas-alap', nev: tk('Felület nagyításának visszaállítása'), kategoria: tk('Nézet'), billentyu: 'Mod+0', elerheto: () => !pdfAktiv() && f.nagyitas !== NAGYITAS.alap, futtat: () => f.nagyitasAlap() },
+    // ikonsáv (06-workspace-12) és névvel mentett elrendezések (06-workspace-26)
+    { id: 'munkater.valto', nev: tk('Munkaterület váltása'), kategoria: tk('Általános'), ikon: FolderOpen, elerheto: () => hejbenFut(), futtat: () => hejnek({ tipus: 'munkater-valaszto' }) },
+    { id: 'ikonsav.kapcsol', nev: tk('Ikonsáv megjelenítése / elrejtése'), kategoria: tk('Nézet'), futtat: () => void (f.ikonsav.lathato = !f.ikonsav.lathato) },
+    { id: 'elrendezes.kezel', nev: tk('Munkaterület-elrendezések kezelése'), kategoria: tk('Nézet'), ikon: LayoutGrid, atfedesben: false, futtat: () => void (f.atfedes = 'elrendezesek') },
+    { id: 'elrendezes.ment', nev: tk('Munkaterület-elrendezés mentése névvel'), kategoria: tk('Nézet'), ikon: LayoutGrid, futtat: () => void (f.atfedes = 'elrendezesek') },
+    // összekapcsolt fülcsoportok (06-workspace-08)
+    { id: 'panel.osszekapcsol', nev: tk('Fülcsoport összekapcsolása…'), kategoria: tk('Panel'), ikon: Link2, elerheto: () => m.panelek().length > 1, futtat: () => panelKapcsolatMenu(f, m.aktivPanelId) },
+    { id: 'panel.lekapcsol', nev: tk('Fülcsoport leválasztása'), kategoria: tk('Panel'), elerheto: () => m.kapcsoltTarsak(m.aktivPanelId).length > 0, futtat: () => m.lekapcsol() },
     { id: 'ful.ujranyit', nev: tk('Bezárt fül újranyitása'), kategoria: tk('Fül'), billentyu: 'Mod+Shift+T', futtat: () => m.ujranyit() },
     { id: 'navigacio.vissza', nev: tk('Vissza az előző jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowLeft', elerheto: () => m.navigalhato(-1), futtat: () => m.navigal(-1) },
     { id: 'navigacio.elore', nev: tk('Előre a következő jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowRight', elerheto: () => m.navigalhato(1), futtat: () => m.navigal(1) },

@@ -21,6 +21,7 @@ import { linkFelirat, mediaHorgony, meretAliasbol, type LinkAdat } from '../link
 import { ISMERT_KITERJESZTES, jegyzetLetrehoz, linkMegnyit, nyitasMod } from '../linkek/navigacio';
 import { kepetNagyit, kepVodor } from './nagyito';
 import { beagyazottFeladatValt } from './feladat';
+import { kulsoKepElem } from './kulsoKep';
 import { beagyazasRenderelok, jegyzetOsztalyRenderelok, type BeagyazasOpciok, type LancElem } from './regiszter';
 
 export const MAX_MELYSEG = 6;
@@ -48,16 +49,74 @@ function uzenet(kont: HTMLElement, osztaly: string, szoveg: string): HTMLElement
   return s;
 }
 
+/** Egy beágyazás-elem újrarajzolásához szükséges állapot (04-embeds-07: célonkénti frissítés). A `ac` az aktuális betöltés
+ *  megszakítója; a szülő jele (`o.jel`) erre fut tovább, így az újrarajzolás az előző, félbemaradt betöltést eldobja. */
+interface ElemAllapot {
+  link: LinkAdat;
+  o: BeagyazasOpciok;
+  ac: AbortController | null;
+  leiratkozas: (() => void) | null;
+}
+const allapotok = new WeakMap<HTMLElement, ElemAllapot>();
+
 /** A beágyazás elem azonnal visszaadva; a tartalom aszinkron töltődik bele. */
 export function beagyazasElem(link: LinkAdat, o: BeagyazasOpciok): HTMLElement {
   const kont = el('span', 'beagyazas beagyazas-betolt');
   kont.dataset.cel = link.cel;
   if (link.alcel) kont.dataset.alcel = link.alcel;
-  kont.title = `![[${link.cel}${link.alcel ? '#' + link.alcel : ''}]]`;
+  kont.title = link.kulso ? link.cel : `![[${link.cel}${link.alcel ? '#' + link.alcel : ''}]]`;
   if (link.kulso) {
-    uzenet(kont, 'beagyazas-kulso', t('Külső kép: {nev}. A megjelenítéshez előbb töltsd le.', { nev: link.alt || link.cel }));
-  } else void betolt(kont, link, o);
+    // 04-embeds-02: külső kép — automatikus hálózati kérés nincs; letöltés csak kattintásra, a core-on át
+    kulsoKepElem(kont, link, o, (ut) => beagyazasElem({ ...link, cel: ut, alcel: null, kulso: false }, o));
+  } else {
+    allapotok.set(kont, { link, o, ac: null, leiratkozas: null });
+    inditas(kont);
+  }
   return kont;
+}
+
+function inditas(kont: HTMLElement): void {
+  const a = allapotok.get(kont);
+  if (!a) return;
+  a.ac?.abort();
+  a.leiratkozas?.();
+  const ac = new AbortController();
+  a.ac = ac;
+  a.leiratkozas = null;
+  const szulo = a.o.jel;
+  if (szulo) {
+    if (szulo.aborted) ac.abort();
+    else {
+      const tovabb = () => ac.abort();
+      szulo.addEventListener('abort', tovabb, { once: true });
+      a.leiratkozas = () => szulo.removeEventListener('abort', tovabb);
+    }
+  }
+  void betolt(kont, a.link, { ...a.o, jel: ac.signal });
+}
+
+/** Érinti-e a tartalmi esemény ezt az elemet: a feloldott célja (`data-ut`) változott, vagy még nincs feloldott célja (hiányzó
+ *  cél, betöltési hiba — egy új alias vagy a cél megjelenése feloldhatja). A betöltés alatt álló elem nem indul újra. */
+function erintett(e: HTMLElement, utak: ReadonlySet<string> | null): boolean {
+  if (!allapotok.has(e) || e.classList.contains('beagyazas-betolt')) return false;
+  if (utak === null) return true;
+  const ut = e.dataset.ut;
+  return ut ? utak.has(ut) : true;
+}
+
+/** A `gyoker` alatti, a változás által érintett beágyazások újrarajzolása (a legkülső érintett elem; a belsőt az viszi).
+ *  A nem érintett beágyazás DOM-ja (görgetés, lejátszó, PDF-oldal) megmarad. → az újrarajzolt elemek száma. */
+export function beagyazasokFrissit(gyoker: HTMLElement, utak: ReadonlySet<string> | null): number {
+  const jeloltek = [...(gyoker.matches('.beagyazas') ? [gyoker] : []), ...gyoker.querySelectorAll<HTMLElement>('.beagyazas')]
+    .filter((e) => erintett(e, utak));
+  const legkulso = jeloltek.filter((e) => !jeloltek.some((m) => m !== e && m.contains(e)));
+  for (const e of legkulso) inditas(e);
+  return legkulso.length;
+}
+
+/** A `gyoker` beágyazásai a saját céljuk tartalmi eseményére frissülnek (Olvasó, canvas-kártya). → leiratkozás. */
+export function beagyazasFrissitesFigyel(gyoker: HTMLElement): () => void {
+  return linkek.tartalomFigyel((utak) => { beagyazasokFrissit(gyoker, utak); });
 }
 
 async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Promise<void> {
@@ -72,12 +131,15 @@ async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Pr
     adat = await (o.sor ? o.sor.futtat(leker, o.jel) : leker());
   } catch (e) {
     if (o.jel?.aborted) return;
+    delete kont.dataset.ut;
     uzenet(kont, 'beagyazas-hiba', t('A beágyazás nem tölthető be: {hiba}', { hiba: e instanceof ApiHiba ? e.message : String(e) }));
     kesz();
     return;
   }
   if (o.jel?.aborted) return;
   kont.classList.remove('beagyazas-betolt');
+  if (adat.ut) kont.dataset.ut = adat.ut;
+  else delete kont.dataset.ut;
   try {
     const modul = adat.tipus === 'pdf' ? 'pdf' : adat.tipus === 'base' ? 'bazis' : adat.tipus === 'canvas' ? 'canvas' :
       adat.tipus === 'video' || adat.tipus === 'hang' ? 'media' : null;
@@ -157,6 +219,9 @@ function jegyzet(kont: HTMLElement, adat: BeagyazasAdat, link: LinkAdat, o: Beag
       void linkMegnyit({ forras: o.forras, cel: link.cel, alcel: link.alcel }, nyitasMod(e));
     };
     fej.addEventListener('click', nyit);
+    fej.addEventListener('auxclick', (e) => {
+      if (e.button === 1) nyit(e); // középső gomb: új fül (02-links-08)
+    });
     fej.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') nyit(e);
     });
@@ -353,6 +418,9 @@ export function chip(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: 
     void linkMegnyit({ forras: o.forras, cel: link.cel, alcel: link.alcel }, nyitasMod(e));
   };
   a.addEventListener('click', nyit);
+  a.addEventListener('auxclick', (e) => {
+    if (e.button === 1) nyit(e); // középső gomb: új fül (02-links-08)
+  });
   a.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') nyit(e);
   });

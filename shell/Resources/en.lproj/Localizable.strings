@@ -50,12 +50,12 @@
 "Vissza a szerkesztéshez" = "Back to editing";
 "Kilépés mentés nélkül" = "Quit without saving";
 
-/* Core and startup dialogs */
+/* Background service and startup dialogs */
 "A Manifold már fut" = "Manifold is already running";
 "A Manifold nem indul" = "Manifold can't start";
-"A core nem válaszol" = "The core is not responding";
+"A core nem válaszol" = "The background service is not responding";
 "Várok" = "Keep waiting";
-"A core leállt" = "The core stopped";
+"A core leállt" = "The background service stopped";
 "Újraindítás" = "Restart";
 "Mentetlen szöveg másolása" = "Copy unsaved text";
 "Az újraindítás nem sikerült" = "Restart failed";
@@ -64,36 +64,36 @@
 "Újratöltés" = "Reload";
 "A felület többször leállt" = "The interface stopped several times";
 
-/* Startup, core, trash helper and calendar helper messages */
+/* Startup, background service, trash helper and calendar helper messages */
 "A Manifold alkalmazásmappája nem található. A Manifold.app-nak az alkalmazásmappájában kell lennie (bin/mos és config/os.toml mellett). A külső kötet nincs csatlakoztatva?" = "Manifold can't find its application folder. Manifold.app must sit in its application folder, next to bin/mos and config/os.toml. Is the external drive connected?";
 "A Manifold egy ideiglenes, csak olvasható helyről fut (a macOS áthelyezte, mert még a letöltési helyén van). Húzd a Manifoldot az Alkalmazások mappába, majd indítsd onnan." = "Manifold is running from a temporary, read-only location because macOS moved it while it was still in its download folder. Drag Manifold to the Applications folder and open it from there.";
 "Még nincs Manifold-munkatér ezen a gépen. Hozz létre egyet egy jegyzetmappából: mos workspace letrehoz <mappa>." = "There is no Manifold workspace on this Mac yet. Create one from a notes folder: mos workspace letrehoz <folder>.";
 "A munkatér mappája nem érhető el: %@. Csatlakoztatva van a kötet?" = "The workspace folder is not available: %@. Is the drive connected?";
-"A core nem indult el újra.\n\n%@" = "The core did not restart.\n\n%@";
-"A core nem indult el.\n\n%@" = "The core did not start.\n\n%@";
-"A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el." = "The core sent no valid API secret in the handshake (an old core, or a wrong `MOS_API_TITOK`?), so the interface could not reach it.";
-"A core újraindult" = "The core restarted";
+"A core nem indult el újra.\n\n%@" = "The background service did not restart.\n\n%@";
+"A core nem indult el.\n\n%@" = "The background service did not start.\n\n%@";
+"A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el." = "The background service sent no valid API secret in the handshake (an old version, or a wrong `MOS_API_TITOK`?), so the interface could not reach it.";
+"A core újraindult" = "The background service restarted";
 "A szerkesztő újra próbálja a mentést; ha valami nem mentődött, jelezni fog." = "The editor will retry saving and tell you if anything was not saved.";
-"A core új porton indult újra" = "The core restarted on a new port";
+"A core új porton indult újra" = "The background service restarted on a new port";
 "A lap újratöltődött. A mentetlen szöveg a vágólapon van (%d jegyzet)." = "The page reloaded. Your unsaved text is on the clipboard (%d notes).";
 "A lap újratöltődött. Mentetlen jegyzetet a felület nem jelzett; a nyitott fülek a mentett állapotból töltődtek be." = "The page reloaded. No unsaved notes were reported; open tabs were loaded from their saved state.";
 "Ugyanezen a vaulton már fut egy Manifold" = "Manifold is already running on this workspace";
-"(a core pid-je: %d)" = "(core pid: %d)";
+"(a core pid-je: %d)" = "(process ID: %d)";
 ". Zárd be a másik Manifold-ablakot, és indítsd újra." = ". Close the other Manifold window and start again.";
-"A core %d másodperce nem jelentkezett (nagy vaultnál vagy lassú lemeznél az indulás tovább tarthat)." = "The core has not responded for %d seconds. Startup can take longer with a large workspace or a slow disk.";
-"A core nem írt hibaüzenetet." = "The core wrote no error message.";
-"A core utolsó sorai:" = "Last lines from the core:";
-"A felület betöltése megszakadt (%@). A core fut; az Újratöltés újra kéri a lapot. Ha a hiba ismétlődik, lépj ki, és indítsd újra a Manifoldot." = "Loading the interface was interrupted (%@). The core is running; Reload requests the page again. If this keeps happening, quit and start Manifold again.";
+"A core %d másodperce nem jelentkezett (nagy vaultnál vagy lassú lemeznél az indulás tovább tarthat)." = "The background service has not responded for %d seconds. Startup can take longer with a large workspace or a slow disk.";
+"A core nem írt hibaüzenetet." = "The background service wrote no error message.";
+"A core utolsó sorai:" = "Last lines from the background service:";
+"A felület betöltése megszakadt (%@). A core fut; az Újratöltés újra kéri a lapot. Ha a hiba ismétlődik, lépj ki, és indítsd újra a Manifoldot." = "Loading the interface was interrupted (%@). The background service is running; Reload requests the page again. If this keeps happening, quit and start Manifold again.";
 "A felület újratöltődött" = "The interface reloaded";
 "A felület folyamata váratlanul leállt. A mentetlen szöveg elveszhetett; a mentés a szerkesztés közben folyamatos." = "The interface process stopped unexpectedly. Unsaved text may be lost; saving runs continuously while you edit.";
-"A felület folyamata rövid időn belül többször összeomlott, ezért nem töltöm újra magától. A core és a mentett jegyzetek épek. Újratöltés után folytathatod, vagy kilépsz." = "The interface process crashed several times in a short while, so it will not reload on its own. The core and your saved notes are intact. Reload to continue, or quit.";
+"A felület folyamata rövid időn belül többször összeomlott, ezért nem töltöm újra magától. A core és a mentett jegyzetek épek. Újratöltés után folytathatod, vagy kilépsz." = "The interface process crashed several times in a short while, so it will not reload on its own. The background service and your saved notes are intact. Reload to continue, or quit.";
 "mentés a kilépés előtt…" = "saving before quitting…";
 "a mentés nem fejeződött be %d másodperc alatt" = "saving did not finish within %d seconds";
 "leállítás a futó feladat végén…" = "stopping when the running task ends…";
 "Leállítás a futó feladat végén…" = "Stopping when the running task ends…";
 "a felület hibát jelzett: %@" = "the interface reported an error: %@";
-"a core kilépett az indulás előtt" = "the core exited before it started";
-"a core nem indítható: %@" = "the core can't be started: %@";
+"a core kilépett az indulás előtt" = "the background service exited before it started";
+"a core nem indítható: %@" = "the background service can't be started: %@";
 "érvénytelen kézfogás: %@" = "invalid handshake: %@";
 "Nincs megadva a vault (a jegyzetek mappája). Fejlesztői checkoutban: bin/mos portable init --vault <mappa>." = "No workspace is set (the notes folder). In a developer checkout: bin/mos portable init --vault <folder>.";
 "A mappa még nem Manifold-munkatér. Létrehozása: mos workspace letrehoz <mappa>." = "This folder is not a Manifold workspace yet. Create it with: mos workspace letrehoz <folder>.";
@@ -107,7 +107,7 @@
 "Ha most kilépsz, a mentetlen változások elvesznek. A szerkesztőben a szöveg megvan: onnan kimásolható, vagy a mentés újrapróbálható." = "If you quit now, unsaved changes will be lost. The text is still in the editor: you can copy it from there or try saving again.";
 "A felület nem válaszolt a mentési kérésre (%@), ezért nem tudjuk, van-e mentetlen szöveg. Ha most kilépsz, az elveszhet. Várj egy kicsit, majd próbáld újra." = "The interface did not answer the save request (%@), so we can't tell whether any text is unsaved. If you quit now it may be lost. Wait a moment and try again.";
 "• …és %d további" = "• …and %d more";
-"A háttérfolyamat (a core) váratlanul leállt. Az Újraindítás ugyanazon a porton indítja újra, így az ablak és a benne lévő szöveg megmarad, a szerkesztő magától újra próbálja a mentést." = "The background process (the core) stopped unexpectedly. Restart starts it again on the same port, so the window and its text are kept and the editor retries saving on its own.";
+"A háttérfolyamat (a core) váratlanul leállt. Az Újraindítás ugyanazon a porton indítja újra, így az ablak és a benne lévő szöveg megmarad, a szerkesztő magától újra próbálja a mentést." = "The background service stopped unexpectedly. Restart starts it again on the same port, so the window and its text are kept and the editor retries saving on its own.";
 "Mentetlen jegyzet (a szerkesztőben a szöveg megvan):" = "Unsaved note (the text is still in the editor):";
 "a kérés nem érvényes JSON" = "the request is not valid JSON";
 "a kérésnek JSON-objektumnak kell lennie" = "the request must be a JSON object";
@@ -156,6 +156,12 @@
 "Munkatér létrehozása…" = "Create workspace…";
 "Mappa megnyitása…" = "Open folder…";
 "Demó kipróbálása" = "Try demo";
+"Demó alaphelyzetre állítása…" = "Reset demo…";
+"Demó alaphelyzetre állítása" = "Reset the demo workspace";
+"A demó jegyzetei és mintaadatai visszaállnak az eredeti állapotba. Előbb pillanatkép készül, a te hozzáadott jegyzeteidet pedig félretesszük, nem töröljük." = "The demo notes and sample data go back to their original state. A snapshot is saved first, and notes you added are set aside, not deleted.";
+"Alaphelyzetre állítás" = "Reset demo";
+"Demó visszaállítása…" = "Resetting the demo…";
+"A demó alaphelyzetre állt." = "The demo was reset.";
 "Legutóbbi munkaterek" = "Recent workspaces";
 "Frissítés" = "Refresh";
 "A művelet nem sikerült. Próbáld újra." = "The operation failed. Try again.";

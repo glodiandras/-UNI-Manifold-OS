@@ -23,6 +23,7 @@ from pathlib import Path
 
 from . import fuzet
 from .modell import kliens
+from .modell.hibaszerzodes import ai_mezo
 from .utvonalak import HttpError
 
 MAX_FOTO_BAJT = 11 * 1024 * 1024               # a JSON-törzs 16 MiB-os korlátja alatt, base64-gyel
@@ -146,7 +147,7 @@ def keplet_ocr(app, body: dict, vagolap=vagolap_kep, chat=kliens.chat) -> dict:
                      images=[str(cel)], max_tokens=int(mod.ARANY["max_token"]), temperature=0.0)
         except kliens.KliensHiba as e:
             raise HttpError(503 if e.kod >= 500 else 400, f"a képlet-olvasó modell nem válaszolt: {e}", kod="fuzet_api.keplet_modell_nem_valaszolt", param={"e": e},
-                            modell_hiba=True) from None
+                            modell_hiba=True, ai=ai_mezo("ocr_keplet", e, "keplet_ocr")) from None
         szoveg = r["choices"][0]["message"]["content"]
         latex = mod.jelolt(szoveg).strip().strip("$").strip()
         if not latex:

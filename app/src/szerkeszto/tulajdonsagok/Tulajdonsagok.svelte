@@ -15,9 +15,11 @@
   import { onMount, tick, untrack } from 'svelte';
   import { csend } from '../../lib/elrendezes/csend.svelte';
   import Ikon from '../../lib/ikon/Ikon.svelte';
-  import { Calendar, Check, ChevronRight, FileClock, Hash, Link, List, Pencil, Plus, SlidersHorizontal, Tags, Trash2, TriangleAlert, Type } from '../../lib/ikon/ikonok';
+  import { Calendar, Check, ChevronRight, ClipboardPaste, Copy, FileClock, Hash, Link, List, Pencil, Plus, Scissors, SlidersHorizontal, Tags, Trash2, TriangleAlert, Type } from '../../lib/ikon/ikonok';
   import type { Csere } from '../dokumentum/kulonbseg';
   import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
+  import { lebegoMenu, type MenuElem } from '../notion/menu';
+  import { tulajdonsagVagolapSzoveg, vagolapTulajdonsag } from './vagolap';
   import { linkek } from '../../lib/vault/linkek.svelte';
   import { tulajdonsagApi } from './api';
   import { LINK_KULCSOK, LISTA_KULCSOK, csupaLink, datumBevitel, ertekSzoveg, linkke, listaBevitel, listaElemek, szamBevitel, wikiReszek } from './ertek';
@@ -121,6 +123,112 @@
 
   function torol(kulcs: string) {
     void m.muvelet({ muvelet: 'torol', kulcs });
+  }
+
+  // ---------------------------------------------------------------- kulcs átnevezése, sor-menü (03-properties-06/07)
+
+  let atnevKulcs = $state<string | null>(null);
+  let atnevErtek = $state('');
+  /** az Escape vagy a sikeres Enter után érkező blur nem ment újra */
+  let atnevKesz = false;
+
+  function atnevezNyit(t: Tulajdonsag) {
+    if (!irhato || m.dolgozik || m.tipusDolgozik) return;
+    atnevKesz = false;
+    atnevKulcs = t.kulcs;
+    atnevErtek = t.kulcs;
+    m.elutasitott = null;
+    void tick().then(() => {
+      const mezo = document.getElementById(`${id}-atnev`) as HTMLInputElement | null;
+      mezo?.focus();
+      mezo?.select();
+    });
+  }
+
+  async function atnevezMent() {
+    const regi = atnevKulcs, uj = atnevErtek.trim();
+    if (atnevKesz || regi === null) return;
+    atnevKesz = true;
+    if (!uj || uj === regi) { atnevKulcs = null; return; }
+    const ok = await m.muvelet({ muvelet: 'atnevez', kulcs: regi, uj_kulcs: uj });
+    if (ok || m.fuggo) atnevKulcs = null; // siker, vagy séma-megerősítés vár (a sor alatt)
+    else atnevKesz = false; // elutasítva: a mező nyitva marad a hibával, javítható
+  }
+
+  function atnevBillentyu(e: KeyboardEvent) {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') { e.preventDefault(); void atnevezMent(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); atnevKesz = true; atnevKulcs = null; }
+  }
+
+  async function vagolapraIr(szoveg: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(szoveg);
+      return true;
+    } catch {
+      m.hiba = tx('A vágólap nem érhető el.');
+      return false;
+    }
+  }
+
+  async function masol(t: Tulajdonsag): Promise<boolean> {
+    return vagolapraIr(tulajdonsagVagolapSzoveg(t));
+  }
+
+  async function kivag(t: Tulajdonsag) {
+    if (await masol(t)) torol(t.kulcs);
+  }
+
+  /** Beillesztés: a vágólap `kulcs: érték` szövege beállítja azt a kulcsot (újat is felvesz); kulcs nélküli szöveg ennek a sornak
+   *  az értéke. Az érték ellenőrzése a core-é (a hibás vagy séma-sértő érték a sor alatt látszik). */
+  async function beilleszt(t: Tulajdonsag) {
+    let szoveg = '';
+    try {
+      szoveg = await navigator.clipboard.readText();
+    } catch {
+      m.hiba = tx('A vágólap nem érhető el.');
+      return;
+    }
+    const v = vagolapTulajdonsag(szoveg);
+    if (!v) { m.elutasitott = { kulcs: t.kulcs, uzenet: tx('A vágólap szövege nem tulajdonság.') }; return; }
+    const kulcs = v.kulcs ?? t.kulcs;
+    const letezo = tul.find((x) => x.kulcs === kulcs);
+    const tipus: TulajdonsagTipus = letezo && letezo.tipus !== 'unknown' ? letezo.tipus : v.tipus;
+    let ertek = v.ertek;
+    if (tipus === 'text' && Array.isArray(ertek)) ertek = ertek.join(', ');
+    else if ((tipus === 'multitext' || tipus === 'tags' || tipus === 'aliases') && !Array.isArray(ertek)) ertek = ertek === null || ertek === '' ? [] : [String(ertek)];
+    else if (tipus === 'number' && typeof ertek === 'string') ertek = szamBevitel(ertek) ?? ertek;
+    beallit(kulcs, ertek, tipus);
+  }
+
+  function sorMenu(t: Tulajdonsag, x: number, y: number, fokusz: () => void) {
+    const elemek: MenuElem[] = [];
+    const akciok = new Map<string, () => void>();
+    const hozzaad = (id: string, nev: string, ikon: MenuElem['ikon'], fn: () => void, veszely = false) => {
+      elemek.push({ id, nev, ikon, veszely });
+      akciok.set(id, fn);
+    };
+    if (irhato) hozzaad('atnevez', tx('Átnevezés|menu'), Pencil, () => atnevezNyit(t));
+    if (irhato) hozzaad('kivag', tx('Kivágás|menu'), Scissors, () => void kivag(t));
+    hozzaad('masol', tx('Másolás|menu'), Copy, () => void masol(t));
+    if (irhato) hozzaad('beilleszt', tx('Beillesztés|menu'), ClipboardPaste, () => void beilleszt(t));
+    if (irhato) hozzaad('torol', tx('Tulajdonság törlése'), Trash2, () => torol(t.kulcs), true);
+    lebegoMenu({ focus: fokusz }, x, y, elemek, akciok, tx('A(z) „{kulcs}” tulajdonság menüje', { kulcs: t.kulcs }));
+  }
+
+  function sorKontextus(e: MouseEvent, t: Tulajdonsag) {
+    const cel = e.target as HTMLElement;
+    if (cel.closest('textarea')) return; // a szövegmező saját (másolás/beillesztés) menüje marad
+    e.preventDefault();
+    const sor = e.currentTarget as HTMLElement;
+    sorMenu(t, e.clientX, e.clientY, () => (sor.querySelector<HTMLElement>('input, button') ?? sor).focus());
+  }
+
+  function sorBillentyu(e: KeyboardEvent, t: Tulajdonsag) {
+    if (!(e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey))) return;
+    e.preventDefault();
+    const cel = e.target as HTMLElement, r = cel.getBoundingClientRect();
+    sorMenu(t, r.left, r.bottom, () => cel.focus());
   }
 
   function szovegValtozas(t: Tulajdonsag, e: Event & { currentTarget: HTMLInputElement }) {
@@ -373,12 +481,29 @@
 
     {#each tul as t (t.kulcs)}
       {@const f = fajta(t)}
-      <div class="sor" class:ervenytelen={!t.ervenyes}>
+      <!-- a sor menüje: jobb klikk, ContextMenu / Shift+F10 (a billentyűs belépő a sor fókuszálható elemein él) -->
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div class="sor" class:ervenytelen={!t.ervenyes} data-kulcs={t.kulcs} oncontextmenu={(e) => sorKontextus(e, t)} onkeydown={(e) => sorBillentyu(e, t)}>
         <div class="kulcs-cella">
           <button type="button" class="tipus-gomb" aria-label={tx('{kulcs} típusa: {tipus}', { kulcs: t.kulcs, tipus: tipusAdat(t.tipus)?.nev() ?? tx('Ismeretlen típus') })} aria-expanded={tipusKulcs === t.kulcs} aria-controls="{id}-tipus-{t.kulcs}" disabled={!irhato || m.tipusDolgozik || m.dolgozik} onclick={(e) => void tipusNyit(t, e.currentTarget)}>
             <Ikon ikon={tipusAdat(t.tipus)?.ikon ?? TriangleAlert} meret={16} />
           </button>
-          <label class="kulcs" for="{id}-{t.kulcs}" title={t.kulcs}>{t.kulcs}</label>
+          {#if atnevKulcs === t.kulcs}
+            <input
+              id="{id}-atnev"
+              class="mezo atnev"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              aria-label={tx('{kulcs} új neve', { kulcs: t.kulcs })}
+              bind:value={atnevErtek}
+              onkeydown={atnevBillentyu}
+              onblur={() => void atnevezMent()}
+            />
+          {:else}
+            <!-- svelte-ignore a11y_no_noninteractive_element_interactions (a dupla kattintás az egér-parancsikon; a billentyűs út a sor menüje) -->
+            <label class="kulcs" for="{id}-{t.kulcs}" title={irhato ? tx('{kulcs} (dupla kattintás: átnevezés)', { kulcs: t.kulcs }) : t.kulcs} ondblclick={() => atnevezNyit(t)}>{t.kulcs}</label>
+          {/if}
         </div>
         <div class="ertek">
           {#key `${m.verzio}:${t.kulcs}`}
@@ -648,6 +773,7 @@
     color: var(--szoveg-halvany);
   }
 
+  .atnev { flex: 1; min-width: 0; width: 100%; }
   .kulcs-cella { display: flex; align-items: start; gap: var(--t-1); min-width: 0; }
   .tipus-gomb { flex: none; display: grid; place-items: center; width: var(--magassag-suru); height: var(--magassag-suru); border-radius: var(--kerekites-kicsi); color: var(--szoveg-halvany); }
   .tipus-gomb:hover:not(:disabled) { background: var(--hatter-hover); color: var(--szoveg); }

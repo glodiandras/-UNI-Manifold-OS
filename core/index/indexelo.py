@@ -27,6 +27,7 @@ import hashlib
 import json
 import os
 import queue
+import sqlite3
 import sys
 import threading
 import time
@@ -75,6 +76,9 @@ def _ervenyes(rel: str) -> bool:
     reszek = rel.split("/")
     return bool(rel) and not any(r in SKIP_DIRS for r in reszek[:-1]) and not reszek[-1].startswith(".") \
         and reszek[-1] not in SKIP_DIRS
+
+
+_SERULT_JEL_ZAR = threading.Lock()        # F9: a reader's "damaged index" signal (rare; not the resolver lock a reader may hold)
 
 
 class Index(IndexOlvaso):
@@ -370,6 +374,16 @@ class Index(IndexOlvaso):
         if publikal:
             self.publish({"tipus": "index", **self.allapot()})
 
+    def _olvaso_serult(self, gen: int, hiba: BaseException) -> None:
+        """F9 (audit 08 §4): a reader hit SQLITE_CORRUPT/NOTADB. Once per pool generation the writer is asked to set the file aside
+        and rebuild (`_serult_ujraepit`); a stale reader of an already replaced file (older generation) asks nothing."""
+        with _SERULT_JEL_ZAR:
+            if gen != self._pool_gen or getattr(self, "_serult_jelzett", None) == gen:
+                return
+            self._serult_jelzett = gen
+        print(f"[index] egy olvasó sérült indexet talált ({hiba}); az író újraépíti", file=sys.stderr, flush=True)
+        self._q.put(("serult", [gen], None))
+
     def _betolt_feloldo(self) -> None:
         self.tipusok = elemzo.tipusok_olvas(self.root)
         uj = feloldas.Feloldo(r[0] for r in self._c.execute(
@@ -383,7 +397,11 @@ class Index(IndexOlvaso):
             return
         teljes, utak, pdfek = set(), [], []
         for fajta, lista, _ in koteg:
-            if fajta == "teljes":
+            if fajta == "serult":
+                if self._pool_gen in lista:                 # F9: an olvasó jelezte; a régebbi generáció jelzése elavult
+                    self._serult_ujraepit(sqlite3.DatabaseError("database disk image is malformed (found by a reader)"))
+                    return                                  # the rebuild ran a full sync: the rest of the batch is covered
+            elif fajta == "teljes":
                 teljes.update(lista)
             elif fajta == "pdf":
                 pdfek.extend(lista)

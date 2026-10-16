@@ -21,7 +21,7 @@ import unicodedata
 import unittest
 import urllib.parse
 
-from core import frame, snapshot, vaultio
+from core import frame, kod_nyelvek, mediatipus, snapshot, vaultio
 from core.utvonalak import HttpError
 from tests import csak_darwin
 from tests.helpers import API_TITOK, REPO, alg_core, env, ir, tmpdir
@@ -690,18 +690,119 @@ class CppIrasTest(Alap):
         (self.v / rossz).write_bytes(b"// \xff\xfe\nint x;\n")
         self.assertTrue(self.V.read(rossz)["kodolas_hiba"])
 
-    def test_a_tobbi_forraskod_tovabbra_sem_olvashato_sem_irhato(self):
-        for rp in ("T01 - Történelem/x.h", "T01 - Történelem/x.hpp", "T01 - Történelem/x.c", "T01 - Történelem/x.py"):
+    def test_a_nem_profilos_forraskod_tovabbra_sem_olvashato_sem_irhato(self):
+        """F10 (a C36a `test_a_tobbi_forraskod_…` rögzítő tesztjének indokolt módosítása): a `.py`, `.c` stb. már olvasható és
+        írható — a nyelvprofilok miatt (`core/kod_nyelvek.py`) —, de ami nem profil-kiterjesztés (fejlécfájl, szkript, bináris,
+        egyéb nyelv), továbbra is tilos: az engedélylista nem „minden kód”, hanem pontosan a profilok kiterjesztései."""
+        for rp in ("T01 - Történelem/x.h", "T01 - Történelem/x.hpp", "T01 - Történelem/x.sh", "T01 - Történelem/x.rb",
+                   "T01 - Történelem/x.php", "T01 - Történelem/x.exe", "T01 - Történelem/x.pyc", "T01 - Történelem/x.cpp.bak",
+                   "T01 - Történelem/x.jsx", "T01 - Történelem/x.kt"):
             ir(self.v, rp, "x")
             with self.assertRaises(vaultio.Invalid, msg=rp):
                 self.V.read(rp)
             with self.assertRaises(vaultio.Invalid, msg=rp):
                 self.V.write({"ut": rp, "tartalom": "y", "alap": "x"})
+            self.assertEqual((self.v / rp).read_text(encoding="utf-8"), "x", msg=rp)
 
     def test_a_gepi_iras_kapuja_nem_bovul(self):
         self.assertNotIn(".cpp", vaultio.SZOVEGES)
         self.assertIn(".cpp", vaultio.IRHATO)
         self.assertIn(".cpp", vaultio.OLVASHATO)
+        for kit in kod_nyelvek.kiterjesztesek():             # F10: gép egyik nyelv forrását sem írja
+            self.assertNotIn(kit, vaultio.SZOVEGES, msg=kit)
+
+    def test_az_engedelylista_a_nyelvprofilokbol_szarmazik(self):
+        """Egy forrás: az írható forrás-kiterjesztések pontosan a `kod_nyelvek` profiljaié (nincs második, kézzel vezetett lista)."""
+        profilos = set(kod_nyelvek.kiterjesztesek()) - set(vaultio.NEM_SZERKESZTHETO_FORRAS)
+        self.assertEqual(vaultio.NEM_SZERKESZTHETO_FORRAS, ())   # a profilok közt nincs a pillanatképből kizárt kiterjesztés (.mts kikerült)
+        self.assertEqual(set(vaultio.IRHATO) - {".md", ".base", ".canvas"}, profilos)
+        self.assertEqual(set(vaultio.OLVASHATO) - set(vaultio.SZOVEGES), profilos)
+        self.assertEqual(set(vaultio.FORRAS_KITERJESZTESEK), profilos)
+        # minden nyelv minden kiterjesztése szerepel (az első a kanonikus, a többi alias)
+        for p in kod_nyelvek.PROFILOK:
+            for kit in p.kiterjesztesek:
+                self.assertEqual(kit in vaultio.IRHATO, kit not in vaultio.NEM_SZERKESZTHETO_FORRAS, msg=f"{p.azonosito}{kit}")
+
+    def test_a_pillanatkepbol_kizart_kiterjesztes_nem_szerkesztheto_forras(self):
+        """Egy profil sem vehet fel pillanatképből kizárt (bináris) kiterjesztést, és az `.mts` (AVCHD-videókonténer, korábban a
+        TypeScript aliasa) nem forrás: sem olvasható, sem írható a szerkesztőből (adatbiztonság előbb)."""
+        for p in kod_nyelvek.PROFILOK:
+            for kit in p.kiterjesztesek:
+                self.assertNotIn(kit, mediatipus.BINARIS_KITERJESZTESEK, msg=f"{p.azonosito}{kit}")
+        self.assertIsNone(kod_nyelvek.nyelv_ut("x.mts"))
+        self.assertNotIn(".mts", vaultio.IRHATO)
+        self.assertNotIn(".mts", vaultio.OLVASHATO)
+        rp = "T01 - Történelem/modul.mts"
+        ir(self.v, rp, "export {};\n")
+        with self.assertRaises(vaultio.Invalid):
+            self.V.read(rp)
+        with self.assertRaises(vaultio.Invalid):
+            self.V.write({"ut": rp, "tartalom": "y", "alap": "x"})
+
+    def test_minden_profil_kiterjesztese_olvashato_es_irhato_pillanatkeppel(self):
+        """F10: minden profil minden kiterjesztésére (nagybetűs alakra is): olvasás, mentés (alap-hash), pillanatkép a nyelv nevével."""
+        for p in kod_nyelvek.PROFILOK:
+            for kit in (k for k in p.kiterjesztesek if k not in vaultio.NEM_SZERKESZTHETO_FORRAS):
+                for nev in (f"T01 - Történelem/Prog_{p.azonosito}{kit}", f"T01 - Történelem/Nagy_{p.azonosito}{kit.upper()}"):
+                    with self.subTest(ut=nev):
+                        ir(self.v, nev, "// alap\n")
+                        self.repo.commit(f"{nev} bekerül", {"Mos-Forras": "kezi"})
+                        r0 = self.V.read(nev)
+                        self.assertEqual((r0["tartalom"], r0["kodolas_hiba"]), ("// alap\n", False))
+                        r = self.V.write({"ut": nev, "tartalom": "// uj\n", "alap": r0["hash"], "elso": True, "pillanat": True})
+                        self.assertEqual((self.v / nev).read_text(encoding="utf-8"), "// uj\n")
+                        c = self._commitok()[0]
+                        self.assertEqual(r["pillanat"], c.sha)
+                        self.assertEqual((c.trailers["Mos-Forras"], c.trailers["Mos-Tetel"]), ("pult-szerkeszto", nev))
+                        self.assertIn(f"{p.nev} forrás szerkesztve", self.repo.git("log", "-1", "--format=%s").stdout)
+                        self.repo.undo_commit(c.sha)                   # a visszavonás ugyanúgy működik
+                        self.assertEqual((self.v / nev).read_text(encoding="utf-8"), "// alap\n")
+
+    def test_forras_utkozese_es_crlf_nem_nyelvfuggo(self):
+        """A CAS és a soremelés-megőrzés a `.py`-n is: a külső változás nem íródik felül, a CRLF-es fájl CRLF marad."""
+        nev = "T01 - Történelem/Szkript.py"
+        ir(self.v, nev, "print(1)\n")
+        h = self.V.read(nev)["hash"]
+        (self.v / nev).write_text("print('külső')\n", encoding="utf-8")
+        with self.assertRaises(vaultio.Conflict):
+            self.V.write({"ut": nev, "tartalom": "print(2)\n", "alap": h})
+        self.assertEqual((self.v / nev).read_text(encoding="utf-8"), "print('külső')\n")
+        crlf = "T01 - Történelem/Crlf.go"
+        (self.v / crlf).write_bytes(b"package main\r\n")
+        self.V.write({"ut": crlf, "tartalom": "package main\n\nfunc main() {}\n", "alap": self.V.read(crlf)["hash"]})
+        self.assertEqual((self.v / crlf).read_bytes(), b"package main\r\n\r\nfunc main() {}\r\n")
+
+    def test_forras_rejtett_vagy_kivuli_utja_tiltott(self):
+        """A kiterjesztés-bővítés a rejtett (`.obsidian/…/main.js`) és a vaulton kívüli utakat nem nyitja meg."""
+        ir(self.v, ".obsidian/plugins/x/main.js", "x")
+        kint = self.v.parent / "kint.py"
+        kint.write_text("titok", encoding="utf-8")
+        os.symlink(kint, self.v / "link.py")
+        for rossz in (".obsidian/plugins/x/main.js", "../kint.py", "T01 - Történelem/../../kint.py", "link.py"):
+            with self.assertRaises(vaultio.Invalid, msg=rossz):
+                self.V.read(rossz)
+            with self.assertRaises(vaultio.Invalid, msg=rossz):
+                self.V.write({"ut": rossz, "tartalom": "y", "alap": "x"})
+        self.assertEqual(kint.read_text(encoding="utf-8"), "titok")
+
+    def test_a_forras_vegrehajtasi_bitje_megmarad_mentesnel(self):
+        """Az atomi csere új inode-ot ad: a `chmod +x` szkript módja nem veszhet el a szerkesztésben (F10)."""
+        nev = "T01 - Történelem/Futtathato.py"
+        ir(self.v, nev, "#!/usr/bin/env python3\nprint(1)\n")
+        os.chmod(self.v / nev, 0o755)
+        self.V.write({"ut": nev, "tartalom": "#!/usr/bin/env python3\nprint(2)\n", "alap": self.V.read(nev)["hash"]})
+        self.assertEqual(os.stat(self.v / nev).st_mode & 0o777, 0o755)
+        zart = "T01 - Történelem/Szemelyes.md"
+        ir(self.v, zart, "# t\n")
+        os.chmod(self.v / zart, 0o600)
+        self.V.write({"ut": zart, "tartalom": "# u\n", "alap": self.V.read(zart)["hash"]})
+        self.assertEqual(os.stat(self.v / zart).st_mode & 0o777, 0o600)
+
+    def test_a_menthetetlen_tipus_hibaja_nevezi_a_forrast(self):
+        with self.assertRaises(vaultio.Invalid) as cm:
+            self.V.write({"ut": "x.rb", "tartalom": "{}", "alap": "x"})
+        self.assertIn(".py", str(cm.exception))
+        self.assertIn(".cpp", str(cm.exception))
 
     def test_uj_cpp(self):
         from core import cpp_teszt
@@ -785,6 +886,28 @@ class HttpTest(Alap):
         self.assertEqual(n["commitok"][0]["trailerek"]["Mos-Visszavon"], d["pillanat"])
         self.assertEqual(self._k("GET", "/api/vault/fajl?ut=nincs.md")[0], 404)
         self.assertEqual(self._k("GET", "/api/vault/fajl?ut=../x.md")[0], 400)
+
+    def test_forrasfajl_http_en_olvashato_irhato_a_tiltott_400(self):
+        """F10: a `/api/vault/fajl` a profil-kiterjesztésű forrást ugyanúgy szolgálja (olvasás, CAS-mentés, 409), a nem profilosat 400-zal
+        (`vault.menthetetlen_tipus`, angol üzenettel) utasítja el, és a fájl érintetlen marad."""
+        for rp in ("D08 - Algo/megoldas.py", "D08 - Algo/Main.java", "D08 - Algo/main.go", "D08 - Algo/a.swift"):
+            ir(self.v, rp, "x = 1\n")
+            kod, d = self._k("GET", "/api/vault/fajl?ut=" + urllib.parse.quote(rp))
+            self.assertEqual((kod, d["tartalom"]), (200, "x = 1\n"), rp)
+            kod, h = self._k("PUT", "/api/vault/fajl", {"ut": rp, "tartalom": "x = 2\n", "alap": d["hash"], "elso": True, "pillanat": True})
+            self.assertEqual((kod, (self.v / rp).read_text(encoding="utf-8")), (200, "x = 2\n"), rp)
+            self.assertTrue(h["pillanat"], rp)
+            (self.v / rp).write_text("kívül\n", encoding="utf-8")
+            kod, h = self._k("PUT", "/api/vault/fajl", {"ut": rp, "tartalom": "x = 3\n", "alap": d["hash"]})
+            self.assertEqual((kod, h["utkozes"]), (409, True), rp)
+        rossz = "D08 - Algo/futtat.sh"
+        ir(self.v, rossz, "echo 1\n")
+        kod, d = self._k("GET", "/api/vault/fajl?ut=" + urllib.parse.quote(rossz))
+        self.assertEqual(kod, 400)
+        kod, d = self._k("PUT", "/api/vault/fajl", {"ut": rossz, "tartalom": "echo 2\n", "alap": "x"})
+        self.assertEqual((kod, d["kod"]), (400, "vault.menthetetlen_tipus"))
+        self.assertIn("source code", d["hiba"])
+        self.assertEqual((self.v / rossz).read_text(encoding="utf-8"), "echo 1\n")
 
     def test_felulir_foglalt_kor_zarnal_423_http(self):
         """T116 (C29.7b): a kör-zárat egy másik folyamat tartja → az ütközés-felülírás 423 `foglalt`, a fájl érintetlen."""

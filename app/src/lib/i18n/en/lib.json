@@ -1,5 +1,5 @@
 {
-  "a core szerint a Tracker ki van kapcsolva": "the core reports that Tracker is off",
+  "a core szerint a Tracker ki van kapcsolva": "Manifold reports that Tracker is off",
   "Nem http(s) link: {url}": "Not an http(s) link: {url}",
   "Törött link": "Broken link",
   "Többértelmű link": "Ambiguous link",
@@ -82,7 +82,7 @@
   "A válasz egyetlen mondata sem ment át a forrásellenőrzésen.": "No sentence of the answer passed the source check.",
   "A válaszhoz nincs kalibrált nyelvi modell (a források alább).": "There's no calibrated language model for the answer (sources below).",
   "Nincs válasz.": "No answer.",
-  "A core nem válaszol — a keresés most nem elérhető.": "The core isn't responding — search is unavailable right now.",
+  "A core nem válaszol — a keresés most nem elérhető.": "Manifold isn't responding — search is unavailable right now.",
   "Rendszerbeállítások › Adatvédelem és biztonság": "System Settings › Privacy & Security",
   "engedélyezve": "allowed",
   "még nincs döntés (kérhető)": "not decided yet (can be requested)",

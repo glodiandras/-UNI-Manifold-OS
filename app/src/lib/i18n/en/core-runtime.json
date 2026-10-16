@@ -60,8 +60,8 @@
   "hiba.workspace_csere": "A different workspace is now at this location. Reopen the intended workspace.",
   "hiba.workspace_id_csere_hiba": "The workspace ID could not be renewed.",
   "hiba.workspace_ujabb": "This workspace needs a newer version of Manifold.",
-  "hiba.feladat.core_megszakadt": "The core stopped before the task finished.",
-  "hiba.feladat.arva_leallitva": "The core stopped before the task finished. Its orphaned step (pid {pid}) was stopped.",
+  "hiba.feladat.core_megszakadt": "Manifold stopped before the task finished.",
+  "hiba.feladat.arva_leallitva": "Manifold stopped before the task finished. Its orphaned step (pid {pid}) was stopped.",
   "hiba.konfig_hiba": "The configuration is invalid.",
   "hiba.vault.nem_elerheto": "The vault is not available.",
   "hiba.felkeszultseg.ertekeles_hiba": "This assessment could not be loaded. Try again.",
@@ -81,5 +81,8 @@
   "hiba.video.link_hitelesites": "Video links cannot contain a username or password.",
   "hiba.video.link_helyi": "Videos cannot be downloaded from local or private addresses.",
   "hiba.video.link_sok": "A task can contain at most {max} video links ({n} received).",
-  "hiba.video.ffmpeg_hianyzik": "The bundled ffmpeg is missing. Install the runtime tools before downloading videos."
+  "hiba.video.ffmpeg_hianyzik": "The bundled ffmpeg is missing. Install the runtime tools before downloading videos.",
+  "hiba.egeszseg.ismeretlen_javitas": "This fix is not available.",
+  "hiba.egeszseg.nincs_mit_javitani": "There is nothing to fix right now.",
+  "hiba.egeszseg.ismeretlen_ellenorzes": "This check does not exist."
 }

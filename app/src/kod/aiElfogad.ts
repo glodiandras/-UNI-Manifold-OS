@@ -1,5 +1,5 @@
-// A C++ AI-réteg műveletei a felületen (C36b): az indítás (a mentés kivárásával, mint a ⌘R) és a javaslat ELFOGADÁSA. Gép
-// semmit nem ír magától (53(d)): a teszt-blokk a feladat-jegyzetbe, a javított program a `.cpp`-be csak a felhasználó
+// Az AI-réteg műveletei a felületen (C36b, F10: minden nyelvre): az indítás (a mentés kivárásával, mint a ⌘R) és a javaslat
+// ELFOGADÁSA. Gép semmit nem ír magától (53(d)): a teszt-blokk a feladat-jegyzetbe, a javított program a forrásba csak a felhasználó
 // gombnyomására kerül, egyetlen szerkesztő-tranzakcióban a nyitott dokumentumon (`Dokumentum.valtozott`, a nyitott nézet
 // előzményébe: a ⌘Z egy lépés), és a szokásos mentési úton íródik (pillanatképpel, ha a fájl máshol nincs nyitva).
 
@@ -13,7 +13,8 @@ import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
 import { kodAI, type AIMod } from './ai.svelte';
 import { kodFulok } from './aktiv.svelte';
 import { kodFutasok } from './futas.svelte';
-import { cppMegmutat, kodCel, mentesKivar, type KodCel } from './muveletek';
+import { BEAGYAZOTT_KOD } from './nyelvek.svelte';
+import { celNyelve, forrasMegmutat, kodCel, mentesKivar, type KodCel } from './muveletek';
 
 const UZENET: Record<string, string> = {
   nincs_kalibralt: tk('A C++ AI-hoz még nincs kalibrált modell (a `kod` mérése után kapcsol be).'),
@@ -22,7 +23,7 @@ const UZENET: Record<string, string> = {
   megerosites_kell: tk('A teljes megoldás csak megerősítéssel kérhető.'),
 };
 
-/** Egy AI-kérés indítása az aktív `.cpp` fülről vagy feladat-jegyzetből. */
+/** Egy AI-kérés indítása az aktív kód-fülről vagy feladat-jegyzetből. */
 export async function aiKer(felulet: Felulet, mod: AIMod, megerosit = false, cel: KodCel | null = kodCel()): Promise<boolean> {
   if (!cel) return false;
   const jegyzet = cel.jegyzet ?? kodFutasok.jegyzetValasztas.get(cel.ut) ?? null;
@@ -31,21 +32,24 @@ export async function aiKer(felulet: Felulet, mod: AIMod, megerosit = false, cel
       ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Az AI-kérés nem indult'), szoveg: t('A fájl nincs mentve ({ut}).', { ut: u }) });
       return false;
     }
-  let r = await kodAI.indit(mod, cel.ut, jegyzet, megerosit);
+  const { motor, nyelv } = celNyelve(cel);
+  let r = await kodAI.indit(mod, cel.ut, jegyzet, megerosit, motor, nyelv?.azonosito);
   for (let i = 0; !r.ok && r.kod === 'mentetlen' && i < 3; i++) {
     await new Promise((v) => setTimeout(v, 250 * (i + 1)));
-    r = await kodAI.indit(mod, cel.ut, jegyzet, megerosit);
+    r = await kodAI.indit(mod, cel.ut, jegyzet, megerosit, motor, nyelv?.azonosito);
   }
   if (r.ok) {
     const cpp = kodAI.aktiv?.cpp;
-    if (cpp && (!kodFulok.aktiv || kodFulok.aktiv.ut !== cpp)) cppMegmutat(felulet, cpp);
+    if (cpp && (!kodFulok.aktiv || kodFulok.aktiv.ut !== cpp)) forrasMegmutat(felulet, cpp);
     return true;
   }
   if (r.kod === 'tobbertelmu') {
     ertesitesek.ertesit({ szint: 'info', cim: t('Melyik feladat?'), szoveg: t('Több jegyzet ágyazza be ezt a fájlt: előbb futtasd a ⌘R-t, és válassz.') });
     return false;
   }
-  ertesitesek.ertesit({ szint: r.kod === 'foglalt' ? 'info' : 'hiba', cim: t('Az AI-kérés nem indult'), szoveg: UZENET[r.kod] ? t(UZENET[r.kod]) : r.uzenet });
+  // a C36b szolgáltatás kódjaihoz saját (C++) szöveg tartozik; az általános motor mondata (nyelv, hiányzó eszköz, trial-szabály) a core-é
+  const szoveg = r.motor === 'cpp' && UZENET[r.kod] ? t(UZENET[r.kod]) : r.uzenet;
+  ertesitesek.ertesit({ szint: r.kod === 'foglalt' ? 'info' : 'hiba', cim: t('Az AI-kérés nem indult'), szoveg, idotartam: r.kod === 'nincs_eszkozlanc' ? 0 : undefined });
   return false;
 }
 
@@ -71,7 +75,7 @@ async function dokumentumon(ut: string, valtoztat: (d: Dokumentum) => ChangeSet 
   }
 }
 
-/** A beszúrás helye: az utolsó `teszt` blokk után, különben a `.cpp` beágyazása elé, különben a végére. */
+/** A beszúrás helye: az utolsó `teszt` blokk után, különben a beágyazott forrás elé, különben a végére. */
 export function tesztHely(szoveg: string): number {
   const sorok = szoveg.split('\n');
   let poz = 0;
@@ -88,7 +92,7 @@ export function tesztHely(szoveg: string): number {
     } else {
       const m = /^(`{3,})teszt\b/.exec(s.trim());
       if (m) nyito = m[1];
-      else if (beagyazas < 0 && /!\[\[[^\]]+\.cpp/i.test(s)) beagyazas = poz;
+      else if (beagyazas < 0 && BEAGYAZOTT_KOD.test(s)) beagyazas = poz;
     }
     poz = veg + 1;
   }
@@ -115,7 +119,7 @@ export function tesztBeszur(jegyzet: string, blokk: string): Promise<Eredmeny> {
   });
 }
 
-/** A javított program beillesztése a `.cpp`-be (a teljes szöveg cseréje egy tranzakcióban; ⌘Z visszahozza a régit). */
+/** A javított program beillesztése a forrásba (a teljes szöveg cseréje egy tranzakcióban; ⌘Z visszahozza a régit). */
 export function megoldasBeilleszt(cpp: string, kod: string): Promise<Eredmeny> {
   return dokumentumon(cpp, (d) => {
     const c = csere(d.szoveg, kod.endsWith('\n') ? kod : kod + '\n');

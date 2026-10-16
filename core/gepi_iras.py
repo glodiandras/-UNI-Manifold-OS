@@ -413,7 +413,7 @@ def helyreallit(cfg) -> list[str]:
             utkozo.append(mz["ut"])
     if repo is not None and repo.live():
         repo.index_frissit()                # a visszaírt fájlok stat-adata ne zajoljon a git-indexben (T101)
-    elso = f"A machine write was interrupted ({n['kor']} · {n['tetel']}) when the core stopped during writing. "
+    elso = f"A machine write was interrupted ({n['kor']} · {n['tetel']}) when Manifold stopped during writing. "
     if visszaallt:
         uzenet = elso + "The vault was restored to its state before the write. You can run the task again."
     elif utkozo:

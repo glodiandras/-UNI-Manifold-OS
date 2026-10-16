@@ -358,6 +358,8 @@ def proba_klon_takaritas(cfg: Config, kiveve=(), most: float | None = None) -> l
             try:
                 os.kill(int(pid), 0)
                 continue                    # egy másik, még élő core klónja
+            except PermissionError:
+                continue                    # EPERM: a folyamat él, csak nem a miénk (pl. init/launchd szülő): a klónja marad
             except (OSError, TypeError, ValueError):
                 pass
         shutil.rmtree(d, ignore_errors=True)

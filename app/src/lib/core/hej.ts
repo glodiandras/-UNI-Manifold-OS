@@ -3,6 +3,8 @@
 
 export type HejUzenet =
   | { tipus: 'kesz' }
+  // a munkaterület-választó (F5): a héj a vault-választó ablakot mutatja
+  | { tipus: 'munkater-valaszto' }
   | { tipus: 'tema'; ertek: 'rendszer' | 'vilagos' | 'sotet' }
   | { tipus: 'megnyit'; url: string }
   // a naptár-engedély (C29): a héj a rendszer ablakát mutatja, és `window.manifold.naptarEngedely(…)`-val válaszol

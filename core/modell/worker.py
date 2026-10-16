@@ -339,7 +339,7 @@ class Szerver(ThreadingHTTPServer):
 def gazda_osszerak(cfg: config.Config, titok: str | None = None) -> Gazda:
     b = B.betolt(cfg)
     return Gazda(b, Betolto(b), Aktivitas.beallitasbol(b), kalibracio.megnyit(cfg),
-                 verziok=halmaz.Verziok(cfg.path("modulok")), titok=titok)
+                 verziok=halmaz.Verziok(cfg.path("modulok"), cfg.path("install") / "eval-sajat"), titok=titok)
 
 
 def pidfajl_ir(ut: Path, pid: int, port: int, titok: str) -> None:

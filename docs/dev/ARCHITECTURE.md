@@ -556,3 +556,77 @@ Minden új író végpont kizárólag a felület API-titkával hívható; a lép
 | `POST /api/asszisztens/tanul {muvelet, ut, ertek}` | J1: egy felhasználói művelet (`cimke` \| `sablon` \| `link`) jelzése; kikapcsolt Asszisztensnél `{fogadva: false}`, semmit nem ír. |
 | `POST /api/asszisztens/kartya {ut, szoveg, alkalom}` | J3: a nyitott (akár mentetlen) jegyzet legjobb kártya-jelöltje modell nélkül: `{javaslat \| null, varakozas_mp, kapcsolo}`. |
 | `POST /api/asszisztens/kartya/dontes {azon, tipus, helyzet, dontes, cim?}` | J3: a kártya sorsa (`elfogad` \| `elutasit` \| `figyelmen_kivul`) a hangolásba; az elutasított `kartya_elutasitott_nap` napig nem tér vissza. |
+
+## F6–F11: modellkezelő, Health, Privacy, kód-munkafelület, import, demo, Learn more
+
+Az alábbi végpontok a termékesítés (F6–F11) során jöttek. A szerződés részletei a modulok docstringjeiben vannak (`core/modell/api.py`, `core/egeszseg.py`, `core/adatvedelem.py`, `core/kod_utvonal.py`, `core/importalas.py`, `core/demo.py`, `core/doku.py`, `core/index/api.py`, `core/csatolmany.py`); hiba: `{hiba (angol), kod, param}` (`core/hibauzenetek.py`).
+
+**Modellkezelő (F6; `core/modell/api.py`).** A modell egy szállított manifeszt-tétel + a lemez valós állapota; a letöltés/teszt háttérfeladat (`modell_letoltes`, `modell_teszt`), letöltés csak felhasználói kérésre, a manifeszt HTTPS-hostjaira, a `{models}` alá (D3).
+
+| Végpont | Működés |
+|---|---|
+| `GET /api/modellek` | a modellek (állapot a lemezről, kalibráció, futó letöltés/teszt), a feladatok és funkciók leírása, a memóriakeretek |
+| `GET /api/modellek/{id}` | egy modell |
+| `POST /api/modellek/{id}/letoltes` | 202 `{feladat}`: a letöltés háttérfeladata (409 `modell.letoltes_fut`) |
+| `POST /api/modellek/{id}/letoltes/megszakitas` | azonnali leállítás; a félbehagyott fájl folytatható |
+| `POST /api/modellek/{id}/torles {megerosit}` | törlés megerősítéssel; a kalibráció levétele (409 `modell.megerosites_kell` \| `modell.foglalt`) |
+| `POST /api/modellek/{id}/teszt {feladat, halmaz?}` | 202 `{feladat, elofeltetel}`: a modell mérése a szállított vagy saját halmazon |
+| `GET /api/modellek/{id}/teszt/{feladat}` | a legutóbbi riport (404 `modell.nincs_teszt`) |
+| `GET /api/modellek/halmazok` | a szállított és a saját mérőhalmazok, a támogatott feladatok |
+| `POST /api/modellek/halmazok/{feladat} {tetelek, nyelv?}` | saját halmaz vázlata |
+| `POST /api/modellek/halmazok/{feladat}/jovahagyas {tartott}` | a vázlat jóváhagyása |
+| `POST /api/modellek/halmazok/{feladat}/valasztas {halmaz}` | az aktív halmaz (`sajat` \| `szallitott`) |
+| `POST /api/modellek/halmazok/{feladat}/torles` | a saját halmaz törlése (a `.torolt/` alá kerül) |
+
+**Health és Privacy (F7; `core/egeszseg.py`, `core/adatvedelem.py`).** A Health ellenőrzésenként ad állapotot (`ok` \| `info` \| `figyelem` \| `hiba`, `uzenet_kod` + `param`, részletek, ha van: gépi javítás); a javítás csak biztonságos, visszafordítható vagy magától újraépülő művelet, és végrehajtás előtt újra ellenőriz. A Privacy Center csak olvas, hálózatot nem használ.
+
+| Végpont | Működés |
+|---|---|
+| `GET /api/egeszseg` | az ellenőrzések jelentése |
+| `GET /api/egeszseg/diagnosztika?kod=` | egy ellenőrzés részletei (csak olvasva) |
+| `POST /api/egeszseg/javitas {javitas}` | a „Fix automatically”: a javítás futása, majd az ellenőrzés újra |
+| `GET /api/adatvedelem` | a hálózat, modellek, tárolt adat, AI-memória, tracker, integrációk és engedélyek valós állapota |
+| `GET /api/doku/learn?tema=` | a „Learn more” cél: a felhasználói doku oldala és szakasza (404 `doku.ismeretlen_tema`) |
+
+**Kód-munkafelület (F10; `core/kod_utvonal.py`).** A többnyelvű feladat/ellenőrzés/AI útvonal; a `POST /api/cpp/feladat {mappa, nev, nyelv?}` a `nyelv` mezővel bármely kód-profilra létrehozza a forrást és a jegyzetet (alap: `.cpp`).
+
+| Végpont | Működés |
+|---|---|
+| `GET /api/kod/nyelvek` | a nyelvprofilok és az eszközlánc állapota (gyorsítótárazott; `frissit=1` újrakeres) |
+| `GET /api/kod/feladat?ut=` | a jegyzet ↔ forrás párosítás és a tesztek, bármely nyelven |
+| `POST /api/kod/ellenoriz {ut, jegyzet?, nyelv?, mod?}` | 202: homokozós futtatás; az események a WS-en (`kod_futas`) |
+| `GET /api/kod/futas/{id}` | egy futás összegzése |
+| `POST /api/kod/megszakit {futas}` | a futás leállítása |
+| `POST /api/kod/ai {mod, ut, jegyzet?, nyelv?, megerosit?}` | 202: AI-kérés a kódhoz (Próba módban vagy kalibrált modellel); események: `kod_ai` |
+| `GET /api/kod/ai/{id}` | egy AI-kérés összegzése |
+| `POST /api/kod/ai/megszakit {ai}` | az AI-kérés leállítása |
+
+**Import (F8; `core/importalas.py`).** Az Obsidian-import előnézet → másolás (háttérszál, naplózva) → visszafordítás; a megszakítás a következő fájlhatáron áll meg. A v2-import csak Developer módban.
+
+| Végpont | Működés |
+|---|---|
+| `GET /api/import` | az importok állapota, legújabb elöl |
+| `GET /api/import/allapot?id=` | egy import naplóállapota |
+| `POST /api/import/obsidian/elonezet {forras, cel, opciok?}` | előnézet, nem ír |
+| `POST /api/import/obsidian {forras, cel, opciok?, terv_hash}` | 202: az import indítása (409 `import.terv_valtozott` \| `import.tilos` \| `import.fut`) |
+| `POST /api/import/megszakit {id}` | a futó import megszakítása a következő fájlhatáron (409 `import.nem_fut`) |
+| `POST /api/import/visszafordit {id}` | a visszafordítás: a fájlok a Kukába, a módosítottak megmaradnak |
+| `POST /api/import/v2/elonezet {forras}` | v2-előnézet (Developer mód) |
+| `POST /api/import/v2 {forras, terv_hash}` | v2-konvenciók átvétele a nyitott munkatérbe (Developer mód) |
+
+**Demo munkatér (F8; `core/demo.py`).** Determinisztikus, kitalált mintakönyvtár; csak a regisztrált demo munkatérben ír, a visszaállítás megerősítést kér és előbb pillanatképet készít.
+
+| Végpont | Működés |
+|---|---|
+| `GET /api/demo/allapot` | `{demo, verzio, seed, modositott, hianyzo, hozzaadott}`; felhasználói munkatéren `{demo: false}` |
+| `POST /api/demo/alaphelyzet {megerosit}` | a demo alaphelyzetbe állítása (a saját jegyzetek `.manifold/demo-reset/` alá kerülnek) |
+
+**Explorer és kapcsolatok (F11; `core/csatolmany.py`, `core/index/api.py`).**
+
+| Végpont | Működés |
+|---|---|
+| `POST /api/vault/masolat {ut}` | „Make a copy”: bájtra azonos másolat ugyanabban a mappában, felülírás nélkül |
+| `POST /api/vault/finder {ut}` | „Reveal in Finder”: a vaulton belüli út kijelölése (nem macOS-en 501) |
+| `GET /api/vault/fejezetek?q=&limit=` | az összes jegyzet fejezetei a `[[##` kereséshez |
+| `GET /api/vault/feloldatlan?limit=` | a még nem létező link-célok gyakoriság szerint |
+| `GET /api/vault/kimeno-emlitesek?ut=&limit=` | a jegyzet kimenő linkeletlen említései, jegyzetenként csoportosítva |

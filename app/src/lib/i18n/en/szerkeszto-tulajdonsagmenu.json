@@ -1,0 +1,12 @@
+{
+  "A vágólap nem érhető el.": "The clipboard is not available.",
+  "A vágólap szövege nem tulajdonság.": "The clipboard text is not a property.",
+  "Átnevezés|menu": "Rename",
+  "Kivágás|menu": "Cut",
+  "Másolás|menu": "Copy",
+  "Beillesztés|menu": "Paste",
+  "Tulajdonság törlése": "Remove property",
+  "A(z) „{kulcs}” tulajdonság menüje": "Menu of the “{kulcs}” property",
+  "{kulcs} új neve": "New name of {kulcs}",
+  "{kulcs} (dupla kattintás: átnevezés)": "{kulcs} (double-click to rename)"
+}

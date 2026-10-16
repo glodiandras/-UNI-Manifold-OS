@@ -10,6 +10,29 @@ const KIHAGY = 'script,style,noscript,button,input,select,textarea,svg,canvas,ma
   '[hidden],[aria-hidden="true"],.beagyazas-cim,.beagyazas-kviz,.beagyazas-kartya,.beagyazas-osszefoglalo,.beagyazas-pdf-nezo,.bazis';
 const BLOKK = 'p,li,td,th,h1,h2,h3,h4,h5,h6,pre,blockquote,figcaption,dd,dt';
 const MAX_JELOLT = 120;
+const JEL = /\p{M}/u;
+
+/** Kis-nagybetű- és ékezetfüggetlen alak (08-search-12): kisbetűs, az ékezet (kombináló jel) nélkül; az `tol`/`ig` a kapott egység
+ *  eredeti szövegbeli tartománya (egy alapbetű a rá következő kombináló jelekkel együtt), így a találat az eredetire vetíthető —
+ *  az előre komponált (`á`) és a bontott (`a` + U+0301) írásmód ugyanaz. */
+export function ekezetNelkuli(szoveg: string): { f: string; tol: number[]; ig: number[] } {
+  let f = '';
+  const tol: number[] = [], ig: number[] = [];
+  let i = 0, klaszterKezd = 0;
+  for (const ch of szoveg) {
+    const vege = i + ch.length;
+    if (JEL.test(ch)) {
+      for (let j = klaszterKezd; j < ig.length; j++) ig[j] = vege; // a jel az előző alapbetűhöz tartozik
+    } else {
+      klaszterKezd = ig.length;
+      const g = ch.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+      for (let j = 0; j < g.length; j++) { tol.push(i); ig.push(vege); }
+      f += g;
+    }
+    i = vege;
+  }
+  return { f, tol, ig };
+}
 
 function csoportok(gyoker: HTMLElement): Csoport[] {
   const ki: Csoport[] = [];
@@ -81,11 +104,24 @@ export class OlvasoKereses {
     const talalatok: Talalat[] = [];
     const csoport = this.lekerdezes ? csoportok(this.gyoker) : [];
     if (this.lekerdezes) {
-      const minta = new RegExp(this.lekerdezes.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), this.betuerzekeny ? 'gu' : 'giu');
-      csoport.forEach((c, i) => {
-        minta.lastIndex = 0;
-        for (let m = minta.exec(c.szoveg); m; m = minta.exec(c.szoveg)) talalatok.push({ csoport: i, from: m.index, to: m.index + m[0].length });
-      });
+      if (this.betuerzekeny) {
+        // pontos egyezés: a kis-nagybetű és az ékezet is számít
+        csoport.forEach((c, i) => {
+          for (let p = c.szoveg.indexOf(this.lekerdezes); p >= 0; p = c.szoveg.indexOf(this.lekerdezes, p + this.lekerdezes.length)) {
+            talalatok.push({ csoport: i, from: p, to: p + this.lekerdezes.length });
+          }
+        });
+      } else {
+        const kerdes = ekezetNelkuli(this.lekerdezes).f;
+        if (kerdes) {
+          csoport.forEach((c, i) => {
+            const a = ekezetNelkuli(c.szoveg);
+            for (let p = a.f.indexOf(kerdes); p >= 0; p = a.f.indexOf(kerdes, p + kerdes.length)) {
+              talalatok.push({ csoport: i, from: a.tol[p], to: a.ig[p + kerdes.length - 1] });
+            }
+          });
+        }
+      }
     }
     this.osszes = talalatok.length;
     this.aktualis = this.osszes ? ((Math.min(this.aktualis, this.osszes - 1) + irany) % this.osszes + this.osszes) % this.osszes : 0;

@@ -21,9 +21,11 @@ export interface ErtesitesBe {
   kulcs?: string;
   /** a macOS Értesítési központjába is elmegy, ha az app nincs előtérben (E10); a `hiba` szint mindig megy. Alap: nem. */
   rendszer?: boolean;
+  /** a kimenet kalibrálatlan modelltől jön (D9): az értesítés a közös Trial jelet (ikon + szó) viseli. Alap: nem. */
+  proba?: boolean;
 }
 
-export interface Ertesites extends Required<Omit<ErtesitesBe, 'muvelet' | 'szoveg' | 'kulcs' | 'rendszer'>> {
+export interface Ertesites extends Required<Omit<ErtesitesBe, 'muvelet' | 'szoveg' | 'kulcs' | 'rendszer' | 'proba'>> {
   id: number;
   szoveg: string;
   muvelet: ErtesitesBe['muvelet'] | null;
@@ -31,6 +33,7 @@ export interface Ertesites extends Required<Omit<ErtesitesBe, 'muvelet' | 'szove
   darab: number;
   kulcs: string | null;
   rendszer: boolean;
+  proba: boolean;
 }
 
 export const MAX_LATHATO = 3;
@@ -65,19 +68,19 @@ export class Ertesitesek {
     const muvelet = be.muvelet ?? null;
     const kulcsos = be.kulcs ? this.lista.find((e) => e.kulcs === be.kulcs) : undefined;
     if (kulcsos) {
-      Object.assign(kulcsos, { szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), rendszer: be.rendszer ?? false });
+      Object.assign(kulcsos, { szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), rendszer: be.rendszer ?? false, proba: be.proba ?? false });
       this.idozit(kulcsos.id, idotartam);
       this.rendszerKuld(kulcsos);
       return kulcsos.id;
     }
-    const mar = this.lista.find((e) => !e.kulcs && e.cim === cim && e.szoveg === szoveg && e.szint === szint);
+    const mar = this.lista.find((e) => !e.kulcs && e.cim === cim && e.szoveg === szoveg && e.szint === szint && e.proba === (be.proba ?? false));
     if (mar) {
       mar.darab += 1;
       mar.ido = Date.now();
       this.idozit(mar.id, mar.idotartam);
       return mar.id;
     }
-    const e: Ertesites = { id: this.kov++, szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), darab: 1, kulcs: be.kulcs ?? null, rendszer: be.rendszer ?? false };
+    const e: Ertesites = { id: this.kov++, szint, cim, szoveg, muvelet, idotartam, ido: Date.now(), darab: 1, kulcs: be.kulcs ?? null, rendszer: be.rendszer ?? false, proba: be.proba ?? false };
     this.lista.push(e);
     this.elozmeny.unshift(e);
     if (this.elozmeny.length > MAX_ELOZMENY) this.elozmeny.length = MAX_ELOZMENY;

@@ -9,7 +9,10 @@
   import { onMount, untrack } from 'svelte';
   import { t, tk, tp } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
-  import { FileText } from '../lib/ikon/ikonok';
+  import { CalendarDays, FileText } from '../lib/ikon/ikonok';
+  import { beallitasMegnyit } from '../beallitasok/allapot.svelte';
+  import UresAllapot from '../lib/ui/UresAllapot.svelte';
+  import ProbaJel from '../modellek/ProbaJel.svelte';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
@@ -138,7 +141,8 @@
   {:else if !dolgozatAdat.betoltve}
     <p class="ures" role="status">{t('Betöltés…')}</p>
   {:else if !dolgozatok.length}
-    <p class="ures">{lista?.hiba ? lista.hiba.charAt(0).toUpperCase() + lista.hiba.slice(1) : t('Nincs közelgő dolgozat a naptárban.')}</p>
+    {#if lista?.hiba}<p class="ures">{lista.hiba.charAt(0).toUpperCase() + lista.hiba.slice(1)}</p>
+    {:else}<UresAllapot ikon={CalendarDays} cim={t('Nincs közelgő dolgozat a naptárban.')} leiras={t('ures.dolgozat_leiras')} muvelet={{ cimke: t('ures.naptar_beallitas'), onclick: () => beallitasMegnyit('integraciok') }} />{/if}
   {:else if dolgozatAdat.reszletHiba}
     <p class="hiba" role="alert">{dolgozatAdat.reszletHiba}</p>
   {:else if r}
@@ -229,6 +233,7 @@
           <p class="ertekeles-szoveg">{ertekeles.szoveg}</p>
           <p class="halvany">
             {#if ertekeles.proba}
+              <ProbaJel jel="proba" />
               {t('Próba — a modell ({modell}) erre a feladatra nincs kalibrálva, a szöveget fenntartással olvasd.', { modell: ertekeles.modell ?? t('helyi modell') })}
             {:else}
               {t('Kalibrált helyi modell ({modell}).', { modell: ertekeles.modell ?? t('helyi modell') })}

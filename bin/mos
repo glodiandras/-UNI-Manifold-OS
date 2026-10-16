@@ -231,7 +231,7 @@ case "$cmd" in
            HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 exec "$(python_kereses)" -B -m core.letoltes "$@" ;;
   models)
     case "${1:-}" in
-      pull) shift  # az egyetlen hálózati parancs (D3): jóváhagyás után a config/letoltes.toml modelljei a {models} alá
+      pull) shift  # az egyetlen hálózati parancs (D3): jóváhagyás után a config/models.toml modelljei a {models} alá
             HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 exec "$(python_kereses)" -B -m core.letoltes "$@" ;;
       list) shift; exec "$(python_kereses)" -B -m core.modell lista "$@" ;;
       *) hiba "használat: mos models pull [elso|opcionalis|mind|név…] [--lista] [--igen] [--token] | mos models list" ;;
@@ -276,6 +276,8 @@ case "$cmd" in
            # `bin/mos test` = az egész készlet (discover); `bin/mos test test_x [tests.test_y tests/test_z.py] [-v -k …]` = csak
            # a megnevezett modulok (T082): a discover a pozicionális argumentumot kezdőmappának vette, így a `test_x`
            # ImportError volt, a `tests.test_x` pedig mind a ~1000 tesztet futtatta
+           # F9: `bin/mos test --szint <fresh-install|multi-user|migracio|biztonsag|mentes|dod|lista> [-v]` = egy tesztszint (tests/szintek.py)
+           if [ "${1:-}" = --szint ]; then shift; exec "$(python_kereses)" -B -m tests.szintek "$@"; fi
            nevek=()
            while [ $# -gt 0 ] && [[ "$1" != -* ]]; do
              n="${1%/}"; n="${n%.py}"; n="${n//\//.}"
@@ -319,6 +321,9 @@ case "$cmd" in
              init) shift; exec "$PYTHON_KIVALASZTVA" -B -m core.gyokerek portable-init "$@" ;;
              *) hiba "használat: mos portable init --vault <mappa> [--preset <nev>]… [--backup <út>] [--idegen-zar <út>]… [--igen]" ;;
            esac ;;
+  csomag)  # F9: a termék-csomag (packaging/build_app.py): epit | ellenoriz | dmg | alair | notarizal — csak forrás-checkoutból
+           fejleszto csomag; [ -f "$MOS_HOME/packaging/build_app.py" ] || hiba "nincs packaging/ (a csomag nem építhető a csomagból)"
+           exec "$(python_kereses)" -B "$MOS_HOME/packaging/build_app.py" "$@" ;;
   exec)    export PATH="$RT/node/bin:$PATH"; exec "$@" ;;   # csak a felület buildjéhez (Node)
-  *)       hiba "használat: mos <doctor | workspace felmer|letrehoz|lista|elfelejt|eltavolit | portable init --vault <mappa> | visszaallit <bundle> [--tar vault] [--igen] | core start | runtime fetch [ffmpeg]|install | models pull|list | bench | eval | router tabla|valaszt | worker | app install [--online]|build|test|watch | kartya ellenoriz|szinkron|export|import | cpp allapot|telepit|ellenoriz|formaz|homokozo-proba | felkeszultseg eredmeny|kalibral | matek levezetes|egyseg|arany|homokozo-proba | kviz ellenoriz|proba | osszefoglalas ellenoriz|proba|kontextus|general|meres | kapu [kezi] [próba…] | kapu meres|minta|ellenoriz | grafikon felismer|jegyzet|elemez|elemez-json|arany|vektorok|terv|beiras|automatikus|tiltolista|modell-ellenorzes|modell-meres | fuzet lanc|ellenoriz|allapot|kivag | higienia | kereses hibrid|allapot|forrasok|meres | video felmeres|leltar|eszkoz-ellenorzes|letoltes|selftest|test | test [modul…] | perf | exec ...>" ;;
+  *)       hiba "használat: mos <doctor | workspace felmer|letrehoz|lista|elfelejt|eltavolit | portable init --vault <mappa> | visszaallit <bundle> [--tar vault] [--igen] | core start | runtime fetch [ffmpeg]|install | models pull|list | bench | eval | router tabla|valaszt | worker | app install [--online]|build|test|watch | kartya ellenoriz|szinkron|export|import | cpp allapot|telepit|ellenoriz|formaz|homokozo-proba | felkeszultseg eredmeny|kalibral | matek levezetes|egyseg|arany|homokozo-proba | kviz ellenoriz|proba | osszefoglalas ellenoriz|proba|kontextus|general|meres | kapu [kezi] [próba…] | kapu meres|minta|ellenoriz | grafikon felismer|jegyzet|elemez|elemez-json|arany|vektorok|terv|beiras|automatikus|tiltolista|modell-ellenorzes|modell-meres | fuzet lanc|ellenoriz|allapot|kivag | higienia | kereses hibrid|allapot|forrasok|meres | video felmeres|leltar|eszkoz-ellenorzes|letoltes|selftest|test | test [modul…] | perf | csomag epit|ellenoriz|dmg|alair|notarizal | exec ...>" ;;
 esac

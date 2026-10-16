@@ -17,6 +17,8 @@ export interface ElonezetCel {
 }
 
 export const ELONEZET_KESLELTETES = 300;
+/** A szerkesztőn kívüli előnézet forrás-útja: szintaktikusan érvényes, de nem létező fájl (a teljes vault-út célok innen is feloldódnak). */
+export const ELONEZET_FORRAS = '.preview';
 export const ELONEZET_ZARAS = 250;
 
 const kulcs = (c: ElonezetCel) => `${c.forras}\0${c.link.cel}\0${c.link.alcel ?? ''}\0${c.link.from}`;
@@ -177,4 +179,26 @@ export function domCel(t: EventTarget | null): ElonezetCel | null {
     forras: e.dataset.forras,
     rect: () => e.getBoundingClientRect(),
   };
+}
+
+/** Vault-út célú elemek előnézete a szerkesztőn kívül (02-links-09): fa-sor, keresési találat, panel-sor. Az elem
+ *  `data-elonezet-ut` (opcionálisan `data-elonezet-alcel`) attribútuma a cél — a teljes vault-út a core-nál eleve feloldható,
+ *  ezért a forrás egy képzeletbeli (nem létező, rejtett nevű) út: a cél önmagából nézve sem „körkörös”. ⌘ (vagy ⌃) nyomva tartva a popover ugyanaz, mint a linkeké. `valaszto`/`ut`: más attribútumú
+ *  elemekhez (pl. a fa `data-fa-ut`-ja; az `ut` `null`-t ad, ha az elemnek nincs előnézete, pl. mappa). */
+export function elonezetUtakra(
+  gyoker: HTMLElement,
+  o: { valaszto?: string; ut?: (e: HTMLElement) => string | null } = {},
+): () => void {
+  const valaszto = o.valaszto ?? '[data-elonezet-ut]';
+  const utOf = o.ut ?? ((e: HTMLElement) => e.dataset.elonezetUt ?? null);
+  return elonezetKapcsol(gyoker, (t) => {
+    const e = t instanceof Element ? t.closest<HTMLElement>(valaszto) : null;
+    const ut = e ? utOf(e) : null;
+    if (!e || !ut) return null;
+    return {
+      link: { cel: ut, alcel: e.dataset.elonezetAlcel || null, alias: null, beagyazas: false, from: 0, to: 0 },
+      forras: ELONEZET_FORRAS,
+      rect: () => e.getBoundingClientRect(),
+    };
+  });
 }

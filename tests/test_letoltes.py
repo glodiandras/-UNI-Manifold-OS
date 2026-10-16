@@ -134,7 +134,7 @@ class LetoltesTeszt(unittest.TestCase):
     def test_a_valodi_lista_minden_modellje_rogzitett_revizioju(self):
         import tomllib
         from core.modell import revizio
-        with open(Path(__file__).resolve().parents[1] / "config" / "letoltes.toml", "rb") as f:
+        with open(Path(__file__).resolve().parents[1] / "config" / "models.toml", "rb") as f:
             lista = tomllib.load(f)["modell"]
         self.assertEqual([n for n, m in lista.items() if not revizio.SHA.match(m.get("revizio", ""))], [])
 

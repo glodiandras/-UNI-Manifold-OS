@@ -7,6 +7,14 @@
     path:x          az út része (ékezetfüggetlen); file:x a fájlnév része; mindkettő lehet /regex/ is
     tag:#a          a címke, vagy alatta álló (#a/b); kis-nagybetűtől független
     line:(a b)      egy soron belül teljesül; csak a sor szövegét nézi (a fájlnevet és az utat nem)
+    section:(a b)   egy szakaszon belül teljesül (címsortól a következő azonos vagy magasabb szintű címsorig; a címsor előtti
+                    szöveg külön szakasz; a frontmatter nem tartozik szakaszhoz)
+    task:(a b)      egy feladatsor szövegén belül teljesül; `task-todo:` a nyitott (`[ ]`), `task-done:` a kész (`[x]`) feladatok
+    [kulcs]         a jegyzetnek van ilyen tulajdonsága (kulcs: kis-nagybetűtől független); `[kulcs:érték]` az érték (lista:
+                    elemenként) ékezetfüggetlen részszövege; `[k:"a b"]`, `[k:/re/]`, `[k:a OR b]`, `[k:null]` (üres érték)
+    match-case:(…)  a belsejében a szavak és kifejezések kis-nagybetű- és ékezetérzékenyek (az Obsidian „Match case”);
+                    `ignore-case:(…)` visszakapcsol; a `/regex/` alapból érzékeny, az `ignore-case:`-ben nem
+    *szó            részszó: a szó a szó belsejében is illeszt (additív; `substring:(…)` a belsejében minden csupasz szóra)
     /regex/         Python-regex a tartalomra (kis-nagybetűre érzékeny)
 
 Végrehajtás: az FTS5 (`unicode61 remove_diacritics 2`) szűri a jelölteket, ahol a lekérdezés kifejezhető
@@ -36,7 +44,9 @@ from .feloldas import MD_RE
 from .maszk import link_maszk
 from ..hibakod import kodol
 
-OPERATOROK = ("path", "file", "tag", "line")
+ALOP_OPERATOROK = ("line", "section", "task", "task-todo", "task-done", "match-case", "ignore-case", "substring")
+OPERATOROK = ("path", "file", "tag", *ALOP_OPERATOROK)         # az „alop” operátorok zárójeles al-kifejezést vagy egy értéket kapnak
+ERZEKENY, ERZEKENYTELEN, RESZSZO = 1, 2, 4                     # a kiértékelés módjai (bitek): match-case · ignore-case · substring
 MEDIA_TIPUSOK = ("pdf", "felirat")
 MEDIA_SULY = 0.5
 MAX_JELOLT = 5000
@@ -77,6 +87,9 @@ def _lex(q: str) -> list[tuple[str, str]]:
         elif ch == "-" and i + 1 < n and not q[i + 1].isspace():
             out.append(("nem", "-"))
             i += 1
+        elif ch == "[" and (j := _tul_veg(q, i)) > 0:
+            out.append(("tul", q[i + 1:j]))
+            i = j + 1
         else:
             j = i
             while j < n and not q[j].isspace() and q[j] not in "()":
@@ -91,6 +104,73 @@ def _lex(q: str) -> list[tuple[str, str]]:
             out.append(("vagy", szo) if szo == "OR" else ("szo", szo))
             i = j
     return out
+
+
+def _tul_veg(q: str, i: int) -> int:
+    """A `[kulcs:érték]` tulajdonság-feltétel záró `]`-je (az idézőjelek és a `/regex/` belsejében álló `]` nem zár), vagy -1, ha
+    ez nem feltétel (nincs záró, üres a kulcs, `[[wikilink]]`, vagy a `]` után nem szóköz/zárójel/vég áll) — ekkor a `[` sima
+    szó-karakter, mint eddig."""
+    n = len(q)
+    if q.startswith("[[", i):
+        return -1
+    j, kettospont = i + 1, False
+    while j < n:
+        ch = q[j]
+        if ch == "]":
+            break
+        if ch == '"':
+            k = q.find('"', j + 1)
+            if k < 0:
+                return -1
+            j = k + 1
+            continue
+        if ch == "/" and kettospont and q[j - 1] == ":" and _regex_veg(q, j) > 0:
+            j = _regex_veg(q, j) + 1
+            continue
+        if ch == ":":
+            kettospont = True
+        j += 1
+    if j >= n or not q[i + 1:j].partition(":")[0].strip().strip('"').strip() \
+            or (j + 1 < n and not (q[j + 1].isspace() or q[j + 1] == ")")):
+        return -1
+    return j
+
+
+def _tul_szet(belso: str):
+    """A `[…]` belseje → `(kulcs, alternativák | None)`; alternatíva: `("szo", szöveg)` | `("regex", _Rx)` | `("nulla",)`."""
+    kulcs, kp, ertek = belso.partition(":")
+    kulcs = kulcs.strip().strip('"').strip()
+    if not kp:
+        return kulcs, None
+    return kulcs, _alternativak(ertek)
+
+
+def _alternativak(ertek: str) -> list[tuple]:
+    darabok, kezd, i, n = [], 0, 0, len(ertek)
+    while i < n:
+        if ertek[i] == '"' and ertek.find('"', i + 1) > 0:
+            i = ertek.find('"', i + 1) + 1
+        elif ertek[i] == "/" and _regex_veg(ertek, i) > 0:
+            i = _regex_veg(ertek, i) + 1
+        elif ertek.startswith(" OR ", i):
+            darabok.append(ertek[kezd:i])
+            i += 4
+            kezd = i
+        else:
+            i += 1
+    darabok.append(ertek[kezd:])
+    ki = []
+    for d in darabok:
+        d = d.strip()
+        if len(d) >= 2 and d[0] == d[-1] == '"':
+            ki.append(("szo", d[1:-1]))
+        elif len(d) >= 3 and d[0] == "/" and _regex_veg(d, 0) == len(d) - 1:
+            ki.append(("regex", _regex(d[1:-1])))
+        elif d.lower() == "null":
+            ki.append(("nulla",))
+        elif d:
+            ki.append(("szo", d))
+    return ki or [("szo", "")]
 
 
 def _regex_veg(q: str, i: int) -> int:
@@ -142,13 +222,16 @@ class _Parser:
                 raise kodol(Invalid("hiányzó záró zárójel"), "index.kereses.hianyzo_zaro_zarojel")
             return e
         if f == "op":
-            if v == "line":
-                if self.kov()[0] == "(":
-                    return ("op", v, self.egy())
-                return ("op", v, self._ertek())
+            if v in ALOP_OPERATOROK and self.kov()[0] == "(":
+                return ("op", v, self.egy())
             return ("op", v, self._ertek())
+        if f == "tul":
+            kulcs, alt = _tul_szet(v)
+            return ("tul", kulcs, alt)
         if f == "regex":
             return ("regex", _regex(v))
+        if f == "szo" and len(v) > 1 and v[0] == "*":
+            return ("reszszo", v[1:])
         if f in ("szo", "kif"):
             return (f, v)
         raise kodol(Invalid(f"váratlan elem a keresésben: {v}"), "index.kereses.varatlan_elem_keresesben_v", {"v": v})
@@ -175,6 +258,15 @@ class _Rx:
             self.rx = regex.compile(minta, regex.M)
         except regex.error as e:
             raise kodol(Invalid(f"hibás regex: {e}"), "index.kereses.hibas_regex_e", {"e": e}) from e
+        self.minta, self._ic = minta, None
+
+    @property
+    def ic(self) -> "_Rx":
+        """Ugyanez kis-nagybetűtől függetlenül (az `ignore-case:` belsejében)."""
+        if self._ic is None:
+            self._ic = _Rx.__new__(_Rx)
+            self._ic.rx, self._ic.minta, self._ic._ic = regex.compile(self.minta, regex.M | regex.I), self.minta, self._ic
+        return self._ic
 
     @staticmethod
     def _hatra() -> float:
@@ -221,29 +313,85 @@ def fts_kifejezes(s: str, prefix: bool = False) -> str | None:
     return '"' + " ".join(t) + '"' + ("*" if prefix else "")
 
 
-def _fts(e) -> str | None:
+def _fts(e, reszszo: bool = False) -> str | None:
+    """Az FTS-előszűrő: az `e` minden találatát tartalmazó jelölthalmaz (szuperhalmaz) kifejezése, vagy `None` (nincs szűrés).
+    `reszszo`: a `substring:` belsejében a csupasz szó nem előtag-alapú, így nem szűrhető."""
     f = e[0]
     if f == "szo":
-        return fts_kifejezes(e[1], prefix=True)
+        return None if reszszo else fts_kifejezes(e[1], prefix=True)
     if f == "kif":
         return fts_kifejezes(e[1])
     if f == "es":
-        r = [x for x in map(_fts, e[1]) if x]
+        r = [x for x in (_fts(y, reszszo) for y in e[1]) if x]
         return " AND ".join(f"({x})" for x in r) if r else None
     if f == "vagy":
-        r = [_fts(x) for x in e[1]]
+        r = [_fts(x, reszszo) for x in e[1]]
         return None if any(x is None for x in r) else " OR ".join(f"({x})" for x in r)
-    if f == "op" and e[1] == "line":
-        return _fts(e[2])
+    if f == "op" and e[1] in ALOP_OPERATOROK and isinstance(e[2], tuple):
+        # a belső kifejezés szavai a fájlban (a sor/szakasz/feladat/kisnagy módosító mind a fájl szövegének részhalmazára szűr)
+        return _fts(e[2], reszszo or e[1] == "substring")
     return None
 
 
 # ================================================================ kiértékelés
 
+class _Gyoker:
+    """Egy jegyzet lusta, fájlonként egyszer betöltött adatai (tulajdonságok, feladatok, címsorok) — a `line:`/`section:`/`task:`
+    al-dokumentumai ezt osztják."""
+
+    def __init__(self, c, fid: int, media: bool):
+        self.c, self.fid, self.media = c, fid, media
+        self._tul = self._fel = self._fej = None
+
+    @property
+    def tul(self) -> dict[str, list[str]]:
+        """kisbetűs kulcs → az érték szövegei (lista: elemenként; `null`/üres: üres lista)."""
+        if self._tul is None:
+            self._tul = {}
+            for kulcs, ertek in self.c.execute("SELECT kulcs, ertek FROM tulajdonsag WHERE fajl_id = ? ORDER BY sorrend",
+                                               (self.fid,)):
+                if isinstance(kulcs, str):
+                    self._tul.setdefault(kulcs.strip().lower(), []).extend(_tul_szovegek(ertek))
+        return self._tul
+
+    @property
+    def feladatok(self) -> list[tuple[int, str, str]]:
+        if self._fel is None:
+            self._fel = [] if self.media else self.c.execute(
+                "SELECT sor, allapot, szoveg FROM feladat WHERE fajl_id = ? ORDER BY sor", (self.fid,)).fetchall()
+        return self._fel
+
+    @property
+    def fejezetek(self) -> list[tuple[int, int]]:
+        if self._fej is None:
+            self._fej = [] if self.media else self.c.execute(
+                "SELECT sor, szint FROM fejezet WHERE fajl_id = ? ORDER BY sor", (self.fid,)).fetchall()
+        return self._fej
+
+
+def _tul_szovegek(nyers) -> list[str]:
+    """Egy `tulajdonsag.ertek` (JSON) kereshető szövegei: skalár → 1, lista → elemenként (üres/null → nincs); a logikai
+    érték `true`/`false`."""
+    try:
+        v = json.loads(nyers)
+    except (TypeError, ValueError):
+        return [str(nyers)] if nyers else []
+    ki: list[str] = []
+    for e in (v if isinstance(v, list) else [v]):
+        if e is None or isinstance(e, (dict, list)):
+            continue
+        s = ("true" if e else "false") if isinstance(e, bool) else str(e).strip()
+        if s:
+            ki.append(s)
+    return ki
+
+
 class _Dok:
-    def __init__(self, c, fid, ut, nev, cimkek, tartalom=None):
+    def __init__(self, c, fid, ut, nev, cimkek, tartalom=None, gyoker: _Gyoker | None = None, media: bool = False):
         self.c, self.fid, self.ut, self.nev, self._cimkek = c, fid, ut, nev, cimkek
-        self._t, self._h = tartalom, None
+        self._t, self._h, self._sorkezd = tartalom, None, None
+        self.gyoker = gyoker or _Gyoker(c, fid, media)
+        self.fo = gyoker is None                    # a jegyzet maga (nem `line:`/`section:`/`task:` al-dokumentuma)
 
     @property
     def tartalom(self) -> str:
@@ -264,41 +412,94 @@ class _Dok:
 
     def sor(self, szoveg: str) -> "_Dok":
         # a `line:` csak a sor szövegét értékeli: üres név és út mellett a név/út-visszaesés nem találhat (T061)
-        return _Dok(self.c, self.fid, "", "", self._cimkek, szoveg)
+        return _Dok(self.c, self.fid, "", "", self._cimkek, szoveg, self.gyoker)
+
+    def sorkezdetek(self) -> list[int]:
+        if self._sorkezd is None:
+            self._sorkezd = [0] + [m.end() for m in re.finditer("\n", self.tartalom)]
+        return self._sorkezd
+
+    def szakaszok(self) -> list[tuple[int, int]]:
+        """A `section:` szakaszai (karakter-eltolás-tartományok): a címsor-tábla szerint; az első címsor előtti szöveg külön
+        szakasz; a frontmatter egyikhez sem tartozik. Címsor-tábla nélküli (média, al-dokumentum) szövegnél az egész."""
+        t = self.tartalom
+        if not self.fo or self.gyoker.media or not self.gyoker.fejezetek:
+            return [(0, len(t))]
+        kezd = self.sorkezdetek()
+        fm = FM_RE.match(t)
+        elejo = fm.end() if fm else 0
+        fejek = [(kezd[sor - 1], szint) for sor, szint in self.gyoker.fejezetek if 0 < sor <= len(kezd) and kezd[sor - 1] >= elejo]
+        ki = [(elejo, fejek[0][0])] if fejek and fejek[0][0] > elejo else ([] if fejek else [(elejo, len(t))])
+        for i, (off, szint) in enumerate(fejek):
+            veg = next((o for o, sz in fejek[i + 1:] if sz <= szint), len(t))
+            ki.append((off, veg))
+        return ki
 
 
-def _szo_minta(e):
-    if e[0] == "szo":
-        return re.compile(r"(?<!\w)" + re.escape(hajt(e[1])))
-    return re.compile(r"(?<!\w)" + r"\s+".join(map(re.escape, hajt(e[1]).split())) + r"(?!\w)")
+def _szo_minta(e, mod: int = 0):
+    """A csupasz szó / kifejezés mintája a hajtott (ékezet- és kisbetű-nélküli) szövegre; `ERZEKENY`: a nyers szövegre, a
+    kis-nagybetűt és az ékezetet megtartva. Csupasz szó: szókezdetre (`RESZSZO`/`*szó`: a szó belsejében is)."""
+    nyers = e[1] if mod & ERZEKENY else hajt(e[1])
+    if e[0] in ("szo", "reszszo"):
+        return re.compile(("" if e[0] == "reszszo" or mod & RESZSZO else r"(?<!\w)") + re.escape(nyers))
+    return re.compile(r"(?<!\w)" + r"\s+".join(map(re.escape, nyers.split())) + r"(?!\w)")
 
 
-def _ertek_illik(e, szoveg: str) -> bool:
+def _ertek_illik(e, szoveg: str, mod: int = 0) -> bool:
     if e[0] == "regex":
-        return bool(e[1].search(szoveg))
-    return hajt(e[1]) in hajt(szoveg)
+        return bool((e[1].ic if mod & ERZEKENYTELEN else e[1]).search(szoveg))
+    return e[1] in szoveg if mod & ERZEKENY else hajt(e[1]) in hajt(szoveg)
 
 
-def _kiertekel(e, d: _Dok, minták: dict) -> tuple[bool, list]:
+def _tul_illik(alt: list[tuple], ertekek: list[str], mod: int) -> bool:
+    for a in alt:
+        if a[0] == "nulla":
+            if not ertekek:
+                return True
+        elif a[0] == "regex":
+            rx = a[1].ic if mod & ERZEKENYTELEN else a[1]
+            if any(rx.search(x) for x in ertekek):
+                return True
+        else:
+            cel = a[1].strip()
+            cel = cel[1:] if cel.startswith("#") else cel
+            if mod & ERZEKENY:
+                if any(cel in x for x in ertekek):
+                    return True
+            elif any(hajt(cel) in hajt(x) for x in ertekek):
+                return True
+    return False
+
+
+def _kiertekel(e, d: _Dok, minták: dict, mod: int = 0) -> tuple[bool, list]:
     f = e[0]
-    if f in ("szo", "kif"):
+    if f in ("szo", "kif", "reszszo"):
         if not e[1].strip():
             return True, []
-        m = minták.setdefault(id(e), _szo_minta(e))
-        spanok = [x.span() for x in m.finditer(d.hajtott)]
+        m = minták.setdefault(id(e), _szo_minta(e, mod))
+        szoveg = d.tartalom if mod & ERZEKENY else d.hajtott
+        spanok = [x.span() for x in m.finditer(szoveg)]
         if spanok:
             return True, spanok
-        nev = d.nev.rsplit(".", 1)[0]
-        return bool(m.search(hajt(nev)) or m.search(hajt(d.ut))), []
+        nev, ut = d.nev.rsplit(".", 1)[0], d.ut
+        if not mod & ERZEKENY:
+            nev, ut = hajt(nev), hajt(ut)
+        return bool(m.search(nev) or m.search(ut)), []
     if f == "regex":
-        spanok = [x.span() for x in e[1].finditer(d.tartalom) if x.end() > x.start()]
-        return bool(spanok) or bool(e[1].search(d.tartalom)), spanok
+        rx = e[1].ic if mod & ERZEKENYTELEN else e[1]
+        spanok = [x.span() for x in rx.finditer(d.tartalom) if x.end() > x.start()]
+        return bool(spanok) or bool(rx.search(d.tartalom)), spanok
+    if f == "tul":
+        ertekek = d.gyoker.tul.get(e[1].strip().lower())
+        if ertekek is None:
+            return False, []
+        return (True if e[2] is None else _tul_illik(e[2], ertekek, mod)), []
     if f == "nem":
-        return not _kiertekel(e[1], d, minták)[0], []
+        return not _kiertekel(e[1], d, minták, mod)[0], []
     if f == "es":
         spanok = []
         for x in e[1]:
-            ok, s = _kiertekel(x, d, minták)
+            ok, s = _kiertekel(x, d, minták, mod)
             if not ok:
                 return False, []
             spanok += s
@@ -306,33 +507,65 @@ def _kiertekel(e, d: _Dok, minták: dict) -> tuple[bool, list]:
     if f == "vagy":
         ok_any, spanok = False, []
         for x in e[1]:
-            ok, s = _kiertekel(x, d, minták)
+            ok, s = _kiertekel(x, d, minták, mod)
             ok_any |= ok
             spanok += s
         return ok_any, spanok
     if f == "op":
         nev, v = e[1], e[2]
+        if nev == "match-case":
+            return _kiertekel(v, d, minták, (mod | ERZEKENY) & ~ERZEKENYTELEN)
+        if nev == "ignore-case":
+            return _kiertekel(v, d, minták, (mod | ERZEKENYTELEN) & ~ERZEKENY)
+        if nev == "substring":
+            return _kiertekel(v, d, minták, mod | RESZSZO)
         if nev == "path":
-            return _ertek_illik(v, d.ut), []
+            return _ertek_illik(v, d.ut, mod), []
         if nev == "file":
-            return _ertek_illik(v, d.nev), []
+            return _ertek_illik(v, d.nev, mod), []
         if nev == "tag":
             if v[0] == "regex":
-                return any(v[1].search(t) for t in d.cimkek), []
+                rx = v[1].ic if mod & ERZEKENYTELEN else v[1]
+                return any(rx.search(t) for t in d.cimkek), []
             cel = v[1].strip().lstrip("#").lower()
             return any(t == cel or t.startswith(cel + "/") for t in d.cimkek), []
         if nev == "line":
             spanok, off = [], 0
             for s in d.tartalom.split("\n"):
-                ok, sp = _kiertekel(v, d.sor(s), minták)
+                ok, sp = _kiertekel(v, d.sor(s), minták, mod)
                 if ok and s.strip():
                     spanok += [(a + off, b + off) for a, b in sp] or [(off, off + len(s))]
                 off += len(s) + 1
+            return bool(spanok), spanok
+        if nev == "section":
+            spanok = []
+            for kezd, veg in d.szakaszok():
+                szoveg = d.tartalom[kezd:veg]
+                ok, sp = _kiertekel(v, d.sor(szoveg), minták, mod)
+                if ok and szoveg.strip():
+                    elso = len(szoveg) - len(szoveg.lstrip())
+                    sor_veg = szoveg.find("\n", elso)
+                    spanok += [(a + kezd, b + kezd) for a, b in sp] or [(kezd + elso, kezd + (len(szoveg) if sor_veg < 0 else sor_veg))]
+            return bool(spanok), spanok
+        if nev in ("task", "task-todo", "task-done"):
+            spanok, kezd = [], d.sorkezdetek()
+            sorok = d.tartalom.split("\n")
+            for sor, allapot, szoveg in d.gyoker.feladatok:
+                if not d.fo or not szoveg or not 0 < sor <= len(sorok):
+                    continue
+                if (nev == "task-todo" and allapot != " ") or (nev == "task-done" and allapot not in ("x", "X")):
+                    continue
+                p = max(0, sorok[sor - 1].find(szoveg))
+                ok, sp = _kiertekel(v, d.sor(szoveg), minták, mod)
+                if ok:
+                    eltol = kezd[sor - 1] + p
+                    spanok += [(a + eltol, b + eltol) for a, b in sp] or [(eltol, eltol + len(szoveg))]
             return bool(spanok), spanok
     raise kodol(Invalid(f"ismeretlen keresési elem: {f}"), "index.kereses.ismeretlen_keresesi_elem_f", {"f": f})
 
 
 def _van(e, fajta: str) -> bool:
+    """Szerepel-e a `fajta` operátor (`tag`) a kifejezésben, az al-kifejezések (`line:(…)`, `section:(…)`, …) belsejében is."""
     if e[0] == fajta or (e[0] == "op" and e[1] == fajta):
         return True
     if e[0] in ("es", "vagy"):
@@ -439,7 +672,7 @@ def _media(c, e, fts: str, minták: dict, cimkek: dict, talalatok: list, kornyez
     for fid, ertek, sor_kezd, idok, ut, nev, tipus, szoveg, pont in sorok:
         if hatar is not None and time.monotonic() >= hatar:
             return uj, True
-        d = _Dok(c, fid, ut, nev, cimkek, szoveg)
+        d = _Dok(c, fid, ut, nev, cimkek, szoveg, media=True)
         ok, spanok = _kiertekel(e, d, minták)
         if not ok:
             continue

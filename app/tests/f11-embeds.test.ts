@@ -58,15 +58,15 @@ describe('F11: helyi Markdown-kép és média méretek', () => {
     expect(ugyanaz.dataset).toMatchObject({ cel: '', alcel: 'Here' });
   });
   it('Reader: a dekódolt út a közös core-feloldáshoz megy, a méret és alt külön marad', async () => {
-    const k = render('![A diagram|300x200](<../Assets/a%20b%23c.png>)');
+    const k = render('![A diagram|300x200](<../Assets/a%20b%25c.png>)');
     await vi.waitFor(() => expect(k.querySelector('img')).not.toBeNull());
     expect(kerelmek[0].searchParams.get('forras')).toBe('Folder/Host.md');
-    expect(kerelmek[0].searchParams.get('cel')).toBe('../Assets/a b#c.png');
+    expect(kerelmek[0].searchParams.get('cel')).toBe('../Assets/a b%c.png'); // decodeURI mint a core md_reszek (02-links, URL-parser paritás): a `%25` → `%`, a fenntartott jelek (`%23`) kódoltak maradnak
     const kep = k.querySelector('img')!;
     expect(kep.alt).toBe('A diagram');
     expect(kep.width).toBe(300);
     expect(kep.height).toBe(200);
-    expect(kep.getAttribute('src')).toBe('/media/tok/Assets/a%20b%23c.png?w=400');
+    expect(kep.getAttribute('src')).toBe('/media/tok/Assets/a%20b%25c.png?w=400');
   });
 
   it('külső és tiltott séma: sem core-lekérés, sem img hálózati kérés nem indul', () => {
@@ -102,19 +102,35 @@ describe('F11: stabil Live Preview beágyazás', () => {
     expect(s.doc.toString()).toBe(szoveg + '\n\nEnd');
   });
 
-  it('külső tartalomváltozáskor a widget azonossága változik, a dokumentum és kurzor megmarad', () => {
+  it('külső tartalomváltozáskor a widget azonossága és DOM-ja megmarad; csak a saját célja rajzol újra (04-embeds-07)', async () => {
     const s = allapot('![[Target]]\n\nEnd', 15);
     let regi: BeagyazasWidget | null = null;
     s.field(blokkMezo).between(0, s.doc.length, (_f, _t, v) => { if (v.spec.widget instanceof BeagyazasWidget) regi = v.spec.widget; });
-    linkek.tartalomVerzio++;
+    tartalom = 'First';
+    const view = { requestMeasure: vi.fn(), state: s, posAtDOM: () => 0, dispatch: vi.fn(), focus: vi.fn() } as unknown as EditorView;
+    const dom = regi!.toDOM(view);
+    document.body.appendChild(dom);
+    await vi.waitFor(() => expect(dom.textContent).toContain('First'));
+    const elotte = kerelmek.length;
+    tartalom = 'Second';
+    linkek.tartalomValtozott(['Other.md']);
     const uj = s.update({ effects: tartalomVerzioValt.of(linkek.tartalomVerzio) }).state;
     let most: BeagyazasWidget | null = null;
     uj.field(blokkMezo).between(0, uj.doc.length, (_f, _t, v) => { if (v.spec.widget instanceof BeagyazasWidget) most = v.spec.widget; });
-    expect(regi).not.toBeNull();
-    expect(most).not.toBeNull();
-    expect((regi! as BeagyazasWidget).eq(most!)).toBe(false);
+    expect((regi! as BeagyazasWidget).eq(most!)).toBe(true);
     expect(uj.doc.eq(s.doc)).toBe(true);
     expect(uj.selection.eq(s.selection)).toBe(true);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(kerelmek.length).toBe(elotte);
+    expect(dom.textContent).toContain('First');
+    linkek.tartalomValtozott(['Target.md']);
+    await vi.waitFor(() => expect(dom.textContent).toContain('Second'));
+    expect(kerelmek.length).toBe(elotte + 1);
+    expect(view.requestMeasure).toHaveBeenCalled();
+    regi!.destroy(dom);
+    linkek.tartalomValtozott(null);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(kerelmek.length).toBe(elotte + 1);
   });
 
   it.each([

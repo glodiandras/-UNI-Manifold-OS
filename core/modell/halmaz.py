@@ -4,6 +4,11 @@ A forrás a `{modulok}/eval/<feladat>/feladat.py` `VERZIO`-ja és `ROUTER_FELADA
 worker egyszer, lustán tölti be, és a fájl módosítási idejére (a feladat.py és a mappa `*.json`-jai) újratölti: a K27 utáni
 jóváhagyás vagy egy új aranyverzió a worker újraindítása nélkül is érvényes. Hibás vagy hiányzó modul: a feladatnak nincs
 aktuális verziója → a router arra a feladatra nem választ kalibrált modellt (zárva hibázik).
+
+**Második forrás (F6, saját halmaz)**: ha a felhasználó egy feladatra a saját halmazát választotta
+(`{install}/eval-sajat/valasztas.json`, `core/modell/aranycsomag.py`), a feladat aktuális verziója a saját halmazé
+(`<feladat>-sajat-<lenyomat>`): a router ekkor csak az azon mért sort fogadja el. A gyökeret a folyamat indulásakor a core és a
+worker állítja be (`sajat_gyoker_beallit`); beállítás nélkül csak a szállított halmaz számít.
 """
 from __future__ import annotations
 
@@ -11,6 +16,25 @@ import importlib.util
 import sys
 import threading
 from pathlib import Path
+
+
+_SAJAT_GYOKER: Path | None = None
+
+
+def sajat_gyoker_beallit(ut: Path | None) -> None:
+    """A saját halmazok gyökere ebben a folyamatban (`{install}/eval-sajat`); None: kikapcsolva."""
+    global _SAJAT_GYOKER
+    _SAJAT_GYOKER = Path(ut) if ut else None
+
+
+def _sajat_lenyomat(gyoker: Path | None) -> tuple:
+    if gyoker is None:
+        return ()
+    try:
+        return tuple(sorted((str(p.relative_to(gyoker)), p.stat().st_mtime_ns) for p in
+                            [gyoker / "valasztas.json", *gyoker.glob("*/arany.json")] if p.is_file()))
+    except OSError:
+        return ()
 
 
 def _lenyomat(eval_dir: Path) -> tuple:
@@ -26,8 +50,9 @@ def _lenyomat(eval_dir: Path) -> tuple:
 class Verziok:
     """`verziok(router_feladat) -> str | None`: az aranyhalmaz aktuális verziója."""
 
-    def __init__(self, modulok: Path):
+    def __init__(self, modulok: Path, sajat: Path | None = None):
         self.eval_dir = Path(modulok) / "eval"
+        self.sajat = Path(sajat) if sajat else None
         self._lock = threading.Lock()
         self._lny: tuple | None = None
         self._ki: dict[str, str] = {}
@@ -49,16 +74,30 @@ class Verziok:
     def osszes(self) -> dict[str, str]:
         if not self.eval_dir.is_dir():
             return {}
+        sajat = self.sajat or _SAJAT_GYOKER
         with self._lock:
-            lny = _lenyomat(self.eval_dir)
+            lny = (_lenyomat(self.eval_dir), str(sajat), _sajat_lenyomat(sajat))
             if lny != self._lny:
                 ki: dict[str, str] = {}
                 for mappa in sorted(p for p in self.eval_dir.iterdir() if (p / "feladat.py").is_file()):
                     router, verzio = self._modul(mappa)
                     if router and verzio:
                         ki[router] = verzio
+                if sajat is not None:
+                    self._sajat_reteg(sajat, ki)
                 self._lny, self._ki = lny, ki
             return dict(self._ki)
+
+    def _sajat_reteg(self, gyoker: Path, ki: dict[str, str]) -> None:
+        """A választott saját halmazok verziója felülírja a szállítottat; hibás/hiányzó saját halmaz: nincs verzió (zárva)."""
+        from .aranycsomag import sajat_verzio, valasztasok_gyokerbol
+        for feladat in valasztasok_gyokerbol(gyoker):
+            alap = ki.get(feladat)
+            v = sajat_verzio(alap, feladat, gyoker / feladat / "arany.json") if alap else None
+            if v:
+                ki[feladat] = v
+            else:
+                ki.pop(feladat, None)
 
     def __call__(self, router_feladat: str) -> str | None:
         return self.osszes().get(router_feladat)

@@ -12,6 +12,8 @@ final class InditoAblak: NSWindowController, NSWindowDelegate {
     private var muvelet: [String: Any]?
     private var vissza: (() -> Void)?
     private var megszakitasKerdes = false
+    /// F7: ⌥-lenyomással indított választás = Developer nézet erre a munkamenetre (a core `MOS_FEJLESZTOI_NEZET=1`-ként olvassa; a mentett beállítást nem írja át).
+    private var fejlesztoiNezet = false
     private var kesz = false
     private let tartalom = NSStackView()
     private let lista = NSStackView()
@@ -52,7 +54,7 @@ final class InditoAblak: NSWindowController, NSWindowDelegate {
         tartalom.addArrangedSubview(leiras)
         let gombok = NSStackView(); gombok.orientation = .horizontal; gombok.spacing = 10
         for (cim, muvelet) in [(L("Munkatér létrehozása…"), #selector(letrehoz)), (L("Mappa megnyitása…"), #selector(mappaMegnyit)),
-                                (L("Demó kipróbálása"), #selector(demo))] {
+                                (L("Demó kipróbálása"), #selector(demo)), (L("Demó alaphelyzetre állítása…"), #selector(demoAlaphelyzet))] {
             let gomb = NSButton(title: cim, target: self, action: muvelet)
             gomb.bezelStyle = .rounded; gombok.addArrangedSubview(gomb); vezerlok.append(gomb)
         }
@@ -193,16 +195,32 @@ final class InditoAblak: NSWindowController, NSWindowDelegate {
         }
     }
     @objc private func frissit() { betolt(automatikus: false) }
-    @objc private func elozoMegnyit(_ gomb: NSButton) { if let vault = gomb.identifier?.rawValue { megnyit(vault) } }
+    @objc private func elozoMegnyit(_ gomb: NSButton) { optionJegyez(); if let vault = gomb.identifier?.rawValue { megnyit(vault) } }
     @objc private func elfelejt(_ gomb: NSButton) {
         guard let id = gomb.identifier?.rawValue else { return }
         ker(["muvelet": "elfelejt", "id": id], szoveg: L("Lista frissítése…")) { [weak self] _ in self?.betolt(automatikus: false) }
     }
     @objc private func ujraprobal() { vissza?() }
     @objc private func demo() {
+        optionJegyez()
         ker(["muvelet": "demo"], szoveg: L("Offline demó előkészítése…")) { [weak self] obj in self?.megnyitasValasz(obj) }
     }
+    /// A demó munkatér alaphelyzetre állítása (F11): megerősítés után a core `demo_reset` indító-műveletét kéri (a Python az egyetlen
+    /// lemezíró; nyitott demón a core elutasítja). A válasz után az indító marad, a demót a „Demó kipróbálása” nyitja.
+    @objc private func demoAlaphelyzet() {
+        let alert = NSAlert(); alert.messageText = L("Demó alaphelyzetre állítása")
+        alert.informativeText = L("A demó jegyzetei és mintaadatai visszaállnak az eredeti állapotba. Előbb pillanatkép készül, a te hozzáadott jegyzeteidet pedig félretesszük, nem töröljük.")
+        alert.addButton(withTitle: L("Alaphelyzetre állítás")); alert.addButton(withTitle: L("Mégse"))
+        guard let window else { return }
+        alert.beginSheetModal(for: window) { [weak self] valasz in
+            guard valasz == .alertFirstButtonReturn else { return }
+            self?.ker(["muvelet": "demo_reset", "elfogad": true], szoveg: L("Demó visszaállítása…")) { [weak self] _ in
+                self?.allapot.stringValue = L("A demó alaphelyzetre állt.")
+            }
+        }
+    }
     @objc private func mappaMegnyit() {
+        optionJegyez()
         let panel = NSOpenPanel(); panel.canChooseDirectories = true; panel.canChooseFiles = false
         panel.allowsMultipleSelection = false; panel.canCreateDirectories = false; panel.prompt = L("Mappa kiválasztása")
         panel.message = L("Válaszd ki a jegyzeteid mappáját. Az ellenőrzés nem változtat meg fájlokat.")
@@ -213,6 +231,7 @@ final class InditoAblak: NSWindowController, NSWindowDelegate {
         }
     }
     @objc private func letrehoz() {
+        optionJegyez()
         let panel = NSSavePanel(); panel.canCreateDirectories = false; panel.title = L("Munkatér létrehozása")
         panel.prompt = L("Mappa ellenőrzése"); panel.nameFieldStringValue = L("Saját jegyzetek")
         panel.message = L("Adj nevet az új jegyzetmappának. A létrehozás előtt megmutatjuk a változtatásokat.")
@@ -254,8 +273,11 @@ final class InditoAblak: NSWindowController, NSWindowDelegate {
         guard let m = obj["munkater"] as? [String: Any], let vault = m["vault"] as? String, vault.hasPrefix("/") else {
             hiba(L("Az indító nem kapott érvényes választ. Próbáld újra.")); return
         }
-        muvelet = nil; vissza = nil; folyamat(L("Munkatér megnyitása…")); onMegnyit(vault)
+        muvelet = nil; vissza = nil; folyamat(L("Munkatér megnyitása…"))
+        if fejlesztoiNezet { setenv("MOS_FEJLESZTOI_NEZET", "1", 1) }     // a core a folyamat környezetét örökli (CoreProcess.kornyezet)
+        onMegnyit(vault)
     }
+    private func optionJegyez() { if NSEvent.modifierFlags.contains(.option) { fejlesztoiNezet = true } }
     @objc private func megsemKattint() {
         guard !kesz else { return }
         if let kliens {

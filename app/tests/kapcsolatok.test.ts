@@ -91,7 +91,7 @@ describe('a Kapcsolatok tároló', () => {
   it('lekéri a három végpontot; md-n kívül nincs említés', async () => {
     const k = new Kapcsolatok();
     await k.frissit('Matek/Mértani sorozat.md');
-    expect(kerelmek.sort()).toEqual(['/api/vault/emlitesek', '/api/vault/jegyzet', '/api/vault/visszahivatkozasok']);
+    expect(kerelmek.sort()).toEqual(['/api/vault/emlitesek', '/api/vault/jegyzet', '/api/vault/kimeno-emlitesek', '/api/vault/visszahivatkozasok']); // F11 02-links-10: a kimenő említések is
     expect(k.visszahivatkozasok).toHaveLength(3);
     expect(k.emlitesek).toHaveLength(1);
     kerelmek.length = 0;

@@ -22,7 +22,7 @@ final class InditoKliens {
     let iras: Bool
 
     init(root: URL, keres: [String: Any], environment: [String: String] = ProcessInfo.processInfo.environment) {
-        iras = ["letrehoz", "demo", "megnyit", "elfelejt"].contains(keres["muvelet"] as? String ?? "")
+        iras = ["letrehoz", "demo", "demo_reset", "megnyit", "elfelejt"].contains(keres["muvelet"] as? String ?? "")
         folyamat.executableURL = root.appendingPathComponent("bin/mos")
         folyamat.arguments = ["indito"]
         folyamat.currentDirectoryURL = root

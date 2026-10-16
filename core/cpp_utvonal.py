@@ -12,7 +12,7 @@ végpontnak 30 s-os korlátja van), hanem egy háttérszál a gyermekfolyamat ki
 |---|---|
 | `GET /api/cpp/allapot` | az eszköztár állapota (`bin/mos cpp allapot --json`) + az aktív futás |
 | `GET /api/cpp/feladat?ut=` | a jegyzet ↔ `.cpp` párosítás és a `teszt` blokkok |
-| `POST /api/cpp/feladat {mappa, nev}` | új feladat: a `.cpp` és a jegyzet (két gépi commit) |
+| `POST /api/cpp/feladat {mappa, nev, nyelv?}` | új feladat: a forrás (alap: `.cpp`; `nyelv`: bármely kód-profil) és a jegyzet (két gépi commit) |
 | `POST /api/cpp/ellenoriz {ut, jegyzet?, mod?}` | 202 `{futas, …}`; az eredmény WS-en jön |
 | `GET /api/cpp/futas/{id}` | a futás összesítője (késői csatlakozóknak) |
 | `POST /api/cpp/megszakit {futas}` | a futás leállítása |
@@ -32,7 +32,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from . import cpp_ai, cpp_teszt, pdfkiemeles, sablon
+from . import cpp_ai, cpp_teszt, kod_nyelvek, pdfkiemeles, sablon, tulajdonsagok
 from .utvonalak import HttpError, Valasz
 from .vaultio import Invalid, NotFound, nfc, norm_path
 from .hibakod import kodol
@@ -104,6 +104,9 @@ class Szolgalat:
         self.ai = cpp_ai.Szolgalat(cfg, vault, publish, tracker, feladat=self.feladat, motor=self._motor,
                                    env=lambda: gyerek_env(cfg), mentetlen=self.mentetlen,
                                    eszkoztar_hianya=self._eszkoztar_hianya)
+        # F10: the multi-language workbench (`/api/kod/*`, core/kod_utvonal.py) — reached as `app.cpp.kod`
+        from . import kod_utvonal
+        self.kod = kod_utvonal.Szolgalat(cfg, vault, index, publish, env=lambda: gyerek_env(cfg), mentetlen=self.mentetlen)
 
     # ------------------------------------------------------------------ segédek
 
@@ -201,28 +204,47 @@ class Szolgalat:
         return any(nfc(n).lower() == kulcs for n in os.listdir(d))
 
     def uj_feladat(self, d: dict) -> dict:
+        """New task: the companion source and the task note. `nyelv` (a `core/kod_nyelvek.py` profile id; default `cpp`) selects the
+        language of the code workbench; the note skeleton is the same neutral English one for every language."""
+        nyelv = d.get("nyelv") or "cpp"
+        profil = kod_nyelvek.profil(nyelv) if isinstance(nyelv, str) else None
+        if profil is None:
+            raise kodol(Invalid("ismeretlen nyelv"), "kod.ismeretlen_nyelv", {"nyelv": str(nyelv)})
+        kitok = (".md", *profil.kiterjesztesek)
         nev = nfc(str(d.get("nev") or "")).strip()
-        for kit in (".md", ".cpp"):
+        for kit in kitok:
             if nev.lower().endswith(kit):
                 nev = nev[:-len(kit)].rstrip()
+                break
         mappa = self.vault.kanonikus(norm_path(d.get("mappa"))) if d.get("mappa") else ""
         if not nev:
             raise kodol(Invalid('érvénytelen név — tilos benne: \\ / : * ? " < > | # ^ [ ], és nem kezdődhet ponttal'), "cpp_utvonal.ervenytelen_nev_tilos_benne_kezdodhet")
         if mappa and not self.vault._abs(mappa).is_dir():
             raise kodol(NotFound(f"nincs ilyen mappa: {mappa}"), "cpp_utvonal.nincs_ilyen_mappa_mappa", {"mappa": mappa})
-        for kit in (".md", ".cpp"):
+        for kit in (".md", *profil.kiterjesztesek):
             if self._van_ilyen(mappa, nev + kit):
                 raise Invalid(f"már van ilyen nevű fájl: {mappa + '/' if mappa else ''}{nev}{kit}")
-        cpp_valasz = self.vault.create({"mappa": mappa, "nev": nev, "tipus": "cpp"})      # előbb: a jegyzet sosem mutat hiányzó fájlra
+        if nyelv == "cpp":                                                               # C36a: the unchanged request shape
+            forras_valasz = self.vault.create({"mappa": mappa, "nev": nev, "tipus": "cpp"})   # first: the note never points to a missing file
+        else:
+            forras_valasz = self.vault.create({"mappa": mappa, "nev": nev, "tipus": "forras", "nyelv": nyelv})
         tag = pdfkiemeles.cimke(self.cfg, f"{mappa}/{nev}")
-        szoveg = self._vaz(nev, tag)
+        szoveg = self._vaz(nev, tag, nyelv, f"{mappa}/{nev}.md" if mappa else f"{nev}.md")
         md_valasz = self.vault.create({"mappa": mappa, "nev": nev, "tartalom": szoveg})
-        return {"jegyzet": md_valasz["ut"], "cpp": cpp_valasz["ut"],
-                "figyelmeztetes": md_valasz.get("figyelmeztetes") or cpp_valasz.get("figyelmeztetes")}
+        return {"jegyzet": md_valasz["ut"], "cpp": forras_valasz["ut"], "forras": forras_valasz["ut"], "nyelv": nyelv,
+                "figyelmeztetes": md_valasz.get("figyelmeztetes") or forras_valasz.get("figyelmeztetes")}
 
-    def _vaz(self, nev: str, tag: str | None) -> str:
-        """A sablonmappa `C++ feladat` jegyzete (a `{{title}}` a feladat neve), különben a beépített váz."""
-        sablon_nev = self.cfg.section("cpp").get("sablon", "C++ feladat")
+    def _sema_mezok(self, jegyzet: str) -> list[str]:
+        """The frontmatter keys of the workspace schema for a new note at this path (empty: the neutral schema, or none readable)."""
+        try:
+            return list(tulajdonsagok.Sema.betolt(self.cfg).osztaly(jegyzet)["mezosorrend"])
+        except (OSError, ValueError, KeyError):
+            return []
+
+    def _vaz(self, nev: str, tag: str | None, nyelv: str = "cpp", jegyzet: str | None = None) -> str:
+        """The `C++ feladat` template note of the template folder for C++ (its `{{title}}` is the task name), otherwise the built-in
+        neutral skeleton (`cpp_teszt.feladat_vaz`) with the workspace schema's keys."""
+        sablon_nev = self.cfg.section("cpp").get("sablon", "C++ feladat") if nyelv == "cpp" else None
         if sablon_nev:
             try:
                 alap = sablon.olvas(self.vault, f"{sablon.beallitasok(self.cfg)['mappa']}/{sablon_nev}.md")
@@ -231,7 +253,7 @@ class Szolgalat:
                 return sablon.kiertekel(alap, nev, most, nyelv=sb["nyelv"], datum=sb["datum"], ido=sb["ido"]).szoveg
             except (NotFound, Invalid):
                 pass
-        return cpp_teszt.feladat_vaz(nev, tag)
+        return cpp_teszt.feladat_vaz(nev, tag, nyelv, self._sema_mezok(jegyzet or f"{nev}.md"))
 
     # ------------------------------------------------------------------ állapot, formázás
 
@@ -415,6 +437,7 @@ class Szolgalat:
     def leallit(self) -> None:
         """A core leállása: a futó ellenőrzés és AI-kérés megszakad, nem marad árva `clang++` vagy teszt-folyamat."""
         self.ai.leallit()
+        self.kod.leallit()
         with self._zar:
             self._leallt = True
             aktiv = self._aktiv
@@ -435,3 +458,5 @@ def utvonalak(r) -> None:
     r.post("/api/cpp/megszakit", lambda k: k.app.cpp.megszakit(k.torzs()))
     r.post("/api/cpp/formaz", lambda k: k.app.cpp.formaz(k.torzs()))
     cpp_ai.utvonalak(r)
+    from . import kod_utvonal
+    kod_utvonal.utvonalak(r)                 # F10: /api/kod/*

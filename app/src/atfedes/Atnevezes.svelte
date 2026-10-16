@@ -36,8 +36,9 @@
   let doboz: HTMLDivElement | undefined = $state();
 
   onMount(() => {
-    nev = mappaMod ? alapNev : fajlNev(regi);
+    nev = cel.nev ?? (mappaMod ? alapNev : fajlNev(regi));
     if (cel.cel !== undefined) void terveznel(cel.cel); // a fájlfa húzása: a célmappa már megvan, jöhet a terv
+    else if (cel.nev !== undefined && nevMod) void terveznel(); // soron belüli átnevezés, amelynek a terve link-változást hoz: itt a terv
     bevitel?.focus();
     bevitel?.select();
   });

@@ -6,6 +6,7 @@ import { locale } from '../i18n';
 
 import type { FajlInfo, FajlTipus } from './fajlok.svelte';
 import { fajlNev } from './fajlok.svelte';
+import { KOD_UT } from './kodFajl';
 
 export const FA_RENDEZESEK = ['nev', 'nev-forditva', 'modositva', 'modositva-regi', 'letrehozva', 'letrehozva-regi'] as const;
 export type FaRendezes = typeof FA_RENDEZESEK[number];
@@ -172,4 +173,35 @@ export function mappakatKinyit(gyoker: FaCsomopont, meglevo: readonly string[], 
     }
   }
   return { utak: [...nyitott], kimaradt };
+}
+
+/** Nem támogatott fájltípus (07-explorer-12): az `egyeb` típus, kivéve a kód-munkafelület saját nézettel bíró forrásfájljait (F10). */
+export function nemTamogatott(f: Pick<FajlInfo, 'ut' | 'tipus'>): boolean {
+  return f.tipus === 'egyeb' && !KOD_UT.test(f.ut);
+}
+
+/** A fán látszó fájlok: a nem támogatottak rejtve, ha `mindenFajl` hamis (az Obsidian `showUnsupportedFiles`-ának megfelelője). */
+export function lathatoFajlok(lista: readonly FajlInfo[], mindenFajl: boolean): readonly FajlInfo[] {
+  return mindenFajl ? lista : lista.filter((f) => !nemTamogatott(f));
+}
+
+/** A kijelölés legfelső elemei (07-explorer-04): ha egy mappa és a részfájának eleme is ki van jelölve, csak a mappa marad,
+ *  hogy a tömeges művelet ne dolgozzon kétszer ugyanazon. A sorrend az eredeti. */
+export function legfelsoUtak(utak: readonly string[]): string[] {
+  const halmaz = new Set(utak);
+  return [...halmaz].filter((u) => {
+    for (let szulo = u.includes('/') ? u.slice(0, u.lastIndexOf('/')) : ''; szulo; szulo = szulo.includes('/') ? szulo.slice(0, szulo.lastIndexOf('/')) : '')
+      if (halmaz.has(szulo)) return false;
+    return true;
+  });
+}
+
+/** Shift-kijelölés: a látható sorok `honnan`–`meddig` tartománya (mindkét vég benne); ismeretlen horgonynál csak a `meddig`. */
+export function kijelolesTartomany(sorok: readonly FaSor[], honnan: string | null, meddig: string): string[] {
+  const j = sorok.findIndex((s) => s.cs.ut === meddig);
+  if (j < 0) return [];
+  const i = honnan === null ? j : sorok.findIndex((s) => s.cs.ut === honnan);
+  if (i < 0) return [meddig];
+  const [a, b] = i <= j ? [i, j] : [j, i];
+  return sorok.slice(a, b + 1).map((s) => s.cs.ut);
 }

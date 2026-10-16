@@ -21,12 +21,15 @@ import collections
 import contextlib
 import hashlib
 import json
+import os
 import queue
 import re
+import sqlite3
 import threading
+import unicodedata
 from pathlib import Path
 
-from .. import atirat
+from .. import atirat, mediatipus
 from ..vaultio import Invalid, NotFound
 from . import elemzo, kereses, linkek, tar
 from .feloldas import nfc
@@ -34,6 +37,11 @@ from ..hibakod import kodol
 
 VALTOZAS_NAPLO = 256            # ennyi generáció változásait őrzi a napló (a Bases inkrementális frissítéséhez)
 POOL_MAX = 8                    # ennyi olvasó kapcsolat marad nyitva a készletben
+
+
+def _hajtogat(s: str) -> str:
+    """Ékezet- és kisbetű-független alak a keresésekhez (NFD, kombináló jelek nélkül, casefold)."""
+    return "".join(ch for ch in unicodedata.normalize("NFD", s) if not unicodedata.combining(ch)).casefold()
 
 
 class NemKesz(RuntimeError):
@@ -145,9 +153,23 @@ class IndexOlvaso:
                 if not self.db_ut.exists():
                     raise NemKesz("az index még nem épült fel") from None
                 c = tar.nyit(self.db_ut)
+                # F9 (audit 07 §7): the writer creates the file before its migrations commit (one step at a time); a reader
+                # opening it in that window found no tables (`no such table: fts` → 500). Until the schema is current the index
+                # is "not ready" (503), as before the file existed.
+                if c.execute("PRAGMA user_version").fetchone()[0] < tar.VERZIO:
+                    c.close()
+                    raise NemKesz("az index még nem épült fel")
             try:
                 with tranzakcioban(c, tranzakcio):
                     yield c
+            except sqlite3.DatabaseError as e:
+                # F9 (audit 08 §4): a page damaged in the MIDDLE of the file passes the cheap open-time probe, and the writer
+                # only notices it if it writes there — the readers kept answering 500 ("malformed") indefinitely. A reader that
+                # hits corruption now asks the writer to set the file aside and rebuild (once per pool generation), and answers 503.
+                if not tar.serult_hiba(e):
+                    raise
+                self._olvaso_serult(gen, e)
+                raise NemKesz("az index sérült; újraépül") from e
             finally:
                 # F5 (2026-10-14): a készlet ürítése (a sérült index félretétele, leállás) után a korábban kiadott kapcsolat
                 # a régi (félretett) fájlra mutat — nem kerül vissza a készletbe, különben tartósan régi találatokat adna
@@ -157,6 +179,9 @@ class IndexOlvaso:
                     c.close()
 
     _olvaso = olvaso                    # a régi (privát) név a meglévő hívóknak; új kód az `olvaso`-t használja
+
+    def _olvaso_serult(self, gen: int, hiba: BaseException) -> None:
+        """A reader hit a damaged index (F9): the writer (`Index`) overrides this to set the file aside and rebuild."""
 
     def _pool_urit(self) -> None:
         """A készlet kapcsolatai zárva, és új készlet-generáció: a most kiadott kapcsolatok visszaadáskor záródnak (F5). A sérült
@@ -303,16 +328,88 @@ class IndexOlvaso:
                 ki.append({"cel": cel, "ut": hit, "tobbertelmu": tobb})
         return ki
 
-    def link_cel(self, ut, forras) -> dict:
-        """A fájl link-célként beírandó szövege a `forras`-ból (a legrövidebb egyértelmű; `linkek.rovid_cel`)."""
+    def link_cel(self, ut, forras, alcel=None, hianyzo=None) -> dict:
+        """A fájl link-célként beírandó szövege a `forras`-ból a beállított „New link format” szerint (`link_formatum`:
+        `rovid` = a legrövidebb egyértelmű, `linkek.rovid_cel`; `relativ`; `abszolut` = vault-gyökerű út), mindig a feloldóval
+        ellenőrizve. Az `alak` a „Use [[Wikilinks]]” (`wikilinkek`) szerint `wiki` | `md`; az `md` a kész md-link célja
+        (kódolva, `.md`-vel, a `alcel` horgonnyal) — a felület ebből épít linket, saját kódolási szabálya nincs."""
         self._kesz_vagy_hiba()
+        if alcel is not None and not isinstance(alcel, str):
+            raise kodol(Invalid("az alcel szöveg kell"), "index.olvaso.alcel_szoveg")
+        if not ut and isinstance(hianyzo, str) and hianyzo.strip():
+            # még nem létező cél (`[[Új jegyzet]]`): nincs fájl, amit rövidíteni lehetne — a beállítás és a kódolás jön
+            self._ut(forras)
+            fajlok = self.cfg.section("beallitasok").get("fajlok", {})
+            cel = hianyzo.strip()
+            ismert_kit = os.path.splitext(cel)[1].lower() in mediatipus.MEDIA_TIPUS or cel.lower().endswith((".canvas", ".base"))
+            return {"ut": None, "cel": cel, "alak": "md" if fajlok.get("wikilinkek", True) is False else "wiki",
+                    "md": linkek.md_cel_irasra(cel, cel if ismert_kit else cel + ".md", alcel)}
         ut, forras = self._ut(ut), self._ut(forras)
         with self._fl_lock:
             if ut not in self.feloldo.fileset:
                 raise kodol(NotFound(f"nincs ilyen fájl az indexben: {ut}"), "index.olvaso.nincs_ilyen_fajl_indexben_ut", {"ut": ut})
-            relativ = self.cfg.section("beallitasok").get("fajlok", {}).get("link_formatum") == "relativ"
-            fn = linkek.relativ_cel if relativ else linkek.rovid_cel
-            return {"ut": ut, "cel": fn(self.feloldo, ut, forras)}
+            fajlok = self.cfg.section("beallitasok").get("fajlok", {})
+            cel = linkek.cel_forma(self.feloldo, ut, forras, fajlok.get("link_formatum", "rovid"))
+            return {"ut": ut, "cel": cel, "alak": "md" if fajlok.get("wikilinkek", True) is False else "wiki",
+                    "md": linkek.md_cel_irasra(cel, ut, alcel)}
+
+    def fejezetek_mind(self, q, limit: int | None = None) -> dict:
+        """Az összes jegyzet fejezetei a `[[##` kereséshez: a `q` szavai (ékezet- és kisbetű-függetlenül) a fejezet szövegében
+        vagy a jegyzet útjában; üres `q`: a legutóbb módosított jegyzetek fejezetei. A fejezet-kezdetű találat előre."""
+        self._kesz_vagy_hiba()
+        limit = max(1, min(int(limit or 200), 1000))
+        szavak = [_hajtogat(x) for x in str(q or "").split() if x]
+        talalatok: list[tuple[int, dict]] = []
+        with self.olvaso() as c:
+            for ut, szint, szoveg, sor in c.execute(
+                    "SELECT f.ut, h.szint, h.szoveg, h.sor FROM fejezet h JOIN fajl f ON f.id = h.fajl_id "
+                    "WHERE f.torolve IS NULL AND f.tipus = 'md' AND h.szoveg IS NOT NULL AND trim(h.szoveg) != '' "
+                    "ORDER BY f.mtime_ns DESC, f.ut, h.sor"):
+                if szavak:
+                    h = _hajtogat(szoveg)
+                    teljes = h + " " + _hajtogat(ut)
+                    if not all(sz in teljes for sz in szavak):
+                        continue
+                    rang = 0 if h.startswith(szavak[0]) else 1
+                else:
+                    rang = 0
+                talalatok.append((rang, {"ut": ut, "szint": szint, "szoveg": szoveg, "sor": sor}))
+                if not szavak and len(talalatok) >= limit:
+                    break
+        talalatok.sort(key=lambda x: x[0])        # stabil: azonos rangon marad a legutóbbi-először sorrend
+        return {"fejezetek": [x[1] for x in talalatok[:limit]]}
+
+    def feloldatlan_szovegek(self, limit: int | None = None) -> dict:
+        """A vaultban használt, még nem létező link-célok (feloldatlan wikilinkek, beágyazás nélkül), gyakoriság szerint."""
+        self._kesz_vagy_hiba()
+        limit = max(1, min(int(limit or 200), 1000))
+        with self.olvaso() as c:
+            sorok = c.execute(
+                "SELECT trim(l.cel_nyers) AS cel, count(*) AS db FROM link l JOIN fajl f ON f.id = l.forras_id "
+                "WHERE f.torolve IS NULL AND l.cel IS NULL AND l.fajta = 'wiki' AND l.beagyazas = 0 "
+                "AND trim(l.cel_nyers) != '' GROUP BY trim(l.cel_nyers) ORDER BY db DESC, cel LIMIT ?", (limit,)).fetchall()
+        return {"szovegek": [{"cel": r[0], "db": r[1]} for r in sorok]}
+
+    def kimeno_emlitesek(self, rp, motor, limit: int | None = None) -> dict:
+        """A jegyzet **kimenő** linkeletlen említései: a többi jegyzet neve/aliasa ebben a (mentett) szövegben, jegyzetenként
+        csoportosítva (a „Kimenő linkek” panelnek). Az Asszisztens ugyanazon lexikai motorja (`motor.keres`), de a panel
+        nem az Asszisztens kapcsolóján múlik; a többértelmű egyezés kimarad (nem dönthető el, melyik jegyzetre linkelne)."""
+        self._kesz_vagy_hiba()
+        rp = self._ut(rp)
+        with self.olvaso(nehez=True) as c:
+            f = self._sor(c, rp)
+            if f["tipus"] != "md":
+                return {"ut": rp, "forrasok": []}
+            szoveg = self._tartalom(c, f["id"])
+        sorok = szoveg.split("\n")
+        csoport: dict[str, list[dict]] = {}
+        for e in motor.keres(rp, szoveg, limit)["emlitesek"]:
+            if e["tobbertelmu"] or not e["cel"]:
+                continue
+            sor = sorok[e["sor"] - 1] if 0 < e["sor"] <= len(sorok) else ""
+            csoport.setdefault(e["cel"], []).append({"sor": e["sor"], "oszlop": e["oszlop"], "hossz": e["veg"] - e["kezd"],
+                                                     "szoveg": sor[:400], "emlitett": e["szoveg"]})
+        return {"ut": rp, "forrasok": [{"ut": cel, "talalatok": t} for cel, t in sorted(csoport.items())]}
 
     def aliasok(self) -> dict:
         """Az aliasos fájlok `aliases`-ai: `{ut: [alias]}`."""

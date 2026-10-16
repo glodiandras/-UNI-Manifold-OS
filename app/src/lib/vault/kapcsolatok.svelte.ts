@@ -39,6 +39,17 @@ export interface EmlitesForras {
   talalatok: Emlites[];
 }
 
+/** Egy másik jegyzet említése ebben a jegyzetben (kimenő linkeletlen említés): az `Emlites` + az említett szöveg. */
+export interface KimenoEmlites extends Emlites {
+  emlitett: string;
+}
+
+export interface KimenoEmlitesForras {
+  /** a megemlített jegyzet útja (a link célja) */
+  ut: string;
+  talalatok: KimenoEmlites[];
+}
+
 export interface KimenoLink {
   fajta: string;
   cel_nyers: string;
@@ -58,6 +69,8 @@ export class Kapcsolatok {
   visszahivatkozasok = $state.raw<VisszaForras[]>(TOMB);
   emlitesek = $state.raw<EmlitesForras[]>(TOMB);
   kimeno = $state.raw<KimenoLink[]>(TOMB);
+  /** 02-links-10: a többi jegyzet neve/aliasa ebben a jegyzetben, link nélkül (a „Kimenő linkek” panel „Link” gombjaival) */
+  kimenoEmlitesek = $state.raw<KimenoEmlitesForras[]>(TOMB);
   betolt = $state(false);
   hiba = $state<string | null>(null);
   private sorszam = 0;
@@ -69,7 +82,7 @@ export class Kapcsolatok {
     this.ut = ut;
     if (!ut) {
       this.visszahivatkozasok = this.emlitesek = TOMB;
-      this.kimeno = TOMB;
+      this.kimeno = this.kimenoEmlitesek = TOMB;
       this.betolt = false;
       this.hiba = null;
       return;
@@ -78,20 +91,23 @@ export class Kapcsolatok {
     const md = ut.toLowerCase().endsWith('.md');
     const szolgal = (p: string) => kerdez<Record<string, unknown>>(p, { idokorlat: 8000 });
     try {
-      const [vissza, emlit, jegyzet] = await Promise.all([
+      const [vissza, emlit, jegyzet, kimenoEml] = await Promise.all([
         szolgal(`/api/vault/visszahivatkozasok?ut=${q(ut)}`),
         md ? szolgal(`/api/vault/emlitesek?ut=${q(ut)}&limit=100`) : Promise.resolve({ forrasok: [] }),
         md || ut.toLowerCase().endsWith('.canvas') ? szolgal(`/api/vault/jegyzet?ut=${q(ut)}`) : Promise.resolve({ linkek: [] }),
+        // a kimenő említések kiegészítő lista: a hibája nem üríti a többit
+        md ? szolgal(`/api/vault/kimeno-emlitesek?ut=${q(ut)}`).catch(() => ({ forrasok: [] })) : Promise.resolve({ forrasok: [] }),
       ]);
       if (en !== this.sorszam) return; // közben másik jegyzet lett az aktív
       this.visszahivatkozasok = (vissza.forrasok as VisszaForras[]) ?? TOMB;
       this.emlitesek = (emlit.forrasok as EmlitesForras[]) ?? TOMB;
+      this.kimenoEmlitesek = (kimenoEml.forrasok as KimenoEmlitesForras[]) ?? TOMB;
       this.kimeno = ((jegyzet.linkek as KimenoLink[]) ?? TOMB).filter((l) => l.fajta !== 'md' || l.cel_nyers);
       this.hiba = null;
     } catch (e) {
       if (en !== this.sorszam) return;
       this.visszahivatkozasok = this.emlitesek = TOMB;
-      this.kimeno = TOMB;
+      this.kimeno = this.kimenoEmlitesek = TOMB;
       // a fájl még nincs az indexben (új), vagy az index épül: nem hiba, a következő esemény újratölt
       this.hiba = e instanceof ApiHiba && (e.statusz === 404 || e.statusz === 503) ? null : e instanceof Error ? e.message : String(e);
     } finally {

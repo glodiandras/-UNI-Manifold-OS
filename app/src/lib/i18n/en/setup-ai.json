@@ -1,0 +1,10 @@
+{
+  "setup.ai.csak_kattintasra": "Nothing is downloaded unless you choose it. Pressing the button below starts the downloads; without it, your notes work as they are.",
+  "setup.ai.ajanlott_lista": "Recommended models",
+  "setup.ai.lista_hiba": "The model list is not available right now.",
+  "setup.ai.lista_hiba_teendo": "You can continue without AI and install models later in Settings › AI › Models.",
+  "setup.ai.indult": "Downloads are running in the background. You can keep going; Model Manager shows their progress.",
+  "setup.ai.kezelo_utan": "Open Model Manager after setup",
+  "setup.ai.kezelo_beallitva": "Model Manager opens after setup",
+  "setup.ai.folytatas": "Continuing without AI is fully supported: notes, links and search work as they are, and you can add models any time in Settings › AI › Models."
+}

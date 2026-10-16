@@ -1,4 +1,4 @@
-"""A modellek rögzített revíziója (C19, T141; az 1. audit §6 ajánlása): a `config/letoltes.toml` és a regiszter `revizio`
+"""A modellek rögzített revíziója (C19, T141; az 1. audit §6 ajánlása): a `config/models.toml` és a regiszter `revizio`
 kulcsa a HF-repó egy commit-sha-ja. A letöltés ezzel a revízióval megy (`revision=`), a betöltő ezt a pillanatképet tölti
 (`local_files_only`), a kalibrációs sor a mért pillanatkép sha-ját hordozza (`snapshot`), és a doctor jelzi, ha a helyi
 gyorsítótár (`refs/main`, `snapshots/<sha>`) vagy egy kalibrált sor pillanatképe eltér a rögzítettől.
@@ -38,7 +38,7 @@ def mert_pillanatkep(models: Path, repo: str, revizio: str = "") -> str:
 
 
 def ellenoriz(modellek: dict[str, dict], models: Path) -> list[dict]:
-    """A `letoltes.toml` modelljei közül a helyben meglévők eltérései: `{modell, fajta, uzenet}`; fajta: `nincs_revizio` |
+    """A manifeszt (`models.toml`) modelljei közül a helyben meglévők eltérései: `{modell, fajta, uzenet}`; fajta: `nincs_revizio` |
     `rossz_revizio` | `hianyzo_pillanatkep` | `main_elter`."""
     ki = []
     for nev, m in sorted(modellek.items()):
@@ -48,7 +48,7 @@ def ellenoriz(modellek: dict[str, dict], models: Path) -> list[dict]:
             continue                                              # nincs letöltve: nincs mit összevetni
         if not rev:
             ki.append({"modell": nev, "fajta": "nincs_revizio",
-                       "uzenet": f"{nev}: a letoltes.toml-ban nincs `revizio` (helyben: {main or '?'})"})
+                       "uzenet": f"{nev}: a models.toml-ban nincs `revizio` (helyben: {main or '?'})"})
         elif not SHA.match(rev):
             ki.append({"modell": nev, "fajta": "rossz_revizio", "uzenet": f"{nev}: a `revizio` nem 40 jegyű commit-sha: {rev}"})
         elif not van_pillanatkep(models, repo, rev):

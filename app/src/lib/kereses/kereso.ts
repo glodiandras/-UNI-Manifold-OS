@@ -43,17 +43,24 @@ export function keresoOldalsav(felulet: Felulet): void {
 }
 
 const MUVELET = /^(?:OR|AND)$/;
+/** A `[kulcs]` / `[kulcs:érték]` tulajdonság-feltétel (a core `_tul_veg`-jével egyező alak: idézett vagy /regex/ értékben a `]` nem zár). */
+const TULAJDONSAG_FELTETEL = /(^|[\s(])\[(?!\[)(?:"[^"]*"|\/(?:\\.|[^/\\])+\/|[^\]"])+\](?=$|[\s)])/g;
+/** Az al-kifejezést vagy egy értéket váró operátorok: az értékük szavai a keresett szavak (a kiemeléshez). */
+const ALOP = /^(?:section|task-todo|task-done|task|match-case|ignore-case|substring):/i;
 
 /** A lekérdezés szó szerint keresett szavai (a kiemeléshez): az idézőjelek, a zárójelek, az operátorok, a
- *  `-tagadás`, a `tag:`, a `line:` és a `/regex/` kimarad; a `path:` és a `file:` értéke marad (a név és az út kiemelése). */
+ *  `-tagadás`, a `tag:`, a `line:`, a `[kulcs:érték]` és a `/regex/` kimarad; a `path:` és a `file:` értéke marad (a név és az út
+ *  kiemelése); a `section:`, `task*:`, `match-case:`, `ignore-case:`, `substring:` értékének szavai és a `*részszó` (csillag
+ *  nélkül) kiemelendők. */
 export function keresoSzavak(q: string): string[] {
   const ki: string[] = [];
-  for (const m of q.matchAll(/"([^"]*)"|(\S+)/g)) {
+  for (const m of q.replace(TULAJDONSAG_FELTETEL, '$1 ').matchAll(/"([^"]*)"|(\S+)/g)) {
     let s = m[1] ?? m[2];
     if (m[2] !== undefined) {
       s = s.replace(/^[()]+|[()]+$/g, '');
+      while (ALOP.test(s)) s = s.replace(ALOP, '').replace(/^[()]+/, '');
       if (s.startsWith('-') || MUVELET.test(s) || /^(?:tag|line):/i.test(s)) continue;
-      s = s.replace(/^(?:path|file):/i, '').replace(/^"|"$/g, '');
+      s = s.replace(/^(?:path|file):/i, '').replace(/^"|"$/g, '').replace(/^\*(?=.)/, '');
       if (s.length > 1 && s.startsWith('/') && s.endsWith('/')) continue;
     }
     s = s.trim();

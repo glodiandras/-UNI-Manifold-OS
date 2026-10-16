@@ -441,7 +441,7 @@ ELVART = {
 
 
 # CX: kézi fájlműveletek, áttekintő és asszisztens, ugyanazzal a HTTP-kapuval.
-for m, u, torzs, kod in [('GET', '/api/rendszer/epites', None, 200), ('GET', '/api/mentes/teljes', None, 200), ('POST', '/api/vault/import', {}, 400), ('POST', '/api/vault/mappa', {}, 400), ('POST', '/api/vault/kuka', {}, 400), ('GET', '/api/felkeszultseg/keret', None, 200), ('PUT', '/api/felkeszultseg/keret', {'napi_perc': 0}, 400), ('POST', '/api/asszisztens/kiegeszites', {}, 400), ('POST', '/api/asszisztens/kiegeszites/elvet', {}, 400), ('POST', '/api/asszisztens/kiegeszites/elfogad', {}, 400), ('GET', '/api/asszisztens/mintak', None, 200), ('POST', '/api/asszisztens/mintak/tanit', {}, 400), ('POST', '/api/asszisztens/mintak/torles', {}, 200), ('GET', '/api/asszisztens/tanult', None, 200), ('POST', '/api/asszisztens/tanult/torles', {}, 400), ('POST', '/api/asszisztens/tanul', {}, 400), ('POST', '/api/asszisztens/kartya', {}, 400), ('POST', '/api/asszisztens/kartya/dontes', {}, 400)]:
+for m, u, torzs, kod in [('GET', '/api/rendszer/epites', None, 200), ('GET', '/api/mentes/teljes', None, 200), ('POST', '/api/vault/import', {}, 400), ('POST', '/api/vault/mappa', {}, 400), ('POST', '/api/vault/kuka', {}, 400), ('POST', '/api/vault/masolat', {}, 400), ('POST', '/api/vault/finder', {}, 400), ('GET', '/api/felkeszultseg/keret', None, 200), ('PUT', '/api/felkeszultseg/keret', {'napi_perc': 0}, 400), ('POST', '/api/asszisztens/kiegeszites', {}, 400), ('POST', '/api/asszisztens/kiegeszites/elvet', {}, 400), ('POST', '/api/asszisztens/kiegeszites/elfogad', {}, 400), ('GET', '/api/asszisztens/mintak', None, 200), ('POST', '/api/asszisztens/mintak/tanit', {}, 400), ('POST', '/api/asszisztens/mintak/torles', {}, 200), ('GET', '/api/asszisztens/tanult', None, 200), ('POST', '/api/asszisztens/tanult/torles', {}, 400), ('POST', '/api/asszisztens/tanul', {}, 400), ('POST', '/api/asszisztens/kartya', {}, 400), ('POST', '/api/asszisztens/kartya/dontes', {}, 400)]:
     ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
     KERESEK.append((m, u, torzs, {}))
 
@@ -453,6 +453,71 @@ for m, u, torzs, kod in [("GET", "/api/beallitasok", None, 200), ("PUT", "/api/b
 
 for m, u, torzs, kod in [("GET", "/api/vault/tulajdonsagok/tipusok", None, 200),
                          ("POST", "/api/vault/tulajdonsagok/tipus", {}, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F11 (02-links): vault-szintű fejezetkeresés, használt de nem létező link-szövegek, kimenő linkeletlen említések
+for m, u, torzs, kod in [("GET", "/api/vault/fejezetek?q=fejezet", None, 200), ("GET", "/api/vault/fejezetek?limit=0", None, 400),
+                         ("GET", "/api/vault/feloldatlan", None, 200), ("GET", "/api/vault/kimeno-emlitesek?ut=Linkek.md", None, 200),
+                         ("GET", "/api/vault/kimeno-emlitesek", None, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F7: Health és Privacy Center (csak olvasó állapot; a javítás csak ismert, biztonságos azonosítóra fut)
+for m, u, torzs, kod in [("GET", "/api/egeszseg", None, 200), ("GET", "/api/egeszseg/diagnosztika?kod=index", None, 200),
+                         ("POST", "/api/egeszseg/javitas", {}, 400), ("GET", "/api/adatvedelem", None, 200)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F11: Health „Learn more” → a beépített útmutató oldala (csak olvas; hiányzó téma 400, ismeretlen 404)
+for m, u, torzs, kod in [("GET", "/api/doku/learn?tema=health.index", None, 200), ("GET", "/api/doku/learn", None, 400),
+                         ("GET", "/api/doku/learn?tema=nincs", None, 404)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F8: demo workspace (állapot csak olvas; az alaphelyzet megerősítés nélkül 400, nem demo munkatéren 403)
+for m, u, torzs, kod in [("GET", "/api/demo/allapot", None, 200), ("POST", "/api/demo/alaphelyzet", {}, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F6: Model Manager háttere (letöltést/tesztet itt nem indít: ismeretlen modell vagy hibás törzs; a teljes út a
+# tests/test_f6_modellek.py-ban mockolt forrással és álworkerrel)
+for m, u, torzs, kod in [("GET", "/api/modellek", None, 200), ("GET", "/api/modellek/halmazok", None, 200),
+                         ("GET", "/api/modellek/qwen35_4b", None, 200), ("GET", "/api/modellek/nincs_ilyen", None, 404),
+                         ("GET", "/api/modellek/qwen35_4b/teszt/szoveg", None, 404),
+                         ("POST", "/api/modellek/nincs_ilyen/letoltes", {}, 404),
+                         ("POST", "/api/modellek/qwen35_4b/letoltes/megszakitas", {}, 404),
+                         ("POST", "/api/modellek/qwen35_4b/torles", {}, 409),
+                         ("POST", "/api/modellek/qwen35_4b/teszt", {}, 400),
+                         ("POST", "/api/modellek/halmazok/kifejtes", {}, 400),
+                         ("POST", "/api/modellek/halmazok/kifejtes/jovahagyas", {}, 404),
+                         ("POST", "/api/modellek/halmazok/kifejtes/valasztas", {}, 400),
+                         ("POST", "/api/modellek/halmazok/kifejtes/torles", {}, 404)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F10: the multi-language code workbench (core/kod_utvonal.py; the run itself in tests/test_kod_api.py)
+for m, u, torzs, kod in [("GET", "/api/kod/nyelvek", None, 200), ("GET", "/api/kod/feladat", None, 400),
+                         ("GET", "/api/kod/feladat?ut=Cél.md", None, 200), ("POST", "/api/kod/ellenoriz", {}, 400),
+                         ("GET", "/api/kod/futas/nincs", None, 404), ("POST", "/api/kod/megszakit", {}, 400),
+                         ("POST", "/api/kod/ai", {}, 400), ("POST", "/api/kod/ai/megszakit", {}, 400),
+                         ("GET", "/api/kod/ai/kodai-000000000000", None, 404)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F8: import (core/importalas.py; nothing starts here: missing fields are 400 before any check — the full behaviour in
+# tests/migracio/)
+for m, u, torzs, kod in [("GET", "/api/import", None, 200), ("GET", "/api/import/allapot", None, 400),
+                         ("POST", "/api/import/obsidian/elonezet", {}, 400), ("POST", "/api/import/obsidian", {}, 400),
+                         ("POST", "/api/import/visszafordit", {}, 400), ("POST", "/api/import/v2/elonezet", {}, 400),
+                         ("POST", "/api/import/v2", {}, 400), ("POST", "/api/import/megszakit", {}, 400)]:
     ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
     KERESEK.append((m, u, torzs, {}))
 

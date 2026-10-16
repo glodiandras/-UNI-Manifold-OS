@@ -1,5 +1,5 @@
 /*
- * A C++ munkafelület stílusa (C36a-UI): a `.cpp` fül szerkesztője és a `![[x.cpp]]` beágyazás. Minden érték token
+ * A kód-munkafelület stílusa (C36a-UI, F10): a kód-fül szerkesztője és a `![[x.cpp]]` / `![[x.py]]` … beágyazás. Minden érték token
  * (styles/tokens.css, 25. döntés: új szín, méret vagy idő nincs). A színezés a `szerkeszto.css` `tok-*` szabályaiból jön
  * (a hatókör ott `.cm-kodszerkeszto` és `.kod-beagyazas-kod`).
  */
@@ -222,6 +222,16 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.kod-nyelv-jel {
+  font-size: var(--betu-kicsi);
+  line-height: var(--sor-kicsi);
+  color: var(--szoveg-halvany);
+}
+
+.kod-nyelv-jel:empty {
+  display: none;
 }
 
 .kod-jelveny {

@@ -2,5 +2,17 @@
   "Külső kép: {nev}. A megjelenítéshez előbb töltsd le.": "External image: {nev}. Download it first to display it.",
   "A feladatot a forrásjegyzetben szerkesztheted.": "Edit this task in its source note.",
   "A beágyazott rész megváltozott. Nyisd meg a forrásjegyzetet, és próbáld újra.": "The embedded section has changed. Open its source note and try again.",
-  "A feladat mentése nem sikerült. A változás megvan; nyisd meg a forrásjegyzetet.": "The task could not be saved. Your change is retained; open its source note."
+  "A feladat mentése nem sikerült. A változás megvan; nyisd meg a forrásjegyzetet.": "The task could not be saved. Your change is retained; open its source note.",
+  "Kép letöltése": "Download image",
+  "Letöltés innen: {url}": "Download from {url}",
+  "Letöltés…": "Downloading…",
+  "Letöltés újra": "Retry download",
+  "A kép nem tölthető le: {hiba}": "The image could not be downloaded: {hiba}",
+  "Helyi fájl használata a jegyzetben": "Use downloaded file in note",
+  "A jegyzet linkje erre a fájlra mutasson: {ut}": "Point the note's link to {ut}",
+  "A jegyzet linkje frissítve ({n}).": "Link updated in the note ({n}).",
+  "A link nem írható át: {hiba}": "The link could not be updated: {hiba}",
+  "A jegyzet most nem szerkeszthető. Nyisd meg, és oldd fel az ütközést.": "The note cannot be edited right now. Open it and resolve the conflict.",
+  "A link már nincs a jegyzetben.": "The link is no longer in the note.",
+  "A mentés nem sikerült. A változás megvan; nyisd meg a jegyzetet.": "The note could not be saved. Your change is retained; open the note."
 }

@@ -48,6 +48,43 @@ def relativ_cel(feloldo: Feloldo, ut: str, forras: str) -> str:
     return cel if feloldo.resolve(cel, forras)[0] == ut else rovid_cel(feloldo, ut, forras)
 
 
+def abszolut_cel(feloldo: Feloldo, ut: str, forras: str) -> str:
+    """A vault gyökeréhez viszonyított teljes út (jegyzetnél kiterjesztés nélkül); ha ez nem oldódik az `ut`-ra, a
+    kiterjesztéses teljes út, végül a rövid cél (mindig a feloldóval ellenőrizve)."""
+    for cel in dict.fromkeys([cel_szoveg(ut), ut]):
+        if feloldo.resolve(cel, forras)[0] == ut:
+            return cel
+    return rovid_cel(feloldo, ut, forras)
+
+
+FORMAK = {"rovid": rovid_cel, "relativ": relativ_cel, "abszolut": abszolut_cel}
+
+
+def cel_forma(feloldo: Feloldo, ut: str, forras: str, forma: str | None = "rovid") -> str:
+    """A link-cél a beállított „New link format” szerint (`rovid` | `relativ` | `abszolut`; ismeretlen: rövid)."""
+    return FORMAK.get(forma or "rovid", rovid_cel)(feloldo, ut, forras)
+
+
+_MD_UJ_KODOLANDO = re.compile(r"[\\\x00-\x1f\x7f %()<>\[\]]")
+
+
+def md_ujra_kodol(szoveg: str) -> str:
+    """Az újonnan írt md-link célja/horgonya: a szóköz, a vezérlőjelek és a `\\ % ( ) < > [ ]` `%XX`. Csak olyan jelet kódol,
+    amelyet a `feloldas.decode_uri` (a JS `decodeURI`) vissza is fejt — a fenntartott jelek (`; / ? : @ & = + $ , #`)
+    kódolatlanok, különben a cél nem oldódna fel. Az ékezet és minden más marad."""
+    return _MD_UJ_KODOLANDO.sub(lambda m: "".join(f"%{b:02X}" for b in m.group(0).encode("utf-8")), szoveg)
+
+
+def md_cel_irasra(cel: str, ut: str, alcel: str | None = None) -> str:
+    """Az md-link célja (zárójel között): a `cel` (rövid/relatív/abszolút szöveg) a jegyzet `.md` kiterjesztésével, kódolva,
+    a horgonnyal (`#fejezet`, `#^blokk`). A `feloldas.md_cel` visszafejtve a `cel + kiterjesztés` szöveget adja."""
+    kit = ".md" if ut.lower().endswith(".md") and not cel.lower().endswith(".md") else ""
+    ki = md_ujra_kodol(cel + kit)
+    if alcel and alcel.strip():
+        ki += "#" + md_ujra_kodol(alcel.strip())
+    return ki
+
+
 # ---------------------------------------------------------------- horgonyok
 
 def alcel_norm(s: str) -> str:
@@ -181,10 +218,11 @@ def cel_resz(szoveg: str) -> tuple[str, str, str]:
     return szoveg[:i], kerek, szoveg[i + len(kerek):]
 
 
-def uj_cel_szoveg(regi_cel: str, uj_ut: str) -> list[str]:
+def uj_cel_szoveg(regi_cel: str, uj_ut: str, forras: str | None = None, regi_ut: str | None = None) -> list[str]:
     """Jelölt cél-szövegek egy link új alakjához, sorrendben (a hívó a feloldóval ellenőrzi az elsőt, amely a
-    célra oldódik): **stílusőrző** (bare marad bare, az útvonal-végződés ugyanannyi szegmenssel, a `.md`
-    megmarad, ha volt). A rövid cél tartaléka a hívóé (`rovid_cel`)."""
+    célra oldódik): **stílusőrző** — a bare marad bare, a `./`/`../` relatív marad relatív (az **új** forrás mappájától,
+    ha a `forras` adott), a teljes (vault-gyökerű) út teljes út marad (ha a `regi_ut` adott), különben az útvonal-végződés
+    ugyanannyi szegmenssel; a `.md` megmarad, ha volt. A beállított formátum tartaléka a hívóé (`cel_forma`)."""
     s = nfc(regi_cel.strip())
     if s.endswith("\\"):
         s = s[:-1].rstrip()
@@ -192,12 +230,22 @@ def uj_cel_szoveg(regi_cel: str, uj_ut: str) -> list[str]:
     perjel = "/" if s.startswith("/") else ""
     s = s.lstrip("/")
     volt_md = s.lower().endswith(".md")
+
+    def alak(sz: str) -> str:
+        return sz if (volt_md or not uj_ut.lower().endswith(".md")) else cel_szoveg(sz)
+
+    jeloltek: list[str] = []
+    if forras is not None and not perjel and s.startswith(("./", "../")):
+        if regi_ut is not None and posixpath.dirname(regi_ut) == posixpath.dirname(uj_ut) and "/" in s:
+            jeloltek.append(s[:s.rindex("/") + 1] + alak(posixpath.basename(uj_ut)))      # csak a név változott: a szerző útja marad
+        rel = posixpath.relpath(uj_ut, posixpath.dirname(forras) or ".")
+        jeloltek.append(alak(rel if rel.startswith("../") else "./" + rel))
+    elif regi_ut is not None and "/" in regi_ut and cel_szoveg(s).casefold() == cel_szoveg(nfc(regi_ut)).casefold():
+        jeloltek.append(perjel + alak(uj_ut))
     szegmens = max(1, len([x for x in s.split("/") if x]))
     reszek = uj_ut.split("/")
-    jeloltek = []
     for k in dict.fromkeys([min(szegmens, len(reszek)), len(reszek)]):
-        sz = "/".join(reszek[-k:])
-        jeloltek.append(perjel + (sz if (volt_md or not uj_ut.lower().endswith(".md")) else cel_szoveg(sz)))
+        jeloltek.append(perjel + alak("/".join(reszek[-k:])))
     return list(dict.fromkeys(jeloltek))
 
 

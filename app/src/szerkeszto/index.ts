@@ -30,6 +30,7 @@ import { blokkDuplikal, blokkLep, blokkLinkMasol, blokkMenuParancs, blokkTorol }
 import { linkParancs } from './notion/eszkoztar';
 import { perjelNyit } from './notion/perjel';
 import { mermaidRenderelo } from './renderelok/mermaid';
+import { keresesBlokkRenderelo } from './renderelok/keresesBlokk';
 import { plotTelepit } from './renderelok/plot';
 import { kodRenderelok } from './renderelok/regiszter';
 import Szerkeszto from './Szerkeszto.svelte';
@@ -42,6 +43,7 @@ import { vagolapra } from './vagolap';
 import { folytatasKezi, folytatasKeziMod } from './asszisztens/folytatas';
 import { kartyaParancsok } from '../lib/asszisztens/kartya.svelte';
 import { keresoMegnyit } from '../lib/kereses/kereso';
+import { hajtasParancsok } from './hajtasParancsok';
 
 function parancsok(): Parancs[] {
   const sz = () => szerkesztok.aktiv;
@@ -103,6 +105,7 @@ function parancsok(): Parancs[] {
     notion('asszisztens-osszefoglal', tk('Asszisztens: a kijelölés összefoglalása'), v => v.dispatch({ effects: folytatasKezi.of({ mod: 'osszefoglal' }) }),
       { billentyu: 'Mod+Shift+J', elerheto: () => irhatoNezet(sz()) && !sz()!.nezet()!.state.selection.main.empty }),
     ...kartyaParancsok(),
+    ...hajtasParancsok(sz),
     notion('perjel', tk('Beszúrás-menü (/)'), perjelNyit),
     notion('blokk-menu', tk('Blokk: menü a kurzornál'), blokkMenuParancs),
     notion('blokk-fel', tk('Blokk: mozgatás fel'), (v) => blokkLep(v, -1)),
@@ -283,6 +286,14 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
     }),
     kodRenderelok.regisztral(mermaidRenderelo),
     plotTelepit(), // C35a: ```plot (JSXGraph, lusta)
+    // 08-search-13: ```query — a beágyazott keresés (csak olvas; a Keresés modul nélkül sima kódblokk)
+    kodRenderelok.regisztral(keresesBlokkRenderelo({
+      kapcsolat,
+      megnyit: (ut, sor, oszlop, mod) => {
+        felulet?.munkaterulet.megnyit(ut, mod);
+        if (sor !== null) szerkesztok.ugras(ut, sor, oszlop);
+      },
+    })),
     reg.regisztralMind(parancsok()),
     reg.regisztralMind(fuzetParancsok(() => szerkesztok.aktiv?.ut ?? null)), // C21: a füzetlánc bevitele (⌘P)
     reg.regisztralMind(grafikonParancsok(() => (szerkesztok.aktiv?.ut ? { ut: szerkesztok.aktiv.ut, mentes: () => szerkesztok.aktiv?.mentes() ?? Promise.resolve() } : null))), // 80(a): grafikon csak gombra (⌘P)

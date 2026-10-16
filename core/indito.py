@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from . import config, frame, munkater_futo, snapshot, tartos, termek_beallitasok, workspace
+from . import config, demo, munkater_futo, termek_beallitasok, workspace
 from .hibakod import angol_uzenet, json_param
 from .utvonalak import HttpError
 
@@ -58,7 +58,7 @@ def _munkater(alap, vault):
 
 
 def muvelet(d, alap, haladas=lambda v: None):
-    if not isinstance(d, dict) or d.get("muvelet") not in ("lista", "felmer", "letrehoz", "megnyit", "elfelejt", "demo"):
+    if not isinstance(d, dict) or d.get("muvelet") not in ("lista", "felmer", "letrehoz", "megnyit", "elfelejt", "demo", "demo_reset"):
         raise HttpError(400, "Choose a valid workspace action.", kod="indito.hibas_keres")
     if set(d) - {"muvelet", "vault", "nev", "id", "uj_mappa", "elfogad"}:
         raise HttpError(400, "This workspace request contains unknown options.", kod="indito.hibas_keres")
@@ -93,6 +93,10 @@ def muvelet(d, alap, haladas=lambda v: None):
         return {"ok": True}
     if m == "demo":
         return _demo(alap, haladas)
+    if m == "demo_reset":
+        if d.get("elfogad") is not True:
+            raise HttpError(400, "Confirm the reset: it restores the demo notes and sets the demo's sample data back.", kod="demo.megerosites")
+        return _demo_reset(alap, haladas)
     nev = d.get("nev")
     if nev is not None and (not isinstance(nev, str) or len(nev) > 200 or any(ord(c) < 32 for c in nev)):
         raise HttpError(400, "Use a short workspace name without control characters.", kod="indito.hibas_keres")
@@ -122,26 +126,24 @@ def muvelet(d, alap, haladas=lambda v: None):
 
 
 def _demo(alap, haladas):
-    v = alap.path("install") / "demo" / "Manifold Demo"
-    workspace.letrehoz(v, alap, nev="Manifold Demo", nyelv="", demo=True, haladas=haladas)
-    cfg = config.load(workspace._env(alap, MOS_VAULT=str(v)))
-    jelolo = v / workspace.MAPPA / "demo-alap.json"
-    if not jelolo.exists():
-        # App-owned starter only. F8 adds the full sample library; reopening never replaces edits.
-        jegyzetek = {
-            "Welcome.md": "# Welcome to Manifold\n\nYour notes are Markdown files on your Mac. Start writing here, or open [[Connected ideas]].\n\nUse **Cmd+O** to find notes, **Cmd+P** for commands and **Cmd+,** for Settings.\n\nAI is optional. Editing, search and local history work without a model.\n",
-            "Connected ideas.md": "# Connected ideas\n\nLink notes with `[[Welcome]]`. Add headings, lists and tasks as you write.\n\n- [ ] Try editing this note\n- [ ] Follow the link back to [[Welcome]]\n\nSee [[Writing in two languages]] for automatic language recognition.\n",
-            "Writing in two languages.md": "# Writing in two languages\n\nWrite naturally. Manifold recognises the language of your notes locally, independently of its English interface.\n\nEz egy magyar nyelvű mintabekezdés. A jegyzeteid a saját mappádban maradnak, és szabadon szerkesztheted őket.\n",
-        }
-        with frame.run_lock(cfg):
-            for nev, szoveg in jegyzetek.items():
-                try:
-                    tartos.kizaro_ir(v / nev, szoveg.encode("utf-8"))
-                except FileExistsError:
-                    pass
-            snapshot.repos(cfg)["vault"].commit("Demo starter notes", {"Mos-Forras": "kezi"})
-            workspace._atomi_ir_nofollow(jelolo.parent, jelolo.name, b'{"verzio":1}\n')
+    """"Try the demo workspace": the full synthetic sample library (`core/demo.py`); reopening never replaces edits."""
+    v, _, _ = demo.inditas(alap, haladas)
     return {"ok": True, "munkater": _munkater(alap, v)}
+
+
+def _demo_reset(alap, haladas):
+    """Reset the demo workspace to its original content (confirmed by the caller). Only while no core runs on it, and only on
+    the registered demo workspace (`demo.alaphelyzet` refuses anything else)."""
+    v = Path(alap.path("install")) / "demo" / demo.DEMO_NEV
+    e = next((x for x in workspace.Regiszter(alap.path("install")).olvas()["munkaterek"].values()
+              if isinstance(x, dict) and x.get("demo") is True and isinstance(x.get("vault"), str)
+              and workspace.kanonikus(Path(x["vault"])) == workspace.kanonikus(v)), None)
+    if e is None or not v.is_dir():
+        raise HttpError(404, "The demo workspace has not been created yet. Choose \"Try demo\" first.", kod="demo.nincs")
+    cfg = config.load(workspace._env(alap, MOS_VAULT=str(v)))
+    if munkater_futo.olvas(alap, cfg.workspace_id, str(v)):
+        raise HttpError(409, "The demo workspace is open. Close it, then reset it from the launcher.", kod="demo.fut")
+    return {"ok": True, "munkater": _munkater(alap, v), **{k: r for k, r in demo.alaphelyzet(cfg, megerosit=True, haladas=haladas).items() if k != "ok"}}
 
 
 def main():

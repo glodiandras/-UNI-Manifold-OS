@@ -9,6 +9,7 @@
   import { ertesitesek, type Szint } from '../lib/ertesites/ertesites.svelte';
   import { ido } from '../lib/elrendezes/mozgas';
   import Ikon from '../lib/ikon/Ikon.svelte';
+  import ProbaJel from '../modellek/ProbaJel.svelte';
   import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from '../lib/ikon/ikonok';
 
   const IKON = { info: Info, siker: CircleCheck, figyelmeztetes: TriangleAlert, hiba: CircleAlert } satisfies Record<
@@ -32,6 +33,7 @@
       <span class="ikon"><Ikon ikon={IKON[e.szint]} /></span>
       <div class="szovegek">
         <p class="cim">{e.cim}{#if e.darab > 1}<span class="darab"> ×{e.darab}</span>{/if}</p>
+        {#if e.proba}<p class="proba"><ProbaJel jel="proba" /></p>{/if}
         {#if e.szoveg}<p class="szoveg">{e.szoveg}</p>{/if}
         {#if e.muvelet}
           <button
@@ -106,6 +108,10 @@
   .darab {
     font-weight: var(--suly-normal);
     color: var(--szoveg-halvany);
+  }
+
+  .proba {
+    margin: var(--t-1) 0 0;
   }
 
   .szoveg {

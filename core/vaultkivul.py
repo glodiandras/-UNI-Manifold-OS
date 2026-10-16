@@ -1,6 +1,6 @@
 """„Nem a vaultba” őr a parancssori kiírásokhoz (A3-27).
 
-A `Path.is_relative_to` szöveges összevetés, ezért kis-nagybetű-érzéketlen fájlrendszeren (APFS) a `/Volumes/work/manifold/…`
+A `Path.is_relative_to` szöveges összevetés, ezért kis-nagybetű-érzéketlen fájlrendszeren (APFS) a `/volumes/disk/notes/…` (egy `/Volumes/Disk/Notes` vault kisbetűs alakja)
 átmegy a vault-úton alapuló őrön. Itt a vault és a cél **azonosságát** nézzük (`os.path.samefile`: inode, nem szöveg):
 a cél legközelebbi létező őse között van-e a vault.
 

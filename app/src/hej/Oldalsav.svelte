@@ -15,9 +15,10 @@
   import KeresoTartalom from '../lib/kereses/KeresoTartalom.svelte';
   import Cimkek from './Cimkek.svelte';
   import Fa from './Fa.svelte';
+  import Tulajdonsagnezet from './Tulajdonsagnezet.svelte';
 
   const { felulet } = kornyezet();
-  const nezet = $derived((felulet.oldalsav.nezet === 'cimkek' && !modulEngedelyezett('cimkek')) || (felulet.oldalsav.nezet === 'kereses' && !modulEngedelyezett('kereses')) ? 'fajlok' : felulet.oldalsav.nezet);
+  const nezet = $derived((felulet.oldalsav.nezet === 'cimkek' && !modulEngedelyezett('cimkek')) || (felulet.oldalsav.nezet === 'tulajdonsagok' && !modulEngedelyezett('tulajdonsagok')) || (felulet.oldalsav.nezet === 'kereses' && !modulEngedelyezett('kereses')) ? 'fajlok' : felulet.oldalsav.nezet);
   let keresett = $state(false);
   $effect(() => { if (nezet === 'kereses') keresett = true; });
   // C38: a rejtett oldalsáv átfedésként jön elő (bal szél, F6); a DOM-ja rejtve is megmarad (nincs állapotvesztés)
@@ -41,10 +42,11 @@
   const ALAP_NEZETEK = [
     { id: 'fajlok', nev: tk('Fájlok') },
     { id: 'cimkek', nev: tk('Címkék') },
+    { id: 'tulajdonsagok', nev: tk('Tulajdonságok') },
     { id: 'kereses', nev: tk('Keresés') },
   ] as const;
 
-  const NEZETEK = $derived(ALAP_NEZETEK.filter(n => (n.id !== 'cimkek' || modulEngedelyezett('cimkek')) && (n.id !== 'kereses' || modulEngedelyezett('kereses'))));
+  const NEZETEK = $derived(ALAP_NEZETEK.filter(n => (n.id !== 'cimkek' || modulEngedelyezett('cimkek')) && (n.id !== 'tulajdonsagok' || modulEngedelyezett('tulajdonsagok')) && (n.id !== 'kereses' || modulEngedelyezett('kereses'))));
 
   /** A fülek léptetése nyilakkal (← →): a kijelölt fül kapja a fókuszt. */
   function fulBillentyu(e: KeyboardEvent) {
@@ -100,6 +102,8 @@
       <Fa />
     {:else if nezet === 'cimkek'}
       <Cimkek />
+    {:else if nezet === 'tulajdonsagok'}
+      <Tulajdonsagnezet />
     {/if}
     {#if keresett}
       <div class="kereso-panel" hidden={nezet !== 'kereses'} inert={nezet !== 'kereses'}>

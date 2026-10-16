@@ -11,7 +11,7 @@ vi.mock('../src/lib/core/api', () => ({
     throw new Error('váratlan hívás: ' + ut);
   }),
 }));
-vi.mock('../src/lib/vault/linkek.svelte', () => ({ linkek: { linkCel: async (u: string) => u.replace(/^.*\//, '') } }));
+vi.mock('../src/lib/vault/linkek.svelte', () => ({ linkek: { linkCelAdat: async (u: string) => ({ ut: u, cel: u.replace(/^.*\//, ''), alak: 'wiki' }) } }));
 vi.mock('../src/lib/ertesites/ertesites.svelte', () => ({ ertesitesek: { ertesit: vi.fn() } }));
 
 import { csatolmanyBovitmeny } from '../src/szerkeszto/csatolmany';

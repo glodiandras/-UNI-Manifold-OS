@@ -1,0 +1,28 @@
+{
+  "_leiras": "Markdown-link célok: a core `feloldas.md_reszek` és a felület `markdownCel` közös vektorai. [nyers, cel, alcel] vagy [nyers, null]: nem belső link. Szándékos eltérések (nem itt): `#Fejezet` (a felület ugyanazon jegyzetre ugrik, a gráf nem él), tetszőleges séma és vezérlőjel (a felület biztonsági okból elutasítja), Markdown-escape (`\\(`).",
+  "vektorok": [
+    ["A%20B.md", "A B.md", null],
+    ["../Notes/A%20B.md#Els%C5%91%20r%C3%A9sz", "../Notes/A B.md", "Első rész"],
+    ["<A%20B.md#^block>", "A B.md", "^block"],
+    ["<A B.md>", "A B.md", null],
+    ["A%2520B.md", "A%20B.md", null],
+    ["A%23B%3FC.md", "A%23B%3FC.md", null],
+    ["A%2FB.md", "A%2FB.md", null],
+    ["A%2BB%26C.md", "A%2BB%26C.md", null],
+    ["A.md#H%3F", "A.md", "H%3F"],
+    ["Mappa/%E2%82%AC.md", "Mappa/€.md", null],
+    ["A%C2%A0B.md", "A B.md", null],
+    ["Cél.md#fej", "Cél.md", "fej"],
+    ["./Cél.md", "./Cél.md", null],
+    ["https://example.com/a", null, null],
+    ["mailto:a@example.com", null, null],
+    ["bad%zz.md", null, null],
+    ["trunc%E2%82.md", null, null],
+    ["%FF.md", null, null],
+    ["A%20(b).md", "A (b).md", null],
+    ["Mappa (1)/Cél (2).md#Fej (3)", "Mappa (1)/Cél (2).md", "Fej (3)"],
+    ["<a (b).md>", "a (b).md", null],
+    ["<Mappa (1)/a (b).md#H (2)>", "Mappa (1)/a (b).md", "H (2)"],
+    ["a(b(c)).md", "a(b(c)).md", null]
+  ]
+}

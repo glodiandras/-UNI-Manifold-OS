@@ -1,8 +1,8 @@
 // Az Olvasó: a szintaxisfából DOM (a szerkesztővel azonos elemzőből). A Markdown soha nem kerül
 // `innerHTML`-be; kivétel a KaTeX kimenete (`trust: false`) és a Mermaid SVG-je (`securityLevel: 'strict'`).
 // Obsidian-szemantika: a sima sortörés `<br>` (a „szigorú sortörés” alapból ki), a lábjegyzetek a lap
-// alján, a callout összecsukható, a jelölőnégyzet kattintható (a dokumentumot írja). HTML csak az
-// engedélyezett soron belüli címkékkel; a többi szövegként látszik. A wikilink `data-cel`/`data-alcel`/`data-forras`
+// alján, a callout összecsukható, a jelölőnégyzet kattintható (a dokumentumot írja). A HTML (blokk és soron belüli címke)
+// engedélylistás, szanitizált másolatként jelenik meg (`olvaso/htmlSzures.ts`); a nem engedett szövegként látszik. A wikilink `data-cel`/`data-alcel`/`data-forras`
 // attribútumot kap (a navigációt és a lebegő előnézetet az Olvasó és a szerkesztő kezeli, C10); a beágyazás
 // (`![[…]]`) a `beagyazas/rajzol.ts`-ben készül. A Live Preview táblázat-widgetje is ezt a renderelőt használja.
 
@@ -17,7 +17,7 @@ import { markdownCel } from '../linkek/markdown';
 import { kulsoCim } from '../linkek/kulso';
 import { calloutAdat } from '../markdown/callout';
 import { kepletForras, type Olvaso } from '../markdown/fa';
-import { engedettCimke } from '../markdown/html';
+import { htmlBlokk, nyersHtmlDoboz, soronBeluliCimke, vanTartalom, type HtmlKornyezet } from './htmlSzures';
 import { feladatAllapot } from '../markdown/feladat';
 import { sorCellai } from '../markdown/tablazat';
 import { calloutTipusok } from '../renderelok/callout';
@@ -77,7 +77,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, osztaly?: string): HT
 /** Soron belüli író: a sortörés `<br>` (a folytatósor behúzása elmarad), az engedélyezett HTML-címkék
  *  egymásba ágyazódnak. */
 class SorIro {
-  private readonly verem: Element[] = [];
+  private readonly verem: HTMLElement[] = [];
   sorKezdet: boolean;
 
   constructor(
@@ -113,18 +113,20 @@ class SorIro {
     this.sorKezdet = false;
   }
 
-  belep(e: Element): void {
+  belep(e: HTMLElement): void {
     this.elem(e);
     this.verem.push(e);
   }
 
-  kilep(e: Element): void {
+  kilep(e: HTMLElement): void {
     const i = this.verem.lastIndexOf(e);
     if (i >= 0) this.verem.length = i;
   }
 
-  html(cimke: string): void {
-    const c = engedettCimke(cimke);
+  /** Soron belüli HTML-címke (01-rendering-11): az engedélylistás címke szanitizált attribútumokkal elem lesz (a kép a
+   *  beágyazás-motoron át), a többi szövegként látszik. A záró címke a legközelebbi azonos nevű nyitottat zárja. */
+  html(cimke: string, k: HtmlKornyezet): void {
+    const c = soronBeluliCimke(cimke, k);
     if (!c) {
       this.szoveg(cimke);
       return;
@@ -137,13 +139,16 @@ class SorIro {
     }
     if (c.zaro) {
       for (let i = this.verem.length - 1; i >= 0; i--)
-        if (this.verem[i].tagName.toLowerCase() === nev) {
+        if (this.verem[i].dataset.htmlCimke === nev) {
           this.verem.length = i;
           return;
         }
       return;
     }
-    if (!c.onzaro) this.belep(document.createElement(nev));
+    if (!c.elem) return;
+    if (c.onzaro) return this.elem(c.elem);
+    c.elem.dataset.htmlCimke = nev; // a `<font>`/`<big>` span-ként áll: a záró címke a forrásbeli név szerint keres
+    this.belep(c.elem);
   }
 
   /** A blokk végi szóközök levágása. */
@@ -326,12 +331,30 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       sup.appendChild(a);
       return w.elem(sup);
     }
+    case 'FootnoteInline': {
+      // soron belüli lábjegyzet (`^[…]`): a hivatkozások közös számozásában, a törzse a lap alján (01-rendering-10)
+      const nev = `^i${c.from}`;
+      const szamok = (o.labjegyzetSzam ??= new Map());
+      let n = szamok.get(nev);
+      if (n === undefined) szamok.set(nev, (n = szamok.size + 1));
+      (o.labjegyzetek ??= new Map()).set(nev, c);
+      const sup = el('sup', 'labjegyzet-hiv');
+      const a = el('a');
+      a.dataset.labjegyzet = nev;
+      a.id = `${o.elotag ?? 'lj'}-hiv-${nev}`;
+      a.textContent = String(n);
+      a.setAttribute('role', 'link');
+      a.tabIndex = 0;
+      a.setAttribute('aria-label', t('{n}. lábjegyzet', { n }));
+      sup.appendChild(a);
+      return w.elem(sup);
+    }
     case 'Escape':
       return w.szoveg(o.olvas(c.from + 1, c.to));
     case 'Entity':
       return w.szoveg(entitas(o.olvas(c.from, c.to)));
     case 'HTMLTag':
-      return w.html(o.olvas(c.from, c.to));
+      return w.html(o.olvas(c.from, c.to), htmlKornyezet(o));
     case 'HardBreak':
       w.elem(el('br'));
       w.sorKezdet = true;
@@ -340,6 +363,25 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       if (JELOLOK.has(c.name)) return;
       w.szoveg(o.olvas(c.from, c.to));
   }
+}
+
+/** A szanitizált HTML környezete: a vault-linkek forrása és a képek a beágyazás-motoron át (mint a Markdown-kép). */
+function htmlKornyezet(o: RenderOpciok): HtmlKornyezet {
+  const ut = o.ut;
+  return {
+    ut,
+    kep: ut
+      ? (adat) =>
+          beagyazasElem(adat, {
+            forras: ut,
+            lanc: o.beagyazas?.lanc ?? [{ ut, alcel: null }],
+            melyseg: o.beagyazas?.melyseg ?? 0,
+            jel: o.lusta.jel,
+            kesz: o.beagyazas?.kesz,
+            csakOlvashato: o.csakOlvashato,
+          })
+      : undefined,
+  };
 }
 
 function beagyazas(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
@@ -477,6 +519,7 @@ function lista(n: SyntaxNode, o: RenderOpciok, cel: Node): void {
   for (let c = n.firstChild; c; c = c.nextSibling) {
     if (c.name !== 'ListItem') continue;
     const li = el('li');
+    if (!o.beagyazas) li.dataset.from = String(c.from); // az összecsukás kulcsa (csak a saját dokumentumban)
     for (let b = c.firstChild; b; b = b.nextSibling) {
       if (b.name === 'ListMark') continue;
       if (b.name === 'Task') feladat(b, o, li);
@@ -653,9 +696,14 @@ export function blokk(n: SyntaxNode, o: RenderOpciok, cel: Node): void {
       return;
     }
     case 'HTMLBlock': {
-      const p = el('p', 'html-blokk');
-      p.textContent = o.olvas(n.from, n.to);
-      cel.appendChild(p);
+      // szanitizált HTML-blokk (01-rendering-11); korláton túl vagy üres eredménynél a forrás látszik
+      const forras = o.olvas(n.from, n.to);
+      const f = htmlBlokk(forras, htmlKornyezet(o));
+      if (f && vanTartalom(f)) {
+        const d = el('div', 'html-blokk-render');
+        d.appendChild(f);
+        cel.appendChild(d);
+      } else cel.appendChild(nyersHtmlDoboz(forras));
       return;
     }
     case 'LinkReference':
@@ -682,7 +730,13 @@ function labjegyzetSzakasz(o: RenderOpciok): HTMLElement | null {
   for (const [nev, n] of [...defs].sort((a, b) => szamok.get(a[0])! - szamok.get(b[0])!)) {
     const li = el('li');
     li.id = `${o.elotag ?? 'lj'}-def-${nev}`;
-    for (let c = n.firstChild; c; c = c.nextSibling) if (!JELOLOK.has(c.name)) blokk(c, o, li);
+    if (n.name === 'FootnoteInline') {
+      const p = el('p');
+      const w = new SorIro(p);
+      sorban(n, n.firstChild ? n.firstChild.to : n.from, n.lastChild ? n.lastChild.from : n.to, o, w);
+      w.zar();
+      li.appendChild(p);
+    } else for (let c = n.firstChild; c; c = c.nextSibling) if (!JELOLOK.has(c.name)) blokk(c, o, li);
     const vissza = el('a', 'labjegyzet-vissza');
     vissza.dataset.labjegyzetVissza = nev;
     vissza.textContent = '↩';

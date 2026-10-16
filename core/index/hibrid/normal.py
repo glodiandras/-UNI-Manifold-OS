@@ -47,10 +47,11 @@ def fts_kerdes(szoveg: str, max_tag: int = 24) -> str | None:
     return " OR ".join(tagok) if tagok else None
 
 
-OPERATOR_MINTA = re.compile(r'(?:^|\s)(?:-\S|(?:path|file|tag|line):)|(?:^|\s)/[^/\s]', re.I)
+OPERATOR_MINTA = re.compile(r'(?:^|\s)(?:-\S|(?:path|file|tag|line|section|task|task-todo|task-done|match-case|ignore-case|substring):'
+                            r'|\*\S|\[[^\[\]\s][^\]]*\](?=\s|\)|$))|(?:^|\s)/[^/\s]', re.I)
 
 
 def operatoros(q: str) -> bool:
-    """A kérdés a ⌘⇧F lekérdezés-nyelvét használja (`path:`, `file:`, `tag:`, `line:`, tagadás, regex, `OR`, idézőjel,
+    """A kérdés a ⌘⇧F lekérdezés-nyelvét használja (`path:`, `file:`, `tag:`, `line:`, `section:`, `task:`, `[kulcs:érték]`, `match-case:`, `*részszó`, tagadás, regex, `OR`, idézőjel,
     zárójel): ilyenkor a lexikai `kereses.keres` szűri a jelölteket, nem a természetes nyelvű VAGY-kérdés."""
     return bool(OPERATOR_MINTA.search(q or "")) or '"' in (q or "") or " OR " in (q or "") or "(" in (q or "")

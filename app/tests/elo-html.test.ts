@@ -1,6 +1,6 @@
-// A soron belüli HTML a Live Preview-ban (C32): az engedélylistás címke (`<sub>`, `<sup>`, `<br>` …) formázva jelenik
-// meg, a címke rejtve, mint az Olvasóban; az aktív sorban a forrás látszik; a nem engedett címke és az attribútumos
-// címke szöveg marad.
+// A soron belüli HTML a Live Preview-ban (C32, 01-rendering-11): az engedélylistás címke (`<sub>`, `<sup>`, `<br>`,
+// `<span style>` …) szanitizált attribútumokkal formázva jelenik meg, a címke rejtve, mint az Olvasóban; az aktív sorban a
+// forrás látszik; a nem engedett és a pár nélküli címke szöveg marad.
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { engedettCimke } from '../src/szerkeszto/markdown/html';
@@ -30,15 +30,20 @@ describe('Live Preview', () => {
     expect(v.contentDOM.querySelector('.cm-line')!.textContent).toBe('A víz H<sub>2</sub>O, x<sup>2</sup>.');
   });
 
-  it('a <br> sortörés; a nem engedett, a pár nélküli és az attribútumos címke szöveg marad', () => {
-    const doc = 'egy<br>kettő <span>x</span> <sub>nyitva <b class="a">y</b>\n\nVége';
+  it('a <br> sortörés; az attribútumos címke szanitizálva; a nem engedett és a pár nélküli címke szöveg marad', () => {
+    const doc = 'egy<br>kettő <span style="color: red; position: fixed">x</span> <sub>nyitva <b class="a" onclick="z()">y</b> <script>s</script>\n\nVége';
     const v = nezet(doc, doc.length);
     const sor = v.contentDOM.querySelector('.cm-line')!;
     expect(sor.querySelector('br')).not.toBeNull();
-    expect(sor.textContent).toContain('<span>x</span>');
-    expect(sor.textContent).toContain('<sub>nyitva');
-    expect(sor.textContent).toContain('<b class="a">y</b>');
-    expect(sor.querySelector('sub, b')).toBeNull();
+    expect(sor.textContent).toBe('egykettő x <sub>nyitva y <script>s</script>');
+    const span = [...sor.querySelectorAll<HTMLElement>('span')].find((e) => e.style.color === 'red')!;
+    expect(span.textContent).toBe('x');
+    expect(span.style.position).toBe('');
+    const b = sor.querySelector('b')!;
+    expect(b.textContent).toBe('y');
+    expect(b.getAttribute('class')).toBeNull();
+    expect(b.getAttribute('onclick')).toBeNull();
+    expect(sor.querySelector('sub, script')).toBeNull();
   });
 });
 

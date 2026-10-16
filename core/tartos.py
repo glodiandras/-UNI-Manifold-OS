@@ -6,7 +6,8 @@
 - **`atomi_ir`**: egyedi tmp + `F_FULLFSYNC` + az `ellenoriz()` a csere előtt + `os.replace` + mappa-fsync. A csere
   új inode-ot ad, ezért a **születési idő** (`st_birthtime`: a Bases `file.ctime`-ja, az Obsidian „Created time”)
   elveszne; a csere előtt kiolvassuk, utána `os.utime`-mal visszahúzzuk (a macOS a crtime-ot a nála korábbi mtime-ra
-  állítja), majd az mtime az új tartalomé marad.
+  állítja), majd az mtime az új tartalomé marad. F10: a **fájlmód** (köztük a végrehajtási bit) is megmarad — a csere
+  új inode-ja egyébként a `chmod +x` szkriptet (`.py`, `.sh`-szerű forrás) 0644-re hozná.
 - **`kizaro_ir`** / **`rename_excl`**: létrehozás vagy átnevezés, amely meglévő célt **soha nem ír felül**
   (`renamex_np` + `RENAME_EXCL`, APFS-en atomi; fájlra és mappára is). Hard link (`os.link`) szándékosan nincs: a
   hard linkkel létrehozott fájl törlésének eseményét az FSEvents nem jelenti (T100).
@@ -18,6 +19,7 @@ import errno
 import fcntl
 import os
 import secrets
+import stat
 from pathlib import Path
 
 from . import osszeomlas
@@ -108,6 +110,10 @@ def atomi_ir(p, b: bytes, ellenoriz=None) -> None:
             fh.write(b)
             fh.flush()
             fsync_teljes(fh.fileno())
+        try:
+            os.chmod(tmp, stat.S_IMODE(os.stat(p).st_mode))        # F10: a meglévő fájl módja (pl. +x) a cseréé is
+        except OSError:
+            pass                        # új fájl vagy nem állítható mód: az alapértelmezett marad
         if ellenoriz is not None:
             ellenoriz()
         szuletes = _szuletesi_ido_ns(p)

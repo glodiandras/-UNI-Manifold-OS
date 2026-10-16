@@ -23,6 +23,8 @@ FELOLDAS_SKIP = re.compile(r"from\s+[\w.]*feloldas\s+import[^\n]*\bSKIP_DIRS\b|^
 NEM_VAULT = {
     "core/doctor.py::_meret_szoveg": "egy próbaklón mappájának mérete (a `{tmp}/proba/<kör>` alatt)",
     "core/teljes_mentes.py::_fajlok": "a teljes mentés a gyökereit a saját kizárási szabályaival járja be (§5)",
+    "core/epites.py::csomag_fajlok": "a termék kódfája (core, app, modulok, config): a build-ujjlenyomat a saját kizárási listájával (`_CSOMAG_KIHAGY_NEV`) készül",
+    "core/modell/manifeszt.py::_lemez": "egy modell mappájának mérete a `{models}` alatt (nem vault)",
     "modulok/cpp/proba.py::nagy_objektum": "a homokozó munkamappája (mérés)",
     "modulok/cpp/telepites.py::tbd_igazit": "a hordozható macOS SDK",
     "modulok/homokozo/program.py::_elerte_a_fajlmeret_korlatot": "a homokozó munkamappája",

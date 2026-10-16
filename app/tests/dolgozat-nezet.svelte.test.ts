@@ -3,6 +3,7 @@
 
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beallitasAblak } from '../src/beallitasok/allapot.svelte';
 import Dolgozat from '../src/dolgozat/Dolgozat.svelte';
 import { dolgozatAdat } from '../src/dolgozat/modell.svelte';
 import type { DolgozatSor, ListaValasz, Reszlet } from '../src/dolgozat/tipusok';
@@ -241,6 +242,10 @@ describe('dolgozat-váltó, lezárt, régi naptár, hibák', () => {
     l = lista([]);
     await megjelenit();
     expect(screen.getByText('Nincs közelgő dolgozat a naptárban.')).toBeTruthy();
+    // F7: az üres állapot művelete a naptár-integráció beállításához visz (az angol szöveg a szótárból; hu-ban a kulcs)
+    await fireEvent.click(screen.getByRole('button', { name: 'ures.naptar_beallitas' }));
+    expect([beallitasAblak.nyitva, beallitasAblak.szakasz]).toEqual([true, 'integraciok']);
+    beallitasAblak.nyitva = false;
   });
 
   it('a lista hibája role="alert"', async () => {

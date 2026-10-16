@@ -66,6 +66,7 @@ export class KodRendeloRegiszter {
   keres(info: string): KodRenderelo | undefined {
     const nyelv = /^\S*/.exec(info.trim())?.[0].toLowerCase() ?? '';
     if (nyelv === 'base' && !modulEngedelyezett('bazis')) return undefined;
+    if (nyelv === 'query' && !modulEngedelyezett('kereses')) return undefined; // 08-search-13: a Keresés modul nélkül sima kódblokk
     return nyelv ? this.nyelvek.get(nyelv) : undefined;
   }
 }

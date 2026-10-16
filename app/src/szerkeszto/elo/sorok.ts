@@ -13,13 +13,18 @@ import type { SyntaxNode, SyntaxNodeRef } from '@lezer/common';
 import { wikilinkAdat } from '../linkek/adat';
 import { calloutAdat } from '../markdown/callout';
 import { kepletForras } from '../markdown/fa';
-import { engedettCimke } from '../markdown/html';
+import { attributumok, soronBeluliCimke } from '../olvaso/htmlSzures';
+import type { LinkAdat } from '../linkek/adat';
+import { BeagyazasWidget, linkVerzioValt, tartalomVerzioValt } from '../beagyazas/widget';
+import { linkek } from '../../lib/vault/linkek.svelte';
+import { jegyzetUtja } from './jegyzet';
 import { feladatAllapot } from '../markdown/feladat';
 import { calloutTipusok } from '../renderelok/callout';
 import { kodRenderelok } from '../renderelok/regiszter';
 import { aktiv, aktivBlokkok } from './aktivBlokk';
 import { zaroKerites } from './blokkok';
 import { calloutHajtas } from './hajtas';
+import { SoronBeluliLabjegyzetWidget, soronBeluliSzamok } from './soronBeluliLabjegyzet';
 import { CalloutFejWidget, CalloutHajtoWidget, JeloloWidget, KepletWidget, KodFejWidget, LabjegyzetWidget, LinkSzovegWidget, PontWidget, SorToresWidget } from './widgetek';
 
 const JELOLES: Record<string, Decoration> = {
@@ -34,6 +39,7 @@ const JELOLES: Record<string, Decoration> = {
   Embed: Decoration.mark({ class: 'cm-wikilink' }),
   Hashtag: Decoration.mark({ class: 'cm-cimke' }),
   FootnoteReference: Decoration.mark({ class: 'cm-labjegyzet-hiv' }),
+  FootnoteInline: Decoration.mark({ class: 'cm-labjegyzet-soron' }),
   InlineMath: Decoration.mark({ class: 'cm-keplet-forras' }),
   DisplayMath: Decoration.mark({ class: 'cm-keplet-forras' }),
 };
@@ -243,6 +249,7 @@ function elonezet(view: EditorView): DecorationSet {
     const s = doc.lineAt(pos);
     return aktiv(aktivak, s.from, s.to);
   };
+  let labjegyzetSzamok: Map<number, number> | null = null;
 
   for (const { from, to } of view.visibleRanges) {
     syntaxTree(state).iterate({
@@ -371,29 +378,50 @@ function elonezet(view: EditorView): DecorationSet {
             return true;
           }
           case 'HTMLTag': {
-            // az engedélylistás soron belüli HTML (`H<sub>2</sub>O`, `<br>`) formázva, a címkék rejtve, mint az Olvasóban (C32)
+            // a szanitizált soron belüli HTML (`H<sub>2</sub>O`, `<span style>`, `<br>`, `<img>`) formázva, a címkék rejtve,
+            // mint az Olvasóban (C32, 01-rendering-11); az aktív sorban a forrás
             if (sorAktiv(n.from)) return false;
-            const c = engedettCimke(olvas(n.from, n.to));
+            const ut = state.facet(jegyzetUtja);
+            let kep: LinkAdat | null = null;
+            const c = soronBeluliCimke(olvas(n.from, n.to), {
+              ut,
+              kep: (adat) => ((kep = adat), document.createElement('span')),
+            });
             if (!c || c.zaro) return false;
             if (c.nev === 'br') {
               ki.push(Decoration.replace({ widget: new SorToresWidget() }).range(n.from, n.to));
               return false;
             }
-            if (c.onzaro) return false;
+            if (c.nev === 'img') {
+              if (kep && ut) ki.push(Decoration.replace({ widget: new BeagyazasWidget(kep, ut, linkek.verzio, false) }).range(n.from, n.to));
+              return false;
+            }
+            if (c.onzaro || !c.elem) return false;
             let melyseg = 0;
             for (let t = n.node.nextSibling; t; t = t.nextSibling) {
               if (t.name !== 'HTMLTag') continue;
-              const d = engedettCimke(olvas(t.from, t.to));
-              if (!d || d.nev !== c.nev || d.onzaro) continue;
-              if (!d.zaro) melyseg++;
+              const d = CIMKE.exec(olvas(t.from, t.to));
+              if (!d || d[2].toLowerCase() !== c.nev || d[3]) continue;
+              if (!d[1]) melyseg++;
               else if (melyseg) melyseg--;
               else {
                 if (aktiv(aktivak, doc.lineAt(n.from).from, doc.lineAt(t.to).to)) break;
                 ki.push(ELREJT.range(n.from, n.to), ELREJT.range(t.from, t.to));
-                if (t.from > n.to) ki.push(Decoration.mark({ tagName: c.nev }).range(n.to, t.from));
+                if (t.from > n.to)
+                  ki.push(Decoration.mark({ tagName: c.elem.localName, attributes: attributumok(c.elem) }).range(n.to, t.from));
                 break;
               }
             }
+            return false;
+          }
+          case 'FootnoteInline': {
+            // a soron belüli lábjegyzet (01-rendering-10): az aktív sorban a forrás (a belső formázással)
+            if (egysegAktiv(n)) return true;
+            const elso = n.node.firstChild;
+            const utolso = n.node.lastChild;
+            const szam = (labjegyzetSzamok ??= soronBeluliSzamok(state)).get(n.from) ?? 0;
+            const torzs = olvas(elso ? elso.to : n.from, utolso && utolso !== elso ? utolso.from : n.to);
+            ki.push(Decoration.replace({ widget: new SoronBeluliLabjegyzetWidget(szam, torzs) }).range(n.from, n.to));
             return false;
           }
           case 'FootnoteReference': {
@@ -429,6 +457,8 @@ function elonezet(view: EditorView): DecorationSet {
   return Decoration.set(ki, true);
 }
 
+/** Egy HTML-címke neve és alakja (a pár keresése; a szanitizálás a nyitó címkén történik). */
+const CIMKE = /^<(\/?)([a-zA-Z][a-zA-Z0-9]*)\b[^<>]*?(\/?)>$/s;
 const BLOKK_AZON = /(?:^|[ \t])\^[A-Za-z0-9-]+[ \t]*$/;
 const BLOKK_AZON_JEL = Decoration.mark({ class: 'cm-blokk-azon' });
 const KOD_NEVEK = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'CodeText', 'Frontmatter', 'MathBlock', 'CommentBlock', 'Comment', 'ObsidianCommentBlock', 'ObsidianComment']);
@@ -443,7 +473,8 @@ export const elonezetPlugin = ViewPlugin.fromClass(
       if (
         UJRA_KELL(u) ||
         u.startState.field(aktivBlokkok, false) !== u.state.field(aktivBlokkok) ||
-        u.startState.field(calloutHajtas, false) !== u.state.field(calloutHajtas)
+        u.startState.field(calloutHajtas, false) !== u.state.field(calloutHajtas) ||
+        u.transactions.some((tr) => tr.effects.some((e) => e.is(linkVerzioValt) || e.is(tartalomVerzioValt)))
       )
         this.decorations = elonezet(u.view);
     }

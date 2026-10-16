@@ -75,7 +75,19 @@ def _nem_nyilvanos(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     """Csak a globálisan útválasztott, nem multicast cím nyilvános (loopback, privát, link-local, CGNAT, dokumentációs, nem megadott: mind nem)."""
     if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
         ip = ip.ipv4_mapped
+    if isinstance(ip, ipaddress.IPv6Address):
+        # F9 (audit 07 §3): the IPv4-compatible `::a.b.c.d` (deprecated, never global) and the NAT64 well-known prefix
+        # `64:ff9b::/96` (RFC 6052) carry an IPv4 address the `ipaddress` module reports as global: on a DNS64/NAT64 network
+        # `64:ff9b::7f00:1` reaches the gateway's 127.0.0.1, `64:ff9b::a00:1` its private 10/8. The embedded address decides.
+        if ip in _IPV4_KOMPAT:
+            return True
+        if ip in _NAT64:
+            return _nem_nyilvanos(ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF))
     return not ip.is_global or ip.is_multicast
+
+
+_IPV4_KOMPAT = ipaddress.IPv6Network("::/96")
+_NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
 
 
 def _helyi_cim(host: str) -> bool:

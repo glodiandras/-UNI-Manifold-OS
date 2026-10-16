@@ -551,7 +551,7 @@ repetition_penalty = 1.10
 repetition_context_size = 64
 
 # ------------------------------------------------------------------ modellregiszter (L30, C05)
-# A config/letoltes.toml minden modellje (a tesztek ellenőrzik az egyezést: név, repo, minta, csucs_gb).
+# A config/models.toml minden modellje (a tesztek ellenőrzik az egyezést: név, repo, minta, csucs_gb).
 # `futtato`: a betöltő háttere; `kepessegek`: szoveg | kep | hang | beagyazas | rerank;
 # `csucs_gb`: a keret-döntés alapja (csucs_mert = true: a legacy mérte, különben becslés, C04);
 # `konvertalas = true`: nem MLX-formátum, a betöltő nem tölti be, amíg nincs konvertálva.
@@ -1052,6 +1052,41 @@ mintavetel_ms = 20
 formazas = "{BasedOnStyle: LLVM, IndentWidth: 4, ColumnLimit: 100, AllowShortFunctionsOnASingleLine: Inline}"
 sablon = "C++ feladat"                # ha a sablonmappában van ilyen nevű .md, az a feladat-jegyzet váza (a beépített helyett)
 
+# ------------------------------------------------------------------ F10: többnyelvű kód-munkafelület (core/kod_nyelvek.py, modulok/kod)
+# A C++ és a C a fenti [cpp] szerint fut (változatlan); a többi nyelv profilja a core/kod_nyelvek.py-ban. Fordítás a
+# modulok/kod/kod_fordit.sb, futtatás az értelmezett nyelveknél a kod_futtat.sb, a natívnál a C36a profil_futtat.sb alatt.
+# Letöltés nincs (D3): a hiányzó eszközlánc érthető hiba (kod.nincs_eszkozlanc).
+[kod]
+fordit_idokorlat_s = 60.0            # a profil sajátja (Java 60, Go/Rust 90, Swift 120) ezt felülírja
+fordit_memoria_mb = 4096
+fordit_munka_max_mb = 512
+fordit_munka_max_fajl = 4096
+teszt_idokorlat_s = 2.0
+teszt_idokorlat_max_s = 10.0
+memoria_mb = 256                     # natív program (Go, Rust, Swift) egy tesztje
+ertelmezo_memoria_mb = 512           # értelmezett / VM (Python, JS/TS, Java) egy tesztje, ha a blokk nem ad sajátot
+teszt_memoria_max_mb = 1024
+lebego_eps = 1e-6
+kimenet_max_kb = 1024
+stderr_max_kb = 64
+munka_max_mb = 16
+munka_max_fajl = 256
+mintavetel_ms = 20
+felderites_idokorlat_s = 15.0
+proba_modell = ""                    # D9: kalibrált sor nélkül ez a regiszterbeli modell futhat, mindig „próba” jelöléssel (üres: a kalibrált `kod` modell próbaként)
+extra_exec = []                      # további exec-gyökerek a fordító-profilnak (pl. egy indító-szkript héja); alapból üres
+
+[kod.eszkozok]                       # gépenkénti eszközlánc-utak (a telepítési réteg állíthatja); üres: runtime, majd PATH
+python = ""
+node = ""
+javac = ""
+java = ""
+go = ""
+rustc = ""
+cc = ""
+swiftc = ""
+sdk = ""
+
 # F5: product controls. Workspace preferences travel with the notes; pinned roots never change in a session.
 [beallitasok.altalanos]
 nyelv = "auto"
@@ -1068,6 +1103,7 @@ csatolmany_mappa = ""
 sablon_mappa = "_Template"
 napi_ut = "[Daily]/YYYY-MM-DD"
 link_formatum = "rovid"
+wikilinkek = true
 [beallitasok.megjelenes]
 tema = "rendszer"
 betumeret = 16
@@ -1081,6 +1117,8 @@ naptar = false
 [beallitasok.setup]
 kesz = false
 elmeny = "egyeni"
+[beallitasok.fejleszto]
+mod = false                # F7: Developer mode (technikai nézetek); a kapcsoló a Settings › About › Advanced information alatt van
 [modulok]
 hivatkozasok = true
 vazlat = true

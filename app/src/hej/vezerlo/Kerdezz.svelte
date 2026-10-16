@@ -7,6 +7,7 @@
   import { kornyezet } from '../../lib/kornyezet';
   import { kerdezzAllapot as a, vegeSzoveg, type KerdezzMondat } from '../../lib/kereses/kerdezz.svelte';
   import { fajlNev } from '../../lib/vault/fajlok.svelte';
+  import ProbaJel from '../../modellek/ProbaJel.svelte';
   import { nyitasMod } from '../../szerkeszto/linkek/navigacio';
   import { szerkesztok } from '../../szerkeszto/szerkesztok.svelte';
 
@@ -56,7 +57,7 @@
 
 {#if a.vege}
   {#if a.vege.allapot !== 'kesz'}<p class="halvany">{vegeSzoveg(a.vege)}</p>{/if}
-  {#if a.vege.proba && a.vege.allapot === 'kesz'}<p class="halvany">{t('Próba: a modell erre a feladatra nem kalibrált.')}</p>{/if}
+  {#if a.vege.proba && a.vege.allapot === 'kesz'}<p class="halvany proba-sor"><ProbaJel jel="proba" /> <span>{t('Próba: a modell erre a feladatra nem kalibrált.')}</span></p>{/if}
 {/if}
 
 {#if a.forrasok.length && (a.vege?.allapot === 'nincs_modell' || (!a.fut && !a.mondatok.length))}
@@ -72,6 +73,12 @@
 {/if}
 
 <style>
+  .proba-sor {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--t-2);
+  }
   form {
     display: flex;
     flex-direction: column;

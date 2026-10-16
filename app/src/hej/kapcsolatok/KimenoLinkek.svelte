@@ -43,8 +43,8 @@
 {#if feloldott.length}
   <ul>
     {#each feloldott as l, i (i)}
-      <li>
-        <button type="button" class="sor" title={l.cel ?? ''} onclick={(e) => onnyit(l, e)}>
+      <li data-elonezet-ut={l.cel} data-elonezet-alcel={l.alcel}>
+        <button type="button" class="sor" title={l.cel ?? ''} onclick={(e) => onnyit(l, e)} onauxclick={(e) => e.button === 1 && onnyit(l, e)}>
           <Ikon ikon={fajlIkon(info(l.cel!)?.tipus)} meret={14} />
           <span class="nev">{fajlNev(l.cel!)}{l.alcel ? ` › ${l.alcel}` : ''}</span>
           {#if l.beagyazas}<span class="jel">{t('beágyazás')}</span>{/if}

@@ -7,10 +7,18 @@
   import { parancsNev, regiszter } from '../lib/parancsok/regiszter';
   import { esemenybol, kanonikus, megjelenit } from '../lib/parancsok/billentyuk';
   import { epitesAllapot } from '../lib/vezerlo/epites.svelte';
-  import { naptarHid } from '../lib/naptar/hid.svelte';
-  import { beallitasAblak, SZAKASZOK } from './allapot.svelte';
+  import { beallitasAblak, szakaszLathato, SZAKASZOK } from './allapot.svelte';
+  import { fejlesztoMod, fejlesztoiParancs } from '../lib/beallitasok/fejleszto';
+  import { egeszsegMegnyit } from '../lib/egeszseg/allapot.svelte';
+  import HibaPanel from '../lib/ui/HibaPanel.svelte';
+  import Adatvedelem from '../adatvedelem/Adatvedelem.svelte';
+  import Fejleszto from './Fejleszto.svelte';
+  import ImportSzakasz from '../import/ImportSzakasz.svelte';
+  import DemoAlaphelyzet from './DemoAlaphelyzet.svelte';
+  import ModellKezelo from '../modellek/ModellKezelo.svelte';
+  import Kalibracio from '../modellek/Kalibracio.svelte';
   let { tar = beallitasok, onbezar, onsetup, onrendszer }: { tar?: BeallitasokTar; onbezar: () => void; onsetup: () => void; onrendszer: (szakasz: string) => void } = $props();
-  const masolat = (v: Beallitasok) => JSON.parse(JSON.stringify(v)) as Beallitasok;
+  const masolat = (v: Beallitasok) => { const m = JSON.parse(JSON.stringify(v)) as Beallitasok; m.fejleszto ??= { mod: false }; return m; };
   let alap = $state(masolat(untrack(() => tar.ertek)));
   let vazlat = $state(masolat(untrack(() => tar.ertek)));
   let rev = $state(untrack(() => tar.adat?.rev ?? ''));
@@ -20,11 +28,12 @@
   let mentve = $state(false);
   let billentyuHiba = $state('');
   let szures = $state('');
-  const szakasz = $derived(beallitasAblak.szakasz);
+  const szakasz = $derived(szakaszLathato(beallitasAblak.szakasz, fejlesztoMod()) ? beallitasAblak.szakasz : 'nevjegy');
+  const szakaszok = $derived(SZAKASZOK.filter(s => szakaszLathato(s.id, fejlesztoMod())));
   const cim = $derived(SZAKASZOK.find(s => s.id === szakasz)?.cim ?? 'beallitasok.cim');
   const modosult = $derived(JSON.stringify(alap) !== JSON.stringify(vazlat));
   const kulsoValtozas = $derived(!!rev && tar.adat?.rev !== rev);
-  const parancsok = $derived(regiszter.mind().filter(p => parancsNev(p).toLocaleLowerCase().includes(szures.toLocaleLowerCase())));
+  const parancsok = $derived(regiszter.mind().filter(p => (fejlesztoMod() || !fejlesztoiParancs(p.id)) && parancsNev(p).toLocaleLowerCase().includes(szures.toLocaleLowerCase())));
   const MODUL_NEVEK = {
     hivatkozasok: tk('beallitasok.modul.hivatkozasok'), vazlat: tk('beallitasok.modul.vazlat'), tulajdonsagok: tk('beallitasok.modul.tulajdonsagok'),
     gyorsvalto: tk('beallitasok.modul.gyorsvalto'), kereses: tk('beallitasok.modul.kereses'), perjel: tk('beallitasok.modul.perjel'), cimkek: tk('beallitasok.modul.cimkek'),
@@ -84,6 +93,7 @@
     catch (e) { billentyuHiba = e instanceof Error ? e.message : t('beallitasok.hibas_billentyu'); }
   }
   function nyitRendszer(cel: string) { if (modosult) { billentyuHiba = t('beallitasok.ments_elobb'); return; } onbezar(); onrendszer(cel); }
+  function egeszsegNyit() { if (modosult) { billentyuHiba = t('beallitasok.ments_elobb'); return; } onbezar(); egeszsegMegnyit(); }
   function setupUjra() { if (modosult) { billentyuHiba = t('beallitasok.ments_elobb'); return; } onbezar(); onsetup(); }
 </script>
 
@@ -91,15 +101,15 @@
   <header><h1>{t('beallitasok.cim')}</h1><button class="m-gomb semleges" type="button" onclick={bezar}>{t('beallitasok.bezar')}</button></header>
   <div class="elrendezes" inert={elvetes}>
     <nav bind:this={navigacio} aria-label={t('beallitasok.szakaszok')}>
-      {#each SZAKASZOK as s, i}
-        {#if i === 0 || SZAKASZOK[i - 1].csoport !== s.csoport}<p class="csoport">{t(s.csoport)}</p>{/if}
+      {#each szakaszok as s, i}
+        {#if i === 0 || szakaszok[i - 1].csoport !== s.csoport}<p class="csoport">{t(s.csoport)}</p>{/if}
         <button type="button" class:aktiv={szakasz === s.id} aria-current={szakasz === s.id ? 'page' : undefined} onclick={() => beallitasAblak.szakasz = s.id}>{t(s.cim)}</button>
       {/each}
     </nav>
     <section aria-label={t(cim)}>
       <h2>{t(cim)}</h2>
       {#if tar.betoltes}<p role="status">{t('beallitasok.betoltes')}</p>{/if}
-      {#if !tar.adat}<p class="hiba" role="alert">{tar.hiba ?? t('beallitasok.nem_elerheto')}</p><button type="button" class="m-gomb semleges" onclick={ujratolt}>{t('beallitasok.ujratolt')}</button>
+      {#if !tar.adat}<HibaPanel mi={tar.hiba ?? t('beallitasok.nem_elerheto')} javitas={t('beallitasok.hiba_javitas')} ujra={ujratolt} ujraCimke={t('beallitasok.ujratolt')} diagnosztika={() => { onbezar(); egeszsegMegnyit('folyamatok'); }} />
       {:else}
         <fieldset disabled={tar.mentes}>
           {#if szakasz === 'altalanos'}
@@ -108,7 +118,9 @@
             <p class="leiras">{t('beallitasok.nyelv_leiras')}</p>
             <label>{t('beallitasok.inditas')}<select bind:value={vazlat.altalanos.inditas}><option value="utolso">{t('beallitasok.utolso')}</option><option value="valaszto">{t('beallitasok.valaszto')}</option></select></label>
             <button class="m-gomb semleges" type="button" onclick={setupUjra}>{t('beallitasok.setup_ujra')}</button>
+            <button class="m-gomb semleges" type="button" onclick={egeszsegNyit}>{t('beallitasok.egeszseg_megnyit')}</button>
             <p class="leiras">{t('beallitasok.frissites_leiras')}</p>
+            <DemoAlaphelyzet />
           {:else if szakasz === 'szerkeszto'}
             <label>{t('beallitasok.alap_mod')}<select bind:value={vazlat.szerkeszto.mod}><option value="elo">{t('beallitasok.elo')}</option><option value="forras">{t('beallitasok.forras')}</option></select></label>
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.szerkeszto.olvashato_szelesseg} />{t('beallitasok.olvashato')}</label>
@@ -119,8 +131,11 @@
             <p class="leiras">{t('beallitasok.fajlok_leiras')}</p>
             {#each FAJL_MEZOK as m}<label>{t(m.cim)}<input type="text" bind:value={vazlat.fajlok[m.id]} spellcheck="false" /></label>{/each}
             <p class="leiras">{t('beallitasok.napi_leiras')}</p>
-            <label>{t('beallitasok.link_formatum')}<select bind:value={vazlat.fajlok.link_formatum}><option value="rovid">{t('beallitasok.rovid')}</option><option value="relativ">{t('beallitasok.relativ')}</option></select></label>
+            <label>{t('beallitasok.link_formatum')}<select bind:value={vazlat.fajlok.link_formatum}><option value="rovid">{t('beallitasok.rovid')}</option><option value="relativ">{t('beallitasok.relativ')}</option><option value="abszolut">{t('beallitasok.abszolut')}</option></select></label>
+            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.fajlok.wikilinkek} />{t('beallitasok.wikilinkek')}</label>
+            <p class="leiras">{t('beallitasok.link_leiras')}</p>
             <p class="leiras">{t('beallitasok.kuka_leiras')}</p>
+            <ImportSzakasz fajta="obsidian" />
           {:else if szakasz === 'megjelenes'}
             <label>{t('beallitasok.tema')}<select bind:value={vazlat.megjelenes.tema}><option value="rendszer">{t('beallitasok.rendszer')}</option><option value="vilagos">{t('beallitasok.vilagos')}</option><option value="sotet">{t('beallitasok.sotet')}</option></select></label>
             <label>{t('beallitasok.betumeret')}<input type="number" min="12" max="28" bind:value={vazlat.megjelenes.betumeret} /></label>
@@ -137,25 +152,28 @@
                 <button type="button" class="m-gomb semleges suru" aria-label={t('Gyorsbillentyű visszaállítása: {nev}', { nev: parancsNev(p) })} disabled={p.id === 'beallitasok.megnyit'} onclick={() => vazlat.billentyuk[p.id] = regiszter.alapBillentyu(p.id)}>{t('beallitasok.alaphelyzet')}</button>
               </div>
             {/each}
-          {:else if ['halozat', 'telemetria', 'adatok', 'integraciok', 'engedelyek', 'asszisztens'].includes(szakasz)}
-            <p class="leiras">{t('beallitasok.adatvedelem_leiras')}</p>
-            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.adatvedelem.asszisztens} />{t('beallitasok.modul.asszisztens')}</label>
-            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.adatvedelem.tracker} />{t('beallitasok.modul.tracker')}</label>
-            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.adatvedelem.ertesitesek} />{t('beallitasok.ertesitesek')}</label>
-            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.adatvedelem.naptar} />{t('beallitasok.naptar')}</label>
-            {#if naptarHid.elerheto}<button type="button" class="m-gomb semleges" disabled={naptarHid.kerdesben} onclick={() => naptarHid.kerd()}>{t('beallitasok.naptar_engedely')}</button>{/if}
-            {#if naptarHid.hiba}<p role="alert" class="hiba">{naptarHid.hiba}</p>{/if}
-            <p class="leiras">{t('beallitasok.naptar_leiras')}</p>
-            <button type="button" class="m-gomb semleges" onclick={() => nyitRendszer('rendszer')}>{t('beallitasok.rendszer_megnyit')}</button>
+          {:else if ['halozat', 'telemetria', 'adatok', 'integraciok', 'engedelyek', 'asszisztens', 'memoria'].includes(szakasz)}
+            <Adatvedelem {szakasz} bind:vazlat onnyit={nyitRendszer} onszakasz={(id) => beallitasAblak.szakasz = id as typeof beallitasAblak.szakasz} oneszeg={(k) => { if (modosult) { billentyuHiba = t('beallitasok.ments_elobb'); return; } onbezar(); egeszsegMegnyit(k ?? null); }} />
+            {#if szakasz === 'halozat'}<p class="leiras">{t('beallitasok.kulso_kep_leiras')}</p>{/if}
+            {#if szakasz !== 'memoria'}<button type="button" class="m-gomb semleges" onclick={() => nyitRendszer('rendszer')}>{t('beallitasok.rendszer_megnyit')}</button>{/if}
+          {:else if szakasz === 'modellek'}
+            <ModellKezelo oneszeg={egeszsegNyit} onkalibracio={() => beallitasAblak.szakasz = 'kalibracio'} />
+          {:else if szakasz === 'kalibracio'}
+            <Kalibracio oneszeg={egeszsegNyit} onmodellek={() => beallitasAblak.szakasz = 'modellek'} />
+          {:else if szakasz.startsWith('fejleszto_')}
+            <Fejleszto {szakasz} onnyit={nyitRendszer} oneszeg={(k) => { if (modosult) { billentyuHiba = t('beallitasok.ments_elobb'); return; } onbezar(); egeszsegMegnyit(k ?? null); }} />
           {:else if szakasz === 'pillanatkepek' || szakasz === 'visszaallitas'}
             <p>{t('beallitasok.elozmeny_leiras')}</p>
             <button type="button" class="m-gomb semleges" disabled={!regiszter.kap('elozmenyek.megnyit') || !regiszter.elerheto(regiszter.kap('elozmenyek.megnyit')!)} onclick={() => nyitRendszer('elozmenyek')}>{t('beallitasok.elozmeny_megnyit')}</button>
           {:else if szakasz === 'nevjegy'}
             <h3>MANIFOLD</h3><p>{t('beallitasok.marka')}</p><p>{t('beallitasok.community')}</p>
-            <details ontoggle={e => { if (e.currentTarget.open) void epitesAllapot.frissit(); }}><summary>{t('beallitasok.reszletek')}</summary><p>{t('beallitasok.architektura')}</p><p>{tar.adat.munkater.id}</p>{#if epitesAllapot.adat}<dl>{#each epitesAllapot.adat.reszek as r}<dt>{r.resz}</dt><dd>{r.azonosito}</dd>{/each}</dl>{:else if epitesAllapot.hiba}<p class="hiba" role="alert">{epitesAllapot.hiba}</p>{/if}</details>
+            <details ontoggle={e => { if (e.currentTarget.open) void epitesAllapot.frissit(); }}><summary>{t('beallitasok.reszletek')}</summary><p>{t('beallitasok.architektura')}</p><p>{tar.adat.munkater.id}</p>
+              <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.fejleszto.mod} />{t('fejleszto.kapcsolo')}</label>
+              <p class="leiras">{tar.adat.fejleszto_kenyszer ? t('fejleszto.kenyszer') : t('fejleszto.kapcsolo_leiras')}</p>
+              {#if fejlesztoMod()}{#if epitesAllapot.adat}<dl>{#each epitesAllapot.adat.reszek as r}<dt>{r.resz}</dt><dd>{r.azonosito}</dd>{/each}</dl>{:else if epitesAllapot.hiba}<p class="hiba" role="alert">{epitesAllapot.hiba}</p>{/if}{/if}</details>
           {:else}
             <p class="leiras">{t('beallitasok.meglevo_leiras')}</p>
-            {#if ['modellek','kalibracio','teljesitmeny'].includes(szakasz)}<p>{t('beallitasok.modellek_leiras')}</p>{/if}
+            {#if szakasz === 'teljesitmeny'}<p>{t('beallitasok.modellek_leiras')}</p>{/if}
             {#if ['pillanatkepek','helyi_mentes','kulso_mentes','visszaallitas'].includes(szakasz)}<p>{t('beallitasok.mentes_leiras')}</p>{/if}
             <button type="button" class="m-gomb semleges" onclick={() => nyitRendszer(szakasz)}>{t('beallitasok.rendszer_megnyit')}</button>
           {/if}

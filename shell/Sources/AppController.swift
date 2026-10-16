@@ -108,7 +108,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 #if MOS_DEVELOPER
         if selftest {                                    // a biztonsági és életciklus-döntések táblázata (C11a, C29.7b)
             let hibak = Biztonsag.ellenorzes() + NaptarLogika.ellenorzes() + CoreProcess.ellenorzes() + Eletciklus.ellenorzes() + HelyiMenu.ellenorzes() + ErtesitesLogika.ellenorzes() + Kuka.ellenorzes()
-                + RootLocator.ellenorzes() + Telepites.ellenorzes()
+                + RootLocator.ellenorzes() + Telepites.ellenorzes() + MappaValasztoLogika.ellenorzes()
             if !hibak.isEmpty { return finishSelftest(ok: false, note: "biztonsági próba: " + hibak.joined(separator: "; ")) }
         }
 #endif
@@ -120,6 +120,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         config.userContentController.add(UzenetTovabbito(self), name: "manifold")
         config.userContentController.addScriptMessageHandler(NyelvUzenetKezelo(origin: { [weak self] in self?.origin }),
                                                              contentWorld: .page, name: "nyelv")
+        // Natív mappaválasztó az import képernyőkhöz (F8, `MappaValaszto.swift`): válaszképes, egy útvonalat ad vissza
+        config.userContentController.addScriptMessageHandler(MappaValasztoKezelo(origin: { [weak self] in self?.origin },
+                                                                                 ablak: { [weak self] in self?.webView?.window }),
+                                                             contentWorld: .page, name: "mappaValaszto")
         webView = ManifoldWebView(frame: NSRect(x: 0, y: 0, width: 1240, height: 820), configuration: config)
         webView.onParancs = { [weak self] id in   // a natív helyi menü Manifold-parancsa (C32b): a híd ugyanazt a regisztert futtatja
             guard let js = HelyiMenu.parancsJs(id) else { return }

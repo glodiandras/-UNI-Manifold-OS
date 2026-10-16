@@ -2,6 +2,7 @@
 // sorsolja, a héj injektálja a lapba — `titok.ts`).
 
 import { helyettesit, t, tHaVan, tk, type Param } from '../i18n';
+import { aiHibaAdat, aiHibaEgysor } from '../modellek/aiHiba';
 import { apiTitok } from './titok';
 
 /** A core `param` mezőjéből a fordításba szánt (szöveg, szám, logikai) értékek. */
@@ -105,6 +106,9 @@ export function hibaSzoveg(e: unknown): string {
 
 /** A core `kod` + `param` hibájának fordítása az aktív nyelven (`hiba.<kod>` kulcs); `undefined`, ha nincs kód vagy nincs fordítás. */
 function kodSzoveg(hiba: ApiHiba): string | undefined {
+  // az AI-funkciók közös hibaszerződése (`ai` mező) előbb: érthető mondat és teendő a funkció saját kódja helyett
+  const ai = aiHibaAdat(hiba);
+  if (ai) return aiHibaEgysor(ai);
   return kodFordit(hiba.kod, hiba.param);
 }
 
@@ -124,6 +128,9 @@ function kodFordit(kod: unknown, adat: unknown): string | undefined {
  * a `hiba.<kod>` fordítás a `param`-mal, ha van; különben a core magyar `hiba` mondata; végül a `tartalek`.
  */
 export function kodUzenet(torzs: { hiba?: unknown; kod?: unknown; param?: unknown } | null | undefined, tartalek = ''): string {
+  // az AI-funkciók közös hibaszerződése (`ai` mező): érthető mondat és teendő a funkció saját kódja helyett
+  const ai = aiHibaAdat(torzs);
+  if (ai) return aiHibaEgysor(ai);
   const fordito = kodFordit(torzs?.kod, torzs?.param);
   return fordito ?? (typeof torzs?.hiba === 'string' && torzs.hiba !== '' ? torzs.hiba : tartalek);
 }

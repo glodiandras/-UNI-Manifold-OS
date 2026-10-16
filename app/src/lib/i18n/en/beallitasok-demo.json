@@ -1,0 +1,11 @@
+{
+  "demo.alaphelyzet.cim": "Demo workspace",
+  "demo.alaphelyzet.leiras": "This is the demo workspace. You can set it back to how it was when it was created.",
+  "demo.alaphelyzet.gomb": "Reset demo",
+  "demo.alaphelyzet.megse": "Cancel",
+  "demo.alaphelyzet.megerosites_cim": "Reset the demo workspace?",
+  "demo.alaphelyzet.megerosites": "The demo notes and sample data go back to their original state. A snapshot is saved first, and notes you added are set aside in a folder inside the workspace, not deleted.",
+  "demo.alaphelyzet.folyamatban": "Resetting the demo…",
+  "A demó alaphelyzetre állt: {visszaallitva} visszaállítva vagy újra létrehozva, {felretett} félretéve.": "The demo was reset: {visszaallitva} restored or recreated, {felretett} set aside.",
+  "A demót nem sikerült alaphelyzetre állítani: {uzenet}": "The demo could not be reset: {uzenet}"
+}

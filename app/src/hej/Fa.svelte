@@ -11,19 +11,21 @@
   import { ApiHiba, kerdez } from '../lib/core/api';
   import Atfedes from '../lib/ui/Atfedes.svelte';
   import { fajlImport, VAULT_HUZAS } from '../szerkeszto/csatolmany';
-  import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-  import { ArrowUpDown, ChevronDown, ChevronRight, ChevronsDownUp, FilePlus, Folder, FolderOpen, ListTree } from '../lib/ikon/ikonok';
+  import { ArrowUpDown, ChevronDown, ChevronRight, ChevronsDownUp, CircleAlert, FilePlus, Folder, FolderOpen, ListTree } from '../lib/ikon/ikonok';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { keresoMegnyit } from '../lib/kereses/kereso';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
-  import { athelyezheto, faEpit, faIdoMezo, lapit, mappakatKinyit, type FaCsomopont, type FaRendezes } from '../lib/vault/fa';
+  import { athelyezettUt, athelyezheto, faEpit, faIdoMezo, kijelolesTartomany, lapit, lathatoFajlok, legfelsoUtak, mappakatKinyit, osMappak, type FaCsomopont, type FaRendezes } from '../lib/vault/fa';
+  import { finderMegmutat, kukabaTesz, masolatKeszit } from '../lib/vault/faMuveletek';
+  import { atnevezesErtesites, atnevezesTerv, atnevezesVegrehajt, type Terv } from '../szerkeszto/linkek/atnevezes';
   import { lebegoMenu, type MenuElem } from '../szerkeszto/notion/menu';
   import { mediaUt } from '../osszefoglalas/allando';
   import { osszefoglalasFajlbol, osszefoglalasMappabol, tartalmiJegyzet } from '../osszefoglalas/parancsok';
   import { nyitasMod } from '../szerkeszto/linkek/navigacio';
+  import { elonezetUtakra } from '../szerkeszto/linkek/elonezet';
   import { ujJegyzetSablonbol } from '../ma/naplo';
   import { ujJegyzetSablonbolHiv } from '../ma/sablonUj';
   import type { SemaProblema } from '../szerkeszto/tulajdonsagok/tipusok';
@@ -32,7 +34,9 @@
 
   const { felulet, fajlok } = kornyezet();
 
-  const gyoker = $derived(faEpit(fajlok.lista, fajlok.mappak, felulet.oldalsav.rendezes));
+  // 07-explorer-12: a nem támogatott kiterjesztések rejtve, ha sem a vault (`showUnsupportedFiles`), sem a felület beállítása nem kéri
+  const mindenFajl = $derived(felulet.oldalsav.mindenFajl || fajlok.mindenKiterjesztes);
+  const gyoker = $derived(faEpit(lathatoFajlok(fajlok.lista, mindenFajl), fajlok.mappak, felulet.oldalsav.rendezes));
   const nyitott = $derived(new Set(felulet.oldalsav.nyitott));
   const sorok = $derived(lapit(gyoker, nyitott));
   const vanNyitott = $derived(sorok.some(s => s.cs.mappa && nyitott.has(s.cs.ut)));
@@ -63,6 +67,8 @@
   const aktivUt = $derived(felulet.munkaterulet.aktivFul?.ut ?? null);
 
   let fa: HTMLElement | undefined = $state();
+  // 02-links-09: ⌘-hover előnézet a fájl-soron (a mappának nincs)
+  $effect(() => (fa ? elonezetUtakra(fa, { valaszto: '[data-fa-ut]', ut: (e) => (e.dataset.faMappa === 'true' ? null : (e.dataset.faUt ?? null)) }) : undefined));
 
   // ------------------------------------------------------------------ nyitás, fókusz
 
@@ -135,6 +141,41 @@
     return ut.includes('/') ? ut.slice(0, ut.lastIndexOf('/')) : '';
   }
 
+  // ------------------------------------------------------------------ többes kijelölés (07-explorer-04)
+
+  let kijelolt = $state<string[]>([]);
+  let horgony = $state<string | null>(null);
+  const kijeloltSet = $derived(new Set(kijelolt));
+  const mappaE = (ut: string) => sorok.find((s) => s.cs.ut === ut)?.cs.mappa ?? fajlok.mappak.includes(ut);
+  /** A tömeges művelet tárgya: a kijelölés legfelső elemei (mappa + részfája együtt csak a mappa). */
+  const celUtak = (cs: FaCsomopont) => (kijeloltSet.has(cs.ut) && kijelolt.length > 1 ? legfelsoUtak(kijelolt) : [cs.ut]);
+
+  /** Kattintás a sorra: Shift = tartomány a horgonytól, ⌘/⌃ = hozzáad / elvesz (nem nyit), egyszerű = a kijelölés megszűnik és nyit. */
+  function sorKattint(cs: FaCsomopont, e: MouseEvent) {
+    if (e.shiftKey && !e.metaKey && !e.ctrlKey) {
+      fokuszUt = cs.ut;
+      kijelolt = kijelolesTartomany(sorok, horgony ?? fokuszUt, cs.ut);
+      horgony ??= cs.ut;
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      fokuszUt = cs.ut;
+      kijelolt = kijeloltSet.has(cs.ut) ? kijelolt.filter((u) => u !== cs.ut) : [...kijelolt, cs.ut];
+      horgony = cs.ut;
+      return;
+    }
+    kijelolt = [];
+    horgony = cs.ut;
+    aktival(cs, e);
+  }
+
+  // az eltűnt (törölt, átnevezett) elemek kikerülnek a kijelölésből
+  $effect(() => {
+    const van = new Set(sorok.map((s) => s.cs.ut));
+    const marad = untrack(() => kijelolt).filter((u) => van.has(u));
+    if (marad.length !== untrack(() => kijelolt).length) kijelolt = marad;
+  });
+
   function billentyu(e: KeyboardEvent) {
     const sor = (e.target as HTMLElement).closest<HTMLElement>('[data-fa-ut]');
     if (!sor || (e.target as HTMLElement).tagName === 'INPUT' || e.isComposing) return;
@@ -143,7 +184,16 @@
     const cs = sorok[i].cs;
     const k = e.key;
     let kesz = true;
-    if (k === 'ArrowDown') void fokuszra(sorok[Math.min(sorok.length - 1, i + 1)].cs.ut);
+    if ((k === 'ArrowDown' || k === 'ArrowUp') && e.shiftKey) {
+      // Shift+nyíl: a kijelölés a horgonytól a fókuszig terjed
+      const j = k === 'ArrowDown' ? Math.min(sorok.length - 1, i + 1) : Math.max(0, i - 1);
+      horgony ??= cs.ut;
+      kijelolt = kijelolesTartomany(sorok, horgony, sorok[j].cs.ut);
+      void fokuszra(sorok[j].cs.ut);
+    } else if (k === 'F2') atnevezesInditas(cs);
+    else if (k === 'Delete' || (k === 'Backspace' && e.metaKey)) kukaKerdes(celUtak(cs));
+    else if (k === 'Escape' && kijelolt.length) kijelolt = [];
+    else if (k === 'ArrowDown') void fokuszra(sorok[Math.min(sorok.length - 1, i + 1)].cs.ut);
     else if (k === 'ArrowUp') void fokuszra(sorok[Math.max(0, i - 1)].cs.ut);
     else if (k === 'Home') void fokuszra(sorok[0].cs.ut);
     else if (k === 'End') void fokuszra(sorok[sorok.length - 1].cs.ut);
@@ -258,10 +308,121 @@
 
   // ------------------------------------------------------------------ átnevezés, áthelyezés, helyi menü
 
-  function atnevez(cs: FaCsomopont, mod: 'nev' | 'hely', cel?: string) {
-    felulet.atnevezes = { ut: cs.ut, mod, mappa: cs.mappa, ...(cel !== undefined ? { cel } : {}) };
+  function atnevez(cs: FaCsomopont, mod: 'nev' | 'hely', cel?: string, nev?: string) {
+    felulet.atnevezes = { ut: cs.ut, mod, mappa: cs.mappa, ...(cel !== undefined ? { cel } : {}), ...(nev !== undefined ? { nev } : {}) };
     felulet.atfedes = 'atnevezes';
   }
+
+  // ---- soron belüli átnevezés (07-explorer-03): ↩ terv; ha nincs link-változás, azonnal megy (Visszavonás értesítéssel),
+  //      különben a terv-átfedés nyílik az új névvel; Esc és a fókusz elhagyása elvet. A név sosem ír terv nélkül.
+  let atnevezesSor = $state<{ ut: string; mappa: boolean; nev: string; hiba: string | null; folyamat: boolean } | null>(null);
+  let atnevezesMezo: HTMLInputElement | undefined = $state();
+
+  async function atnevezesInditas(cs: FaCsomopont) {
+    kijelolt = [];
+    atnevezesSor = { ut: cs.ut, mappa: cs.mappa, nev: cs.nev, hiba: null, folyamat: false };
+    await tick();
+    atnevezesMezo?.focus();
+    atnevezesMezo?.select();
+  }
+
+  /** A mezőbe írt névből az új út: a fájl kiterjesztése megmarad (a jegyzeté rejtett), mint az átfedésben. */
+  function ujAtnevezettUt(ut: string, mappa: boolean, nev: string): string {
+    const kit = mappa ? '' : (/\.[^./]+$/.exec(ut)?.[0] ?? '');
+    let n = nev.trim();
+    if (kit && n.toLowerCase().endsWith(kit.toLowerCase())) n = n.slice(0, -kit.length).trimEnd();
+    const szulo = szuloUt(ut);
+    return `${szulo ? szulo + '/' : ''}${n}${kit}`;
+  }
+
+  function atnevezesBezar(fokusz = true) {
+    const ut = atnevezesSor?.ut;
+    atnevezesSor = null;
+    if (fokusz && ut) void fokuszra(ut);
+  }
+
+  async function atnevezesVeglegesit() {
+    const sor = atnevezesSor;
+    if (!sor || sor.folyamat) return;
+    if (!sor.nev.trim()) return atnevezesBezar();
+    const uj = ujAtnevezettUt(sor.ut, sor.mappa, sor.nev);
+    if (uj === sor.ut) return atnevezesBezar();
+    atnevezesSor = { ...sor, folyamat: true, hiba: null };
+    try {
+      const terv = await atnevezesTerv(sor.ut, uj);
+      if (!terv.ok || terv.blokkolok.length) {
+        atnevezesSor = { ...sor, folyamat: false, hiba: terv.blokkolok.join(' ') || t('Az átnevezés nem lehetséges.') };
+        await tick();
+        atnevezesMezo?.focus();
+        return;
+      }
+      if (terv.fajlok.length === 0 && !terv.figyelmeztetesek?.length) {
+        const r = await atnevezesVegrehajt(terv.regi, terv.uj, terv.terv_hash);
+        atnevezesSor = null;
+        atnevezesErtesites(r, felulet);
+        return;
+      }
+      // link-változás vagy átnézendő kifejezés: a terv látszik, a megerősítés a meglévő átfedésben történik
+      atnevezesSor = null;
+      felulet.atnevezes = { ut: sor.ut, mod: 'nev', mappa: sor.mappa, nev: sor.nev };
+      felulet.atfedes = 'atnevezes';
+    } catch (e) {
+      atnevezesSor = { ...sor, folyamat: false, hiba: e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e) };
+      await tick();
+      atnevezesMezo?.focus();
+    }
+  }
+
+  function atnevezesBillentyu(e: KeyboardEvent) {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      void atnevezesVeglegesit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      atnevezesBezar();
+    }
+  }
+
+  // az F2 (a regiszter-parancsból) és a közvetlen kérés a fa során
+  $effect(() => {
+    const k = felulet.faAtnevezKer;
+    if (!k) return;
+    untrack(() => {
+      const cs = sorok.find((s) => s.cs.ut === k.ut)?.cs;
+      if (cs) void atnevezesInditas(cs);
+    });
+  });
+
+  // „Összes mappa kinyitása” a ⌘P-ből
+  let utolsoKinyit = 0;
+  $effect(() => {
+    const n = felulet.faKinyitKer;
+    if (n === utolsoKinyit) return;
+    utolsoKinyit = n;
+    untrack(() => kinyitMind());
+  });
+
+  function kinyitMind() {
+    const nyitas = mappakatKinyit(gyoker, felulet.oldalsav.nyitott, MAX_NYITOTT_MAPPA);
+    felulet.oldalsav.nyitott = nyitas.utak;
+    if (nyitas.kimaradt) ertesitesek.ertesit({ szint: 'info', cim: t('A mappák egy része kinyílt'), szoveg: t('Legfeljebb {n} mappa marad nyitva egyszerre. A többit külön nyithatod ki.', { n: MAX_NYITOTT_MAPPA }), idotartam: 6000 });
+  }
+
+  // az aktív fájl automatikus követése (07-explorer-11): az ősmappák kinyílnak, a sor látható lesz — a fókuszt nem veszi el
+  $effect(() => {
+    if (!felulet.oldalsav.autoMegmutat) return;
+    const ut = aktivUt;
+    if (!ut) return;
+    untrack(() => {
+      const nyitva = new Set(felulet.oldalsav.nyitott);
+      const hianyzo = osMappak(ut).filter((m) => !nyitva.has(m));
+      if (hianyzo.length) felulet.oldalsav.nyitott = [...felulet.oldalsav.nyitott, ...hianyzo];
+      void tick().then(() => sorElem(ut)?.scrollIntoView?.({ block: 'nearest' }));
+    });
+  });
 
   function menu(cs: FaCsomopont, x: number, y: number) {
     const elemek: MenuElem[] = [];
@@ -270,6 +431,14 @@
       elemek.push({ id, nev, jelzo });
       akciok.set(id, fn);
     };
+    const utak = celUtak(cs);
+    if (utak.length > 1) {
+      // tömeges menü (07-explorer-04): csak a biztonságos, megerősített műveletek
+      hozzaad('tomeg-hely', t('Áthelyezés ({n} elem)…', { n: utak.length }), () => tomegesAthelyezesNyit(utak, null));
+      hozzaad('tomeg-kuka', t('Áthelyezés a Kukába ({n} elem)…', { n: utak.length }), () => kukaKerdes(utak));
+      lebegoMenu({ focus: () => sorElem(cs.ut)?.focus() }, x, y, elemek, akciok, t('Fájlfa menü'));
+      return;
+    }
     if (cs.mappa) {
       hozzaad('uj-mappa', t('Új mappa itt'), () => void ujJegyzetNyit(cs.ut, 'mappa'));
       hozzaad('uj', t('Új jegyzet itt'), () => void ujJegyzetNyit(cs.ut));
@@ -284,38 +453,60 @@
       hozzaad('megnyit', t('Megnyitás'), () => felulet.munkaterulet.megnyit(cs.ut, 'aktiv'));
       hozzaad('ujful', t('Megnyitás új fülben'), () => felulet.munkaterulet.megnyit(cs.ut, 'ujful'));
       hozzaad('osztas', t('Megnyitás osztásban'), () => felulet.munkaterulet.megnyit(cs.ut, 'osztas'));
+      hozzaad('masolat', t('Másolat készítése'), () => void masolatKeszit(felulet, cs.ut, fajlok));
       if (tartalmiJegyzet(cs.ut) || mediaUt(cs.ut)) hozzaad('osszefoglalas', mediaUt(cs.ut) ? t('Összefoglalás az átiratból') : t('Összefoglalás|menu'), () => void osszefoglalasFajlbol(cs.ut));
     }
-    hozzaad('nev', cs.mappa ? t('Mappa átnevezése…') : t('Átnevezés…'), () => atnevez(cs, 'nev'), 'F2');
-    hozzaad('kuka', t('Áthelyezés a Kukába…'), () => { torlendo = cs.ut; torlesHiba = ''; });
+    hozzaad('nev', cs.mappa ? t('Mappa átnevezése…') : t('Átnevezés…'), () => void atnevezesInditas(cs), 'F2');
+    hozzaad('kuka', t('Áthelyezés a Kukába…'), () => kukaKerdes([cs.ut]));
     hozzaad('hely', cs.mappa ? t('Mappa áthelyezése…') : t('Áthelyezés…'), () => atnevez(cs, 'hely'));
+    hozzaad('finder', t('Megmutatás a Finderben'), () => void finderMegmutat(cs.ut));
     lebegoMenu({ focus: () => sorElem(cs.ut)?.focus() }, x, y, elemek, akciok, t('Fájlfa menü'));
   }
 
   function sorMenu(e: MouseEvent, cs: FaCsomopont) {
     e.preventDefault();
+    e.stopPropagation();
     fokuszUt = cs.ut;
+    if (!kijeloltSet.has(cs.ut)) kijelolt = []; // jobb klikk a kijelölésen kívül: egyetlen elem menüje
     menu(cs, e.clientX, e.clientY);
+  }
+
+  /** Jobb klikk az üres területen (07-explorer-19): a gyökér menüje és a fa beállításai. */
+  function gyokerMenu(e: MouseEvent) {
+    if ((e.target as HTMLElement).closest('[data-fa-ut]')) return;
+    e.preventDefault();
+    const elemek: MenuElem[] = [], akciok = new Map<string, () => void>();
+    const hozzaad = (id: string, nev: string, fn: () => void, kijeloltE?: boolean) => { elemek.push({ id, nev, ...(kijeloltE !== undefined ? { kijelolt: kijeloltE } : {}) }); akciok.set(id, fn); };
+    hozzaad('uj', t('Új jegyzet'), () => void ujJegyzetNyit(''));
+    hozzaad('uj-mappa', t('Új mappa'), () => void ujJegyzetNyit('', 'mappa'));
+    hozzaad('minden', t('Minden fájltípus mutatása'), () => { felulet.oldalsav.mindenFajl = !felulet.oldalsav.mindenFajl; }, mindenFajl);
+    hozzaad('auto', t('Az aktív fájl automatikus megmutatása'), () => { felulet.oldalsav.autoMegmutat = !felulet.oldalsav.autoMegmutat; }, felulet.oldalsav.autoMegmutat);
+    lebegoMenu({ focus: () => fa?.focus() }, e.clientX, e.clientY, elemek, akciok, t('Fájlfa menü'));
   }
 
   // ------------------------------------------------------------------ húzás
 
   let huzott = $state<FaCsomopont | null>(null);
+  /** a húzott elemek: a kijelölés legfelső elemei, ha a húzott sor a kijelölés tagja (07-explorer-04), különben csak ő */
+  let huzottUtak = $state<string[]>([]);
   /** a célmappa (a gyökér: ''), amelyre az egér mutat és ahova a húzott elem mehet; különben null */
   let celUt = $state<string | null>(null);
   let nyitoIdozito: ReturnType<typeof setTimeout> | null = null;
+
+  const mozgathatoUtak = (cel: string) => huzottUtak.filter((u) => athelyezheto(u, mappaE(u), cel));
 
   function celMappaEsemenybol(e: DragEvent): string | null {
     if (!huzott && !e.dataTransfer?.types.includes('Files')) return null;
     const sor = (e.target as HTMLElement).closest<HTMLElement>('[data-fa-ut]');
     const cel = sor ? (sor.dataset.faMappa === 'true' ? sor.dataset.faUt! : szuloUt(sor.dataset.faUt!)) : '';
-    return !huzott || athelyezheto(huzott.ut, huzott.mappa, cel) ? cel : null;
+    return !huzott || mozgathatoUtak(cel).length ? cel : null;
   }
 
   function huzasKezd(e: DragEvent, cs: FaCsomopont) {
     huzott = cs;
-    e.dataTransfer?.setData('text/plain', cs.ut);
-    if (!cs.mappa) e.dataTransfer?.setData(VAULT_HUZAS, cs.ut);
+    huzottUtak = celUtak(cs);
+    e.dataTransfer?.setData('text/plain', huzottUtak.join('\n'));
+    if (!cs.mappa && huzottUtak.length === 1) e.dataTransfer?.setData(VAULT_HUZAS, cs.ut);
     if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
   }
 
@@ -337,6 +528,7 @@
 
   function huzasVege() {
     huzott = null;
+    huzottUtak = [];
     celUt = null;
     if (nyitoIdozito) clearTimeout(nyitoIdozito);
     nyitoIdozito = null;
@@ -345,6 +537,7 @@
   function ejtes(e: DragEvent) {
     const cel = celMappaEsemenybol(e);
     const cs = huzott;
+    const utak = cel === null ? [] : mozgathatoUtak(cel);
     const kulso = Array.from(e.dataTransfer?.files ?? []);
     huzasVege();
     if (cel !== null && kulso.length) {
@@ -354,6 +547,28 @@
     }
     if (cel === null || !cs) return;
     e.preventDefault();
+    if (utak.length > 1) tomegesAthelyezesNyit(utak, cel); // tömeges áthelyezés: mindig megerősítéssel
+    else void azonnaliAthelyezes(cs, cel);
+  }
+
+  let athelyezesFolyik = false;
+  /** Húzásos áthelyezés (07-explorer-15): a core terve előbb; ha nincs link-változás és figyelmeztetés, azonnal megy
+   *  (a „Visszavonás” értesítés megmarad), különben — vagy bármilyen hibánál — a terv-átfedés nyílik, mint eddig. */
+  async function azonnaliAthelyezes(cs: FaCsomopont, cel: string) {
+    if (athelyezesFolyik) return;
+    athelyezesFolyik = true;
+    try {
+      const terv = await atnevezesTerv(cs.ut, athelyezettUt(cs.ut, cel));
+      if (terv.ok && !terv.blokkolok.length && terv.fajlok.length === 0 && !terv.figyelmeztetesek?.length) {
+        const r = await atnevezesVegrehajt(terv.regi, terv.uj, terv.terv_hash);
+        atnevezesErtesites(r, felulet);
+        return;
+      }
+    } catch {
+      // a terv vagy a végrehajtás nem ment át: az átfedés újratervez és megmutatja az okot
+    } finally {
+      athelyezesFolyik = false;
+    }
     atnevez(cs, 'hely', cel); // a terv-átfedés nyílik: megerősítés nélkül semmi nem ír
   }
 
@@ -365,29 +580,92 @@
       ertesitesek.ertesit({ szint: 'hiba', cim: t('A fájlimport megállt'), szoveg: e instanceof Error ? e.message : String(e) });
     }
   }
-  let torlendo = $state<string | null>(null);
+
+  // ------------------------------------------------------------------ Kuka (egy vagy több elem)
+
+  let torlendo = $state<string[] | null>(null);
   let torlesHiba = $state('');
   let torlesFut = $state(false);
+  function kukaKerdes(utak: string[]) {
+    if (!utak.length) return;
+    torlendo = utak;
+    torlesHiba = '';
+  }
   async function kukaba() {
-    const ut = torlendo;
-    if (!ut || torlesFut) return;
+    const utak = torlendo;
+    if (!utak || torlesFut) return;
     torlesFut = true;
+    const r = await kukabaTesz(utak);
+    await fajlok.frissit();
+    torlesFut = false;
+    if (r.hiba) {
+      // az első hibánál a sor megáll; ami már a Kukában van, az ott marad (visszahozható), a többi érintetlen
+      torlendo = utak.filter((u) => !r.kesz.includes(u));
+      kijelolt = kijelolt.filter((u) => !r.kesz.includes(u));
+      torlesHiba = r.kesz.length ? t('{kesz} elem a Kukába került, a hátralévők nem: {hiba}', { kesz: r.kesz.length, hiba: r.hiba }) : r.hiba;
+      return;
+    }
+    kijelolt = [];
+    torlendo = null;
+  }
+
+  // ------------------------------------------------------------------ tömeges áthelyezés (07-explorer-04)
+
+  let tomeges = $state<{ utak: string[]; cel: string | null; szuro: string; tervek: Terv[] | null; folyamat: 'terv' | 'vegrehajtas' | ''; hiba: string | null } | null>(null);
+  const tomegesMappak = $derived.by(() => {
+    if (!tomeges) return [];
+    const q = tomeges.szuro.trim().toLowerCase();
+    return ['', ...fajlok.mappak]
+      .filter((m) => tomeges!.utak.some((u) => athelyezheto(u, mappaE(u), m)))
+      .filter((m) => !q || m.toLowerCase().includes(q))
+      .slice(0, 40);
+  });
+
+  function tomegesAthelyezesNyit(utak: string[], cel: string | null) {
+    tomeges = { utak, cel, szuro: '', tervek: null, folyamat: '', hiba: null };
+    if (cel !== null) void tomegesTerv(cel);
+  }
+
+  async function tomegesTerv(cel: string) {
+    const t0 = tomeges;
+    if (!t0) return;
+    const mozgo = t0.utak.filter((u) => athelyezheto(u, mappaE(u), cel));
+    tomeges = { ...t0, cel, folyamat: 'terv', hiba: null, tervek: null, utak: mozgo };
     try {
-      await szerkesztok.dokumentumok.mindLezar();
-      await kerdez('/api/vault/kuka', { metodus: 'POST', torzs: { ut, megerosit: true }, idokorlat: 60000 });
-      await fajlok.frissit();
-      torlendo = null;
-    } catch (e) { torlesHiba = e instanceof Error ? e.message : String(e); }
-    finally { torlesFut = false; }
+      const tervek: Terv[] = [];
+      for (const u of mozgo) tervek.push(await atnevezesTerv(u, athelyezettUt(u, cel)));
+      tomeges = tomeges && { ...tomeges, tervek, folyamat: '' };
+    } catch (e) {
+      tomeges = tomeges && { ...tomeges, folyamat: '', hiba: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  async function tomegesVegrehajt() {
+    const m = tomeges;
+    if (!m?.tervek || m.folyamat || m.tervek.some((x) => !x.ok)) return;
+    tomeges = { ...m, folyamat: 'vegrehajtas', hiba: null };
+    const kesz: { regi: string; uj: string }[] = [];
+    try {
+      for (const terv of m.tervek) {
+        const r = await atnevezesVegrehajt(terv.regi, terv.uj, terv.terv_hash);
+        kesz.push({ regi: r.regi, uj: r.uj });
+        atnevezesErtesites(r, felulet);
+      }
+      kijelolt = [];
+      tomeges = null;
+    } catch (e) {
+      // ami már átkerült, az a saját „Visszavonás” értesítésével elérhető; a hátralévők érintetlenek
+      const hatra = m.tervek.filter((x) => !kesz.some((k) => k.regi === x.regi));
+      tomeges = { ...m, folyamat: '', tervek: null, utak: hatra.map((x) => x.regi), hiba: (kesz.length ? t('{n} elem már átkerült, a hátralévők nem: ', { n: kesz.length }) : '') + (e instanceof Error ? e.message : String(e)) };
+      if (m.cel !== null && hatra.length) void tomegesTerv(m.cel);
+    }
   }
 
   onDestroy(() => nyitoIdozito && clearTimeout(nyitoIdozito));
 
   function mappakValt() {
     if (vanNyitott) { felulet.oldalsav.nyitott = []; return; }
-    const nyitas = mappakatKinyit(gyoker, felulet.oldalsav.nyitott, MAX_NYITOTT_MAPPA);
-    felulet.oldalsav.nyitott = nyitas.utak;
-    if (nyitas.kimaradt) ertesitesek.ertesit({ szint: 'info', cim: t('A mappák egy része kinyílt'), szoveg: t('Legfeljebb {n} mappa marad nyitva egyszerre. A többit külön nyithatod ki.', { n: MAX_NYITOTT_MAPPA }), idotartam: 6000 });
+    kinyitMind();
   }
 
   const tipusNev = (cs: FaCsomopont) => (cs.mappa ? `${tp('{n} jegyzet', cs.jegyzetek)} · ${tp('{n} fájl', cs.fajlok)}` : cs.ut);
@@ -398,11 +676,62 @@
     <Atfedes cimke={t('Áthelyezés a Kukába')} nev="kuka" onbezar={() => { if (!torlesFut) torlendo = null; }}>
       <div class="kuka-kerdes">
         <h2>{t('Áthelyezés a Kukába')}</h2>
-        <p>{torlendo}</p>
+        {#if torlendo.length === 1}
+          <p>{torlendo[0]}</p>
+        {:else}
+          <p>{tp('{n} kijelölt elem', torlendo.length)}</p>
+          <ul class="kuka-lista">
+            {#each torlendo.slice(0, 8) as u (u)}<li>{u}</li>{/each}
+            {#if torlendo.length > 8}<li>{t('… és még {n}', { n: torlendo.length - 8 })}</li>{/if}
+          </ul>
+        {/if}
         <p>{t('A fájl vagy mappa a macOS Kukájából visszahozható. A rá mutató hivatkozások megmaradnak.')}</p>
-        {#if torlesHiba}<p role="alert">{torlesHiba}</p>{/if}
+        {#if torlesHiba}<p role="alert" class="dialog-hiba"><Ikon ikon={CircleAlert} meret={14} /> {torlesHiba}</p>{/if}
         <button class="m-gomb semleges" disabled={torlesFut} onclick={() => torlendo = null}>{t('Mégse')}</button>
         <button class="m-gomb" disabled={torlesFut} onclick={() => void kukaba()}>{t('Áthelyezés a Kukába')}</button>
+      </div>
+    </Atfedes>
+  {/if}
+  {#if tomeges}
+    <Atfedes cimke={t('Elemek áthelyezése')} nev="tomeges-athelyezes" onbezar={() => { if (!tomeges?.folyamat) tomeges = null; }}>
+      <div class="kuka-kerdes tomeges">
+        <h2>{t('Áthelyezés ({n} elem)…', { n: tomeges.utak.length })}</h2>
+        {#if tomeges.cel === null || (!tomeges.tervek && !tomeges.folyamat)}
+          <label class="tomeges-szuro">
+            <span>{t('Célmappa')}</span>
+            <input value={tomeges.szuro} oninput={(e) => { if (tomeges) tomeges.szuro = e.currentTarget.value; }} placeholder={t('Mappa keresése…')} spellcheck="false" autocomplete="off" />
+          </label>
+          <ul class="tomeges-mappak" aria-label={t('Mappák')}>
+            {#each tomegesMappak as m (m)}
+              <li><button type="button" onclick={() => void tomegesTerv(m)}>{m || t('(a vault gyökere)')}</button></li>
+            {:else}
+              <li class="ures">{t('Nincs ilyen mappa.')}</li>
+            {/each}
+          </ul>
+        {:else}
+          <p>→ <strong>{tomeges.cel || t('(a vault gyökere)')}</strong></p>
+          {#if tomeges.folyamat === 'terv'}
+            <p>{t('Tervezés…')}</p>
+          {:else if tomeges.tervek}
+            {@const blokkolt = tomeges.tervek.filter((x) => !x.ok)}
+            {@const linkek = tomeges.tervek.reduce((n, x) => n + x.modositott_linkek, 0)}
+            {@const fajlokDb = tomeges.tervek.reduce((n, x) => n + x.fajlok.length, 0)}
+            <p aria-live="polite">
+              {#if linkek}<strong>{t('{n} fájlban {db} link', { n: fajlokDb, db: linkek })}</strong> {t('módosul. Elemenként egy pillanatkép készül, mindegyik külön visszavonható.')}
+              {:else}{t('Nincs link, amely átírást igényelne.')}{/if}
+            </p>
+            {#if blokkolt.length}
+              <ul class="kuka-lista" role="alert">
+                {#each blokkolt as b (b.regi)}<li><Ikon ikon={CircleAlert} meret={14} /> {b.regi}: {b.blokkolok.join(' ')}</li>{/each}
+              </ul>
+            {/if}
+          {/if}
+        {/if}
+        {#if tomeges.hiba}<p role="alert" class="dialog-hiba"><Ikon ikon={CircleAlert} meret={14} /> {tomeges.hiba}</p>{/if}
+        <button class="m-gomb semleges" disabled={tomeges.folyamat === 'vegrehajtas'} onclick={() => (tomeges = null)}>{t('Mégse')}</button>
+        <button class="m-gomb" disabled={!tomeges.tervek || !!tomeges.folyamat || tomeges.tervek.some((x) => !x.ok)} onclick={() => void tomegesVegrehajt()}>
+          {tomeges.folyamat === 'vegrehajtas' ? t('Áthelyezés…|folyamat') : t('Áthelyezés')}
+        </button>
       </div>
     </Atfedes>
   {/if}
@@ -420,7 +749,9 @@
     class:gyoker-cel={celUt === ''}
     role="tree"
     tabindex="-1"
+    aria-multiselectable="true"
     aria-label={t('Fájlok')}
+    oncontextmenu={gyokerMenu}
     bind:this={fa}
     onkeydown={billentyu}
     ondragover={huzasFolott}
@@ -442,6 +773,7 @@
         class:aktiv={!cs.mappa && cs.ut === aktivUt}
         class:cel={cs.mappa && celUt === cs.ut}
         class:huzott={huzott?.ut === cs.ut}
+        class:kijelolt={kijeloltSet.has(cs.ut)}
         role="treeitem"
         tabindex={tabUt === cs.ut ? 0 : -1}
         data-regio-fokusz={tabUt === cs.ut ? '' : undefined}
@@ -451,11 +783,12 @@
         aria-posinset={s.hely}
         aria-setsize={s.testverek}
         aria-expanded={cs.mappa ? nyitott.has(cs.ut) : undefined}
-        aria-selected={!cs.mappa && cs.ut === aktivUt}
+        aria-selected={(!cs.mappa && cs.ut === aktivUt) || kijeloltSet.has(cs.ut)}
         title={tipusNev(cs)}
         style:padding-left={`${8 + s.melyseg * 16}px`}
-        draggable="true"
-        onclick={(e) => aktival(cs, e)}
+        draggable={atnevezesSor?.ut === cs.ut ? 'false' : 'true'}
+        onclick={(e) => sorKattint(cs, e)}
+        onauxclick={(e) => { if (e.button === 1 && !cs.mappa) { e.preventDefault(); felulet.munkaterulet.megnyit(cs.ut, 'ujful'); } }}
         onfocus={() => (fokuszUt = cs.ut)}
         oncontextmenu={(e) => sorMenu(e, cs)}
         ondragstart={(e) => huzasKezd(e, cs)}
@@ -467,9 +800,28 @@
           <span class="nyil"></span>
           <JegyzetIkon ut={cs.ut} tipus={cs.tipus} meret={16} />
         {/if}
-        <span class="nev">{cs.nev}</span>
+        {#if atnevezesSor?.ut === cs.ut}
+          <input
+            bind:this={atnevezesMezo}
+            class="uj-mezo"
+            aria-label={cs.mappa ? t('A mappa új neve') : t('A fájl új neve')}
+            spellcheck="false"
+            autocomplete="off"
+            disabled={atnevezesSor.folyamat}
+            value={atnevezesSor.nev}
+            oninput={(e) => { if (atnevezesSor) { atnevezesSor.nev = e.currentTarget.value; atnevezesSor.hiba = null; } }}
+            onkeydown={atnevezesBillentyu}
+            onclick={(e) => e.stopPropagation()}
+            onblur={() => { if (atnevezesSor && !atnevezesSor.folyamat) atnevezesBezar(false); }}
+          />
+        {:else}
+          <span class="nev">{cs.nev}</span>
+        {/if}
         {#if cs.mappa && cs.fajlok}<span class="db">{cs.fajlok}</span>{/if}
       </div>
+      {#if atnevezesSor?.ut === cs.ut && atnevezesSor.hiba}
+        <p class="uj-hiba" role="alert" style:padding-left={`${8 + s.melyseg * 16 + 36}px`}><Ikon ikon={CircleAlert} meret={14} /> {atnevezesSor.hiba}</p>
+      {/if}
       {#if ujJegyzet && ujJegyzet.mappa === cs.ut && cs.mappa && nyitott.has(cs.ut)}
         {@render ujSor(s.melyseg + 1)}
       {/if}
@@ -633,6 +985,42 @@
   .ures {
     margin: var(--t-2) var(--t-3);
     color: var(--szoveg-halvany);
+  }
+
+  .sor.kijelolt {
+    background: var(--hatter-kijelolt);
+  }
+
+  .kuka-lista,
+  .tomeges-mappak {
+    margin: 0 0 var(--t-2);
+    padding: 0;
+    list-style: none;
+    overflow-wrap: anywhere;
+  }
+
+  .tomeges-mappak {
+    max-height: 16rem;
+    overflow-y: auto;
+    border: 1px solid var(--keret);
+    border-radius: var(--kerekites);
+  }
+
+  .tomeges-mappak button {
+    display: block;
+    width: 100%;
+    padding: var(--t-1) var(--t-3);
+    text-align: left;
+  }
+
+  .tomeges-szuro {
+    display: flex;
+    flex-direction: column;
+    gap: var(--t-1);
+  }
+
+  .dialog-hiba {
+    color: var(--hiba);
   }
 
   .uj-mezo {

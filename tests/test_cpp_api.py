@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 from core import config, cpp_teszt
+from core.tulajdonsagok import Sema
 from modulok.cpp import eszkoztar
 from tests.helpers import ir
 from tests.index_segedek import var_ra
@@ -162,6 +163,10 @@ class UjFeladatTest(CppApiAlap):
         super().setUp()
         self.assertTrue(self.vegpont_var(lambda: self.k("GET", "/api/vault/index")[1].get("kesz")))
 
+    def mezok(self, jegyzet=f"{MAPPA}/x.md"):
+        """A munkatér-séma (a teszt-gyökér `v2-kompat` presetje) kulcsai: ezeket írja a váz a fejlécbe."""
+        return Sema.betolt(self.cfg).osztaly(jegyzet)["mezosorrend"]
+
     def uj(self, **d):
         return self.k("POST", "/api/cpp/feladat", d)
 
@@ -170,7 +175,8 @@ class UjFeladatTest(CppApiAlap):
         self.assertEqual(kod, 201, d)
         self.assertEqual((d["jegyzet"], d["cpp"]), (f"{MAPPA}/Szorzás.md", f"{MAPPA}/Szorzás.cpp"))
         md = (self.v / d["jegyzet"]).read_text(encoding="utf-8")
-        self.assertEqual(md, cpp_teszt.feladat_vaz("Szorzás", "Informatics"))
+        self.assertEqual(md, cpp_teszt.feladat_vaz("Szorzás", "Informatics", mezok=self.mezok()))
+        self.assertEqual(self.mezok(), ["Tags", "Source", "Status", "NN", "Canvas"])           # a séma (preset) kulcsai, nem a váz beégetettje
         self.assertIn("Tags:\n  - Informatics\n", md)
         self.assertIn("![[Szorzás.cpp]]", md)
         self.assertEqual((self.v / d["cpp"]).read_text(encoding="utf-8"), cpp_teszt.cpp_vaz())
@@ -179,12 +185,57 @@ class UjFeladatTest(CppApiAlap):
     def test_a_cimke_a_legfelso_mappa_betujebol_a_gyokerben_ures(self):
         kod, d = self.uj(mappa="", nev="Gyökér")
         self.assertEqual(kod, 201, d)
-        self.assertTrue((self.v / "Gyökér.md").read_text(encoding="utf-8").startswith("---\nTags:\nSource:"))
+        self.assertTrue((self.v / "Gyökér.md").read_text(encoding="utf-8").startswith("---\nTags:\nSource:\nStatus:\nNN:\nCanvas:\n---\n\n# Gyökér\n"))   # a séma kulcsai
         kod, d = self.uj(mappa="M01 - Matek", nev="Matekfeladat")
         self.assertEqual(kod, 404)                                              # a mappa nem létezik
         (self.v / "M01 - Matek").mkdir()
         self.assertEqual(self.uj(mappa="M01 - Matek", nev="Matekfeladat")[0], 201)
         self.assertIn("Tags:\n  - Mathematics\n", (self.v / "M01 - Matek" / "Matekfeladat.md").read_text(encoding="utf-8"))
+
+    def test_tobb_nyelv_forrasa_es_jegyzete_ugyanazzal_a_vazzal(self):
+        """F11: az új feladat a kód-munkafelület bármely nyelvén; a jegyzet a profil `teszt` formátumát és az `![[x.ext]]`-et hordozza."""
+        from core import kod_nyelvek
+        for p in kod_nyelvek.PROFILOK:
+            with self.subTest(nyelv=p.azonosito):
+                nev = f"Feladat {p.azonosito}"
+                kod, d = self.uj(mappa=MAPPA, nev=nev, nyelv=p.azonosito)
+                self.assertEqual(kod, 201, d)
+                kit = p.kiterjesztesek[0]
+                self.assertEqual((d["jegyzet"], d["forras"], d["nyelv"]), (f"{MAPPA}/{nev}.md", f"{MAPPA}/{nev}{kit}", p.azonosito))
+                self.assertEqual(d["cpp"], d["forras"])                                  # a C36a-mező megmarad
+                md = (self.v / d["jegyzet"]).read_text(encoding="utf-8")
+                self.assertEqual(md, cpp_teszt.feladat_vaz(nev, "Informatics", p.azonosito, self.mezok()))
+                self.assertEqual(kod_nyelvek.beagyazott_forrasok(md), [f"{nev}{kit}"])
+                self.assertEqual((self.v / d["forras"]).read_text(encoding="utf-8"), kod_nyelvek.forras_vaz(p.azonosito))
+                self.assertEqual(len(cpp_teszt.tesztek(md)), 1)
+        # a név végi kiterjesztés (az alias is) levágódik, a meglévő fájl nem íródik felül
+        kod, d = self.uj(mappa=MAPPA, nev="Alias.cjs", nyelv="javascript")
+        self.assertEqual((kod, d["forras"]), (201, f"{MAPPA}/Alias.js"))
+        self.assertEqual(self.uj(mappa=MAPPA, nev="Alias", nyelv="javascript")[0], 400)
+        ir(self.v, f"{MAPPA}/Py.py", "x = 1\n")
+        self.assertEqual(self.uj(mappa=MAPPA, nev="Py", nyelv="python")[0], 400)
+        self.assertFalse((self.v / MAPPA / "Py.md").exists())
+
+    def test_ismeretlen_nyelv_400_es_semmi_nem_jon_letre(self):
+        for nyelv in ("cobol", 7, ["cpp"]):
+            kod, d = self.uj(mappa=MAPPA, nev="Nincs", nyelv=nyelv)
+            self.assertEqual((kod, d["kod"]), (400, "kod.ismeretlen_nyelv"), nyelv)
+        self.assertFalse(list((self.v / MAPPA).glob("Nincs.*")))
+
+    def test_a_sablonmappa_cpp_feladat_jegyzete_csak_a_cpp_t_irja_felul(self):
+        ir(self.v, "_Template/C++ feladat.md", "# {{title}}\n\nSaját váz.\n\n![[{{title}}.cpp]]\n")
+        kod, d = self.uj(mappa=MAPPA, nev="Py", nyelv="python")
+        self.assertEqual(kod, 201, d)
+        self.assertEqual((self.v / d["jegyzet"]).read_text(encoding="utf-8"), cpp_teszt.feladat_vaz("Py", "Informatics", "python", self.mezok()))
+
+    def test_a_munkater_semaja_adja_a_fejlec_kulcsait(self):
+        (self.root / "config").mkdir(exist_ok=True)
+        (self.root / "config" / "vault-sema.json").write_text(json.dumps({"mezosorrend": ["Tags", "Source", "Course"]}), encoding="utf-8")
+        kod, d = self.uj(mappa=MAPPA, nev="Sémás", nyelv="go")
+        self.assertEqual(kod, 201, d)
+        md = (self.v / d["jegyzet"]).read_text(encoding="utf-8")
+        self.assertTrue(md.startswith("---\nTags:\n  - Informatics\nSource:\nCourse:\n---\n\n# Sémás\n"), md)
+        self.assertNotIn("NN:", md)
 
     def test_a_sablonmappa_cpp_feladat_jegyzete_felulirja_a_vazat(self):
         ir(self.v, "_Template/C++ feladat.md", "# {{title}}\n\nSaját váz.\n\n![[{{title}}.cpp]]\n")

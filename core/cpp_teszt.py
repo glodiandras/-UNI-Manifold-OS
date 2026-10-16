@@ -35,7 +35,7 @@ import math
 import re
 from dataclasses import dataclass
 
-from . import kiserok
+from . import kiserok, kod_nyelvek
 from .index import maszk
 
 NYELV = "teszt"
@@ -246,16 +246,39 @@ def cpp_vaz() -> str:
             "}\n")
 
 
-def feladat_vaz(nev: str, tag: str | None) -> str:
-    """Az új feladat-jegyzet beépített váza (a vault sémája: `Tags`, `Source`, `Status`, `NN`, `Canvas`; a `Tags` a
-    legfelső mappa tárgybetűjéből, vagy üres). A sablonmappa `C++ feladat` jegyzete felülírja (a `{{title}}` a jegyzet neve)."""
-    tags = f"Tags:\n  - {kiserok.yaml_cimke(tag)}\n" if tag else "Tags:\n"      # a címke a munkatér beállításából jön: nyersen nem írjuk
-    return (f"---\n{tags}Source:\nStatus:\nNN:\nCanvas:\n---\n\n"
+_KULCS_BIZTOS = re.compile(r"^[^\W\d][\w .-]*$")
+
+
+def _fejlec(tag: str | None, mezok) -> str:
+    """The frontmatter of a new task note: the keys of the workspace schema (`mezok`, in its order; the neutral default schema has
+    none), plus `Tags` when the folder maps to a subject label. Neither: no frontmatter at all."""
+    kulcsok = [k for k in dict.fromkeys(mezok or ()) if isinstance(k, str) and _KULCS_BIZTOS.match(k)]
+    if tag and "Tags" not in kulcsok:
+        kulcsok.insert(0, "Tags")
+    if not kulcsok:
+        return ""
+    # the label comes from the workspace settings (untrusted): never written raw
+    sorok = "".join(f"Tags:\n  - {kiserok.yaml_cimke(tag)}\n" if k == "Tags" and tag else f"{k}:\n" for k in kulcsok)
+    return f"---\n{sorok}---\n\n"
+
+
+def forras_nev(nev: str, nyelv: str = "cpp") -> str:
+    """The companion source file name: the note name with the canonical extension of the language."""
+    p = kod_nyelvek.profil(nyelv)
+    return f"{nev}{p.kiterjesztesek[0] if p else '.cpp'}"
+
+
+def feladat_vaz(nev: str, tag: str | None, nyelv: str = "cpp", mezok=()) -> str:
+    """The built-in skeleton of a new task note, in any language of the code workbench: neutral English text, the `teszt` block
+    format of this module and the embedded companion source (`![[<name><ext>]]`). Frontmatter only from the workspace schema
+    (`mezok`: the key order of `Sema.osztaly(<note path>)["mezosorrend"]`) and the `Tags` subject label (`kiserok.subject_of`);
+    nothing is assumed about the user's conventions. A template note of the template folder overrides it (the caller)."""
+    return (_fejlec(tag, mezok) +
             f"# {nev}\n\n"
-            "## Feladat\n\nÍrd ide a feladat leírását.\n\n"
-            "## Bemenet és kimenet\n\nÍrd le a bemenet és a kimenet formátumát.\n\n"
-            "## Tesztek\n\n"
-            "A ⌘R ezeken futtatja a megoldást. Egy blokk egy teszt: `--- bemenet`, `--- kimenet` és a nem kötelező "
-            "`--- idokorlat` (másodperc) szakasszal. A példát írd át vagy töröld.\n\n"
-            "```teszt Példa\n--- bemenet\n3 4\n--- kimenet\n7\n```\n\n"
-            f"## Megoldás\n\n![[{cpp_nev(nev)}]]\n")
+            "## Task\n\nDescribe the task here.\n\n"
+            "## Input and output\n\nDescribe the input and output format.\n\n"
+            "## Tests\n\n"
+            "Cmd+R runs the solution on these. One block is one test, with `--- bemenet` (input), `--- kimenet` (expected output) "
+            "and an optional `--- idokorlat` (time limit, seconds) section. Edit or delete the example.\n\n"
+            "```teszt Example\n--- bemenet\n3 4\n--- kimenet\n7\n```\n\n"
+            f"## Solution\n\n![[{forras_nev(nev, nyelv)}]]\n")

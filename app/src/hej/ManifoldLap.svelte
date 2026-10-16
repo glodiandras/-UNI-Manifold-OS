@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
+  import { fejlesztoMod } from '../lib/beallitasok/fejleszto';
   import { t } from '../lib/i18n';
   import { Activity, Boxes, CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, HardDrive, Inbox, MessageCircleQuestionMark, Sparkles } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
@@ -58,7 +59,7 @@
         {#if nyitva('statisztika')}<StatisztikaSzakasz />{/if}
       </Szakasz>
       {/if}
-      {#if modulEngedelyezett('tracker')}
+      {#if modulEngedelyezett('tracker') && fejlesztoMod()}
       <Szakasz cim={t('Használat')} ikon={Gauge} bind:nyitva={() => nyitva('hasznalat'), (v) => allit('hasznalat', v)}>
         {#if nyitva('hasznalat')}<HasznalatSzakasz />{/if}
       </Szakasz>

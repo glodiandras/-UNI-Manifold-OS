@@ -8,6 +8,9 @@
   import { tick } from 'svelte';
   import { nyelv, t, tp } from '../lib/i18n';
   import { md } from '../kviz/megjelenites';
+  import { GraduationCap } from '../lib/ikon/ikonok';
+  import { regiszter } from '../lib/parancsok/regiszter';
+  import UresAllapot from '../lib/ui/UresAllapot.svelte';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import { GOMBOK, intervallum } from './allando';
   import type { IsmetlesMenet } from './menet.svelte';
@@ -51,6 +54,8 @@
   {:else if menet.fazis === 'hiba'}
     <p class="pakli-hiba">{t('A kártyák nem tölthetők be: {hiba}', { hiba: menet.hiba ?? '' })}</p>
     <button class="m-gomb semleges suru" type="button" onclick={() => menet.betolt()}>{t('Újra')}</button>
+  {:else if menet.fazis === 'ures' && !menet.osszes}
+    <UresAllapot kicsi ikon={GraduationCap} cim={t('Ma nincs esedékes kártya') + '.'} leiras={t('ures.kartya_leiras')} muvelet={{ cimke: t('ures.kartya_keszit'), onclick: () => regiszter.futtat('kartya.ebbol', 'gomb') }} />
   {:else if menet.fazis === 'ures'}
     <p class="pakli-al">
       {t('Ma nincs esedékes kártya')}{menet.osszes ? ' · ' + tp('{n} kártya összesen', menet.osszes) : ''}.

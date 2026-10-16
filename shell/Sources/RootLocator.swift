@@ -48,7 +48,7 @@ enum RootLocator {
             ("/Applications/Manifold.app/Contents/Resources/manifold", true),
             ("/Applications/Manifold.app/Contents/Resources/manifold/", true),
             ("/Users/x/Downloads/Manifold 2.app/Contents/Resources/manifold", true),
-            ("/Volumes/Work/Manifold-OS", false), ("/Volumes/Work/Manifold.app", false),
+            ("/Volumes/Disk/Manifold-OS", false), ("/Volumes/Disk/Manifold.app", false),
             ("/X.app/Contents/Resources/Manifold", false), ("/X/Contents/Resources/manifold", false),
             ("/X.app/Contents/Resources/manifold/sub", false), ("/manifold", false), ("/", false),
         ]

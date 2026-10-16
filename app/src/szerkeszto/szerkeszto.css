@@ -997,6 +997,43 @@ button.callout-hajto:hover {
   background: var(--hatter-aktiv);
 }
 
+.beagyazas-letrehoz:disabled {
+  color: var(--szoveg-halvany);
+  cursor: default;
+}
+
+/* külső kép (04-embeds-02): helyőrző, letöltés csak kattintásra; hiba ikonnal és szöveggel */
+.beagyazas-kulso,
+.beagyazas-kulso-kesz {
+  display: block;
+  margin: var(--t-1) 0;
+  font-size: var(--betu-ui);
+}
+
+.beagyazas-kulso {
+  padding: var(--t-1) var(--t-3);
+  border-radius: var(--kerekites);
+  color: var(--szoveg-halvany);
+  background: var(--hatter-oldalsav);
+}
+
+.beagyazas-kulso-sor,
+.beagyazas-kulso-hiba {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--t-1);
+}
+
+.beagyazas-kulso-hiba {
+  display: flex;
+  margin-top: var(--t-1);
+  color: var(--hiba);
+}
+
+.beagyazas-kulso-kesz > .beagyazas-letrehoz {
+  margin: var(--t-1) 0 0;
+}
+
 /* A lebegő előnézet: egyetlen popover, ⌘ + rámutatás. */
 .link-elonezet {
   position: fixed;

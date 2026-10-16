@@ -127,7 +127,7 @@ class SzerverHibaTorzsTest(_Szerver):
         self.assertEqual((status, torzs), (400, {"hiba": "The priority must be a whole number.", "kod": "feladat.prioritas", "param": {"n": 3, "ut": "a.md"}}))
         self.assertEqual(self.k("GET", "/api/proba/inv-regi"), (400, {"hiba": "The request is invalid.", "kod": "http.keres_hibas", "param": {}}))
         self.assertEqual(self.k("GET", "/api/proba/nf-kod"), (404, {"hiba": "There is no such file: a.md", "kod": "vault.nincs_fajl", "param": {"ut": "a.md"}}))
-        self.assertEqual(self.k("GET", "/api/proba/zarva"), (503, {"hiba": "The core is shutting down.", "kod": "core.leall", "param": {}}))
+        self.assertEqual(self.k("GET", "/api/proba/zarva"), (503, {"hiba": "Manifold is shutting down.", "kod": "core.leall", "param": {}}))
 
     def test_az_utkozes_torzse_megtartja_a_regi_mezoket(self):
         regi = self.k("GET", "/api/proba/utkozes-regi")

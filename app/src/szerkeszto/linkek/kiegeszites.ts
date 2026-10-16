@@ -7,23 +7,32 @@
 //   fejezet    `[[Jegyzet#Fej`     → a cél fejezetei (az aktuális jegyzeté az élő szövegből: `[[#`);
 //   blokk      `[[Jegyzet#^`       → a `^id`-s blokkok előnézettel; az aktuális jegyzet id nélküli blokkjához a beszúrás
 //                                    az azonosítót is beírja (egy tranzakció);
-//   alias      `[[Jegyzet|`        → a cél aliasai.
+//   alias      `[[Jegyzet|`        → a cél aliasai;
+//   minden jegyzet fejezete  `[[##Fej`  → a vault összes fejezete (a core szűri), `[[Jegyzet#Fej]]` alakban;
+//   nincs még  a fájl-módban a vaultban már használt, de még nem létező link-célok is megjelennek (`nincs még`).
+// A beszúrt link alakját a beállítások adják (core `linkcel`): „New link format” és „Use [[Wikilinks]]”; kikapcsolt
+// wikilinknél a `[[…]]` egésze markdown-linkre cserélődik. Egy már meglévő, nyitott `[[…` belsejében gépelve a menü újra előjön.
 // A beírandó cél a core `linkcel`-éből jön (a legrövidebb egyértelmű alak, L42): nincs saját rövidítési szabály.
 // A `[[` gépelésekor a záró `]]` is beíródik (a Backspace a párt együtt törli).
 
 import { t } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { type ChangeSpec, ChangeSet, type EditorState, Facet, type Extension, Prec, StateEffect, StateField } from '@codemirror/state';
-import { EditorView, keymap, showTooltip, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
+import { type ChangeSpec, ChangeSet, EditorState, Facet, type Extension, Prec, StateEffect, StateField } from '@codemirror/state';
+import { EditorView, keymap, showTooltip, ViewPlugin, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
+import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown';
 import { ApiHiba, kerdez } from '../../lib/core/api';
 import { fajlIkon } from '../../lib/ikon/fajlIkon';
 import { FuzzyIndex } from '../../lib/kereses/fuzzy';
 import { fajlNev, mappa, type FajlInfo } from '../../lib/vault/fajlok.svelte';
-import { linkek } from '../../lib/vault/linkek.svelte';
+import { linkek, type LinkForma, type VaultFejezet } from '../../lib/vault/linkek.svelte';
 import { jegyzetUtja } from '../elo/jegyzet';
+import { OBSIDIAN_BOVITESEK } from '../markdown/elemzo';
 import { Menu, type MenuElem } from '../notion/menu';
 import { blokkok, fejezetSzoveg } from '../notion/blokkmodell';
 import { fejezetLinkSzoveg, idBeir, ujBlokkId } from '../notion/muveletek';
+import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
+import { szerkesztok } from '../szerkesztok.svelte';
+import { linkSzoveg } from './adat';
 
 /** A kiegészítés adatforrásai (a szerkesztő komponens adja): a vault fájljai és a legutóbbiak. */
 export interface KiegeszitesForras {
@@ -46,6 +55,8 @@ interface Allapot {
 const nyit = StateEffect.define<Allapot>();
 const zar = StateEffect.define<null>();
 const frissit = StateEffect.define<null>();
+/** Az Esc: ezen a linken a menü nem nyílik újra, amíg a kurzor ki nem lép belőle (a hely az állapotban). */
+const elvet = StateEffect.define<null>();
 
 const TILTOTT = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'MathBlock', 'InlineMath', 'DisplayMath', 'HTMLBlock', 'HTMLTag', 'CommentBlock', 'Comment', 'ObsidianCommentBlock', 'ObsidianComment']);
 
@@ -59,7 +70,7 @@ export function linkNyithato(state: EditorState, p: number): boolean {
 
 // ---------------------------------------------------------------------- a gépelt szöveg értelmezése
 
-export type Mod = 'fajl' | 'fejezet' | 'blokk' | 'alias';
+export type Mod = 'fajl' | 'fejezet' | 'blokk' | 'alias' | 'fejezetMind';
 
 export interface Lekerdezes {
   mod: Mod;
@@ -77,45 +88,86 @@ export function lekerdezesElemez(q: string): Lekerdezes {
   const h = resz.indexOf('#');
   const cel = h >= 0 ? resz.slice(0, h) : resz;
   const alk = h >= 0 ? resz.slice(h + 1) : '';
-  const mod: Mod = cso >= 0 ? 'alias' : h >= 0 ? (alk.startsWith('^') ? 'blokk' : 'fejezet') : 'fajl';
-  return { mod, cel, alk: mod === 'blokk' ? alk.slice(1) : alk, alias };
+  // `[[##szűrő`: a vault összes fejezetében keres (üres cél, a `#` után még egy `#`)
+  const osszes = cso < 0 && h >= 0 && cel === '' && alk.startsWith('#');
+  const mod: Mod = cso >= 0 ? 'alias' : osszes ? 'fejezetMind' : h >= 0 ? (alk.startsWith('^') ? 'blokk' : 'fejezet') : 'fajl';
+  return { mod, cel, alk: mod === 'blokk' || mod === 'fejezetMind' ? alk.slice(1) : alk, alias };
 }
 
 // ---------------------------------------------------------------------- jelöltek
 
-/** Egy menüelem és a beírása. `beir`: a lekérdezés helyére kerülő szöveg (aszinkron: a core cél-szövege kell). */
+/** A beírandó: a `[[` és `]]` közé kerülő szöveg, vagy — ha a „Use [[Wikilinks]]” ki van kapcsolva — a kész markdown-link,
+ *  amelyre a `[[…]]` egésze cserélődik. */
+export interface Beirando {
+  szoveg: string;
+  md?: string;
+}
+
+/** Egy menüelem és a beírása. `beir`: a lekérdezés helyére kerülő szöveg (aszinkron: a core cél-szövege kell); az `id` az
+ *  id nélküli blokkhoz most generált azonosító. */
 export interface Elem extends MenuElem {
-  beir: (view: EditorView, q: Lekerdezes) => Promise<{ szoveg: string; extra?: unknown } | null>;
+  beir: (view: EditorView, q: Lekerdezes, id?: string) => Promise<Beirando | null>;
   /** az aktuális jegyzetben álló, azonosítót nem tartalmazó blokk: a beírás az id-t is beteszi */
   idKell?: number;
+  /** másik jegyzetben álló, azonosítót nem tartalmazó blokk: a kiválasztás az id-t abba a jegyzetbe írja (hash-védett mentés) */
+  masikIdKell?: { ut: string; szoveg: string; index: number };
   /** jegyzet-cél (md) útja: a beírása az Asszisztens tanuló magjának jelzés (J1) */
   tanulCel?: string;
 }
 
 const MAX_ELEM = 14;
 
-function fajlJeloltek(f: KiegeszitesForras, aliasok: Record<string, string[]>) {
-  const j: { ertek: { ut: string; alias?: string; tipus: FajlInfo['tipus'] }; nev: string; ut: string }[] = [];
+/** A beszúrandó link a core alakjából (`linkcel`: formátum, alak, md-cél). A `cel` a gépelt cél, ha az a wikilinkben marad
+ *  (fejezet-, blokk-, alias-mód); a core hibája esetén wikilink (a beszúrás sosem akad el a beállításon). */
+async function linkBeirando(
+  view: EditorView,
+  ut: string,
+  o: { cel?: string; alcel?: string | null; alias?: string | null; nev: string },
+): Promise<Beirando> {
+  const forras = view.state.facet(jegyzetUtja) ?? '';
+  const beagyazas = view.state.field(kiegeszitesMezo, false)?.beagyazas ?? false;
+  let forma: LinkForma = { cel: o.cel ?? '', alak: 'wiki', md: '' };
+  try {
+    forma = await linkek.linkForma(ut, forras, o.alcel);
+  } catch (e) {
+    if (o.cel === undefined) throw e; // a fájl-módban a core cél-szövege nélkül nincs link
+  }
+  const cel = o.cel ?? forma.cel;
+  const wiki = `${cel}${o.alcel ? `#${o.alcel}` : ''}${o.alias ? `|${o.alias}` : ''}`;
+  return forma.alak === 'md' && forma.md ? { szoveg: wiki, md: linkSzoveg(forma, { ...o, beagyazas }) } : { szoveg: wiki };
+}
+
+interface FajlErtek {
+  ut: string;
+  alias?: string;
+  tipus: FajlInfo['tipus'];
+  /** vaultban használt, de még nem létező link-cél (a szövege az `ut`-ban áll) */
+  hianyzo?: boolean;
+}
+
+function fajlJeloltek(f: KiegeszitesForras, aliasok: Record<string, string[]>, hianyzok: string[]) {
+  const j: { ertek: FajlErtek; nev: string; ut: string }[] = [];
   for (const x of f.fajlok()) {
     j.push({ ertek: { ut: x.ut, tipus: x.tipus }, nev: x.tipus === 'md' ? fajlNev(x.ut) : x.ut.slice(x.ut.lastIndexOf('/') + 1), ut: mappa(x.ut) });
     for (const a of aliasok[x.ut] ?? []) j.push({ ertek: { ut: x.ut, alias: a, tipus: x.tipus }, nev: a, ut: fajlNev(x.ut) });
   }
+  for (const h of hianyzok) j.push({ ertek: { ut: h, tipus: 'md', hianyzo: true }, nev: h, ut: '' });
   return j;
 }
 
-type FajlIndex = FuzzyIndex<{ ut: string; alias?: string; tipus: FajlInfo['tipus'] }>;
-const indexek = new WeakMap<object, { lista: FajlInfo[]; aliasok: Record<string, string[]>; index: FajlIndex }>();
+type FajlIndex = FuzzyIndex<FajlErtek>;
+const indexek = new WeakMap<object, { lista: FajlInfo[]; aliasok: Record<string, string[]>; hianyzok: string[]; index: FajlIndex }>();
 
-function fajlIndex(f: KiegeszitesForras, aliasok: Record<string, string[]>): FajlIndex {
+function fajlIndex(f: KiegeszitesForras, aliasok: Record<string, string[]>, hianyzok: string[]): FajlIndex {
   const lista = f.fajlok();
   const mar = indexek.get(f);
-  if (mar && mar.lista === lista && mar.aliasok === aliasok) return mar.index;
-  const index = new FuzzyIndex(fajlJeloltek(f, aliasok));
-  indexek.set(f, { lista, aliasok, index });
+  if (mar && mar.lista === lista && mar.aliasok === aliasok && mar.hianyzok === hianyzok) return mar.index;
+  const index = new FuzzyIndex(fajlJeloltek(f, aliasok, hianyzok));
+  indexek.set(f, { lista, aliasok, hianyzok, index });
   return index;
 }
 
-function fajlElemek(view: EditorView, f: KiegeszitesForras, q: Lekerdezes, aliasok: Record<string, string[]>): Elem[] {
+function fajlElemek(view: EditorView, f: KiegeszitesForras, q: Lekerdezes, aliasok: Record<string, string[]>, hianyzok: string[]): Elem[] {
   const forras = view.state.facet(jegyzetUtja) ?? '';
   const elem = (ut: string, tipus: FajlInfo['tipus'], alias: string | undefined, kiemeles?: [number, number][]): Elem => ({
     id: `f:${ut}:${alias ?? ''}`,
@@ -124,9 +176,23 @@ function fajlElemek(view: EditorView, f: KiegeszitesForras, q: Lekerdezes, alias
     ikon: fajlIkon(tipus),
     jelzo: alias ? `→ ${fajlNev(ut)}` : mappa(ut),
     kiemeles,
-    beir: async () => {
-      const cel = await linkek.linkCel(ut, forras);
-      return { szoveg: alias ? `${cel}|${alias}` : cel };
+    beir: (v) => linkBeirando(v, ut, { alias, nev: tipus === 'md' ? fajlNev(ut) : ut.slice(ut.lastIndexOf('/') + 1) }),
+  });
+  const hianyzoElem = (cel: string, kiemeles?: [number, number][]): Elem => ({
+    id: `u:${cel}`,
+    nev: cel,
+    ikon: fajlIkon('md'),
+    jelzo: t('nincs még'),
+    kiemeles,
+    beir: async (v) => {
+      let forma: LinkForma = { cel, alak: 'wiki', md: '' };
+      try {
+        forma = await linkek.linkFormaHianyzo(cel, forras);
+      } catch (e) {
+        if (!(e instanceof ApiHiba)) throw e;
+      }
+      const beagyazas = v.state.field(kiegeszitesMezo, false)?.beagyazas ?? false;
+      return forma.alak === 'md' && forma.md ? { szoveg: cel, md: linkSzoveg(forma, { nev: cel, beagyazas }) } : { szoveg: cel };
     },
   });
   const query = q.cel.trim();
@@ -148,15 +214,16 @@ function fajlElemek(view: EditorView, f: KiegeszitesForras, q: Lekerdezes, alias
     return ki.slice(0, MAX_ELEM);
   }
   const rang = new Map(f.legutobbi().map((u, i) => [u, i]));
-  return fajlIndex(f, aliasok)
+  return fajlIndex(f, aliasok, hianyzok)
     .keres(query, {
       limit: MAX_ELEM,
       bonusz: (e) => {
+        if (e.hianyzo) return -4; // a létező fájl a még nem létező cél előtt
         const i = rang.get(e.ut);
         return (e.tipus === 'md' ? 10 : 0) + (i === undefined ? 0 : Math.max(2, 12 - i)); // a jegyzetek a mellékletek előtt
       },
     })
-    .map((t) => elem(t.ertek.ut, t.ertek.tipus, t.ertek.alias, t.kiemeles));
+    .map((t) => (t.ertek.hianyzo ? hianyzoElem(t.ertek.ut, t.kiemeles) : elem(t.ertek.ut, t.ertek.tipus, t.ertek.alias, t.kiemeles)));
 }
 
 /** A cél jegyzet: az aktuális (üres cél), vagy a core által feloldott fájl útja (nem md: `null`). */
@@ -202,7 +269,7 @@ async function fejezetElemek(view: EditorView, q: Lekerdezes): Promise<Elem[]> {
     id: `h:${h.sor}`,
     nev: h.szoveg,
     jelzo: `H${h.szint}`,
-    beir: async () => ({ szoveg: `${q.cel}#${fejezetLinkSzoveg(h.szoveg)}` }),
+    beir: (v) => linkBeirando(v, ut, { cel: q.cel, alcel: fejezetLinkSzoveg(h.szoveg), nev: fajlNev(ut) }),
   }));
   const szuro = q.alk.trim();
   if (!szuro) return elemek.slice(0, 30);
@@ -210,7 +277,37 @@ async function fejezetElemek(view: EditorView, q: Lekerdezes): Promise<Elem[]> {
   return idx.keres(szuro, { limit: MAX_ELEM }).map((t) => ({ ...t.ertek, kiemeles: t.kiemeles }));
 }
 
+/** `[[##szűrő`: a vault összes jegyzetének fejezete (a core szűri és rangsorolja, a felület elírástűrően újrarendezi). */
+async function mindenFejezetElemek(q: Lekerdezes): Promise<Elem[]> {
+  let lista: VaultFejezet[];
+  try {
+    lista = await linkek.fejezetekMind(q.alk.trim());
+  } catch (e) {
+    if (e instanceof ApiHiba) return [];
+    throw e;
+  }
+  const elemek = lista.map((h, i): Elem => ({
+    id: `H:${h.ut}:${h.sor}:${i}`,
+    nev: h.szoveg,
+    ikon: fajlIkon('md'),
+    jelzo: `H${h.szint} · ${fajlNev(h.ut)}`,
+    beir: (v) => linkBeirando(v, h.ut, { alcel: fejezetLinkSzoveg(h.szoveg), nev: fajlNev(h.ut) }),
+  }));
+  const szuro = q.alk.trim();
+  if (!szuro) return elemek.slice(0, MAX_ELEM);
+  const idx = new FuzzyIndex(lista.map((h, i) => ({ ertek: elemek[i], nev: h.szoveg, ut: h.ut })));
+  return idx.keres(szuro, { limit: MAX_ELEM }).map((t) => ({ ...t.ertek, kiemeles: t.kiemeles }));
+}
+
 const ID_VEG = /[ \t]*\^[A-Za-z0-9-]+[ \t]*$/;
+
+/** Egy másik jegyzet szövegének blokkmodellje (a szerkesztő elemzőjével, DOM nélkül). */
+function masikAllapot(szoveg: string): EditorState {
+  return EditorState.create({
+    doc: szoveg,
+    extensions: markdown({ base: commonmarkLanguage, extensions: OBSIDIAN_BOVITESEK, completeHTMLTags: false }),
+  });
+}
 
 async function blokkElemek(view: EditorView, q: Lekerdezes): Promise<Elem[]> {
   const ut = await celJegyzet(view, q.cel);
@@ -228,26 +325,30 @@ async function blokkElemek(view: EditorView, q: Lekerdezes): Promise<Elem[]> {
         nev: szoveg.slice(0, 90) || t('(üres)'),
         jelzo: b.id ? `^${b.id}` : t('új ^id'),
         idKell: b.id ? undefined : b.index,
-        beir: async () => ({ szoveg: `${q.cel}#^${b.id ?? ''}` }),
+        beir: (v, _q, id) => linkBeirando(v, ut, { cel: q.cel, alcel: `^${b.id ?? id ?? ''}`, nev: fajlNev(ut) }),
       });
     }
   } else {
-    let szovegek: string[] = [];
-    let blokkLista: { azon: string; sor: number; kezdo_sor: number }[] = [];
+    let tartalom: string;
     try {
-      const [j, f] = await Promise.all([
-        kerdez<{ blokkok: typeof blokkLista }>(`/api/vault/jegyzet?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 }),
-        kerdez<{ tartalom: string }>(`/api/vault/fajl?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 }),
-      ]);
-      blokkLista = j.blokkok;
-      szovegek = f.tartalom.split(/\r\n?|\n/);
+      tartalom = (await kerdez<{ tartalom: string }>(`/api/vault/fajl?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 })).tartalom;
     } catch (e) {
       if (e instanceof ApiHiba) return [];
       throw e;
     }
-    for (const b of blokkLista) {
-      const sor = (szovegek[b.kezdo_sor - 1] ?? '').replace(ID_VEG, '').replace(/^[ \t>]*(?:[-*+]|\d+[.)])?[ \t]*/, '').trim();
-      elemek.push({ id: `b:${b.azon}`, nev: sor.slice(0, 90) || `(${b.azon})`, jelzo: `^${b.azon}`, beir: async () => ({ szoveg: `${q.cel}#^${b.azon}` }) });
+    const allapot = masikAllapot(tartalom);
+    const szoveg0 = allapot.doc.toString();
+    for (const b of blokkok(allapot)) {
+      if (b.idMod !== 'sorveg') continue;
+      const szoveg = allapot.doc.line(b.elsoSor).text.replace(ID_VEG, '').replace(/^[ \t>]*(?:[-*+]|\d+[.)])?[ \t]*(?:\[.\][ \t]*)?/, '').trim();
+      if (!szoveg && !b.id) continue;
+      elemek.push({
+        id: `b:${ut}:${b.elsoSor}`,
+        nev: szoveg.slice(0, 90) || t('(üres)'),
+        jelzo: b.id ? `^${b.id}` : t('új ^id'),
+        masikIdKell: b.id ? undefined : { ut, szoveg: szoveg0, index: b.index },
+        beir: (v, _q, id) => linkBeirando(v, ut, { cel: q.cel, alcel: `^${b.id ?? id ?? ''}`, nev: fajlNev(ut) }),
+      });
     }
   }
   const szuro = q.alk.trim();
@@ -260,7 +361,11 @@ async function aliasElemek(view: EditorView, q: Lekerdezes, aliasok: Record<stri
   const ut = await celJegyzet(view, q.cel);
   const lista = (ut && aliasok[ut]) || [];
   const szuro = q.alias.trim();
-  const elemek = lista.map((a): Elem => ({ id: `a:${a}`, nev: a, beir: async () => ({ szoveg: `${q.cel}${q.alk ? `#${q.alk}` : ''}|${a}` }) }));
+  const elemek = lista.map((a): Elem => ({
+    id: `a:${a}`,
+    nev: a,
+    beir: ut ? (v) => linkBeirando(v, ut, { cel: q.cel, alcel: q.alk || null, alias: a, nev: fajlNev(ut) }) : async () => ({ szoveg: `${q.cel}${q.alk ? `#${q.alk}` : ''}|${a}` }),
+  }));
   if (!szuro) return elemek;
   const idx = new FuzzyIndex(elemek.map((e) => ({ ertek: e, nev: e.nev })));
   return idx.keres(szuro, { limit: MAX_ELEM }).map((t) => ({ ...t.ertek, kiemeles: t.kiemeles }));
@@ -277,10 +382,21 @@ export async function elemek(view: EditorView, f: KiegeszitesForras, q: Lekerdez
     }
   }
   switch (q.mod) {
-    case 'fajl':
-      return fajlElemek(view, f, q, aliasok);
+    case 'fajl': {
+      let hianyzok: string[] = [];
+      if (q.cel.trim()) {
+        try {
+          hianyzok = await linkek.feloldatlanSzovegek();
+        } catch {
+          hianyzok = [];
+        }
+      }
+      return fajlElemek(view, f, q, aliasok, hianyzok);
+    }
     case 'fejezet':
       return fejezetElemek(view, q);
+    case 'fejezetMind':
+      return mindenFejezetElemek(q);
     case 'blokk':
       return blokkElemek(view, q);
     case 'alias':
@@ -322,16 +438,80 @@ export function kiegeszitesNyitva(state: EditorState): boolean {
 
 // ---------------------------------------------------------------------- beírás
 
-/** A kiválasztott elem beírása a gépelt lekérdezés helyére; a meglévő záró `]]` után áll a kurzor. Az id nélküli
- *  blokknál az azonosító beírása ugyanabban a tranzakcióban történik (egy ⌘Z visszavonja mindkettőt). */
+/** Egy másik jegyzet id nélküli blokkjának azonosítót ír (a `Dokumentum` útján: hash-védett mentés, a nyitott szerkesztők
+ *  élőben megkapják, ugyanaz a pillanatkép-szabály, mint a gépelésnél). → az új azonosító, vagy `null` (a hiba értesítésként
+ *  megjelent, a link nem íródik be). Ha a jegyzet közben megváltozott, a blokkot a sorának szövege alapján keresi újra. */
+export async function masikBlokkIdIr(m: { ut: string; szoveg: string; index: number }): Promise<string | null> {
+  let dok;
+  try {
+    dok = await szerkesztok.dokumentumok.megnyit(m.ut);
+  } catch (e) {
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A jegyzet nem nyitható meg'), szoveg: e instanceof ApiHiba ? e.message : String(e) });
+    return null;
+  }
+  const elavult = (): null => {
+    ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A jegyzet közben megváltozott'), szoveg: t('A lista frissül, próbáld újra.'), idotartam: 4000 });
+    return null;
+  };
+  try {
+    if (dok.csakOlvashato || dok.allapot === 'utkozes' || dok.allapot === 'eltunt') {
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('A jegyzet most nem írható'), szoveg: dok.csakOlvashato ?? m.ut });
+      return null;
+    }
+    const kezdo = masikAllapot(m.szoveg);
+    const eredeti = blokkok(kezdo)[m.index];
+    if (!eredeti || eredeti.id || eredeti.idMod !== 'sorveg') return elavult();
+    const sor = kezdo.doc.line(eredeti.elsoSor).text;
+    const mai = dok.szoveg.toString();
+    const allapot = mai === m.szoveg ? kezdo : masikAllapot(mai);
+    let bl = mai === m.szoveg ? eredeti : undefined;
+    if (!bl) {
+      const egyezok = blokkok(allapot).filter((x) => !x.id && x.idMod === 'sorveg' && allapot.doc.line(x.elsoSor).text === sor);
+      if (egyezok.length !== 1) return elavult();
+      bl = egyezok[0];
+    }
+    const r = idBeir(allapot, bl, ujBlokkId(allapot));
+    if (!r?.szerkesztes) return elavult();
+    const cs = allapot.update({ changes: r.szerkesztes.changes }).changes;
+    dok.valtozott(cs, cs.apply(dok.szoveg), null, true); // nyitott szerkesztőnél az előzménybe kerül: a ⌘Z visszahozza
+    const eredmeny = await dok.ment();
+    if (!eredmeny.ok) {
+      ertesitesek.ertesit({ szint: 'hiba', cim: t('Az azonosító nem mentődött'), szoveg: dok.hiba ?? m.ut });
+      return null;
+    }
+    return r.id;
+  } catch (e) {
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('Az azonosító nem írható be'), szoveg: e instanceof Error ? e.message : String(e) });
+    return null;
+  } finally {
+    await szerkesztok.dokumentumok.elenged(dok); // a nyitott szerkesztő-nézet tartja életben, különben lezár és kikerül
+  }
+}
+
+/** A kiválasztott elem beírása a gépelt lekérdezés helyére; a meglévő záró `]]` után áll a kurzor. Az aktuális jegyzet id nélküli
+ *  blokkjánál az azonosító beírása ugyanabban a tranzakcióban történik (egy ⌘Z visszavonja mindkettőt); másik jegyzetnél az
+ *  azonosítót előbb abba a jegyzetbe menti. „Use [[Wikilinks]]” kikapcsolva a `[[…` egésze markdown-linkre cserélődik. */
 async function alkalmaz(view: EditorView, e: Elem): Promise<void> {
   const a = view.state.field(kiegeszitesMezo, false);
   if (!a) return;
   const eredetiDoc = view.state.doc;
   const q = lekerdezesElemez(view.state.sliceDoc(a.from, view.state.selection.main.head));
-  let eredmeny: { szoveg: string } | null;
+  let idSzerk: { id: string; changes: ChangeSpec } | null = null;
+  let id: string | undefined;
+  if (e.idKell !== undefined) {
+    const bl = blokkok(view.state)[e.idKell];
+    const r = bl ? idBeir(view.state, bl, ujBlokkId(view.state)) : null;
+    if (!r?.szerkesztes) return;
+    idSzerk = { id: r.id, changes: r.szerkesztes.changes };
+    id = r.id;
+  } else if (e.masikIdKell) {
+    const uj = await masikBlokkIdIr(e.masikIdKell);
+    if (!uj || !menuk.has(view)) return;
+    id = uj;
+  }
+  let eredmeny: Beirando | null;
   try {
-    eredmeny = await e.beir(view, q);
+    eredmeny = await e.beir(view, q, id);
   } catch {
     view.dispatch({ effects: zar.of(null) });
     return;
@@ -340,16 +520,12 @@ async function alkalmaz(view: EditorView, e: Elem): Promise<void> {
   if (!eredmeny || !b || view.state.doc !== eredetiDoc) return; // közben gépelt: az új lekérdezésre vonatkozik
   const veg = view.state.selection.main.head;
   const zaroVan = view.state.sliceDoc(veg, veg + 2) === ']]';
-  let szoveg = eredmeny.szoveg;
   const valtozasok: ChangeSpec[] = [];
-  if (e.idKell !== undefined) {
-    const bl = blokkok(view.state)[e.idKell];
-    const r = bl ? idBeir(view.state, bl, ujBlokkId(view.state)) : null;
-    if (!r?.szerkesztes) return;
-    valtozasok.push(r.szerkesztes.changes);
-    szoveg = szoveg.replace(/#\^$/, `#^${r.id}`);
-  }
-  const link = { from: b.from, to: zaroVan ? veg + 2 : veg, insert: `${szoveg}]]` };
+  if (idSzerk) valtozasok.push(idSzerk.changes);
+  const link =
+    eredmeny.md !== undefined
+      ? { from: b.from - (b.beagyazas ? 3 : 2), to: zaroVan ? veg + 2 : veg, insert: eredmeny.md }
+      : { from: b.from, to: zaroVan ? veg + 2 : veg, insert: `${eredmeny.szoveg}]]` };
   valtozasok.push(link);
   const cs = ChangeSet.of(valtozasok, eredetiDoc.length);
   view.dispatch({
@@ -454,7 +630,8 @@ const billentyuk = Prec.highest(
       const a = view.state.field(kiegeszitesMezo, false);
       if (!a || e.isComposing) return false;
       if (e.key === 'Escape') {
-        view.dispatch({ effects: zar.of(null) });
+        view.plugin(ujranyitas)?.elvet(a.from);
+        view.dispatch({ effects: [zar.of(null), elvet.of(null)] });
         e.preventDefault();
         return true;
       }
@@ -485,7 +662,8 @@ const billentyuk = Prec.highest(
 
 /** A `[[` gépelése: beírja a záró `]]`-t és megnyitja a menüt. */
 const gepeles = EditorView.inputHandler.of((view, from, to, text) => {
-  if (text !== '[' || from !== to || view.state.readOnly) return false;
+  if (text !== '[' || view.state.readOnly) return false;
+  if (from !== to) return kijelolesBurkol(view, from, to);
   const s = view.state;
   if (s.sliceDoc(from - 1, from) !== '[' || s.sliceDoc(from - 2, from - 1) === '[') return false;
   if (!linkNyithato(s, from)) return false;
@@ -499,6 +677,76 @@ const gepeles = EditorView.inputHandler.of((view, from, to, text) => {
   });
   return true;
 });
+
+/** A `[` gépelése kijelöléssel (nem veszik el a kijelölt szöveg): először `[kijelölt]`, a második `[` `[[kijelölt]]`-re bővít, és a
+ *  kijelölt szöveg lesz a menü lekérdezése. Többsoros kijelölésre és `[`/`]`-t tartalmazóra az alap viselkedés marad. */
+function kijelolesBurkol(view: EditorView, from: number, to: number): boolean {
+  const s = view.state;
+  if (s.doc.lineAt(from).number !== s.doc.lineAt(to).number || /[[\]]/.test(s.sliceDoc(from, to)) || !linkNyithato(s, from)) return false;
+  const elozo = s.sliceDoc(from - 1, from);
+  if (elozo === '[' && s.sliceDoc(to, to + 1) === ']' && s.sliceDoc(from - 2, from - 1) !== '[') {
+    const beagyazas = s.sliceDoc(from - 2, from - 1) === '!';
+    view.dispatch({
+      changes: [{ from, insert: '[' }, { from: to, insert: ']' }],
+      selection: { anchor: to + 1 },
+      effects: nyit.of({ from: from + 1, beagyazas }),
+      userEvent: 'input.type',
+    });
+    return true;
+  }
+  view.dispatch({
+    changes: [{ from, insert: '[' }, { from: to, insert: ']' }],
+    selection: { anchor: from + 1, head: to + 1 },
+    userEvent: 'input.type',
+  });
+  return true;
+}
+
+/** A `p` előtti, a sorban álló, még le nem zárt `[[` / `![[` helye (egy már meglévő link belseje), vagy `null`. */
+export function nyitottLink(state: EditorState, p: number): Allapot | null {
+  const sor = state.doc.lineAt(p);
+  const elotte = state.sliceDoc(sor.from, p);
+  const i = elotte.lastIndexOf('[[');
+  if (i < 0 || elotte.slice(i + 2).includes(']')) return null;
+  return { from: sor.from + i + 2, beagyazas: i > 0 && elotte[i - 1] === '!' };
+}
+
+function frontmatterben(state: EditorState, p: number): boolean {
+  const fa = syntaxTree(state);
+  for (let n: ReturnType<typeof fa.resolveInner> | null = fa.resolveInner(p, -1); n; n = n.parent) if (n.name === 'Frontmatter') return true;
+  return false;
+}
+
+/** Egy meglévő `[[…` belsejében gépelve (vagy törölve) a menü újra előjön — a kiindulás a kurzor előtti szöveg, nem csak a
+ *  `[` leütése. Az Esc az adott linken kikapcsolja, amíg a kurzor ki nem lép belőle; kódban, képletben és a frontmatterben nincs. */
+const ujranyitas = ViewPlugin.fromClass(
+  class {
+    private mellozott: number | null = null;
+    constructor(readonly view: EditorView) {}
+    elvet(pos: number): void {
+      this.mellozott = pos;
+    }
+    update(u: ViewUpdate): void {
+      if (this.mellozott !== null) this.mellozott = u.changes.mapPos(this.mellozott, -1);
+      if (!u.docChanged || u.state.field(kiegeszitesMezo, false)) return;
+      if (!u.transactions.some((tr) => tr.isUserEvent('input.type') || tr.isUserEvent('delete'))) return;
+      queueMicrotask(() => this.probal()); // az update közben nem küldhető tranzakció
+    }
+    private probal(): void {
+      const v = this.view;
+      if (!v.dom.isConnected || v.state.readOnly || v.state.field(kiegeszitesMezo, false)) return;
+      const r = v.state.selection.main;
+      if (!r.empty) return;
+      const c = nyitottLink(v.state, r.head);
+      if (!c) {
+        this.mellozott = null;
+        return;
+      }
+      if (this.mellozott === c.from || !linkNyithato(v.state, r.head) || frontmatterben(v.state, r.head)) return;
+      v.dispatch({ effects: nyit.of(c) });
+    }
+  },
+);
 
 /** Backspace a `[[|]]` közepén: a pár együtt törlődik. */
 const parTorles = Prec.high(
@@ -518,18 +766,30 @@ const parTorles = Prec.high(
 
 /** A `[[` kiegészítés a szerkesztőben (Live Preview és Forrás is). */
 export function kiegeszitesBovitmeny(): Extension {
-  return [kiegeszitesMezo, tooltip, billentyuk, gepeles, parTorles];
+  return [kiegeszitesMezo, tooltip, billentyuk, gepeles, parTorles, ujranyitas];
 }
 
-/** A tesztekhez és a parancsokhoz: a menü megnyitása a kurzornál (beír egy `[[]]`-t). */
+/** A tesztekhez és a parancsokhoz: a menü megnyitása a kurzornál (beír egy `[[]]`-t). Kijelölt (egysoros) szövegnél a kijelölés
+ *  nem vész el: `[[kijelölt]]` lesz, és a kijelölt szöveg a menü lekérdezése; egyéb kijelölésnél a link a kijelölés mögé kerül. */
 export function linkBeszur(view: EditorView, beagyazas = false): boolean {
   const r = view.state.selection.main;
   if (view.state.readOnly || !linkNyithato(view.state, r.head)) return false;
   const elo = beagyazas ? '![[' : '[[';
+  const kijelolt = r.empty ? '' : view.state.sliceDoc(r.from, r.to);
+  if (kijelolt && !kijelolt.includes('\n') && !/[[\]]/.test(kijelolt)) {
+    view.dispatch({
+      changes: { from: r.from, to: r.to, insert: `${elo}${kijelolt}]]` },
+      selection: { anchor: r.from + elo.length + kijelolt.length },
+      effects: nyit.of({ from: r.from + elo.length, beagyazas }),
+      userEvent: 'input.type',
+    });
+    return true;
+  }
+  const hely = r.empty ? r.head : r.to; // a kijelölt szöveg érintetlen marad
   view.dispatch({
-    changes: { from: r.from, to: r.to, insert: `${elo}]]` },
-    selection: { anchor: r.from + elo.length },
-    effects: nyit.of({ from: r.from + elo.length, beagyazas }),
+    changes: { from: hely, insert: `${elo}]]` },
+    selection: { anchor: hely + elo.length },
+    effects: nyit.of({ from: hely + elo.length, beagyazas }),
     userEvent: 'input.type',
   });
   return true;

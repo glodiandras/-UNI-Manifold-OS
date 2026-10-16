@@ -580,11 +580,12 @@ class Tulajdonsagok:
     # -------------------------------------------------- módosítás
 
     def modosit(self, ut: str, fm: str | None, muvelet: str, kulcs: str, ertek=None, tipus: str | None = None,
-                megerosit: bool = False, forras: str = "felhasznalo") -> dict:
-        """Egy kulcs beállítása vagy törlése. Válasz: `{ok, fm_uj, megerositheto, valtozas, problemak}`; `ok: false`
+                megerosit: bool = False, forras: str = "felhasznalo", uj_kulcs: str | None = None) -> dict:
+        """Egy kulcs beállítása, törlése vagy átnevezése (`atnevez`: a jegyzetben a `kulcs` neve `uj_kulcs` lesz, az érték,
+        a sorrend és a megjegyzések érintetlenül; csak ebben a jegyzetben). Válasz: `{ok, fm_uj, megerositheto, valtozas, problemak}`; `ok: false`
         esetén `fm_uj` nincs, a `problemak` mondja az okot (a `szint: hiba` nem írható, a `sertes` megerősítéssel)."""
         ut = nfc(ut or "")
-        if muvelet not in ("beallit", "torol"):
+        if muvelet not in ("beallit", "torol", "atnevez"):
             raise HttpError(400, "a művelet beallit vagy torol lehet", kod="tulajdonsag.muvelet")
         if not isinstance(kulcs, str) or not _KULCS_NEV.match(kulcs) or len(kulcs) > 80:
             return self._elutasit([self._hiba("kulcs_nev", f"Invalid property name: ‘{kulcs}’.", kulcs)])
@@ -606,6 +607,8 @@ class Tulajdonsagok:
         elotte = (regi.kulcsok() if regi else [])
         if elotte.count(kulcs) > 1:
             return self._elutasit([self._hiba("duplikalt_kulcs", f"The ‘{kulcs}’ key appears more than once. Fix it in source mode.", kulcs)])
+        if muvelet == "atnevez":
+            return self._atnevez(ut, regi, regi_ertek, elotte, kulcs, uj_kulcs, megerosit, forras)
 
         vart = None
         uj_sorok: list[str] = []
@@ -646,6 +649,59 @@ class Tulajdonsagok:
             szoveg += uj.eol                  # új blokk: a záró `---` után üres sor (a séma-próba kéri)
         return {"ok": True, "fm_uj": szoveg, "megerositheto": False, "valtozas": szoveg != (fm or ""),
                 "problemak": uj_p}
+
+    _YAML_FOGLALT = frozenset({"y", "n", "yes", "no", "on", "off", "true", "false", "null", "~"})
+
+    def _atnevez(self, ut: str, regi: "_Fm | None", regi_ertek: dict, elotte: list[str], kulcs: str, uj_kulcs,
+                 megerosit: bool, forras: str) -> dict:
+        """A `kulcs` átnevezése ebben a jegyzetben: csak a kulcs-blokk első sorában a kulcs szövege cserélődik (az idézőjel-fajta,
+        a szóköz, az érték, a megjegyzések és a sorrend érintetlen); a visszaolvasás-próba a kulcs nevén kívül mindent azonosnak vár.
+        A vault-szintű átnevezés nem ez a művelet (nincs kötegelt író; a gépi írás útja külön engedély)."""
+        if not isinstance(uj_kulcs, str) or not _KULCS_NEV.match(uj_kulcs) or len(uj_kulcs) > 80:
+            return self._elutasit([self._hiba("kulcs_nev", f"Invalid property name: ‘{uj_kulcs}’.", kulcs)])
+        if regi is None or kulcs not in elotte:
+            return self._elutasit([self._hiba("nincs_kulcs", f"The ‘{kulcs}’ property does not exist in this note.", kulcs)])
+        if uj_kulcs == kulcs:
+            return {"ok": True, "fm_uj": regi.szoveg(), "megerositheto": False, "valtozas": False, "problemak": []}
+        if uj_kulcs in elotte:
+            return self._elutasit([self._hiba("duplikalt_kulcs", f"The ‘{uj_kulcs}’ property already exists in this note.", kulcs)])
+        if forras == "gep" and "status" in (kulcs.casefold(), uj_kulcs.casefold()) and self.sema.status_vedett(True):
+            return self._elutasit([self._hiba("status_gep", "Only the user can fill in or change the Status field; machine writes cannot change it.",
+                                              "Status")])
+        blokkok = [_Blokk(b.kulcs, list(b.sorok)) for b in regi.blokkok]
+        idx = next(i for i, b in enumerate(blokkok) if b.kulcs == kulcs)
+        elso = blokkok[idx].sorok[0]
+        m = _KULCS_SOR.match(elso)
+        if m is None:
+            return self._elutasit([self._hiba("belso_hiba", "This property cannot be renamed safely because the frontmatter structure is unusual. "
+                                                            "Edit it in source mode.", kulcs)])
+        nyers = m.group(1).strip()
+        idezo = nyers[0] if len(nyers) > 1 and nyers[0] == nyers[-1] and nyers[0] in "\"'" else ""
+        if not idezo and uj_kulcs.casefold() in self._YAML_FOGLALT:
+            idezo = '"'
+        if idezo == '"':
+            uj_nyers = '"' + uj_kulcs.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        elif idezo == "'":
+            uj_nyers = "'" + uj_kulcs.replace("'", "''") + "'"
+        else:
+            uj_nyers = uj_kulcs
+        blokkok[idx] = _Blokk(uj_kulcs, [elso[:m.start(1)] + uj_nyers + elso[m.end(1):], *blokkok[idx].sorok[1:]])
+        uj = _Fm(regi.eol, regi.vegen_eol, blokkok, regi.elo)
+        _, uj_hiba, uj_ertek = self._tulajdonsagok(uj, egyedi=True)
+        vart_ertek = {(uj_kulcs if k == kulcs else k): v for k, v in regi_ertek.items()}
+        if uj_hiba or uj_ertek != vart_ertek or uj.kulcsok() != [uj_kulcs if k == kulcs else k for k in elotte]:
+            return self._elutasit([self._hiba(
+                "belso_hiba", "This change cannot be made safely because the frontmatter structure is unusual. "
+                              "Edit it in source mode.", kulcs)])
+        elotte_p = self.problemak(ut, elotte, regi_ertek, van_fm=True)
+        utana_p = self.problemak(ut, uj.kulcsok(), uj_ertek)
+        uj_p = self.uj_sertesek(elotte_p, utana_p)
+        kemeny = [p for p in uj_p if p["szint"] == HIBA]
+        if kemeny:
+            return self._elutasit(kemeny)
+        if uj_p and not megerosit:
+            return {"ok": False, "fm_uj": None, "megerositheto": True, "valtozas": True, "problemak": uj_p}
+        return {"ok": True, "fm_uj": uj.szoveg(), "megerositheto": False, "valtozas": True, "problemak": uj_p}
 
     # -------------------------------------------------- javaslatok (gépelés közbeni kiegészítés)
 
@@ -843,7 +899,7 @@ def utvonalak(r) -> None:
             raise HttpError(400, "a `megerosit` igaz vagy hamis lehet", kod="tulajdonsag.megerosit_logikai")
         return k.app.tulajdonsagok.modosit(
             t.get("ut"), t.get("fm"), t.get("muvelet"), t.get("kulcs"), t.get("ertek"), t.get("tipus"),
-            megerosit is True, t.get("forras") or "felhasznalo")
+            megerosit is True, t.get("forras") or "felhasznalo", t.get("uj_kulcs"))
 
     def osszefesul(k):
         t = k.torzs()

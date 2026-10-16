@@ -11,21 +11,24 @@
   import { JegyzetHigienia } from '../lib/asszisztens/adat.svelte';
   import { csend, kivul, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
   import { regioFokusz } from '../lib/fokusz/fokusz';
-  import { FileClock, Link2, ListChecks, ListTree, Network, PanelRight, Unlink, ArrowRight } from '../lib/ikon/ikonok';
+  import { FileClock, FileText, Link2, ListChecks, ListTree, Network, PanelRight, Unlink, ArrowRight } from '../lib/ikon/ikonok';
   import { HasonloJegyzetek } from '../lib/kereses/hasonlo.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { regiszter } from '../lib/parancsok/regiszter';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
-  import { Kapcsolatok, type Emlites, type KimenoLink } from '../lib/vault/kapcsolatok.svelte';
+  import UresAllapot from '../lib/ui/UresAllapot.svelte';
+  import { Kapcsolatok, type Emlites, type KimenoEmlites, type KimenoLink } from '../lib/vault/kapcsolatok.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
   import { KatexHibak, osszevon } from '../szerkeszto/asszisztens/kepletHibak.svelte';
   import { emlitesLinkel } from '../szerkeszto/linkek/emlites';
+  import { elonezetUtakra } from '../szerkeszto/linkek/elonezet';
   import { jegyzetLetrehoz, linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
   import Elozmenyek from './kapcsolatok/Elozmenyek.svelte';
   import Emlitesek from './kapcsolatok/Emlitesek.svelte';
   import Hasonlok from './kapcsolatok/Hasonlok.svelte';
   import Higienia from './kapcsolatok/Higienia.svelte';
+  import KimenoEmlitesek from './kapcsolatok/KimenoEmlitesek.svelte';
   import KimenoLinkek from './kapcsolatok/KimenoLinkek.svelte';
   import Vazlat from './kapcsolatok/Vazlat.svelte';
   import Visszahivatkozasok from './kapcsolatok/Visszahivatkozasok.svelte';
@@ -40,6 +43,9 @@
   const atfedes = $derived(!felulet.jobbPanel.nyitva && csend.jobbAtfedes);
   const lathato = $derived(felulet.jobbPanel.nyitva || atfedes);
   let aside: HTMLElement | undefined = $state();
+  let tartalomElem: HTMLElement | undefined = $state();
+  // 02-links-09: ⌘-hover előnézet a panel soraiban (`data-elonezet-ut`)
+  $effect(() => (tartalomElem ? elonezetUtakra(tartalomElem) : undefined));
   onMount(() => regioMegjelenitKezel(aside!, () => (csend.jobbAtfedes = true)));
 
   function fokuszKi(e: FocusEvent) {
@@ -129,6 +135,12 @@
     if (await emlitesLinkel(ful.ut, forras, em)) void k.frissit(ful.ut);
   }
 
+  /** 02-links-10: a megemlített jegyzet linkelése ebben (az aktív) jegyzetben. */
+  async function kimenoLinkel(celUt: string, em: KimenoEmlites) {
+    if (!ful?.ut) return;
+    if (await emlitesLinkel(celUt, ful.ut, em)) void k.frissit(ful.ut);
+  }
+
   function kimenoNyit(l: KimenoLink, e: MouseEvent) {
     if (!ful?.ut || !l.cel) return;
     void linkMegnyit({ forras: ful.ut, cel: l.cel_nyers, alcel: l.alcel }, nyitasMod(e));
@@ -167,9 +179,9 @@
       onclick={() => regiszter.futtat('hej.jobb-panel', 'gomb')}
     />
   </header>
-  <div class="tartalom gorgeto">
+  <div class="tartalom gorgeto" bind:this={tartalomElem}>
     {#if !ful?.ut}
-      <p class="ures">{t('Nincs megnyitott fájl.')}</p>
+      <UresAllapot ikon={FileText} cim={t('Nincs megnyitott fájl.')} leiras={t('ures.jobb_panel')} muvelet={{ cimke: t('ures.jegyzet_megnyitas'), onclick: () => regiszter.futtat('hej.valto', 'gomb') }} />
     {:else}
       {#if k.hiba}<p class="hiba" role="alert">{k.hiba}</p>{/if}
       {#if modulEngedelyezett('hivatkozasok')}
@@ -181,6 +193,7 @@
       </Szakasz>
       <Szakasz cim={t('Kimenő linkek')} ikon={ArrowRight} bind:nyitva={felulet.jobbPanel.kimeno}>
         <KimenoLinkek linkek={k.kimeno} info={(u) => fajlok.info(u)} onnyit={kimenoNyit} onletrehoz={letrehoz} />
+        <KimenoEmlitesek forrasok={k.kimenoEmlitesek} onlinkel={kimenoLinkel} />
       </Szakasz>
       {/if}
       {#if modulEngedelyezett('vazlat')}
@@ -253,12 +266,6 @@
     flex-direction: column;
     gap: var(--t-1);
     padding: 0 var(--t-2) var(--t-4);
-  }
-
-  .ures {
-    color: var(--szoveg-halvany);
-    font-size: var(--betu-kicsi);
-    line-height: var(--sor-kicsi);
   }
 
   .hiba {

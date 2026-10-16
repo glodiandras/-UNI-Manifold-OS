@@ -1,0 +1,23 @@
+{
+  "Címke neve (A–Z)": "Tag name (A–Z)",
+  "Címke neve (Z–A)": "Tag name (Z–A)",
+  "Címkék rendezése": "Sort tags",
+  "Darabszám: csökkenő": "Count: high to low",
+  "Darabszám: növekvő": "Count: low to high",
+  "Kulcs neve (A–Z)": "Property name (A–Z)",
+  "Kulcs neve (Z–A)": "Property name (Z–A)",
+  "Tulajdonságok rendezése": "Sort properties",
+  "Ez a jegyzet": "This note",
+  "Nyiss meg egy jegyzetet a tulajdonságaihoz.": "Open a note to see its properties.",
+  "A jegyzetnek nincs tulajdonsága.": "This note has no properties.",
+  "Az aktív jegyzet tulajdonságai": "Properties of the active note",
+  "Keresés: {kulcs}": "Search: {kulcs}",
+  "{n} tulajdonság a vaultban|one": "{n} property in the vault",
+  "{n} tulajdonság a vaultban|other": "{n} properties in the vault",
+  "Összes tulajdonság": "All properties",
+  "{kulcs}: {tipus}": "{kulcs}: {tipus}",
+  "A vault sémájának kulcsa": "A key of the vault schema",
+  "séma": "schema",
+  "A tulajdonságok töltődnek…": "Loading properties…",
+  "A vaultban nincs tulajdonság.": "The vault has no properties."
+}

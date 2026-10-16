@@ -1,0 +1,11 @@
+{
+  "nincs még": "not created yet",
+  "Szűrés…": "Filter…",
+  "Visszahivatkozások szűrése": "Filter backlinks",
+  "Említések szűrése": "Filter mentions",
+  "Nincs találat.": "No matches.",
+  "Említett, még nem linkelt jegyzetek": "Mentioned notes without a link",
+  "Linkelés: {link} → {fajl}": "Link {link} to {fajl}",
+  "Az azonosító nem mentődött": "The block ID was not saved",
+  "Az azonosító nem írható be": "The block ID could not be added"
+}

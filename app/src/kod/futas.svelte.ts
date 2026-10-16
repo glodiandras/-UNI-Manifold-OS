@@ -1,11 +1,13 @@
-// A C++ ellenőrzés (⌘R) állapota a felületen (C36a-UI): a core `cpp_futas` WS-eseményeiből egy tiszta redukáló
-// (`alkalmaz`) építi; egyszerre egy futás van (a core szabálya, `core/cpp_utvonal.py`). Az indítás, a megszakítás és a
-// késői csatlakozás (újracsatlakozás után a `GET /api/cpp/futas/{id}`) a `KodFutasok` dolga. A felület nem ellenőriz
-// semmit maga: a fordítás, a futtatás és az összevetés a motoré (`modulok/cpp`, homokozóban, 53(b)).
+// Az ellenőrzés (⌘R) állapota a felületen (C36a-UI, F10: minden nyelvre): a core `cpp_futas` (a `.cpp` a C36a motoron) és
+// `kod_futas` (minden más nyelv, `core/kod_utvonal.py`) WS-eseményeiből egy tiszta redukáló (`alkalmaz`) építi; egyszerre egy
+// futás van (a core szabálya). Az indítás, a megszakítás és a késői csatlakozás (újracsatlakozás után a `GET …/futas/{id}`) a
+// `KodFutasok` dolga; a két motor közti különbség (útvonal, mezőnevek, `kod.` hibakód-előtag) itt záródik le. A felület nem
+// ellenőriz semmit maga: a fordítás, a futtatás és az összevetés a motoré (homokozóban, 53(b)).
 
-import { ApiHiba, kerdez } from '../lib/core/api';
+import { ApiHiba, kerdez, kodUzenet } from '../lib/core/api';
 import { t, tk } from '../lib/i18n';
 import type { CoreEsemeny, CoreKapcsolat } from '../lib/core/ws.svelte';
+import { motorUt, nyelvUt, rovidKod, type Motor } from './nyelvek.svelte';
 
 export type FutasMod = 'gyors' | 'hibakereso';
 
@@ -74,6 +76,8 @@ export interface Jelentes {
   oszlop: number | null;
   fuggveny: string | null;
   sajat: boolean;
+  /** az általános motor: a hívási keretek (a kód-fülön csak a saját sor számít) */
+  keretek?: { fajl: string | null; sor: number | null; fuggveny: string | null; sajat_modul?: boolean }[];
 }
 
 export type TesztAllapot =
@@ -147,8 +151,12 @@ export type FutasAllapotNev = 'fut' | 'kesz' | 'hiba' | 'megszakitva';
 
 export interface Futas {
   futas: string;
-  /** a `.cpp` útja */
+  /** a forrásfájl útja (a C36a-ból örökölt név: `.cpp`, de bármely nyelv forrása) */
   ut: string;
+  /** a nyelv azonosítója (`cpp`, `python`, …) */
+  nyelv: string;
+  /** melyik core-szolgáltatás futtatja (a megszakítás és a késői csatlakozás útvonala) */
+  motor: Motor;
   jegyzet: string | null;
   mod: FutasMod;
   allapot: FutasAllapotNev;
@@ -161,7 +169,7 @@ export interface Futas {
   megszakitasKerve?: boolean;
 }
 
-/** Egy `.cpp` utolsó lezárt futásának összesítője (a beágyazás jelvénye; csak a memóriában). */
+/** Egy forrás utolsó lezárt futásának összesítője (a beágyazás jelvénye; csak a memóriában). */
 export interface Osszesito {
   fordit_ok: boolean;
   atment_db: number;
@@ -170,13 +178,18 @@ export interface Osszesito {
 }
 
 const MODOK: FutasMod[] = ['gyors', 'hibakereso'];
+/** A két core-szolgáltatás útvonal-előtagja (a régi `/api/cpp` változatlan). */
+export const ALAP: Record<Motor, string> = { cpp: '/api/cpp', kod: '/api/kod' };
 const szoveg = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 
-/** Egy `cpp_futas` esemény alkalmazása (tiszta függvény). A más futáshoz tartozó esemény új állapotot kezd (késői
+/** A futás nyelve egy eseményből vagy válaszból: a `nyelv` mező, különben a forrás kiterjesztése, végül `cpp` (a C36a eseményei). */
+const nyelvAz = (nyelv: unknown, ut: string): string => szoveg(nyelv) ?? nyelvUt(ut)?.azonosito ?? 'cpp';
+
+/** Egy `cpp_futas` / `kod_futas` esemény alkalmazása (tiszta függvény). A más futáshoz tartozó esemény új állapotot kezd (késői
  *  csatlakozás vagy a core újraindult); a régi futás eseménye az újabbat nem írja felül. */
 export function alkalmaz(a: Futas | null, e: CoreEsemeny, korabbiak: ReadonlySet<string> = new Set()): Futas | null {
   const id = szoveg(e.futas);
-  const ut = szoveg(e.ut);
+  const ut = szoveg(e.ut) ?? szoveg(e.forras); // a C36a esemény `ut`, az általános `forras`
   if (!id || !ut) return a;
   if (a && a.futas !== id && korabbiak.has(id)) return a; // egy már lezárt, régebbi futás késve érkező eseménye
   let f: Futas =
@@ -185,6 +198,8 @@ export function alkalmaz(a: Futas | null, e: CoreEsemeny, korabbiak: ReadonlySet
       : {
           futas: id,
           ut,
+          nyelv: nyelvAz(e.nyelv, ut),
+          motor: e.tipus === 'kod_futas' ? 'kod' : 'cpp',
           jegyzet: szoveg(e.jegyzet),
           mod: MODOK.includes(e.mod as FutasMod) ? (e.mod as FutasMod) : 'gyors',
           allapot: 'fut',
@@ -210,14 +225,17 @@ export function alkalmaz(a: Futas | null, e: CoreEsemeny, korabbiak: ReadonlySet
     }
     case 'kesz': {
       const k: Record<string, unknown> = { ...e };
-      for (const kulcs of ['tipus', 'futas', 'ut', 'jegyzet', 'szakasz']) delete k[kulcs];
+      for (const kulcs of ['tipus', 'futas', 'ut', 'forras', 'nyelv', 'jegyzet', 'szakasz']) delete k[kulcs];
       f.kesz = k as unknown as Kesz;
       f.tesztek_db = Number(k.tesztek_db) || f.tesztek_db;
       f.allapot = 'kesz';
       break;
     }
     case 'hiba':
-      f.hiba = { kod: szoveg(e.kod), uzenet: szoveg(e.uzenet) ?? t('ismeretlen hiba') };
+      f.hiba = {
+        kod: rovidKod(e.kod),
+        uzenet: kodUzenet({ hiba: e.uzenet, kod: e.kod, param: e.param }, t('ismeretlen hiba')),
+      };
       f.allapot = 'hiba';
       break;
     case 'megszakitva':
@@ -230,11 +248,21 @@ export function alkalmaz(a: Futas | null, e: CoreEsemeny, korabbiak: ReadonlySet
   return f;
 }
 
-/** A `GET /api/cpp/futas/{id}` összesítője → állapot (a késői csatlakozónak). */
-export function osszesitobol(d: Record<string, unknown>): Futas {
+/** A core `{kod, param?, uzenet}` hibaobjektuma a felület alakjára (rövid kód, az aktív nyelvű szöveg). */
+function hibaObjektum(h: unknown): Futas['hiba'] {
+  if (!h || typeof h !== 'object') return null;
+  const o = h as Record<string, unknown>;
+  return { kod: rovidKod(o.kod), uzenet: kodUzenet({ hiba: o.uzenet, kod: o.kod, param: o.param }, t('ismeretlen hiba')) };
+}
+
+/** A `GET …/futas/{id}` összesítője → állapot (a késői csatlakozónak). */
+export function osszesitobol(d: Record<string, unknown>, motor: Motor = 'cpp'): Futas {
+  const ut = String(d.forras ?? d.ut);
   return {
     futas: String(d.futas),
-    ut: String(d.ut),
+    ut,
+    nyelv: nyelvAz(d.nyelv, ut),
+    motor,
     jegyzet: szoveg(d.jegyzet),
     mod: MODOK.includes(d.mod as FutasMod) ? (d.mod as FutasMod) : 'gyors',
     allapot: (['fut', 'kesz', 'hiba', 'megszakitva'] as const).includes(d.allapot as FutasAllapotNev) ? (d.allapot as FutasAllapotNev) : 'fut',
@@ -242,7 +270,7 @@ export function osszesitobol(d: Record<string, unknown>): Futas {
     fordit: (d.fordit as Forditas) ?? null,
     tesztek: Array.isArray(d.tesztek) ? (d.tesztek as TesztEredmeny[]) : [],
     kesz: (d.kesz as Kesz) ?? null,
-    hiba: (d.hiba as Futas['hiba']) ?? null,
+    hiba: hibaObjektum(d.hiba),
   };
 }
 
@@ -263,13 +291,13 @@ export type InditasEredmeny =
 export class KodFutasok {
   /** a legutóbbi (vagy a most futó) ellenőrzés */
   aktiv = $state.raw<Futas | null>(null);
-  /** `.cpp` út → az utolsó lezárt futás összesítője */
+  /** forrás út → az utolsó lezárt futás összesítője */
   utolso = $state.raw<Record<string, Osszesito>>({});
   /** futás-azonosító → a jegyzet tesztjei (bemenet, várt kimenet) */
   leirasok = $state.raw<Record<string, TesztLeiras[]>>({});
-  /** a `.cpp`-t több feladat-jegyzet ágyazza be (409 `tobbertelmu`): a fül választót mutat */
+  /** a forrást több feladat-jegyzet ágyazza be (409 `tobbertelmu`): a fül választót mutat */
   tobbertelmu = $state.raw<{ ut: string; mod: FutasMod; jegyzetek: string[] } | null>(null);
-  /** `.cpp` út → a felhasználó által választott feladat-jegyzet (a munkamenetre) */
+  /** forrás út → a felhasználó által választott feladat-jegyzet (a munkamenetre) */
   readonly jegyzetValasztas = new Map<string, string>();
   private readonly lezartak = new Set<string>();
   private readonly figyelok = new Set<(ut: string) => void>();
@@ -301,22 +329,22 @@ export class KodFutasok {
     }
   }
 
-  /** A WS-feliratkozás; újracsatlakozáskor (a `hello`) a futó ellenőrzés állapota a core-ból frissül. */
+  /** A WS-feliratkozás (a C36a `cpp_futas` és az általános `kod_futas`); újracsatlakozáskor (a `hello`) a futó ellenőrzés állapota a core-ból frissül. */
   telepit(k: CoreKapcsolat): () => void {
-    const le1 = k.figyel('cpp_futas', (e) => this.esemeny(e));
-    const le2 = k.figyel('hello', () => void this.frissit());
-    return () => {
-      le1();
-      le2();
-    };
+    const le = [
+      k.figyel('cpp_futas', (e) => this.esemeny(e)),
+      k.figyel('kod_futas', (e) => this.esemeny(e)),
+      k.figyel('hello', () => void this.frissit()),
+    ];
+    return () => le.forEach((f) => f());
   }
 
   async frissit(): Promise<void> {
     const a = this.aktiv;
     if (!a || a.allapot !== 'fut') return;
     try {
-      const d = await kerdez<Record<string, unknown>>(`/api/cpp/futas/${encodeURIComponent(a.futas)}`, { idokorlat: 10000 });
-      if (this.aktiv?.futas === a.futas) this.beallit(osszesitobol(d));
+      const d = await kerdez<Record<string, unknown>>(`${ALAP[a.motor]}/futas/${encodeURIComponent(a.futas)}`, { idokorlat: 10000 });
+      if (this.aktiv?.futas === a.futas) this.beallit({ ...osszesitobol(d, a.motor), nyelv: a.nyelv });
     } catch (e) {
       // a core újraindult, a futás nincs meg: lezárt hibának számít (különben a panel örökké „fut”)
       if (e instanceof ApiHiba && e.statusz === 404 && this.aktiv?.futas === a.futas)
@@ -324,30 +352,37 @@ export class KodFutasok {
     }
   }
 
-  /** `POST /api/cpp/ellenoriz`; a futás eseményei a WS-en jönnek. */
-  async indit(ut: string, mod: FutasMod, jegyzet?: string | null): Promise<InditasEredmeny> {
-    let d: { futas: string; cpp: string; jegyzet: string | null; mod: FutasMod; tesztek_db: number };
+  /**
+   * `POST /api/cpp/ellenoriz` (a `.cpp` és a `.cpp`-t beágyazó jegyzet) vagy `POST /api/kod/ellenoriz` (minden más nyelv); a futás
+   * eseményei a WS-en jönnek. `motor`: a hívó tudja (jegyzetnél a beágyazott forrás nyelve); hiányában az útból következik.
+   */
+  async indit(ut: string, mod: FutasMod, jegyzet?: string | null, motor: Motor = motorUt(ut), nyelv?: string | null): Promise<InditasEredmeny> {
+    let d: { futas: string; cpp?: string; forras?: string; nyelv?: string; jegyzet: string | null; mod: FutasMod; tesztek_db: number };
     try {
-      d = await kerdez('/api/cpp/ellenoriz', {
+      d = await kerdez(`${ALAP[motor]}/ellenoriz`, {
         metodus: 'POST',
-        torzs: { ut, mod, ...(jegyzet ? { jegyzet } : {}) },
+        // az általános motor a nyelvet is kéri (a mezőt a profil-azonosító adja); a C36a motor a kiterjesztésből tudja
+        torzs: { ut, mod, ...(jegyzet ? { jegyzet } : {}), ...(motor === 'kod' && nyelv ? { nyelv } : {}) },
         idokorlat: 15000,
       });
     } catch (e) {
       if (e instanceof ApiHiba)
         return {
           ok: false,
-          kod: typeof e.adat.kod === 'string' ? e.adat.kod : `http_${e.statusz}`,
+          kod: rovidKod(e.adat.kod) ?? `http_${e.statusz}`,
           uzenet: e.message,
           jegyzetek: Array.isArray(e.adat.jegyzetek) ? (e.adat.jegyzetek as string[]) : undefined,
           utak: Array.isArray(e.adat.utak) ? (e.adat.utak as string[]) : undefined,
         };
       return { ok: false, kod: 'hiba', uzenet: e instanceof Error ? e.message : String(e) };
     }
+    const forras = d.forras ?? d.cpp ?? ut;
     if (this.aktiv?.futas !== d.futas)
       this.beallit({
         futas: d.futas,
-        ut: d.cpp,
+        ut: forras,
+        nyelv: nyelvAz(d.nyelv, forras),
+        motor,
         jegyzet: d.jegyzet,
         mod: d.mod,
         allapot: 'fut',
@@ -357,13 +392,13 @@ export class KodFutasok {
         kesz: null,
         hiba: null,
       });
-    void this.leirasBetolt(d.futas, d.jegyzet ?? d.cpp);
-    return { ok: true, futas: d.futas, cpp: d.cpp, jegyzet: d.jegyzet };
+    void this.leirasBetolt(d.futas, d.jegyzet ?? forras, motor);
+    return { ok: true, futas: d.futas, cpp: forras, jegyzet: d.jegyzet };
   }
 
-  private async leirasBetolt(futas: string, ut: string): Promise<void> {
+  private async leirasBetolt(futas: string, ut: string, motor: Motor): Promise<void> {
     try {
-      const f = await kerdez<{ tesztek: TesztLeiras[] }>(`/api/cpp/feladat?ut=${encodeURIComponent(ut)}`, { idokorlat: 10000 });
+      const f = await kerdez<{ tesztek: TesztLeiras[] }>(`${ALAP[motor]}/feladat?ut=${encodeURIComponent(ut)}`, { idokorlat: 10000 });
       this.leirasok = { ...this.leirasokSzukit(futas), [futas]: f.tesztek ?? [] };
     } catch {
       // a leírás csak kényelem (a bemenet mutatása): hiánya nem hiba
@@ -381,7 +416,7 @@ export class KodFutasok {
     if (!a || a.allapot !== 'fut') return;
     this.aktiv = { ...a, megszakitasKerve: true };
     try {
-      await kerdez('/api/cpp/megszakit', { metodus: 'POST', torzs: { futas: a.futas }, idokorlat: 10000 });
+      await kerdez(`${ALAP[a.motor]}/megszakit`, { metodus: 'POST', torzs: { futas: a.futas }, idokorlat: 10000 });
     } catch {
       // a futás közben lezárult, vagy a core nem érhető el: az esemény (vagy a `frissit`) rendezi az állapotot
     }

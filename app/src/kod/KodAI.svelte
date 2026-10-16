@@ -1,25 +1,31 @@
 <!--
-  A C++ AI-segítség a `.cpp` fül alján (C36b), csak kattintásra: „Mi a hiba?”, „Tipp” (lépcsőzetes felfedés; a teljes
-  megoldás csak külön megerősítéssel), „Szélső tesztek”, „Stressz-teszt”. Ami fordítással vagy futtatással ellenőrizhető,
+  Az AI-segítség a kód-fül alján (C36b, F10: a fájl nyelvével), csak kattintásra: „Mi a hiba?”, „Tipp” (lépcsőzetes felfedés; a
+  teljes megoldás csak külön megerősítéssel), „Szélső tesztek”, „Stressz-teszt”. Ami fordítással vagy futtatással ellenőrizhető,
   „ellenőrizve” jelet kap, a többi „nem ellenőrzött”. A javaslat sosem íródik magától: a „Hozzáadás a feladathoz” és a
-  „Beillesztés” a felhasználó egy szerkesztő-tranzakciója (`aiElfogad.ts`). Kalibrált modell nélkül a gombok tiltva, a sáv
-  megmondja, miért (D9). Csak tokenből rajzol (25. döntés).
+  „Beillesztés” a felhasználó egy szerkesztő-tranzakciója (`aiElfogad.ts`). D9: a `.cpp` AI-ja kalibrált modell nélkül tiltva
+  (a sáv megmondja, miért); a többi nyelven a kalibrálatlan modell csak PRÓBÁKÉNT fut, és minden ilyen eredmény a „Próba”
+  (Trial) jelet viseli. Csak tokenből rajzol (25. döntés).
 -->
 <script lang="ts">
   import { untrack } from 'svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import { t, tk } from '../lib/i18n';
+  import ProbaJel from '../modellek/ProbaJel.svelte';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
   import { vagolapra } from '../szerkeszto/vagolap';
   import { AI_MOD_NEV, kodAI, type AIMod } from './ai.svelte';
   import { megoldasBeilleszt, tesztBeszur } from './aiElfogad';
+  import { motorUt, nyelvNev } from './nyelvek.svelte';
 
   let {
     ut,
+    nyelv = null,
     onker,
     onugras,
   }: {
     ut: string;
+    /** a fájl nyelvének azonosítója (a próba-jelölés magyarázatához) */
+    nyelv?: string | null;
     onker: (mod: AIMod, megerosit?: boolean) => void;
     onugras: (sor: number) => void;
   } = $props();
@@ -34,8 +40,8 @@
   };
 
   const futas = $derived(kodAI.aktiv?.cpp === ut ? kodAI.aktiv : null);
-  const fut = $derived(kodAI.fut);
-  const tiltva = $derived(!kodAI.kalibralt || fut);
+  const motor = $derived(motorUt(ut));
+  const tiltva = $derived(!kodAI.indithato(motor));
   const e = $derived((futas?.eredmeny ?? null) as Record<string, any> | null);
   let megerosites = $state(false);
   let elsoJelentve = '';
@@ -77,15 +83,20 @@
   }
 </script>
 
+{#snippet trial(indok: string | null)}
+  <ProbaJel jel="proba" {indok} />
+{/snippet}
+
 <section class="kod-ai" aria-label={t('AI-segítség')}>
   <div class="sav">
     <span class="cim">{t('AI')}</span>
     {#each GOMBOK as m (m)}
       <button type="button" class="gomb" disabled={tiltva} onclick={() => onker(m)}>{t(AI_MOD_NEV[m])}</button>
     {/each}
-    {#if !kodAI.kalibralt}
+    {#if motor === 'cpp' && !kodAI.kalibralt}
       <span class="jel" title={kodAI.allapot?.indok ?? ''}>{t('nincs kalibrált modell')}</span>
     {:else if futas?.allapot === 'fut'}
+      {#if futas.proba}{@render trial(futas.indok)}{/if}
       <span class="jel" role="status">{futas.tokenek ? t('{mod}: {n} token…', { mod: t(AI_MOD_NEV[futas.mod]), n: futas.tokenek }) : t('{mod}: ellenőrzés…', { mod: t(AI_MOD_NEV[futas.mod]) })}</span>
       <button type="button" class="gomb" onclick={() => void kodAI.megszakit()}>{t('Megszakítás')}</button>
     {/if}
@@ -97,6 +108,12 @@
     <p class="uzenet">{t('Megszakítva.')}</p>
   {:else if futas && e}
     <div class="eredmeny" aria-live="polite">
+      {#if futas.proba}
+        <p class="sor trial-sor">
+          {@render trial(futas.indok)}
+          <span>{t('A modell nincs kalibrálva ehhez a nyelvhez ({nyelv}): az eredmény csak javaslat, nem mért válasz.', { nyelv: nyelvNev(nyelv ?? futas.nyelv) })}</span>
+        </p>
+      {/if}
       {#if e.nincs_hiba}
         <p class="uzenet">{e.uzenet}</p>
       {:else if futas.mod === 'hiba'}
@@ -260,6 +277,10 @@
   .jel.rossz {
     color: var(--hiba);
     background: var(--hiba-hatter);
+  }
+
+  .trial-sor {
+    color: var(--szoveg-masodlagos);
   }
 
   .eredmeny {

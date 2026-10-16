@@ -1,0 +1,48 @@
+;; F10: the compile / check step of a language profile (modulok/kod): javac, go build, rustc, swiftc, the Python and
+;; JavaScript/TypeScript syntax checkers. Separate from the C36a profiles (profil_fordit.sb is the portable LLVM's), the
+;; same rules: every path is a parameter (-D), nothing is burnt in.
+;;
+;; The source is copied into `MUNKA`, so the toolchain never reads the vault, the home or the code tree. Exec only from
+;; the toolchain roots (EXEC_1..EXEC_4: e.g. GOROOT, the Rust sysroot, the Command Line Tools); fork is allowed because the
+;; drivers start their own back ends (compile, link, swift-frontend, ld). Reading: the toolchain roots, the SDK, the
+;; engine's helper scripts (OLVAS_1..OLVAS_6) and the system libraries; writing: `MUNKA` and the language's compiler cache
+;; (`IRHAT`: a folder under `{cache}/kod/<language>`, or the same as `MUNKA`). No network, no foreign signals.
+;; Unused slots carry a path that does not exist.
+(version 1)
+(deny default)
+
+(allow process-exec
+  (subpath (param "EXEC_1"))
+  (subpath (param "EXEC_2"))
+  (subpath (param "EXEC_3"))
+  (subpath (param "EXEC_4")))
+(allow process-fork)
+
+(allow sysctl-read)
+(allow file-read-metadata)
+(allow file-read*
+  (literal "/")
+  (subpath "/usr/lib")
+  (subpath "/usr/share")
+  (subpath "/System")
+  (subpath "/private/var/db/dyld")
+  (subpath "/private/var/db/timezone")
+  (literal "/private/etc/localtime")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/dev/random")
+  (subpath (param "OLVAS_1"))
+  (subpath (param "OLVAS_2"))
+  (subpath (param "OLVAS_3"))
+  (subpath (param "OLVAS_4"))
+  (subpath (param "OLVAS_5"))
+  (subpath (param "OLVAS_6"))
+  (subpath (param "IRHAT"))
+  (subpath (param "MUNKA")))
+
+(allow file-write* (subpath (param "MUNKA")) (subpath (param "IRHAT")))
+(allow file-write-data (literal "/dev/null"))
+(allow file-ioctl (literal "/dev/null"))
+
+(allow signal (target self))
+(allow signal (target children))

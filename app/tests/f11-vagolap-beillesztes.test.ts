@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({ kerdez: vi.fn(async (_ut: string, _opciok?: unknown) => ({ azon: 'a'.repeat(32), ut: 'Assets/image.png', kesz: true })) }));
 vi.mock('../src/lib/core/api', () => ({ kerdez: api.kerdez, ApiHiba: class extends Error {} }));
-vi.mock('../src/lib/vault/linkek.svelte', () => ({ linkek: { linkCel: async () => 'image.png' } }));
+vi.mock('../src/lib/vault/linkek.svelte', () => ({ linkek: { linkCelAdat: async () => ({ ut: 'Assets/image.png', cel: 'image.png', alak: 'wiki' }) } }));
 vi.mock('../src/lib/ertesites/ertesites.svelte', () => ({ ertesitesek: { ertesit: vi.fn() } }));
 
 import { csatolmanyBovitmeny } from '../src/szerkeszto/csatolmany';
@@ -55,6 +55,8 @@ describe('F11: valódi CodeMirror paste esemény', () => {
     await vi.waitFor(() => expect(v.state.doc.toString()).toBe('![[image.png]]'));
     expect(api.kerdez).toHaveBeenCalledTimes(1);
     expect(api.kerdez.mock.calls[0][0]).toBe('/api/vault/import');
+    // 04-embeds-08: a vágólap általános nevű képe az Obsidian alakján kap nevet
+    expect(api.kerdez.mock.calls[0][1]).toMatchObject({ torzs: { nev: expect.stringMatching(/^Pasted image \d{14}\.png$/) } });
     expect(v.state.doc.toString()).not.toContain('example.com');
   });
 
@@ -83,6 +85,6 @@ describe('F11: valódi CodeMirror paste esemény', () => {
     expect(v.state.doc.toString()).toBe('Fallback');
     v.dispatch({ selection: { anchor: 0, head: 8 } });
     beilleszt(v, '<a href="https://example.com">https://example.com</a>', 'https://example.com');
-    expect(v.state.doc.toString()).toBe('[Fallback](<https://example.com>)');
+    expect(v.state.doc.toString()).toBe('[Fallback](https://example.com)');
   });
 });

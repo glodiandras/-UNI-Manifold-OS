@@ -6,13 +6,16 @@
 -->
 <script lang="ts">
   import { t, tp, locale } from '../lib/i18n';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
+  import { VisszaSzam } from '../lib/vault/visszaSzam.svelte';
   import { allapotsorLathato, csend, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
   import { statisztika } from '../lib/elrendezes/szovegStatisztika.svelte';
   import { feladatsor } from '../lib/vezerlo/feladatsor.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { Bell, PanelLeft, PanelRight } from '../lib/ikon/ikonok';
+  import { egeszsegMegnyit } from '../lib/egeszseg/allapot.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { regiszter } from '../lib/parancsok/regiszter';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
@@ -31,6 +34,19 @@
     if (!ix.kesz) return t('Indexelés…');
     return `${szam.format(fajlok.jegyzetek)} jegyzet`;
   });
+  // 06-workspace-17: az aktív jegyzet visszahivatkozásainak száma; kattintásra a jobb panel szakasza nyílik
+  const visszaSzam = new VisszaSzam();
+  const szamUt = $derived(aktivFul?.ut && /\.(md|canvas)$/i.test(aktivFul.ut) && modulEngedelyezett('hivatkozasok') ? aktivFul.ut : null);
+  $effect(() => {
+    const ut = szamUt;
+    untrack(() => void visszaSzam.frissit(ut));
+  });
+  onMount(() => visszaSzam.figyel(kapcsolat, () => szamUt));
+  function visszaMutat() {
+    felulet.jobbPanel.visszahivatkozasok = true;
+    if (!felulet.jobbPanel.nyitva) regiszter.futtat('hej.jobb-panel', 'gomb');
+  }
+
   let gomb: HTMLButtonElement | undefined = $state();
   let sav: HTMLElement | undefined = $state();
   let fokuszBenne = $state(false);
@@ -78,7 +94,14 @@
       <span class="elem figyelmeztetes" role="status"><span class="pont"></span>{t('Nincs kapcsolat a core-ral, újrapróbálás…')}</span>
     {/if}
     {#if !felulet.oldalsav.nyitva}<span class="elem"><Jelenlet /></span>{/if}
-    <span class="elem" role="status" title={fajlok.index?.hiba ?? undefined}>{indexSzoveg}</span>
+    {#if fajlok.index?.hiba}
+      <span role="status" title={fajlok.index.hiba}><button type="button" class="elem elem-gomb" data-index-hiba title={t('allapotsor.index_diagnosztika')} onclick={() => egeszsegMegnyit('index')}>{indexSzoveg}</button></span>
+    {:else}
+      <span class="elem" role="status">{indexSzoveg}</span>
+    {/if}
+    {#if szamUt && visszaSzam.ut === szamUt && visszaSzam.db !== null}
+      <button type="button" class="elem elem-gomb" data-visszahivatkozasok title={t('Visszahivatkozások megnyitása')} onclick={visszaMutat}>{tp('{n} visszahivatkozás', visszaSzam.db)}</button>
+    {/if}
     {#if szovegSzamok}
       <span class="elem szoveg-szamok" title={szovegSzamok.kijelolt ? t('Kijelölés. Teljes jegyzet: {szavak} szó, {karakterek} karakter.', { szavak: szovegSzamok.osszesSzavak, karakterek: szovegSzamok.osszesKarakterek }) : t('A teljes jegyzet szavai és karakterei')}>
         {#if szovegSzamok.kijelolt}<span>{t('Kijelölés:')}</span>{/if}
@@ -164,6 +187,17 @@
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+  }
+
+  .elem-gomb {
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    border-radius: var(--kerekites-kicsi);
+  }
+
+  .elem-gomb:hover {
+    color: var(--szoveg-masodlagos);
   }
 
   .figyelmeztetes {

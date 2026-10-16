@@ -23,6 +23,8 @@ import { Decoration, type DecorationSet, EditorView, type PluginValue, ViewPlugi
 import { asszisztensApi } from '../../lib/asszisztens/api';
 import type { EmlitesValasz, HasonlosagValasz, JavaslatKuszob } from '../../lib/asszisztens/tipusok';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
+import type { LinkForma } from '../../lib/vault/linkek.svelte';
+import { linkSzoveg } from '../linkek/adat';
 import { kiegeszitesNyitva } from '../linkek/kiegeszites';
 import { perjelNyitva } from '../notion/perjel';
 import {
@@ -54,6 +56,8 @@ export interface JavaslatBeallitas {
   kapcsolo(): boolean;
   /** a beírandó link-cél (a core legrövidebb egyértelmű alakja, L42) a cél jegyzet útjából */
   linkCel(celUt: string): Promise<string>;
+  /** 02-links-13: a link alakja a beállítás szerint (wiki | md + md-cél); hiányában mindig `[[…]]` a `linkCel`-ből */
+  linkForma?(celUt: string): Promise<LinkForma>;
   kliens: JavaslatKliens;
 }
 
@@ -283,15 +287,20 @@ async function elfogad(view: EditorView, a: Javaslat): Promise<void> {
   const cfg = view.state.facet(javaslatBeallitas);
   if (!cfg) return;
   let cel: string;
+  let forma: LinkForma | null = null;
   try {
-    cel = await cfg.linkCel(a.celUt);
+    if (cfg.linkForma) {
+      forma = await cfg.linkForma(a.celUt);
+      cel = forma.cel;
+    } else cel = await cfg.linkCel(a.celUt);
   } catch {
     return; // a cél nem oldható fel: a javaslat marad, a Tab nem ír
   }
   // a feloldás alatt gépelhetett: a javaslat mai helyét az állapot adja, érvénytelenné vált javaslatra nem írunk
   const mai = view.state.field(mezo, false)?.lista.find((j) => j.id === a.id);
   if (!mai || !ervenyesSzo(view.state.doc, mai.from, mai.to, mai.szoveg) || view.state.readOnly) return;
-  const beszur = emlitesLink(cel, fajlNev(a.celUt), mai.szoveg);
+  const nev = fajlNev(a.celUt);
+  const beszur = forma?.alak === 'md' ? linkSzoveg(forma, { alias: mai.szoveg === nev ? null : mai.szoveg, nev }) : emlitesLink(cel, nev, mai.szoveg);
   const fej = view.state.selection.main.head;
   view.dispatch({
     changes: { from: mai.from, to: mai.to, insert: beszur },

@@ -24,8 +24,19 @@ export const SZAKASZOK = [
   { id: 'integraciok', csoport: tk('beallitasok.privacy'), cim: tk('beallitasok.integraciok') },
   { id: 'engedelyek', csoport: tk('beallitasok.privacy'), cim: tk('beallitasok.engedelyek') },
   { id: 'nevjegy', csoport: tk('beallitasok.about'), cim: tk('beallitasok.nevjegy') },
+  // Developer mód (F7): csak bekapcsolt módban látszik (nav, parancs, megnyitás)
+  { id: 'fejleszto_naplok', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_naplok') },
+  { id: 'fejleszto_diagnosztika', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_diagnosztika') },
+  { id: 'fejleszto_homokozo', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_homokozo') },
+  { id: 'fejleszto_modell', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_modell') },
+  { id: 'fejleszto_teszt', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_teszt') },
+  { id: 'fejleszto_git', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_git') },
+  { id: 'fejleszto_import', csoport: tk('beallitasok.developer'), cim: tk('beallitasok.fejleszto_import') },
 ] as const;
 export type SzakaszId = typeof SZAKASZOK[number]['id'];
+/** A Developer-csoport szakaszai: Developer mód nélkül nem látszanak, nem nyithatók, parancsuk nem él. */
+export const fejlesztoiSzakasz = (id: string): boolean => id.startsWith('fejleszto_');
+export const szakaszLathato = (id: string, fejleszto: boolean): boolean => fejleszto || !fejlesztoiSzakasz(id);
 export const beallitasAblak = $state({ nyitva: false, szakasz: 'altalanos' as SzakaszId });
 export function beallitasMegnyit(szakasz: SzakaszId = 'altalanos'): void {
   beallitasAblak.szakasz = szakasz;

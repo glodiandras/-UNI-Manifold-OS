@@ -137,6 +137,9 @@ export {
   RotateCw,
   Volume2,
   VolumeX,
+  ImageDown,
+  Scissors,
+  ClipboardPaste,
 } from 'lucide';
 
 export type { IconNode } from 'lucide';

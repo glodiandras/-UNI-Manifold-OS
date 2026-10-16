@@ -1,0 +1,11 @@
+{
+  "Összecsukás": "Collapse",
+  "Kibontás": "Expand",
+  "Összecsukás váltása a kurzor soránál": "Toggle fold on the current line",
+  "Minden címsor és lista összecsukása": "Fold all headings and lists",
+  "Minden címsor és lista kibontása": "Unfold all headings and lists",
+  "Több összecsukása": "Fold more",
+  "Kevesebb összecsukása": "Fold less",
+  "{n}. lábjegyzet: {szoveg}": "Footnote {n}: {szoveg}",
+  "A HTML nem jeleníthető meg biztonságosan; a forrás látszik.": "This HTML cannot be displayed safely; showing the source."
+}

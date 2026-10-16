@@ -148,6 +148,27 @@ class Tabla:
                 raise
         return dict(zip(MEZOK, sor))
 
+    def modell_jel_levesz(self, modell: str, megjegyzes: str) -> list[str]:
+        """A modell minden kalibrált jelének levétele (F6: a modell törlése után a jel nem élhet tovább), naplósorral; a
+        pontszám és a sor megmarad. → az érintett feladatok."""
+        with self._lock:
+            self._db.execute("BEGIN IMMEDIATE")
+            try:
+                sorok = [dict(r) for r in self._db.execute(
+                    "SELECT * FROM kalibracio WHERE modell=? AND kalibralt=1", (modell,))]
+                for s in sorok:
+                    uj = {**s, "datum": _most(), "kalibralt": 0,
+                          "megjegyzes": (megjegyzes + "; " if megjegyzes else "") + s["megjegyzes"]}
+                    sor = tuple(uj[k] for k in MEZOK)
+                    self._db.execute(f"INSERT INTO kalibracio_naplo ({', '.join(MEZOK)}) VALUES ({','.join('?' * len(MEZOK))})", sor)
+                    self._db.execute("UPDATE kalibracio SET kalibralt=0, datum=?, megjegyzes=? WHERE feladat=? AND modell=?",
+                                     (uj["datum"], uj["megjegyzes"], s["feladat"], modell))
+                self._db.execute("COMMIT")
+            except BaseException:
+                self._db.execute("ROLLBACK")
+                raise
+        return [s["feladat"] for s in sorok]
+
     def tabla(self, feladat: str | None = None) -> list[dict]:
         q, a = "SELECT * FROM kalibracio", ()
         if feladat:

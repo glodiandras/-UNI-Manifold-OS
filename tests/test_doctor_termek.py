@@ -55,7 +55,7 @@ def termek_epit(tmp: Path, *, vault: Path | None = None, id: str = ID, regiszter
     for rel in ("runtime/python/bin/python3", "runtime/node/bin/node", "core/x.py", "modulok/m.py"):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text("# ál\n", encoding="utf-8")
-    for f in ("letoltes.toml", "runtime-pins.env"):
+    for f in ("models.toml", "runtime-pins.env"):
         if (REPO / "config" / f).is_file():
             (root / "config" / f).write_bytes((REPO / "config" / f).read_bytes())
     (root / "config" / "schema-default.json").write_text(json.dumps({"mezosorrend": ["tags"]}), encoding="utf-8")

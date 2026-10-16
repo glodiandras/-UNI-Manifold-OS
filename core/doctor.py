@@ -712,16 +712,16 @@ def _index(cfg: config.Config, add) -> None:
 
 
 def _modell_reviziok(cfg: config.Config, add) -> None:
-    """C19 (T141): a helyi modell-gyorsítótár a `config/letoltes.toml` rögzített revízióján áll-e, és a kalibrált router-sorok
+    """C19 (T141): a helyi modell-gyorsítótár a `config/models.toml` rögzített revízióján áll-e, és a kalibrált router-sorok
     ezen a pillanatképen mértek-e. Csak olvas (a router.sqlite-ot `immutable=1`-gyel, nem migrál)."""
     import sqlite3
     import tomllib
     from .modell import revizio
     try:
-        with open(cfg.root / "config" / "letoltes.toml", "rb") as f:
+        with open(cfg.root / "config" / "models.toml", "rb") as f:
             lista = tomllib.load(f).get("modell", {})
     except (OSError, tomllib.TOMLDecodeError) as e:
-        add(FIGYELEM, "modell-revízió", f"a letoltes.toml nem olvasható: {e}")
+        add(FIGYELEM, "modell-revízió", f"a models.toml nem olvasható: {e}")
         return
     elteresek = revizio.ellenoriz(lista, cfg.path("models"))
     add(FIGYELEM if elteresek else OK, "modell-revízió",
@@ -971,6 +971,18 @@ def _bundle_sorok(cfg: config.Config, add) -> None:
             kod="bundle_modositott")
     else:
         add(OK, "csomag épsége", f"az epites.json megvan, a core és a modulok ujjlenyomata egyezik ({mag[:12]})", kod="bundle_epites")
+    # F9: a csomagoló befagyasztott fájl-jegyzéke (`csomag.fajlok`) — csak a `packaging/` által épített csomagban van
+    fj = epites.fagyott(root)
+    if fj is not None:
+        ell = epites.csomag_ellenoriz(root, fj)
+        if ell["ok"]:
+            add(OK, "csomag fájljai", f"{ell['ellenorizve']} fájl egyezik a build jegyzékével "
+                                      f"({fj['csomag'].get('termek_verzio')}, {str(fj['csomag'].get('commit') or '')[:12]})",
+                kod="bundle_fajlok")
+        else:
+            elteres = [f"{k}: {_fentiek(ell[k])}" for k in ("modositott", "hianyzik", "tobblet") if ell[k]]
+            add(HIBA, "csomag fájljai", f"a csomag a build után megváltozott ({'; '.join(elteres)}) — telepítsd újra a Manifoldot",
+                kod="bundle_fajlok")
 
 
 def _i1_sor(cfg: config.Config, add) -> None:

@@ -96,7 +96,7 @@ describe('a fa megjelenése', () => {
     expect(szintek).toEqual(['1', '1', '2', '3', '3', '2', '1', '1', '1', '1']);
   });
 
-  it('kattintásra a mappa kinyílik (és a tartós állapotba kerül), a fájl megnyílik; a ⌘ új fülben', async () => {
+  it('kattintásra a mappa kinyílik (és a tartós állapotba kerül), a fájl megnyílik; a középső gomb új fülben', async () => {
     const { felulet, context } = kornyezet();
     render(Oldalsav, { context });
     await fireEvent.click(screen.getByText('F02 - Dinamika'));
@@ -104,7 +104,7 @@ describe('a fa megjelenése', () => {
     expect(sorok()).toContain('Elmélet');
     await fireEvent.click(screen.getByText('Alma'));
     expect(felulet.munkaterulet.aktivFul?.ut).toBe('Alma.md');
-    await fireEvent.click(screen.getByText('Árvíz'), { metaKey: true });
+    await fireEvent(screen.getByText('Árvíz'), new MouseEvent('auxclick', { button: 1, bubbles: true })); // 07-explorer-04: a ⌘-kattintás már kijelöl, az új fül a középső gomb
     expect(felulet.munkaterulet.aktivPanel.fulek.map((x) => x.ut)).toContain('Árvíz.md');
     expect(felulet.munkaterulet.aktivPanel.fulek.length).toBe(2);
     expect(screen.getByText('Alma').closest('[role=treeitem]')!.getAttribute('aria-selected')).toBe('false'); // az aktív az Árvíz
@@ -144,7 +144,7 @@ describe('billentyűzet (ARIA tree)', () => {
     expect(fa).toBeTruthy();
   });
 
-  it('↩ a fájlt megnyitja, a mappát kapcsolja; F2 az átnevezés-párbeszédet nyitja a fókuszált sorra', async () => {
+  it('↩ a fájlt megnyitja, a mappát kapcsolja; F2 a fókuszált sorban helyben szerkeszthető nevet nyit', async () => {
     const { felulet, context } = kornyezet();
     const le = atnevezesParancsok(felulet);
     render(Oldalsav, { context });
@@ -157,8 +157,9 @@ describe('billentyűzet (ARIA tree)', () => {
     const f2 = le.find((p) => p.id === 'vault.atnevezes')!;
     expect(f2.elerheto?.()).toBe(true);
     f2.futtat();
-    expect(felulet.atnevezes).toEqual({ ut: 'F02 - Dinamika', mod: 'nev', mappa: true });
-    expect(felulet.atfedes).toBe('atnevezes');
+    expect(felulet.faAtnevezKer?.ut).toBe('F02 - Dinamika'); // 07-explorer-03: nem a terv-átfedés, hanem a sorban szerkeszthető név
+    expect(await screen.findByRole('textbox', { name: 'A mappa új neve' })).toBeTruthy();
+    expect(felulet.atfedes).toBeNull();
     felulet.atnevezes = null;
     alma.focus();
     le.find((p) => p.id === 'vault.athelyezes')!.futtat();
@@ -271,7 +272,7 @@ describe('új jegyzet mappája a Settings API-ból', () => {
   });
 });
 
-describe('húzás: a terv-átfedést nyitja, nem ír', () => {
+describe('húzás: link-változásnál (vagy hibánál) a terv-átfedést nyitja, megerősítés nélkül nem ír', () => {
   function huz(honnan: HTMLElement, hova: HTMLElement) {
     const adat = new Map<string, string>();
     const dataTransfer = { setData: (k: string, v: string) => adat.set(k, v), getData: (k: string) => adat.get(k) ?? '', effectAllowed: '', dropEffect: '' };
@@ -284,13 +285,13 @@ describe('húzás: a terv-átfedést nyitja, nem ír', () => {
     return fogad;
   }
 
-  it('fájl mappára húzva: az átnevezés-párbeszéd mod=hely és a célmappa megadva', () => {
+  it('fájl mappára húzva, ha a terv nem kapható: az átnevezés-párbeszéd mod=hely és a célmappa megadva; írás nem ment', async () => {
     const { felulet, context } = kornyezet();
     render(Oldalsav, { context });
     huz(screen.getByText('Alma').closest<HTMLElement>('[role=treeitem]')!, screen.getByText('ATTCHMNTS').closest<HTMLElement>('[role=treeitem]')!);
-    expect(felulet.atnevezes).toEqual({ ut: 'Alma.md', mod: 'hely', mappa: false, cel: 'ATTCHMNTS' });
+    await waitFor(() => expect(felulet.atnevezes).toEqual({ ut: 'Alma.md', mod: 'hely', mappa: false, cel: 'ATTCHMNTS' }));
     expect(felulet.atfedes).toBe('atnevezes');
-    expect(kerelmek.length).toBe(0); // a húzás maga semmit nem ír és nem is kérdez
+    expect(kerelmek.map((k) => k.url)).toEqual(['/api/vault/atnevezes/terv']); // csak terv kérdés, végrehajtás nincs
   });
 
   it('mappa a saját részfájába, vagy oda, ahol már van: nem ejthető (nincs átfedés)', () => {
@@ -303,11 +304,11 @@ describe('húzás: a terv-átfedést nyitja, nem ír', () => {
     expect(felulet.atnevezes).toBeNull();
   });
 
-  it('fájl a gyökérre (a fa üres helyére) húzva: a célmappa a gyökér', () => {
+  it('fájl a gyökérre (a fa üres helyére) húzva: a célmappa a gyökér', async () => {
     const { felulet, context } = kornyezet({ oldalsav: { szelesseg: 264, nyitva: true, nyitott: ['F02 - Dinamika'] } });
     render(Oldalsav, { context });
     huz(screen.getByText('Vászon.canvas').closest<HTMLElement>('[role=treeitem]')!, screen.getByRole('tree'));
-    expect(felulet.atnevezes).toEqual({ ut: 'F02 - Dinamika/Vászon.canvas', mod: 'hely', mappa: false, cel: '' });
+    await waitFor(() => expect(felulet.atnevezes).toEqual({ ut: 'F02 - Dinamika/Vászon.canvas', mod: 'hely', mappa: false, cel: '' }));
   });
 });
 
@@ -336,7 +337,7 @@ describe('az oldalsáv nézetei', () => {
   it('a fülek: Fájlok és Címkék (a Keresés fül megszűnt, E3); a váltás tartós; a címkék nézetben a fa nincs a DOM-ban', async () => {
     const { felulet, context } = kornyezet();
     render(Oldalsav, { context });
-    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Fájlok', 'Címkék', 'Keresés']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Fájlok', 'Címkék', 'Tulajdonságok', 'Keresés']);
     expect(screen.getByRole('tab', { name: 'Fájlok' }).getAttribute('aria-selected')).toBe('true');
     await fireEvent.click(screen.getByRole('tab', { name: 'Címkék' }));
     expect(felulet.oldalsav.nezet).toBe('cimkek');

@@ -1,0 +1,160 @@
+/* F11 megjelenítési paritás (01-rendering): összecsukás (szerkesztő és Olvasó), függő behúzás, szanitizált HTML, soron belüli
+   lábjegyzet. Csak tokenek (DESIGN.md 24.); a burgundi akcentus itt nem jelez állapotot. */
+
+/* ---------------------------------------------------------------- betűméret (01-rendering-14) */
+
+/* A jegyzet címsorai a felhasználói betűméret (Beállítások → Megjelenés, `--betu-torzs`) arányában skálázódnak; 16 px-nél
+   pontosan a tokenek értéke. A felület krómja (beállítások, panelek) a rögzített tokeneket tartja, ahogy az Obsidianban. */
+.tipo,
+.szerkeszto {
+  --betu-h1: calc(var(--betu-torzs) * 1.875);
+  --betu-h2: calc(var(--betu-torzs) * 1.5);
+  --betu-h3: calc(var(--betu-torzs) * 1.25);
+  --betu-h4: calc(var(--betu-torzs) * 1.0625);
+  --betu-h5: var(--betu-torzs);
+}
+
+/* ---------------------------------------------------------------- összecsukás: a sor eleji gomb (szerkesztő) */
+
+.cm-hajto-hely {
+  display: inline-block;
+  position: relative;
+  width: 0;
+}
+
+.cm-hajto,
+.olvaso-hajto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--magassag-gomb-kicsi);
+  height: var(--magassag-gomb-kicsi);
+  padding: 0;
+  border: 0;
+  border-radius: var(--kerekites-kicsi);
+  background: transparent;
+  color: var(--szoveg-halvany);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.cm-hajto {
+  position: absolute;
+  right: var(--t-1);
+  bottom: calc(-1 * var(--t-1));
+}
+
+.cm-hajto .ikon,
+.olvaso-hajto .ikon {
+  transform: rotate(90deg);
+  transition: transform var(--mozgas-gyors) var(--mozgas-gorbe);
+}
+
+.cm-hajto.csukva .ikon,
+.olvaso-hajto.csukva .ikon {
+  transform: none;
+}
+
+.cm-line:hover .cm-hajto,
+.cm-hajto.csukva,
+.olvaso [data-hajthato]:hover > .olvaso-hajto,
+.olvaso-hajto.csukva,
+.olvaso-hajto:focus-visible {
+  opacity: 1;
+}
+
+.cm-hajto:hover,
+.olvaso-hajto:hover {
+  background: var(--hatter-hover);
+  color: var(--szoveg);
+}
+
+.olvaso-hajto:focus-visible {
+  outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
+  outline-offset: var(--fokusz-tav);
+}
+
+.szerkeszto .cm-editor .cm-foldPlaceholder {
+  margin: 0 var(--t-1);
+  padding: 0 var(--t-1);
+  border: var(--keret-vastag) solid var(--keret);
+  border-radius: var(--kerekites-kicsi);
+  background: var(--hatter-emelt);
+  color: var(--szoveg-masodlagos);
+  cursor: pointer;
+}
+
+/* az Olvasó gombja a címsor / listaelem elé, a szövegtükörből kilógva */
+.olvaso [data-hajthato] {
+  position: relative;
+}
+
+.olvaso-hajto {
+  position: absolute;
+  left: calc(-1 * (var(--magassag-gomb-kicsi) + var(--t-1)));
+  top: 0;
+}
+
+/* ---------------------------------------------------------------- függő behúzás (Live Preview és Forrás) */
+
+.szerkeszto .cm-editor .cm-line.cm-fuggo {
+  padding-left: var(--fuggo-behuzas);
+  text-indent: calc(-1 * var(--fuggo-behuzas));
+}
+
+.szerkeszto .cm-editor .cm-line.cm-fuggo.cm-idezet {
+  padding-left: calc(var(--idezet-melyseg, 1) * var(--t-4) + var(--fuggo-behuzas));
+}
+
+.szerkeszto .cm-editor .cm-line.cm-fuggo.cm-callout {
+  padding-left: calc(var(--idezet-melyseg, 1) * var(--t-4) + var(--fuggo-behuzas));
+}
+
+/* a sor eleji widgetek a negatív behúzást nem öröklik */
+.szerkeszto .cm-editor .cm-line.cm-fuggo > * {
+  text-indent: 0;
+}
+
+.olvaso li > .olvaso-hajto {
+  left: calc(-1 * (var(--magassag-gomb-kicsi) + var(--t-5)));
+}
+
+/* ---------------------------------------------------------------- szanitizált HTML (Olvasó és Live Preview) */
+
+/* a felhasználói stílus nem lóghat ki a blokkból (a tartalom a dobozon belül görget) */
+.html-blokk-render {
+  max-width: 100%;
+  margin: var(--t-2) 0;
+  overflow-x: auto;
+  contain: paint;
+}
+
+.html-blokk-render table {
+  border-collapse: collapse;
+}
+
+.html-blokk-render th,
+.html-blokk-render td {
+  padding: var(--t-1) var(--t-2);
+  border: var(--keret-vastag) solid var(--keret);
+}
+
+.html-blokk-render details > summary {
+  cursor: pointer;
+}
+
+.html-kep-alt {
+  color: var(--szoveg-masodlagos);
+  font-style: italic;
+}
+
+.szerkeszto .cm-editor .cm-html-blokk {
+  cursor: text;
+}
+
+/* ---------------------------------------------------------------- soron belüli lábjegyzet */
+
+.cm-labjegyzet-widget.cm-labjegyzet-soron {
+  cursor: help;
+}

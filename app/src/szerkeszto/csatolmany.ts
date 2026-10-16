@@ -3,8 +3,9 @@ import { t } from '../lib/i18n';
 import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { ApiHiba, kerdez } from '../lib/core/api';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-import { linkek } from '../lib/vault/linkek.svelte';
+import { linkek, type LinkCelAdat } from '../lib/vault/linkek.svelte';
 import { htmlMarkdown } from './vagolap-html';
+import { linkSzoveg } from './linkek/adat';
 
 export const VAULT_HUZAS = 'application/x-manifold-vault';
 interface Feltoltes { azon: string; offset?: number; ut?: string; kesz: boolean; figyelmeztetes?: string }
@@ -46,6 +47,38 @@ export async function fajlImport(fajl: File, cel: { forras?: string; mappa?: str
   throw new Error(t('A feltöltés nem fejeződött be.'));
 }
 
+/** A `!`-lel beágyazott (média) fájlok: a core médiatípusai (`core/mediatipus.py`) és a PDF. */
+export const BEAGYAZHATO = /\.(png|jpe?g|gif|webp|avif|bmp|svg|heic|heif|tiff?|pdf|mp4|m4v|mov|webm|mkv|ogv|mp3|m4a|wav|flac|ogg|opus|aac|3gp)$/i;
+
+/** 04-embeds-09: a beszúrt link a beállított formátumban — a core adja a célt (`newLinkFormat`: rövid/relatív/abszolút) és az
+ *  alakot (`useMarkdownLinks`: wiki/md, kész kódolt md-céllal); az összeillesztés a közös `linkSzoveg` (02-links-12/13). A média `!`-t kap. */
+export function beszurtLink(c: LinkCelAdat, ut: string): string {
+  const nev = (ut.split('/').pop() ?? ut).replace(/\.md$/i, '');
+  return linkSzoveg({ cel: c.cel, alak: c.alak ?? 'wiki', md: c.md ?? '' }, { beagyazas: BEAGYAZHATO.test(ut), nev });
+}
+
+const ALTALANOS_NEV = /^(?:image|images|blob|clipboard|untitled|pasted image|screenshot)?(?:\.[a-z0-9]{1,5})?$/i;
+const MIME_KITERJESZTES: Record<string, string> = {
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/gif': 'gif', 'image/webp': 'webp', 'image/avif': 'avif',
+  'image/bmp': 'bmp', 'image/tiff': 'tiff', 'image/heic': 'heic', 'image/svg+xml': 'svg',
+};
+
+/** 04-embeds-08: a vágólapról jött, általános nevű kép (`image.png`, `blob`, név nélkül) az Obsidian alakján kap nevet:
+ *  `Pasted image YYYYMMDDHHmmss.<kit>` (helyi idő). A Finderből másolt, saját nevű fájl a nevét tartja. Ütközésnél a core
+ *  ` 1`, ` 2` utótagot ad. */
+export function beillesztettNev(f: File, most: Date = new Date()): File {
+  if (!f.type.startsWith('image/') || !ALTALANOS_NEV.test(f.name.trim())) return f;
+  const kit = /\.([a-z0-9]{1,5})$/i.exec(f.name.trim())?.[1]?.toLowerCase() ?? MIME_KITERJESZTES[f.type] ?? 'png';
+  const k = (n: number) => String(n).padStart(2, '0');
+  const ido = `${most.getFullYear()}${k(most.getMonth() + 1)}${k(most.getDate())}${k(most.getHours())}${k(most.getMinutes())}${k(most.getSeconds())}`;
+  return new File([f], `Pasted image ${ido}.${kit}`, { type: f.type, lastModified: f.lastModified });
+}
+
+/** A kijelölésre beillesztett URL Markdown-linkje: `<…>` csak akkor, ha a cím zárójelet vagy kacsacsőrt tartalmaz. */
+export function urlLinkCel(url: string): string {
+  return /[()<>]/.test(url) ? `<${url.replaceAll('>', '%3E')}>` : url;
+}
+
 export function csatolmanyBovitmeny(ut: string) {
   return ViewPlugin.fromClass(class {
     el = true;
@@ -62,12 +95,12 @@ export function csatolmanyBovitmeny(ut: string) {
       try {
         const utak = belso ? [belso] : [];
         for (const f of fajlok) utak.push(await fajlImport(f, { forras: ut }));
-        const celok = await Promise.all(utak.map((u) => linkek.linkCel(u, ut)));
+        const celok = await Promise.all(utak.map((u) => linkek.linkCelAdat(u, ut)));
         if (!this.el || this.view.state.readOnly) {
           ertesitesek.ertesit({ szint: 'info', cim: t('A csatolmány a vaultban van'), szoveg: utak.join(', ') });
           return;
         }
-        const szoveg = celok.map((c, i) => `${/\.(png|jpg|jpeg|gif|webp|heic|pdf|mp4|mov|mp3|wav|svg)$/i.test(utak[i]) ? '!' : ''}[[${c}]]`).join('\n');
+        const szoveg = celok.map((c, i) => beszurtLink(c, utak[i])).join('\n');
         this.view.dispatch({ changes: { from: p.poz, insert: szoveg }, selection: { anchor: p.poz + szoveg.length }, userEvent: 'input.paste' });
       } catch (e) {
         ertesitesek.ertesit({ szint: 'hiba', cim: t('A csatolmány nem illeszthető be'), szoveg: e instanceof Error ? e.message : String(e) });
@@ -88,7 +121,8 @@ export function csatolmanyBovitmeny(ut: string) {
         const fajlok = Array.from(e.clipboardData?.files ?? []);
         if (fajlok.length) {
           e.preventDefault();
-          void this.beszur(fajlok, null, this.view.state.selection.main.head);
+          const most = new Date();
+          void this.beszur(fajlok.map((f) => beillesztettNev(f, most)), null, this.view.state.selection.main.head);
           return true;
         }
         const s = e.clipboardData?.getData('text/plain') ?? '';
@@ -96,7 +130,7 @@ export function csatolmanyBovitmeny(ut: string) {
         if (!kij.empty && /^https?:\/\/[^\s]+$/.test(s)) {
           e.preventDefault();
           this.view.dispatch({ changes: { from: kij.from, to: kij.to,
-            insert: `[${this.view.state.sliceDoc(kij.from, kij.to)}](<${s.replaceAll('>', '%3E')}>)` }, userEvent: 'input.paste' });
+            insert: `[${this.view.state.sliceDoc(kij.from, kij.to)}](${urlLinkCel(s)})` }, userEvent: 'input.paste' });
           return true;
         }
         const html = e.clipboardData?.getData('text/html');

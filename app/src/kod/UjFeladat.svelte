@@ -1,6 +1,6 @@
 <!--
-  „Új C++ feladat…” (C36a-UI): név és mappa → `POST /api/cpp/feladat` (a core a `.cpp`-t és a sablonos feladat-jegyzetet
-  hozza létre, két commitban); utána a jegyzet nyílik, a `.cpp` osztásban. A felhasználó művelete: gép `.cpp`-t nem ír (53(d)).
+  „Új feladat…” (C36a-UI, F11: a kód-munkafelület bármely nyelvén): név, nyelv és mappa → `POST /api/cpp/feladat` (a core a forrásfájlt és
+  a feladat-jegyzetet hozza létre, két commitban); utána a jegyzet nyílik, a forrás osztásban. A felhasználó művelete: gép forrást nem ír (53(d)).
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -8,6 +8,7 @@
   import { kornyezet } from '../lib/kornyezet';
   import Atfedes from '../lib/ui/Atfedes.svelte';
   import { mappa as mappaja } from '../lib/vault/fajlok.svelte';
+  import { KOD_NYELVEK } from '../lib/vault/kodFajl';
   import { ujFeladat } from './muveletek';
 
   const { felulet, fajlok } = kornyezet();
@@ -18,6 +19,7 @@
 
   let nev = $state('');
   let hely = $state(alapMappa);
+  let nyelv = $state('cpp');
   let folyik = $state(false);
   let hiba = $state<string | null>(null);
   let bevitel: HTMLInputElement | undefined = $state();
@@ -38,7 +40,7 @@
     }
     folyik = true;
     hiba = null;
-    const r = await ujFeladat(felulet, m, n);
+    const r = await ujFeladat(felulet, m, n, nyelv);
     folyik = false;
     if (r.ok) bezar();
     else hiba = r.hiba;
@@ -52,12 +54,18 @@
   }
 </script>
 
-<Atfedes cimke={t('Új C++ feladat')} nev="cpp-feladat" onbezar={bezar}>
+<Atfedes cimke={t('kod.uj_feladat.cim')} nev="cpp-feladat" onbezar={bezar}>
   <div class="doboz">
-    <h2 class="cim">{t('Új C++ feladat')}</h2>
+    <h2 class="cim">{t('kod.uj_feladat.cim')}</h2>
     <label class="mezo">
       <span>{t('Név')}</span>
       <input bind:this={bevitel} bind:value={nev} onkeydown={billentyu} spellcheck="false" autocomplete="off" placeholder={t('pl. Két szám összege')} />
+    </label>
+    <label class="mezo">
+      <span>{t('kod.uj_feladat.nyelv')}</span>
+      <select bind:value={nyelv} data-teszt="uj-feladat-nyelv">
+        {#each KOD_NYELVEK as n (n.azonosito)}<option value={n.azonosito}>{n.nev}</option>{/each}
+      </select>
     </label>
     <label class="mezo">
       <span>{t('Mappa')}</span>
@@ -66,7 +74,7 @@
         {#each fajlok.mappak as m (m)}<option value={m}></option>{/each}
       </datalist>
     </label>
-    <p class="seg">{t('Elkészül a feladat-jegyzet (leírás, `teszt` blokkok) és a kísérő')} <code>.cpp</code>{t('; a ⌘R a teszteken futtatja.')}</p>
+    <p class="seg">{t('kod.uj_feladat.seg')}</p>
     {#if hiba}<p class="hiba" role="alert">{hiba}</p>{/if}
     <div class="gombok">
       <button type="button" class="m-gomb semleges masodlagos" onclick={bezar}>{t('Mégse')}</button>
@@ -98,7 +106,8 @@
     color: var(--szoveg-masodlagos);
   }
 
-  .mezo input {
+  .mezo input,
+  .mezo select {
     padding: var(--t-2) var(--t-3);
     border: var(--keret-vastag) solid var(--keret-mezo);
     border-radius: var(--kerekites);
@@ -107,7 +116,8 @@
     font: inherit;
   }
 
-  .mezo input:focus-visible {
+  .mezo input:focus-visible,
+  .mezo select:focus-visible {
     outline: var(--fokusz-vastag) solid var(--fokusz-gyuru);
     outline-offset: var(--fokusz-tav);
   }

@@ -38,7 +38,7 @@ describe('App settings integration', () => {
     expect(document.documentElement.dataset.tema).toBe('sotet');
     expect(irasok).toHaveLength(1);
   });
-  it('finishes automatic setup before running its deferred AI navigation', async () => {
+  it('finishes automatic setup before opening Model Manager in Settings', async () => {
     nyelv.beallit('en');
     let adat: BeallitasokValasz = { verzio: 1, rev: 'setup-r1', ertek: alapBeallitasok(), munkater: { id: 'synthetic', nev: 'Synthetic workspace', vault: '/synthetic' }, setup_szukseges: true, ujrainditas: [] };
     vi.stubGlobal('WebSocket', class { readyState = 0; close() {} send() {} });
@@ -55,11 +55,12 @@ describe('App settings integration', () => {
     const felulet = new Felulet({ csend: { be: false } }); render(App, { props: { felulet } });
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Welcome to Manifold' })).toBeTruthy());
     for (let i = 0; i < 4; i++) await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await fireEvent.click(screen.getByRole('button', { name: 'Review AI tools after setup' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Open Model Manager after setup' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.click(screen.getByRole('button', { name: 'Start writing' }));
-    await waitFor(() => expect(felulet.vezerlo.nyitott.modellek).toBe(true));
+    await waitFor(() => expect(beallitasAblak.nyitva).toBe(true));
+    expect(beallitasAblak.szakasz).toBe('modellek');
     expect(beallitasok.adat?.setup_szukseges).toBe(false);
     expect(screen.queryByRole('button', { name: 'Start writing' })).toBeNull();
   });

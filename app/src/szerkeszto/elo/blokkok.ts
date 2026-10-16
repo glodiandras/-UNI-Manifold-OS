@@ -21,6 +21,7 @@ import { aktiv, aktivBlokkok, type Tartomany } from './aktivBlokk';
 import { calloutHajtas, calloutHajtasValt } from './hajtas';
 import { jegyzetUtja } from './jegyzet';
 import { TablaSzerkesztoWidget } from '../notion/tablazat/szerkeszto';
+import { HtmlBlokkWidget } from './htmlWidget';
 import { ElvalasztoWidget, KepletElonezetWidget, KepletWidget, RendereloWidget, TablaWidget } from './widgetek';
 
 const TAROLO = new Set(['Document', 'Blockquote', 'BulletList', 'OrderedList', 'ListItem', 'FootnoteDefinition']);
@@ -96,6 +97,14 @@ export function blokkDiszitesek(state: EditorState): DecorationSet {
           const s = sorok(n.from, n.to);
           if (!aktiv(aktivak, s.from, s.to))
             ki.push(Decoration.replace({ widget: new KepletWidget(kepletForras(n.node, olvas), true) }).range(n.from, n.to));
+          return false;
+        }
+        case 'HTMLBlock': {
+          // szanitizált HTML-blokk (01-rendering-11), ha a blokk teljes sorokat foglal (listajel mellett nem)
+          const s = sorok(n.from, n.to);
+          if (aktiv(aktivak, s.from, s.to)) return false;
+          if (olvas(s.from, n.from).trim() || olvas(n.to, s.to).trim()) return false;
+          ki.push(Decoration.replace({ widget: new HtmlBlokkWidget(olvas(n.from, n.to), state.facet(jegyzetUtja), linkek.verzio), block: true }).range(s.from, s.to));
           return false;
         }
         case 'HorizontalRule': {

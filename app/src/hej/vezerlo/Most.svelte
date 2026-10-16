@@ -4,6 +4,12 @@
   import { feladatsor } from '../../lib/vezerlo/feladatsor.svelte';
   import FeladatSor from './FeladatSor.svelte';
   import Ures from './Ures.svelte';
+  import UresAllapot from '../../lib/ui/UresAllapot.svelte';
+  import HibaPanel from '../../lib/ui/HibaPanel.svelte';
+  import { egeszsegMegnyit } from '../../lib/egeszseg/allapot.svelte';
+  import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
+  import { Activity } from '../../lib/ikon/ikonok';
+  import { regiszter } from '../../lib/parancsok/regiszter';
 
   let { onnyit }: { onnyit: (id: string) => void } = $props();
   const elo = $derived([...feladatsor.futo, ...feladatsor.sorban]);
@@ -11,9 +17,9 @@
 </script>
 
 {#if feladatsor.hiba}
-  <p class="hiba" role="alert">{t('A feladatsor nem érhető el: {hiba}', { hiba: feladatsor.hiba })}</p>
+  <HibaPanel mi={t('A feladatsor nem érhető el: {hiba}', { hiba: feladatsor.hiba })} javitas={t('rendszer.hiba_javitas')} diagnosztika={() => egeszsegMegnyit('folyamatok')} />
 {:else if feladatsor.betoltve && !elo.length && !legutobbi.length}
-  <Ures szoveg={t('Nem fut és nem vár feladat. Amit a Manifold a háttérben csinál, itt látszik.')} />
+  <UresAllapot kicsi ikon={Activity} cim={t('ures.most_cim')} leiras={t('Nem fut és nem vár feladat. Amit a Manifold a háttérben csinál, itt látszik.')} muvelet={modulEngedelyezett('video') ? { cimke: t('ures.video_hozzaadas'), onclick: () => regiszter.futtat('video.link', 'gomb') } : undefined} />
 {:else}
   {#if elo.length}
     <ul class="lista" aria-label={t('Futó és várakozó feladatok')}>
@@ -46,14 +52,5 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--szoveg-halvany);
-  }
-
-  .hiba {
-    margin: 0;
-    padding: var(--t-2);
-    border-radius: var(--kerekites);
-    background: var(--hiba-hatter);
-    color: var(--hiba);
-    font-size: var(--betu-kicsi);
   }
 </style>

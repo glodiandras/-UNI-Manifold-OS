@@ -10,3 +10,7 @@ tests/preset_v2/** export-ignore
 *.png binary
 *.jpg binary
 *.gz binary
+
+# Developer documentation: not shipped
+docs/dev/** export-ignore
+docs/dev/ARCHITECTURE.md export-ignore

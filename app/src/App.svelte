@@ -3,11 +3,14 @@
   import { onMount, untrack } from 'svelte';
   import Beallitasok from './beallitasok/Beallitasok.svelte';
   import Setup from './setup/Setup.svelte';
+  import Egeszseg from './egeszseg/Egeszseg.svelte';
+  import { egeszsegTelepit } from './egeszseg';
+  import { egeszsegAblak } from './lib/egeszseg/allapot.svelte';
   import { alkalmaz } from './lib/elrendezes/tema';
   import { tartalmiNyelv } from './lib/munkater/nyelv.svelte';
   import { beallitasok } from './lib/beallitasok/allapot.svelte';
   import { beallitasokTelepit } from './beallitasok';
-  import { beallitasAblak } from './beallitasok/allapot.svelte';
+  import { beallitasAblak, beallitasMegnyit } from './beallitasok/allapot.svelte';
   import { alapParancsok } from './alapParancsok';
   import { aktivitasFigyelo } from './lib/core/aktivitas';
   import { CoreKapcsolat } from './lib/core/ws.svelte';
@@ -122,7 +125,7 @@
     });
   });
   $effect(() => {
-    if (beallitasAblak.nyitva) untrack(() => felulet.atfedes = null);
+    if (beallitasAblak.nyitva || egeszsegAblak.nyitva) untrack(() => felulet.atfedes = null);
   });
   $effect(() => {
     if (beallitasok.adat?.setup_szukseges && !setupElhalasztva) setupNyitva = true;
@@ -139,6 +142,7 @@
     const le = [
       alapParancsok(regiszter, felulet),
       beallitasokTelepit(regiszter),
+      egeszsegTelepit(regiszter),
       beallitasok.figyel(kapcsolat),
       ...nezetekLe,
       telepit(regiszter),
@@ -197,5 +201,8 @@
 {#if beallitasAblak.nyitva}
   <Beallitasok onbezar={() => beallitasAblak.nyitva = false} onsetup={() => setupNyitva = true} onrendszer={rendszerMegnyit} />
 {:else if setupNyitva}
-  <Setup onbezar={() => { setupNyitva = false; setupElhalasztva = true; }} onkesz={() => { setupNyitva = false; setupElhalasztva = true; }} onai={() => rendszerMegnyit('modellek')} />
+  <Setup onbezar={() => { setupNyitva = false; setupElhalasztva = true; }} onkesz={() => { setupNyitva = false; setupElhalasztva = true; }} onai={() => beallitasMegnyit('modellek')} />
+{/if}
+{#if egeszsegAblak.nyitva}
+  <Egeszseg kod={egeszsegAblak.kod} onbezar={() => egeszsegAblak.nyitva = false} onjegyzet={(ut) => { egeszsegAblak.nyitva = false; felulet.munkaterulet.megnyit(ut); }} />
 {/if}

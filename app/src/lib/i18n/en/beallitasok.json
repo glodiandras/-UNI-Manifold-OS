@@ -33,7 +33,7 @@
   "beallitasok.about": "About",
   "beallitasok.nevjegy": "About Manifold",
   "beallitasok.bezar": "Close",
-  "beallitasok.nem_elerheto": "Settings are not available from this core. Reconnect or reopen the workspace.",
+  "beallitasok.nem_elerheto": "Settings are not available right now. Reconnect or reopen the workspace.",
   "beallitasok.utkozes": "Settings changed elsewhere. Reload before saving; your draft has not replaced those changes.",
   "beallitasok.foglalt_billentyu": "This shortcut is reserved by the app.",
   "A gyorsbillentyű már foglalt: {nev}": "This shortcut is already used by {nev}.",
@@ -65,6 +65,9 @@
   "beallitasok.link_formatum": "New link format",
   "beallitasok.rovid": "Shortest unique path",
   "beallitasok.relativ": "Relative path",
+  "beallitasok.abszolut": "Absolute path in workspace",
+  "beallitasok.wikilinkek": "Use [[Wikilinks]]",
+  "beallitasok.link_leiras": "Applies to links inserted from now on, such as link suggestions, dragged attachments and the Link button. When Wikilinks is off, links are written as [text](path.md). Existing links keep their style when a note is renamed.",
   "beallitasok.kuka_leiras": "Deleted files go to the system Trash. Existing exclusion rules are preserved.",
   "beallitasok.tema": "Theme",
   "beallitasok.rendszer": "System",
@@ -82,7 +85,6 @@
   "beallitasok.hibas_billentyu": "This shortcut is not valid.",
   "beallitasok.modosito_kell": "Include Command, Control or Option in the shortcut.",
   "beallitasok.ments_elobb": "Save or discard your settings changes before opening another screen.",
-  "beallitasok.adatvedelem_leiras": "Notes and processing stay on this device. Tracker stores local usage information; there is no remote telemetry. Assistant and Tracker can be paused independently of their modules.",
   "beallitasok.ertesitesek": "System notifications",
   "beallitasok.naptar": "Calendar & Reminders integration",
   "beallitasok.naptar_engedely": "Request calendar access…",
@@ -91,7 +93,7 @@
   "beallitasok.marka": "Local Knowledge OS",
   "beallitasok.community": "Community edition — all current features are available.",
   "beallitasok.reszletek": "Advanced information",
-  "beallitasok.architektura": "Native macOS shell · local Python core · Markdown workspace. Workspace identifier:",
+  "beallitasok.architektura": "Native macOS app · local engine · Markdown workspace. Workspace identifier:",
   "beallitasok.meglevo_leiras": "Use the existing system controls for this area. Dedicated management screens will arrive in later phases.",
   "beallitasok.modellek_leiras": "Model download and calibration workflows are not part of this release. Existing local model status and controls remain available.",
   "beallitasok.mentes_leiras": "Existing backup status and destinations are available in the system overview. A destination must be configured before a backup can run.",
@@ -135,5 +137,6 @@
   "beallitasok.elozmeny_megnyit": "Open note history",
   "beallitasok.mentesi_hiba": "The setting could not be saved. Try again after the current operation finishes.",
   "beallitasok.hibas_tab": "Tab size must be a whole number between 1 and 8.",
-  "beallitasok.hibas_betumeret": "Editor font size must be a whole number between 12 and 28."
+  "beallitasok.hibas_betumeret": "Editor font size must be a whole number between 12 and 28.",
+  "beallitasok.kulso_kep_leiras": "External images in notes are never loaded automatically. An image is downloaded only when you click Download image on it; Manifold fetches it over https, checks its size and type, and saves it to your attachment folder. Replacing the web link in the note is a separate, explicit choice."
 }

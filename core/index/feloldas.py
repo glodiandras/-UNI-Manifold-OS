@@ -39,12 +39,28 @@ from .maszk import link_maszk, mask_code  # noqa: F401 — a `mask_code` innen i
 SKIP_DIRS = rejtett.KIHAGYOTT_MAPPAK     # I6 (F3): egy forrás minden vault-bejárónak — benne a `.manifold` (próbaklónok, állapot)
 
 WIKI_RE = re.compile(r"!?\[\[([^\]\|\#]*)")
-MD_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
+# Az md-link `[szöveg](cél)` — a cél CommonMark szerint: vagy `<…>` (benne zárójel és szóköz szabad, `\>` escape), vagy kiegyensúlyozott
+# zárójelek (`a (b).md`; a `\(` és `\)` escape). A régi `[^)]+` az első `)`-nél véget ért (`[x](a (b).md)` célja `a (b.md` lett).
+# A beágyazás mélysége `_ZAROJEL_MELYSEG`; mélyebben nem link (a CommonMark-megvalósítások is korlátoznak). Az alternatívák
+# kölcsönösen kizáróak (egy karaktert pontosan egy ág fogad), ezért a visszalépés lineáris. Az 1. csoport a cél nyersen (a `<…>`
+# burokkal együtt: `md_reszek` veszi le), közvetlenül a `](` után — a fogyasztók ezt a pozíciót használják.
+_ZAROJEL_MELYSEG = 6
+
+
+def _md_cel_minta(melyseg: int = _ZAROJEL_MELYSEG) -> str:
+    atom = r"(?:\\.|[^()\\\n])"
+    csoport = atom
+    for _ in range(melyseg):
+        csoport = rf"(?:{atom}|\({csoport}*\))"
+    return rf"\[[^\]]*\]\((<(?:\\.|[^<>\\\n])*>|{csoport}+)\)"
+
+
+MD_RE = re.compile(_md_cel_minta())
 KULSO = ("http:", "https:", "mailto:", "#")
 
 _FENNTARTOTT = frozenset(";/?:@&=+$,#")          # a JS `decodeURI` ezeket kódolva hagyja
 _HEX2 = re.compile(r"[0-9A-Fa-f]{2}")
-_MD_KODOLANDO = re.compile(r"[\\\x00\x08\x0b\x0c\x0e-\x1f ]")   # az Obsidian `hd()`-je: `\`, vezérlőjelek, szóköz
+_MD_KODOLANDO = re.compile(r"[\\\x00\x08\x0b\x0c\x0e-\x1f %]")   # az Obsidian `hd()`-je: `\`, vezérlőjelek, szóköz; + a `%` (különben a `decode_uri` a fájlnévbeli `%20`-at szóközzé fejtené)
 
 
 def decode_uri(s: str) -> str:

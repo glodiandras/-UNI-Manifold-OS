@@ -25,7 +25,7 @@ import unicodedata
 from pathlib import Path
 from typing import Mapping
 
-from . import fejleszto, regex_biztonsag
+from . import fejleszto, gyoker_kereso, regex_biztonsag
 
 _HELYORZO = re.compile(r"\{(\w+)\}")
 _MAX_MELYSEG = 12
@@ -85,6 +85,7 @@ RETEG_JOG: dict[str, tuple[str, ...]] = {
         "teljes_mentes.cel", "teljes_mentes.figyelo_be", "teljes_mentes.figyelo_ora", "teljes_mentes.megtartott",
         "naptar.automatikus", "naptar.szinkron_perc", "naptar.tanulas_naptar",
         "adatvedelem.*", "felulet.*", "modulok.*",
+        "kod.eszkozok.*", "kod.proba_modell",          # F10: the machine's toolchain paths, the trial model (D9)
         "munkaterek.*.fuzet.mappak",
         "telepites.presetek",
         "!workspace.id", "!workspace.formatum", "!workspace.olvaso_min",
@@ -147,9 +148,8 @@ class ConfigError(ValueError):
 
 
 def os_root() -> Path:
-    """A gyökér: `MOS_ROOT`, különben a csomag saját helyéből."""
-    env = os.environ.get("MOS_ROOT")
-    return Path(env).resolve() if env else _KOD_GYOKER
+    """A gyökér: `MOS_ROOT`, különben a csomag saját helyéből (egyetlen forrás: `core.gyoker_kereso`, F9)."""
+    return gyoker_kereso.kod_gyoker(os.environ)
 
 
 def expand(template: str, table: dict[str, str], _stack: tuple[str, ...] = (), *,
@@ -263,9 +263,8 @@ class Config:
 
 
 def _bundle_gyoker(root: Path) -> bool:
-    """`*.app/Contents/Resources/manifold` alakú-e a gyökér."""
-    p = Path(root).parts
-    return len(p) >= 4 and p[-1] == "manifold" and p[-2] == "Resources" and p[-3] == "Contents" and p[-4].endswith(".app")
+    """`*.app/Contents/Resources/manifold` alakú-e a gyökér (egyetlen forrás: `core.gyoker_kereso.termek_gyoker`, F9)."""
+    return gyoker_kereso.termek_gyoker(root)
 
 
 def elrendezes(root: Path, env: Mapping[str, str]) -> str:

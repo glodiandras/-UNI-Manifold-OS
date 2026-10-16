@@ -16,6 +16,7 @@ def _konfig_masol(root: Path) -> None:
     """A szállított konfiguráció az álgyökérbe: `os.toml`, a sémafájlok (`config/*.json`) és a presetek."""
     (root / "config").mkdir(parents=True, exist_ok=True)
     shutil.copy(REPO / "config" / "os.toml", root / "config" / "os.toml")
+    shutil.copy(REPO / "config" / "models.toml", root / "config" / "models.toml")    # F6: a modell-manifeszt
     for f in (REPO / "config").glob("*.json"):                                # C11b: a vault-séma (és a semleges alap)
         shutil.copy(f, root / "config" / f.name)
     if (REPO / "config" / "presets").is_dir():

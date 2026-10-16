@@ -6,6 +6,7 @@
   import { t } from '../../lib/i18n';
   import { fajlNev, mappa } from '../../lib/vault/fajlok.svelte';
   import { kornyezetReszek, type Emlites, type EmlitesForras } from '../../lib/vault/kapcsolatok.svelte';
+  import { szuroEgyezik, szuroSzavak } from './szuro';
 
   let {
     forrasok,
@@ -18,6 +19,22 @@
   } = $props();
 
   let folyamatban = $state<string | null>(null);
+
+  // 02-links-11: szűrőmező — a jegyzet neve/útja vagy az említés sora
+  let szuro = $state('');
+  const szavak = $derived(szuroSzavak(szuro));
+  const latszo = $derived.by(() => {
+    if (!szavak.length) return forrasok;
+    const ki: EmlitesForras[] = [];
+    for (const f of forrasok) {
+      if (szuroEgyezik(szavak, f.ut)) ki.push(f);
+      else {
+        const talalatok = f.talalatok.filter((ta) => szuroEgyezik(szavak, f.ut, ta.szoveg));
+        if (talalatok.length) ki.push({ ...f, talalatok });
+      }
+    }
+    return ki;
+  });
 
   async function linkel(ut: string, em: Emlites) {
     const kulcs = `${ut}:${em.sor}:${em.oszlop}`;
@@ -33,10 +50,12 @@
 {#if !forrasok.length}
   <p class="ures">{t('Nincs linkeletlen említés.')}</p>
 {:else}
+  <input class="szuro" type="search" bind:value={szuro} placeholder={t('Szűrés…')} aria-label={t('Említések szűrése')} spellcheck="false" />
+  {#if !latszo.length}<p class="ures" aria-live="polite">{t('Nincs találat.')}</p>{/if}
   <ul class="forrasok">
-    {#each forrasok as f (f.ut)}
-      <li class="forras">
-        <button type="button" class="fej" title={f.ut} onclick={(e) => onnyit(f.ut, f.talalatok[0]?.sor ?? null, e)}>
+    {#each latszo as f (f.ut)}
+      <li class="forras" data-elonezet-ut={f.ut}>
+        <button type="button" class="fej" title={f.ut} onclick={(e) => onnyit(f.ut, f.talalatok[0]?.sor ?? null, e)} onauxclick={(e) => e.button === 1 && onnyit(f.ut, f.talalatok[0]?.sor ?? null, e)}>
           <span class="nev">{fajlNev(f.ut)}</span>
           {#if mappa(f.ut)}<span class="mappa">{mappa(f.ut)}</span>{/if}
         </button>
@@ -63,6 +82,18 @@
 {/if}
 
 <style>
+  .szuro {
+    width: 100%;
+    height: var(--magassag-gomb);
+    margin-bottom: var(--t-2);
+    padding: 0 var(--t-2);
+    border: 1px solid var(--keret-mezo);
+    border-radius: var(--kerekites);
+    background: var(--hatter);
+    color: var(--szoveg);
+    font-size: var(--betu-ui);
+  }
+
   .ures {
     margin: 0;
     color: var(--szoveg-halvany);

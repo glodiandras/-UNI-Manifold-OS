@@ -3,6 +3,8 @@
   akkor kérdez, ha a feladat fut és az ablak látszik (2 s); a változások a feladat végén és a visszavonásra töltődnek újra.
 -->
 <script lang="ts">
+  import { egeszsegMegnyit } from '../../lib/egeszseg/allapot.svelte';
+  import HibaPanel from '../../lib/ui/HibaPanel.svelte';
   import { t } from '../../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
   import { ApiHiba } from '../../lib/core/api';
@@ -98,7 +100,7 @@
     {/if}
     {#if feladat.osszegzes}<p class="halvany">{feladatSzoveg(feladat.osszegzes)}</p>{/if}
     {#each feladat.figyelmeztetes as f (f)}<p class="figy">{feladatSzoveg(f)}</p>{/each}
-    {#if feladat.hiba}<p class="hiba" role="alert">{feladatHiba(feladat)}</p>{/if}
+    {#if feladat.hiba}<HibaPanel mi={feladatHiba(feladat)} javitas={t('feladat.hiba_javitas')} diagnosztika={() => egeszsegMegnyit()} />{/if}
     {#if hiba && feladat}<p class="hiba" role="alert">{hiba}</p>{/if}
 
     {#if fut || sorban}

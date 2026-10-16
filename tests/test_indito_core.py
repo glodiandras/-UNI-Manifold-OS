@@ -67,7 +67,8 @@ class InditoTest(unittest.TestCase):
     def test_demo_ujranyitas_nem_ir_felul_es_torolt_jegyzetet_sem_hoz_vissza(self):
         w = self.ker("demo")["munkater"]
         v = Path(w["vault"])
-        self.assertEqual(len(list(v.glob("*.md"))), 3)
+        self.assertGreaterEqual(len(list(v.rglob("*.md"))), 50)      # F8: the full sample library, not the old three-note starter
+        self.assertEqual(len(list(v.glob("*.md"))), 4)                # Welcome, Connected ideas, Writing in two languages, Tour
         (v / "Welcome.md").write_text("User changed this")
         (v / "Connected ideas.md").unlink()
         self.assertEqual(self.ker("demo")["munkater"], w)
