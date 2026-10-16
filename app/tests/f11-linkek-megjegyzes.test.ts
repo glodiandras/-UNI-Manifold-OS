@@ -82,7 +82,7 @@ describe('Obsidian %% megjegyzések', () => {
   });
 });
 
-it('ismert fájl mentése a beágyazásokat frissíti, de a feloldási cache-t megőrzi', () => {
+it('ismert fájl mentése a tartalmi verziót lépteti, a szerkezeti verzió változatlan', () => {
   const szolg = new LinkSzolgaltatas();
   const figyelok = new Map<string, (e: Record<string, unknown>) => void>();
   const le = vi.fn();

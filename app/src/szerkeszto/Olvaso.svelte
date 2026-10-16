@@ -17,6 +17,7 @@
   import { linkMegnyit, nyitasMod } from './linkek/navigacio';
   import { dokumentumRenderel } from './olvaso/html';
   import { LustaRajzolo } from './olvaso/lusta';
+  import { feloldatlanJelol } from './linkek/feloldatlan';
 
   let { view, dok, ut, valtozat, nyelv = '' }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string } = $props();
 
@@ -36,6 +37,7 @@
     lusta = new LustaRajzolo(gorgeto);
     const f = dokumentumRenderel(fa, { olvas: (a, b) => doc.sliceString(a, b), ut, lusta, elotag, csakOlvashato: state.readOnly || !!dok.csakOlvashato });
     tartalom.replaceChildren(f);
+    feloldatlanJelol(tartalom, lusta.jel);
     gorgeto.scrollTop = gorgetes;
   }
 
@@ -124,6 +126,7 @@
   $effect(() => {
     void valtozat;
     void linkek.tartalomVerzio;
+    void linkek.verzio;
     void Object.values(beallitasok.ertek.modulok);
     if (kesleltetes) clearTimeout(kesleltetes);
     kesleltetes = setTimeout(rajzol, 120);

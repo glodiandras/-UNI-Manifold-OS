@@ -27,6 +27,9 @@ import { kodRenderelok, renderel } from '../renderelok/regiszter';
 import { sotetTema } from '../renderelok/tema';
 import { vagolapra } from '../vagolap';
 import type { LustaRajzolo } from './lusta';
+import { cimkeAdat } from '../markdown/cimke';
+import { cimkeLinkben } from '../linkek/cimkek';
+import { cimkeKeres, cimkeKeresheto } from '../linkek/navigacio';
 
 export interface RenderOpciok {
   olvas: Olvaso;
@@ -218,6 +221,24 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
     case 'ObsidianComment':
     case 'ObsidianCommentBlock':
       return;
+    case 'Hashtag': {
+      const cimke = cimkeAdat(c, o.olvas);
+      const interaktiv = !!cimke && !cimkeLinkben(c) && cimkeKeresheto();
+      const elem: HTMLElement = el(interaktiv ? 'a' : 'span', 'cimke');
+      elem.textContent = o.olvas(c.from, c.to);
+      if (interaktiv && cimke) {
+        elem.dataset.cimke = cimke;
+        elem.setAttribute('role', 'link');
+        elem.tabIndex = 0;
+        // A táblázat-/embed-widget nem értelmezheti a címkekattintást cellaszerkesztésként.
+        elem.addEventListener('mousedown', e => { if (e.button === 0) e.stopPropagation(); });
+        elem.addEventListener('click', e => { if (cimkeKeres(cimke)) { e.preventDefault(); e.stopPropagation(); } });
+        elem.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && cimkeKeres(cimke)) { e.preventDefault(); e.stopPropagation(); }
+        });
+      }
+      return w.elem(elem);
+    }
     case 'Emphasis':
       return burkol(el('em'), c, o, w);
     case 'StrongEmphasis':

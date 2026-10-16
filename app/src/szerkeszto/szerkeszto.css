@@ -165,6 +165,31 @@
   cursor: pointer; /* a kirajzolt külső link kattintásra megnyílik (C11a) */
 }
 
+.cm-wikilink-feloldatlan,
+.md .wikilink-feloldatlan {
+  color: var(--szoveg-masodlagos);
+  text-decoration: underline dotted;
+  text-underline-offset: var(--t-1);
+}
+
+.cm-cimke,
+.md .cimke {
+  color: var(--akcent-szoveg);
+  background: var(--hatter-aktiv);
+  border-radius: var(--kerekites-kicsi);
+  padding: 0 var(--t-1);
+  text-decoration: none;
+}
+
+.cm-elonezet .cm-cimke,
+.md a.cimke {
+  cursor: pointer;
+}
+
+.md a.cimke:hover {
+  text-decoration: underline;
+}
+
 .cm-keplet-forras {
   color: var(--szoveg-masodlagos);
 }

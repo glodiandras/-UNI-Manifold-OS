@@ -30,6 +30,7 @@ import { jegyzetUtja } from '../elo/jegyzet';
 import { kiegeszitesForras, kiegeszitesNyitva } from '../linkek/kiegeszites';
 import { tulajdonsagApi } from './api';
 import { ertekLista, javaslatFajta, kulcsLista, linkLista, type JavaslatElem, type JavaslatLista, JavaslatTar } from './javaslat';
+import { cimkeForras, type CimkeKiegeszitesOpciok } from './cimkeKiegeszites';
 
 // ---------------------------------------------------------------------- a kurzor helye a frontmatterben
 
@@ -126,6 +127,7 @@ export interface FmKiegeszitesOpciok {
   /** a kulcs- és érték-listák (alapból a core végpontjai, gyorsítótárazva) */
   tar?: Pick<JavaslatTar, 'kulcsok' | 'ertekek'>;
   linkCel?: (ut: string, forras: string) => Promise<string>;
+  cimkek?: CimkeKiegeszitesOpciok;
 }
 
 function opcio(e: JavaslatElem, i: number, apply: Completion['apply'], tipus: string): Completion {
@@ -209,7 +211,7 @@ function tabElfogad(view: EditorView): boolean {
 export function fmKiegeszites(o: FmKiegeszitesOpciok = {}): Extension {
   return [
     autocompletion({
-      override: [fmForras(o)],
+      override: [fmForras(o), cimkeForras(o.cimkek)],
       icons: false,
       selectOnOpen: false,
       activateOnTypingDelay: 120,

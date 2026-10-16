@@ -41,6 +41,7 @@ import { szerkesztok, type SzerkesztoPeldany } from './szerkesztok.svelte';
 import { vagolapra } from './vagolap';
 import { folytatasKezi, folytatasKeziMod } from './asszisztens/folytatas';
 import { kartyaParancsok } from '../lib/asszisztens/kartya.svelte';
+import { keresoMegnyit } from '../lib/kereses/kereso';
 
 function parancsok(): Parancs[] {
   const sz = () => szerkesztok.aktiv;
@@ -254,6 +255,7 @@ export function szerkesztoTelepit(reg: Regiszter, kapcsolat: CoreKapcsolat, felu
         if (horgony && f) f.nezet = { ...(f.nezet ?? {}), horgony }; // a PDF-/médiahorgony a nézeté (C16)
       },
       mappak: () => fajlok.mappak,
+      keresCimke: cimke => keresoMegnyit(felulet, `tag:#${cimke}`),
     });
   let voltHello = false;
   let vaultErtesites: number | null = null;

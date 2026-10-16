@@ -52,6 +52,9 @@ export class VaultFajlok {
   betoltve = $state(false);
   private terkep = new Map<string, FajlInfo>();
   private fuzzy: FuzzyIndex<FajlInfo> | null = null;
+  private idobelyegFigyelok = 0;
+  private keresSorszam = 0;
+  private csakIdobelyeg = false;
   private kesleltetes: ReturnType<typeof setTimeout> | null = null;
   /** A frissítés után eltűnt utak (a nyitott fülek üresre váltanak). */
   eltuntek: ((utak: Set<string>) => void) | null = null;
@@ -67,14 +70,19 @@ export class VaultFajlok {
   }
 
   async frissit(): Promise<void> {
+    const keres = ++this.keresSorszam;
     try {
-      this.index = await kerdez<IndexAllapot>('/api/vault/index', { idokorlat: 5000 });
-      if (!this.index.kesz) return;
+      const index = await kerdez<IndexAllapot>('/api/vault/index', { idokorlat: 5000 });
+      if (keres !== this.keresSorszam) return;
+      this.index = index;
+      if (!index.kesz) return;
       const d = await kerdez<{ fajlok: FajlInfo[]; mappak?: string[] }>('/api/vault/fa', { idokorlat: 10000 });
+      if (keres !== this.keresSorszam) return;
       this.mappak = d.mappak ?? [];
       this.beallit(d.fajlok);
       this.hiba = null;
     } catch (e) {
+      if (keres !== this.keresSorszam) return;
       if (e instanceof ApiHiba && e.statusz === 503) return; // az index még épül: az `index` esemény hoz újra
       this.hiba = e instanceof Error ? e.message : String(e);
     }
@@ -95,6 +103,22 @@ export class VaultFajlok {
     }
   }
 
+  /** Csak a dátum szerint rendezett fájlfa kér tartalmi eseményre is friss időbélyegeket. */
+  idobelyegeketFigyel(): () => void {
+    if (++this.idobelyegFigyelok === 1) this.utemez(0, true);
+    let el = true;
+    return () => {
+      if (!el) return;
+      el = false;
+      this.idobelyegFigyelok--;
+      if (this.idobelyegFigyelok === 0 && this.kesleltetes && this.csakIdobelyeg) {
+        clearTimeout(this.kesleltetes);
+        this.kesleltetes = null;
+        this.csakIdobelyeg = false;
+      }
+    };
+  }
+
   figyel(k: CoreKapcsolat): () => void {
     // A lista csak szerkezeti változásra töltődik újra (új vagy eltűnt fájl, tömeges változás); a meglévő
     // fájl tartalmi változása — a szerkesztő mentése (C08) — nem hozza le újra a teljes listát gépelés közben.
@@ -104,6 +128,7 @@ export class VaultFajlok {
       // C33 (T173): a csak mappát érintő változás (üres mappa kívülről) is szerkezeti: a fa újratölt
       const mappak = (e.mappak as string[] | undefined) ?? [];
       if (e.tomeges || torolt.length || mappak.length || utak.some((u) => !this.terkep.has(u))) this.utemez();
+      else if (this.idobelyegFigyelok > 0 && utak.length) this.utemez(300, true);
     });
     const le2 = k.figyel('index', (e) => {
       this.index = e as unknown as IndexAllapot;
@@ -117,8 +142,15 @@ export class VaultFajlok {
     };
   }
 
-  private utemez(ms = 300) {
+  private utemez(ms = 300, csakIdobelyeg = false) {
+    // Egy kényelmi dátumfrissítés nem késleltetheti és nem mondhatja le a szerkezeti változásét.
+    if (csakIdobelyeg && this.kesleltetes && !this.csakIdobelyeg) return;
     if (this.kesleltetes) clearTimeout(this.kesleltetes);
-    this.kesleltetes = setTimeout(() => void this.frissit(), ms);
+    this.csakIdobelyeg = csakIdobelyeg;
+    this.kesleltetes = setTimeout(() => {
+      this.kesleltetes = null;
+      this.csakIdobelyeg = false;
+      if (!csakIdobelyeg || this.idobelyegFigyelok > 0) void this.frissit();
+    }, ms);
   }
 }

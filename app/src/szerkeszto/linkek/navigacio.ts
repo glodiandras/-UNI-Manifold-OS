@@ -9,6 +9,8 @@ import { linkek } from '../../lib/vault/linkek.svelte';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
 import { szerkesztok } from '../szerkesztok.svelte';
 import { mediaHorgony } from './adat';
+import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
+import { cimkeErtek } from '../markdown/cimke';
 
 export type NyitasMod = 'aktiv' | 'ujful' | 'osztas';
 
@@ -17,6 +19,8 @@ export interface NavFuggoseg {
   megnyit(ut: string, mod: NyitasMod, horgony?: string | null): void;
   /** a vault mappái (a C31 óta a felület nem használja: az új jegyzet helyét a core dönti) */
   mappak?(): string[];
+  /** Címke keresése a közös vault-keresőben; nincs közvetlen fájlművelet. */
+  keresCimke?(cimke: string): void;
 }
 
 /** Nem jegyzet: ilyen célhoz nem hozunk létre új jegyzetet (v1.2 vagy „Dr. Kovács” viszont jegyzetnév). */
@@ -26,6 +30,17 @@ let fugg: NavFuggoseg | null = null;
 
 export function navigacioBeallit(f: NavFuggoseg | null): void {
   fugg = f;
+}
+
+export function cimkeKeres(nyers: string): boolean {
+  const cimke = cimkeErtek(nyers);
+  if (!cimke || !cimkeKeresheto() || !fugg?.keresCimke) return false;
+  fugg.keresCimke(cimke);
+  return true;
+}
+
+export function cimkeKeresheto(): boolean {
+  return modulEngedelyezett('cimkek') && modulEngedelyezett('kereses');
 }
 
 /** Az egér-/billentyű-módosítókból a megnyitás módja: ⌘ (vagy ⌃) új fül, ⌘⌥ osztás. */

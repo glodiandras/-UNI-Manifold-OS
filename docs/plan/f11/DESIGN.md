@@ -1,6 +1,6 @@
 # F11 — Daily editing and navigation implementation
 
-Status: in progress, first implementation checkpoint (2026-10-16). F5 is closed; no later phase is being started here.
+Status: in progress; latest checkpoint: tags, unresolved links and explorer (2026-10-16). F5 is closed; no later phase is being started here.
 
 The product objective is an easy, dependable editor that can compete with Obsidian while retaining Manifold's existing tools and AI gates. The original v2 checkout and the real vault remain read-only. All verification uses synthetic data. The source audits are evidence and implementation proposals; product constraints in CLAUDE.md and the user's request remain authoritative.
 
@@ -17,7 +17,17 @@ The product objective is an easy, dependable editor that can compete with Obsidi
 
 ## Remaining release work
 
-The per-gap inventory is [CHECKLIST.md](CHECKLIST.md). The first open daily-use priorities are body tags and completion/navigation, unresolved-link feedback, property-type editing, explorer sorting, and a docked persistent search view. Additional must/should work includes folding, Reading find, complete workspace layouts/navigation history, richer property/search operations, and link-format preservation through renames.
+The per-gap inventory is [CHECKLIST.md](CHECKLIST.md). The first open daily-use priorities after the second checkpoint are property-type editing, explorer creation-time sorting, and a docked persistent search view. Additional must/should work includes folding, Reading find, complete workspace layouts/navigation history, richer property/search operations, and link-format preservation through renames.
+
+## Second checkpoint: tags, unresolved links and explorer
+
+The next batch implements body-tag parsing/style, shared fuzzy completion and click-to-search from Reading/Source/LP and property chips. Lexical vectors are compared against the real Python core regex, including Unicode decimal/non-decimal numbers, combining marks and whitespace differences. Tags keep the existing core grammar. Code, math, YAML, comments and link destinations remain protected; tags in link labels never produce nested interactive anchors. Tag search requires both the Tags and Search modules. The tag cache uses a shared, reference-counted lifetime and refreshes while an active editor needs it, even with a hidden tag sidebar.
+
+Unresolved feedback is based only on confirmed core results. The editor processes visible ranges; Reader also observes asynchronously mounted nested embeds. Each resolution pass uses bounded batches and at most two requests in flight. Abort, document changes, structural/content generations and DOM identity prevent stale decoration. Unknown/failed/partial responses do not become missing-file state. The shared resolution service preserves cached and newly requested targets in mixed calls, preserves ambiguity, and invalidates on content events because an alias edit can resolve a former miss. This intentionally supersedes the first checkpoint's content-cache retention.
+
+The explorer adds persistent name A–Z/Z–A and modified newest/oldest modes, with folders first and stable per-level ties. Date ordering asks for live metadata only while needed; default name ordering retains the existing per-save list-fetch avoidance. Expand/collapse covers empty and nested folders, preserves remembered opens and reports the 2000-open cap. Creation-time order remains open because the index/API has no real birthtime metadata; mtime is not used as a substitute.
+
+After this batch the first remaining daily-use must work is property-type editing, completion of explorer creation-time order, and docked persistent search. Remote-image explicit downloads, partial multiline comment parsing and the other listed must/should gaps remain open. This remains an F11 checkpoint, not final phase closure.
 
 Remote images remain a visible offline placeholder. D3 permits explicit downloads, not an automatic proxy fetch or a relaxed CSP; the implementation still needs a concrete user-triggered download path with bounds and error recovery. Existing AI features remain intact, with model/calibration changes reserved for their planned phases.
 

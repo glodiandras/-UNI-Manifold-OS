@@ -13,13 +13,13 @@
   import { fajlImport, VAULT_HUZAS } from '../szerkeszto/csatolmany';
   import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-  import { ChevronDown, ChevronRight, ChevronsDownUp, FilePlus, Folder, FolderOpen } from '../lib/ikon/ikonok';
+  import { ArrowUpDown, ChevronDown, ChevronRight, ChevronsDownUp, FilePlus, Folder, FolderOpen, ListTree } from '../lib/ikon/ikonok';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { keresoMegnyit } from '../lib/kereses/kereso';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
-  import { athelyezheto, faEpit, lapit, type FaCsomopont } from '../lib/vault/fa';
+  import { athelyezheto, faEpit, lapit, mappakatKinyit, type FaCsomopont, type FaRendezes } from '../lib/vault/fa';
   import { lebegoMenu, type MenuElem } from '../szerkeszto/notion/menu';
   import { mediaUt } from '../osszefoglalas/allando';
   import { osszefoglalasFajlbol, osszefoglalasMappabol, tartalmiJegyzet } from '../osszefoglalas/parancsok';
@@ -27,13 +27,34 @@
   import { ujJegyzetSablonbol } from '../ma/naplo';
   import { ujJegyzetSablonbolHiv } from '../ma/sablonUj';
   import type { SemaProblema } from '../szerkeszto/tulajdonsagok/tipusok';
+  import { MAX_NYITOTT_MAPPA } from '../lib/elrendezes/felulet.svelte';
   import { beallitasok } from '../lib/beallitasok/allapot.svelte';
 
   const { felulet, fajlok } = kornyezet();
 
-  const gyoker = $derived(faEpit(fajlok.lista, fajlok.mappak));
+  const gyoker = $derived(faEpit(fajlok.lista, fajlok.mappak, felulet.oldalsav.rendezes));
   const nyitott = $derived(new Set(felulet.oldalsav.nyitott));
   const sorok = $derived(lapit(gyoker, nyitott));
+  const vanNyitott = $derived(sorok.some(s => s.cs.mappa && nyitott.has(s.cs.ut)));
+  const RENDEZES: { id: FaRendezes; nev: string }[] = [
+    { id: 'nev', nev: tk('Fájlnév (A–Z)') },
+    { id: 'nev-forditva', nev: tk('Fájlnév (Z–A)') },
+    { id: 'modositva', nev: tk('Módosítás: legújabb elöl') },
+    { id: 'modositva-regi', nev: tk('Módosítás: legrégebbi elöl') },
+  ];
+  const rendezesCim = $derived(t('Rendezés: {mod}', { mod: t(RENDEZES.find(r => r.id === felulet.oldalsav.rendezes)?.nev ?? RENDEZES[0].nev) }));
+
+  $effect(() => {
+    if (felulet.oldalsav.rendezes === 'modositva' || felulet.oldalsav.rendezes === 'modositva-regi') return fajlok.idobelyegeketFigyel();
+  });
+
+  function rendezesMenu(e: MouseEvent) {
+    const gomb = e.currentTarget as HTMLElement, r = gomb.getBoundingClientRect();
+    const akciok = new Map(RENDEZES.map(m => [m.id, () => { felulet.oldalsav.rendezes = m.id; }]));
+    lebegoMenu({ focus: () => gomb.focus() }, r.left, r.bottom,
+      RENDEZES.map(m => ({ id: m.id, nev: t(m.nev), kijelolt: m.id === felulet.oldalsav.rendezes })), akciok, t('Fájlok rendezése'));
+  }
+
 
   let fokuszUt = $state<string | null>(null);
   const tabUt = $derived(sorok.some((s) => s.cs.ut === fokuszUt) ? fokuszUt : (sorok[0]?.cs.ut ?? null));
@@ -360,8 +381,11 @@
 
   onDestroy(() => nyitoIdozito && clearTimeout(nyitoIdozito));
 
-  function osszecsuk() {
-    felulet.oldalsav.nyitott = [];
+  function mappakValt() {
+    if (vanNyitott) { felulet.oldalsav.nyitott = []; return; }
+    const nyitas = mappakatKinyit(gyoker, felulet.oldalsav.nyitott, MAX_NYITOTT_MAPPA);
+    felulet.oldalsav.nyitott = nyitas.utak;
+    if (nyitas.kimaradt) ertesitesek.ertesit({ szint: 'info', cim: t('A mappák egy része kinyílt'), szoveg: t('Legfeljebb {n} mappa marad nyitva egyszerre. A többit külön nyithatod ki.', { n: MAX_NYITOTT_MAPPA }), idotartam: 6000 });
   }
 
   const tipusNev = (cs: FaCsomopont) => (cs.mappa ? `${tp('{n} jegyzet', cs.jegyzetek)} · ${tp('{n} fájl', cs.fajlok)}` : cs.ut);
@@ -384,7 +408,8 @@
     <span class="felirat" aria-hidden="true" data-csend-rejt>{tp('{n} fájl', gyoker.fajlok)}</span>
     <IkonGomb ikon={FilePlus} cimke={t('Új jegyzet')} kicsi data-csend-rejt onclick={() => ujJegyzetNyit()} />
     <IkonGomb ikon={Folder} cimke={t('Új mappa')} kicsi data-csend-rejt onclick={() => ujJegyzetNyit(celMappa(), 'mappa')} />
-    <IkonGomb ikon={ChevronsDownUp} cimke={t('Összes mappa összecsukása')} kicsi data-csend-rejt onclick={osszecsuk} />
+    <IkonGomb ikon={ArrowUpDown} cimke={rendezesCim} aria-haspopup="listbox" kicsi data-csend-rejt onclick={rendezesMenu} />
+    <IkonGomb ikon={vanNyitott ? ChevronsDownUp : ListTree} cimke={vanNyitott ? t('Összes mappa összecsukása') : t('Összes mappa kinyitása')} kicsi data-csend-rejt onclick={mappakValt} />
   </div>
 
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->

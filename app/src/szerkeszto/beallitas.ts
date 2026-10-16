@@ -35,6 +35,7 @@ import { linkNevForras, notionBovitmenyek } from './notion';
 import { elonezetPlugin, stilusPlugin } from './elo/sorok';
 import { OBSIDIAN_BOVITESEK } from './markdown/elemzo';
 import { autoParokBovitmeny } from './autoParok';
+import { feloldatlanLinkek } from './linkek/feloldatlan';
 
 export type SzerkesztoMod = 'elo' | 'forras';
 
@@ -154,6 +155,7 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     // a `[[` kiegészítés és a nyers frontmatter tulajdonság-javaslatai (ugyanazzal a fájl-forrással)
     o.kiegeszites ? [kiegeszitesForras.of(o.kiegeszites), kiegeszitesBovitmeny(), fmKiegeszites()] : [],
     linkBovitmeny(),
+    feloldatlanLinkek(),
     helyiMenuBovitmeny(),
     o.javaslat ? javaslatBeallitas.of(o.javaslat) : [],
     javaslatBovitmeny(), // C30b-mag: a linkeletlen említések aláhúzása, Tab/Esc (csak látható javaslatnál)

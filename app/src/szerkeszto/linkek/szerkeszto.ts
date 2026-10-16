@@ -11,7 +11,8 @@ import { jegyzetUtja } from '../elo/jegyzet';
 import { wikilinkAdat, type LinkAdat } from './adat';
 import { domCel, elonezetKapcsol, type ElonezetCel } from './elonezet';
 import { kulsoCim, kulsoLink } from './kulso';
-import { linkMegnyit, nyitasMod } from './navigacio';
+import { cimkeKeres, linkMegnyit, nyitasMod } from './navigacio';
+import { cimkeAt } from './cimkek';
 import { markdownCel } from './markdown';
 
 const LINK_NEVEK = new Set(['Wikilink', 'Embed', 'Link']);
@@ -132,6 +133,14 @@ function kirajzoltTartomany(view: EditorView, from: number, to: number): boolean
 const kattintas = EditorView.domEventHandlers({
   mousedown(e, view) {
     if (e.button !== 0 && e.button !== 1) return false;
+    if (e.button === 0 && e.target instanceof HTMLElement && e.target.closest('.cm-line')) {
+      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+      const cimke = pos === null ? null : cimkeAt(view.state, pos);
+      if (cimke && (e.metaKey || e.ctrlKey || kirajzoltTartomany(view, cimke.from, cimke.to)) && cimkeKeres(cimke.cimke)) {
+        e.preventDefault();
+        return true;
+      }
+    }
     const l = egerLink(view, e);
     const forras = view.state.facet(jegyzetUtja);
     if (!l) {

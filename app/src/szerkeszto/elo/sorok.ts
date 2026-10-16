@@ -32,6 +32,7 @@ const JELOLES: Record<string, Decoration> = {
   Autolink: Decoration.mark({ class: 'cm-link' }),
   Wikilink: Decoration.mark({ class: 'cm-wikilink' }),
   Embed: Decoration.mark({ class: 'cm-wikilink' }),
+  Hashtag: Decoration.mark({ class: 'cm-cimke' }),
   FootnoteReference: Decoration.mark({ class: 'cm-labjegyzet-hiv' }),
   InlineMath: Decoration.mark({ class: 'cm-keplet-forras' }),
   DisplayMath: Decoration.mark({ class: 'cm-keplet-forras' }),

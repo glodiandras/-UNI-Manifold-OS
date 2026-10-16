@@ -23,6 +23,7 @@
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
   import { beallitasok } from '../lib/beallitasok/allapot.svelte';
   import { statisztika } from '../lib/elrendezes/szovegStatisztika.svelte';
+  import { cimkek } from '../lib/vault/cimkek.svelte';
   import { bovitmenyek, elonezetMod, forrasMod, irhatosagKapcsolo, modKapcsolo, opciokKapcsolo, szerkesztoOpciok, szinkronJel } from './beallitas';
   import { felismertNyelv } from './nyelv';
   import type { Csatolt, Dokumentum } from './dokumentum/dokumentum.svelte';
@@ -59,6 +60,9 @@
   let view = $state.raw<EditorView | null>(null);
   let docValtozat = $state(0);
   let tartalmiKod = $state('');
+  $effect(() => {
+    if (aktiv && dok && beallitasok.ertek.modulok.cimkek) return untrack(() => cimkek.igenyel());
+  });
   let statisztikaIdozito: ReturnType<typeof setTimeout> | null = null;
 
   // A teljes dokumentum Unicode-számlálása nem futhat a leütés kritikus útján.

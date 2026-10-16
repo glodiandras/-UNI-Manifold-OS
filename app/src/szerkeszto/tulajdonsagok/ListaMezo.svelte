@@ -12,12 +12,15 @@
   import { wikiReszek } from './ertek';
   import type { JavaslatElem, JavaslatLista } from './javaslat';
   import JavaslatMezo from './JavaslatMezo.svelte';
+  import { cimkeErtek } from '../markdown/cimke';
+  import { cimkeKeres, cimkeKeresheto } from '../linkek/navigacio';
 
   let {
     elemek,
     cimke,
     irhato,
     link = false,
+    cimkes = false,
     onvaltozas,
     onnyit,
     javasol,
@@ -27,6 +30,7 @@
     irhato: boolean;
     /** a bevitt név wikilinkké alakul (NN, Source) */
     link?: boolean;
+    cimkes?: boolean;
     onvaltozas: (uj: string[]) => void;
     onnyit?: (nyers: string, e: MouseEvent) => void;
     /** a gépelés közbeni javaslatok (a meglévő elemek nélkül) */
@@ -68,9 +72,12 @@
 <ul class="lista" aria-label={cimke}>
   {#each elemek as e, i (`${i}:${e}`)}
     {@const w = wikiReszek(e)}
+    {@const cimkeCel = cimkes ? cimkeErtek(e) : null}
     <li class="chip" class:link={!!w}>
       {#if w && onnyit}
         <button type="button" class="szoveg nyit" title={e} onclick={(ev) => onnyit?.(e, ev)}>{w.felirat}</button>
+      {:else if cimkeCel && cimkeKeresheto()}
+        <button type="button" class="szoveg nyit" aria-label={t('Keresés a címkére: #{cimke}', { cimke: cimkeCel })} onclick={() => cimkeKeres(cimkeCel)}>{e}</button>
       {:else}
         <span class="szoveg" title={e}>{w ? w.felirat : e}</span>
       {/if}

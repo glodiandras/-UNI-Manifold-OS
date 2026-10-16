@@ -4,6 +4,7 @@
 
 import { kerdez } from '../core/api';
 import { feluliras, type GrafFeluliras } from '../graf/beallitasok';
+import { faRendezes, type FaRendezes } from '../vault/fa';
 import { Munkaterulet } from './munkaterulet.svelte';
 import { TEMAK, type Tema } from './tema';
 
@@ -26,7 +27,7 @@ export interface FeluletMentes {
   kenyelmiVerzio?: 1;
   tema: Tema;
   szerkesztoMod?: SzerkesztoMod;
-  oldalsav: { szelesseg: number; nyitva: boolean; nezet?: OldalsavNezet; nyitott?: string[] };
+  oldalsav: { szelesseg: number; nyitva: boolean; nezet?: OldalsavNezet; nyitott?: string[]; rendezes?: FaRendezes };
   jobbPanel: { szelesseg: number; nyitva: boolean; visszahivatkozasok: boolean; emlitesek: boolean; kimeno: boolean; vazlat: boolean; elozmenyek?: boolean; higienia?: boolean; hasonlo?: boolean };
   /** A tulajdonság-panel a szerkesztő fölött (C11b): nyitva vagy összecsukva. */
   tulajdonsagok?: { nyitva: boolean };
@@ -53,7 +54,7 @@ const szovegek = (x: unknown, max: number) =>
 
 export class Felulet {
   tema = $state<Tema>('rendszer');
-  oldalsav = $state({ szelesseg: OLDALSAV.alap as number, nyitva: true, nezet: 'fajlok' as OldalsavNezet, nyitott: [] as string[] });
+  oldalsav = $state({ szelesseg: OLDALSAV.alap as number, nyitva: true, nezet: 'fajlok' as OldalsavNezet, nyitott: [] as string[], rendezes: 'nev' as FaRendezes });
   jobbPanel = $state({ szelesseg: JOBB_PANEL.alap as number, nyitva: true, visszahivatkozasok: true, emlitesek: false, kimeno: false, vazlat: true, elozmenyek: false, higienia: false, hasonlo: false });
   tulajdonsagok = $state({ nyitva: true });
   kereso = $state({ kivagasok: true });
@@ -115,6 +116,7 @@ export class Felulet {
       nyitva: logikai(o.nyitva, true),
       nezet: o.nezet === 'cimkek' ? o.nezet : 'fajlok', // a régi „kereses” (E3 előtt) a fájlfára esik
       nyitott: szovegek(o.nyitott, MAX_NYITOTT_MAPPA),
+      rendezes: faRendezes(o.rendezes),
     };
     this.jobbPanel = {
       szelesseg: szam(j.szelesseg, JOBB_PANEL.min, JOBB_PANEL.max, JOBB_PANEL.alap),

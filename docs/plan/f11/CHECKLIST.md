@@ -11,7 +11,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
 | `01-rendering-01` | must | Partial | `%% comments %%` (must, S, high) | Reader + muted LP/Source and PDF-marker regression covered. Inline-open comments spanning blank paragraphs remain open. |
-| `01-rendering-02` | must | Open | Inline `#tags` (must, S, high) | — |
+| `01-rendering-02` | must | Verified | Inline `#tags` (must, S, high) | f11-cimke-elemzo.test.ts; f11-cimke-navigacio.svelte.test.ts |
 | `01-rendering-03` | must | Verified | Markdown-syntax images to vault files (must, M, high) | f11-embeds.test.ts; f11-olvaso.svelte.test.ts |
 | `01-rendering-04` | should | Open | External images (should, M, high) | — |
 | `01-rendering-05` | should | Open | Heading folding (should, M, high) | — |
@@ -30,7 +30,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
 | `02-links-01` | must | Verified | Internal markdown links are not navigable or previewable (must, M, high) | f11-linkek-megjegyzes.test.ts; f11-olvaso.svelte.test.ts |
-| `02-links-02` | must | Open | No dimmed style for unresolved links (must, M, high) | — |
+| `02-links-02` | must | Verified | No dimmed style for unresolved links (must, M, high) | f11-feloldatlan-linkek.test.ts (editor/Reader, errors, cancellation, cache races) |
 | `02-links-03` | should | Verified | `./` and `../` markdown targets do not resolve (should, S, medium) | F5: core relative-link regression tests |
 | `02-links-04` | should | Open | Block suggester cannot mint a `^id` in another note (should, M, high) | — |
 | `02-links-05` | should | Open | No vault-wide heading search `[[##` (should, M, high) | — |
@@ -48,14 +48,14 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
-| `03-properties-01` | must | Open | Body `#tags` are not parsed or styled (must, M, confidence high) | — |
-| `03-properties-02` | must | Open | Clicking a `#tag` does not open search (must, S, confidence high) | — |
-| `03-properties-03` | must | Open | No tag autocomplete in the body (must, M, confidence high) | — |
+| `03-properties-01` | must | Verified | Body `#tags` are not parsed or styled (must, M, confidence high) | f11-cimke-elemzo.test.ts; actual Python lexical parity + shared Lezer parser |
+| `03-properties-02` | must | Verified | Clicking a `#tag` does not open search (must, S, confidence high) | f11-cimke-navigacio.svelte.test.ts (Reader/LP/Source, shared query, module gates) |
+| `03-properties-03` | must | Verified | No tag autocomplete in the body (must, M, confidence high) | f11-cimke-kiegeszites.test.ts; f11-cimke-cache.test.ts |
 | `03-properties-04` | must | Verified | Quick switcher ignores aliases (must, S, confidence high) | f11-workspace.svelte.test.ts |
 | `03-properties-05` | must | Open | Per-key property types are read-only (must, M, confidence high) | — |
 | `03-properties-06` | should | Open | No type icon and no per-property menu (should, S, confidence high) | — |
 | `03-properties-07` | should | Open | Keys cannot be renamed in place (should, M, confidence high) | — |
-| `03-properties-08` | should | Open | Tag chips in the properties panel are not clickable (should, S, confidence high) | — |
+| `03-properties-08` | should | Verified | Tag chips in the properties panel are not clickable (should, S, confidence high) | f11-cimke-navigacio.svelte.test.ts (read-only chips; Search/Tags gates) |
 | `03-properties-09` | should | Open | No Properties / All-properties sidebar views (should, M, confidence high) | — |
 | `03-properties-11` | should | Open | Tag pane has no sort options (should, S, confidence high) | — |
 | `03-properties-16` | should | Open | No property search operators (should, M, confidence high; search subsystem, cross-reference) | — |
@@ -112,8 +112,8 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
-| `07-explorer-01` | must | Open | Rendezési módok (must, M, magas) | — |
-| `07-explorer-02` | should | Open | Expand all (should, S, magas) | — |
+| `07-explorer-01` | must | Partial | Rendezési módok (must, M, magas) | f11-explorer.svelte.test.ts: persistent name/mtime modes at every level, live metadata. Creation-time ordering needs real birthtime index/API support; no fabricated timestamps. |
+| `07-explorer-02` | should | Verified | Expand all (should, S, magas) | f11-explorer.svelte.test.ts (empty/nested folders, saved opens, 2000 cap) |
 | `07-explorer-03` | should | Open | Soron belüli átnevezés (should, M, magas) | — |
 | `07-explorer-04` | should | Open | Többes kijelölés (should, L, magas) | — |
 | `07-explorer-06` | should | Open | Make a copy (should, M, magas) | — |
@@ -138,4 +138,4 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | `08-search-11` | should | Open | Substring matching for bare words (Q1) — should, M–L, confidence medium | — |
 | `08-search-12` | should | Open | Find in Reading view (F5) — should, M | — |
 | `08-search-13` | should | Open | Embedded search block (R24) — should, M | — |
-| `08-search-24` | should | Open | Click `#tag` → search (R22) — should, S (search side) | — |
+| `08-search-24` | should | Verified | Click `#tag` → search (R22) — should, S (search side) | f11-cimke-navigacio.svelte.test.ts; existing nested-tag core search tests |

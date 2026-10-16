@@ -2,11 +2,11 @@
 // minden cél-feloldás, rövid cél-szöveg és horgony a core-tól jön; itt csak gyorsítótár és kényelmi hívás van.
 //
 // - `feloldas`: a (forrásmappa, cél) párokat gyorsítótárazza (a feloldás a forrás mappájától és a fájlhalmaztól
-//   függ); a fájlszerkezet változására (új vagy eltűnt fájl) a gyorsítótár ürül és a `verzio` nő, így a
-//   függő beágyazások és előnézetek újrafeloldódnak.
+//   függ); a fájlszerkezet változására a gyorsítótár ürül és a `verzio` nő. Tartalmi mentéskor az aliasok
+//   miatt a feloldási cache is ürül; a tartalomVerzio a beágyazások mellett a linkjelzéseket is frissíti.
 // - `mediaUrl`: tokenes URL (`/media/<token>/<út>`): az <img>/<video>/<iframe> nem küldhet X-Manifold fejlécet.
 
-import { ApiHiba, kerdez } from '../core/api';
+import { ApiHiba, kerdez, statuszUzenet } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
 import { mappa } from './fajlok.svelte';
 
@@ -43,7 +43,7 @@ export class LinkSzolgaltatas {
   verzio = $state(0);
   /** Nő minden tartalmi eseménynél is: a beágyazott szeletek újraolvasandók, a feloldási cache maradhat. */
   tartalomVerzio = $state(0);
-  private readonly feloldasok = new Map<string, string | null>();
+  private readonly feloldasok = new Map<string, Feloldott>();
   private aliasok: Promise<Record<string, string[]>> | null = null;
   private tokenVaro: Promise<string | null> | null = null;
 
@@ -64,6 +64,7 @@ export class LinkSzolgaltatas {
       const utak = (e.utak as string[] | undefined) ?? [];
       const torolt = (e.torolt as string[] | undefined) ?? [];
       this.aliasok = null; // az `aliases` bármely mentéssel változhat
+      this.feloldasok.clear(); // egy meglévő jegyzet új aliasa korábban hiányzó célt is feloldhat
       this.tartalomVerzio++;
       if (e.tomeges || torolt.length || utak.some((u) => !ismert(u))) this.ervenytelenit();
     });
@@ -105,25 +106,39 @@ export class LinkSzolgaltatas {
   }
 
   /** Link-célok feloldása a `forras` jegyzetből: a feloldott út (vagy `null`). */
-  async feloldas(forras: string, celok: string[]): Promise<Feloldott[]> {
+  async feloldas(forras: string, celok: string[], jel?: AbortSignal): Promise<Feloldott[]> {
+    jel?.throwIfAborted();
     const mp = mappa(forras);
     const kulcs = (c: string) => `${mp}\0${c}`;
+    // Az aszinkron kérés alatt a közös cache változhat; az adott hívás a saját teljes válaszát őrzi.
+    const eredmenyek = new Map(celok.flatMap(c => {
+      const e = this.feloldasok.get(kulcs(c));
+      return e ? [[c, e] as const] : [];
+    }));
     const hianyzo = [...new Set(celok.filter((c) => !this.feloldasok.has(kulcs(c))))];
     if (hianyzo.length) {
       const verzio = this.verzio;
+      const tartalomVerzio = this.tartalomVerzio;
       const d = await kerdez<{ eredmenyek: Feloldott[] }>('/api/vault/feloldas', {
         metodus: 'POST',
         torzs: { forras, celok: hianyzo },
         idokorlat: 10000,
+        jel,
       });
-      if (verzio === this.verzio) for (const e of d.eredmenyek) this.feloldasok.set(kulcs(e.cel), e.ut);
-      else for (const e of d.eredmenyek) this.feloldasok.delete(kulcs(e.cel));
-      return celok.map((c) => {
-        const e = d.eredmenyek.find((x) => x.cel === c);
-        return { cel: c, ut: e?.ut ?? null, tobbertelmu: !!e?.tobbertelmu };
-      });
+      // A hiányos/hibás válasz ismeretlen állapot, nem megerősített hiányzó fájl.
+      if (!Array.isArray(d.eredmenyek)) throw new ApiHiba(502, statuszUzenet(502));
+      for (const c of hianyzo) {
+        const talalatok = d.eredmenyek.filter(x => x?.cel === c);
+        const e = talalatok[0];
+        if (talalatok.length !== 1 || !(e.ut === null || (typeof e.ut === 'string' && e.ut.length > 0)))
+          throw new ApiHiba(502, statuszUzenet(502));
+        eredmenyek.set(c, { cel: c, ut: e.ut, tobbertelmu: !!e.tobbertelmu });
+      }
+      if (verzio === this.verzio && tartalomVerzio === this.tartalomVerzio && !jel?.aborted)
+        for (const c of hianyzo) this.feloldasok.set(kulcs(c), eredmenyek.get(c)!);
     }
-    return celok.map((c) => ({ cel: c, ut: this.feloldasok.get(kulcs(c)) ?? null, tobbertelmu: false }));
+    jel?.throwIfAborted();
+    return celok.map(c => ({ ...eredmenyek.get(c)!, cel: c }));
   }
 
   /** Egy cél feloldása (az út, vagy `null`). */

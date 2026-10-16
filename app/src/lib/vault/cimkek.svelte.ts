@@ -5,6 +5,7 @@ import { locale } from '../i18n';
 
 import { ApiHiba, kerdez } from '../core/api';
 import type { CoreKapcsolat } from '../core/ws.svelte';
+import { modulEngedelyezett } from '../beallitasok/allapot.svelte';
 
 export interface CimkeCsucs {
   /** a megjelenített teljes út (a leggyakoribb írásmód): `Fizika/Mechanika` */
@@ -59,33 +60,74 @@ export class VaultCimkek {
   private elavult = true;
   private idozito: ReturnType<typeof setTimeout> | null = null;
   private sorszam = 0;
+  private igenylok = 0;
+  private folyamat: Promise<void> | null = null;
+  private elavultVerzio = 0;
+
+  private get aktiv(): boolean { return this.latszik || this.igenylok > 0; }
+
+  /** Szerkesztő/egyéb fogyasztó életidejére igényelt közös cache; a visszaadott feloldás idempotens. */
+  igenyel(): () => void {
+    this.igenylok++;
+    void this.kerjen();
+    let el = true;
+    return () => {
+      if (!el) return;
+      el = false;
+      this.igenylok--;
+      if (!this.aktiv && this.idozito) { clearTimeout(this.idozito); this.idozito = null; }
+    };
+  }
+
+  /** A kiegészítés csak szükség esetén vár: betöltött, érvényes listán nincs új API-kérés. */
+  async kerjen(): Promise<void> {
+    if (!modulEngedelyezett('cimkek')) return;
+    if (this.folyamat) return this.folyamat;
+    if (this.elavult || !this.betoltve) return this.frissit();
+  }
 
   /** A Címkék fül megjelent: ha a lista elavult vagy még nincs, töltődik. */
   megjelenik(): void {
     this.latszik = true;
-    if (this.elavult || !this.betoltve) void this.frissit();
+    void this.kerjen();
   }
 
-  async frissit(): Promise<void> {
+  frissit(): Promise<void> {
+    if (!modulEngedelyezett('cimkek')) return Promise.resolve();
+    if (this.folyamat) return this.folyamat;
     const en = ++this.sorszam;
-    try {
-      const d = await kerdez<{ cimkek: CimkeCsucs[] }>('/api/vault/cimkek', { idokorlat: 8000 });
-      if (en !== this.sorszam) return;
-      this.lista = d.cimkek ?? [];
-      this.betoltve = true;
-      this.elavult = false;
-      this.hiba = null;
-    } catch (e) {
-      if (e instanceof ApiHiba && e.statusz === 503) return; // az index még épül: az `index` esemény hoz újra
-      this.hiba = e instanceof Error ? e.message : String(e);
-    }
+    const verzio = this.elavultVerzio;
+    this.folyamat = (async () => {
+      try {
+        const d = await kerdez<{ cimkek: CimkeCsucs[] }>('/api/vault/cimkek', { idokorlat: 8000 });
+        if (en !== this.sorszam) return;
+        this.lista = d.cimkek ?? [];
+        this.betoltve = true;
+        this.elavult = verzio !== this.elavultVerzio;
+        this.hiba = null;
+      } catch (e) {
+        if (en !== this.sorszam || e instanceof ApiHiba && e.statusz === 503) return; // az index esemény hoz újra
+        this.hiba = e instanceof Error ? e.message : String(e);
+      } finally {
+        if (en === this.sorszam) {
+          this.folyamat = null;
+          // A kérés alatt érkezett esemény nem veszhet el az együtt kezelt kérések miatt.
+          if (verzio !== this.elavultVerzio && this.aktiv) this.utemez(0);
+        }
+      }
+    })();
+    return this.folyamat;
   }
 
   private utemez(ms = 800) {
     this.elavult = true;
-    if (!this.latszik) return;
+    this.elavultVerzio++;
+    if (!this.aktiv || !modulEngedelyezett('cimkek')) return;
     if (this.idozito) clearTimeout(this.idozito);
-    this.idozito = setTimeout(() => void this.frissit(), ms);
+    this.idozito = setTimeout(() => {
+      this.idozito = null;
+      if (this.aktiv && modulEngedelyezett('cimkek')) void this.frissit();
+    }, ms);
   }
 
   figyel(k: CoreKapcsolat): () => void {
@@ -97,6 +139,10 @@ export class VaultCimkek {
       le2();
       le3();
       if (this.idozito) clearTimeout(this.idozito);
+      this.idozito = null;
+      this.sorszam++;
+      this.folyamat = null;
+      this.elavult = true;
     };
   }
 }

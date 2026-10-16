@@ -1,0 +1,11 @@
+{
+  "Fájlnév (A–Z)": "File name (A–Z)",
+  "Fájlnév (Z–A)": "File name (Z–A)",
+  "Módosítás: legújabb elöl": "Modified: newest first",
+  "Módosítás: legrégebbi elöl": "Modified: oldest first",
+  "Rendezés: {mod}": "Sort order: {mod}",
+  "Fájlok rendezése": "File sort order",
+  "Összes mappa kinyitása": "Expand all folders",
+  "A mappák egy része kinyílt": "Some folders were expanded",
+  "Legfeljebb {n} mappa marad nyitva egyszerre. A többit külön nyithatod ki.": "Up to {n} folders stay expanded at once. You can open the remaining folders individually."
+}

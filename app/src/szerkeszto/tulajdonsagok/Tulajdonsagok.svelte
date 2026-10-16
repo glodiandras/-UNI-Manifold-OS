@@ -360,6 +360,7 @@
                 cimke={t.kulcs}
                 {irhato}
                 link={linkLista(t)}
+                cimkes={t.tipus === 'tags'}
                 onvaltozas={(uj) => beallit(t.kulcs, uj, listaTipus(t))}
                 onnyit={chipNyit}
                 javasol={javaslo(t.kulcs, { fajta: linkLista(t) ? 'link' : 'ertek', kizar: () => listaElemek(t.ertek) })}
