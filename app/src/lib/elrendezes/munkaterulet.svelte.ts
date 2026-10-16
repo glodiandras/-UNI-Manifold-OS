@@ -5,6 +5,8 @@ export interface Ful {
   id: string;
   /** A vault-relatív út; null = üres „Új fül”. */
   ut: string | null;
+  /** A rögzített fülre nyitás új fület használ; csoportos zárás megőrzi. */
+  rogzitett?: boolean;
   /** A nézet saját, tartós állapota (pl. a szerkesztő módja és a görgetés helye; C08). A nézet írja,
    *  a munkaterület csak megőrzi: legfeljebb `MAX_NEZET_ALLAPOT` bájt JSON. */
   nezet?: Record<string, unknown>;
@@ -62,6 +64,7 @@ export class Munkaterulet {
   gyoker = $state<Csomopont>(ujPanel());
   aktivPanelId = $state('');
   private mult = new Map<string, { vissza: Ful[]; elore: Ful[] }>();
+  private multVerzio = $state(0);
   private bezart: { panel: string; hely: number; ful: Ful }[] = [];
 
   private elozmeny(id: string) {
@@ -82,7 +85,14 @@ export class Munkaterulet {
     (irany === -1 ? h.elore : h.vissza).push(this.masolat(f));
     f.ut = cel.ut;
     f.nezet = cel.nezet;
+    this.multVerzio++;
     if (f.ut) this.megnyitasUtan?.(f.ut);
+  }
+
+  navigalhato(irany: -1 | 1, fulId = this.aktivFul?.id): boolean {
+    void this.multVerzio;
+    const h = fulId ? this.mult.get(fulId) : undefined;
+    return !!h && (irany === -1 ? h.vissza : h.elore).length > 0;
   }
 
   ujranyit(): void {
@@ -103,6 +113,9 @@ export class Munkaterulet {
   /** A sorosított állapot alkalmazása (a konstruktor és a késve megjött felület-állapot közös útja); érvénytelen: egy üres panel. */
   betolt(sorositott?: unknown): void {
     const g = sorositott ? ervenyes(sorositott) : null;
+    this.mult.clear();
+    this.bezart = [];
+    this.multVerzio++;
     this.gyoker = g ? g.gyoker : ujPanel();
     const panelek = this.panelek();
     for (const p of panelek) for (const f of p.fulek) if (f.nezet?.tipus === 'ma') f.nezet.tipus = 'manifold';
@@ -137,11 +150,12 @@ export class Munkaterulet {
       const mar = p.fulek.find((f) => f.ut === ut);
       if (mar && mod === 'aktiv') {
         p.aktiv = mar.id;
-      } else if (mod === 'aktiv' && this.aktivFul && !nezetFul(this.aktivFul)) {
+      } else if (mod === 'aktiv' && this.aktivFul && !this.aktivFul.rogzitett && !nezetFul(this.aktivFul)) {
         const f = this.aktivFul, h = this.elozmeny(f.id);
         if (f.ut) h.vissza.push(this.masolat(f));
         h.vissza = h.vissza.slice(-50);
         h.elore = [];
+        this.multVerzio++;
         f.ut = ut;
         delete this.aktivFul.nezet; // a nézet-állapot az előző fájlé volt
       } else {
@@ -169,7 +183,7 @@ export class Munkaterulet {
       return;
     }
     const uj = this.aktivFul;
-    if (uj && uj.ut === null && !uj.nezet) {
+    if (uj && uj.ut === null && !uj.nezet && !uj.rogzitett) {
       uj.nezet = nezet;
       return;
     }
@@ -213,6 +227,27 @@ export class Munkaterulet {
     if (!p.fulek.length) this.uresPanel(p);
   }
 
+  rogzit(panelId = this.aktivPanelId, fulId = this.aktivPanel.aktiv): void {
+    const ful = this.panel(panelId)?.fulek.find(f => f.id === fulId);
+    if (ful) ful.rogzitett = !ful.rogzitett;
+  }
+
+  /** Tömeges zárás nem zár rögzített fület. Az egyedi Bezárás továbbra is kifejezett kérés. */
+  bezarTobbit(mod: 'tobbi' | 'jobb' | 'mind', panelId = this.aktivPanelId, fulId = this.aktivPanel.aktiv): void {
+    const p = this.panel(panelId);
+    if (!p) return;
+    const i = p.fulek.findIndex(f => f.id === fulId);
+    if (i < 0 && mod !== 'mind') return;
+    const zar = p.fulek.filter((f, n) => !f.rogzitett && (mod === 'mind' || (mod === 'jobb' ? n > i : f.id !== fulId))).map(f => f.id);
+    for (const id of zar) this.bezar(panelId, id);
+  }
+
+  /** A csoport bezárása kifejezett művelet: a rögzített fülek is visszanyithatók maradnak. */
+  bezarPanel(panelId = this.aktivPanelId): void {
+    const ids = this.panel(panelId)?.fulek.map(f => f.id) ?? [];
+    for (const id of ids) this.bezar(panelId, id);
+  }
+
   /** A következő / előző fül az aktív panelben, körbe. */
   lep(irany: 1 | -1): void {
     const p = this.aktivPanel;
@@ -231,8 +266,8 @@ export class Munkaterulet {
   /** Az aktív panel kettéosztása; az új panel a jelenlegi fül másolatával (vagy üres füllel) indul. */
   oszt(irany: 'sor' | 'oszlop', masol = true): void {
     const p = this.aktivPanel;
-    const ut = masol ? (this.aktivFul?.ut ?? null) : null;
-    const uj = ujPanel([{ id: azon('f'), ut }]);
+    const ful = masol && this.aktivFul ? this.masolat(this.aktivFul) : { ut: null };
+    const uj = ujPanel([{ ...ful, id: azon('f'), rogzitett: undefined }]);
     const osztas: OsztasCs = { tipus: 'osztas', id: azon('o'), irany, arany: 0.5, a: p, b: uj };
     this.csere(p, osztas);
     this.aktivPanelId = uj.id;
@@ -243,6 +278,30 @@ export class Munkaterulet {
     const ps = this.panelek();
     const i = ps.findIndex((p) => p.id === this.aktivPanelId);
     this.aktivPanelId = ps[(i + irany + ps.length) % ps.length].id;
+  }
+
+  /** Irány szerinti szomszéd, a valódi bináris elrendezés arányaiból (nincs DOM-mérés vagy körbefordulás). */
+  panelIrany(irany: 'bal' | 'jobb' | 'fel' | 'le'): void {
+    type Hely = { id: string; x: number; y: number; w: number; h: number };
+    const helyek: Hely[] = [];
+    const mer = (cs: Csomopont, x: number, y: number, w: number, h: number) => {
+      if (cs.tipus === 'panel') { helyek.push({ id: cs.id, x, y, w, h }); return; }
+      if (cs.irany === 'sor') { mer(cs.a, x, y, w * cs.arany, h); mer(cs.b, x + w * cs.arany, y, w * (1 - cs.arany), h); }
+      else { mer(cs.a, x, y, w, h * cs.arany); mer(cs.b, x, y + h * cs.arany, w, h * (1 - cs.arany)); }
+    };
+    mer(this.gyoker, 0, 0, 1, 1);
+    const p = helyek.find(p => p.id === this.aktivPanelId);
+    if (!p) return;
+    const vizszintes = irany === 'bal' || irany === 'jobb';
+    const fo = (h: Hely) => vizszintes ? h.x + h.w / 2 : h.y + h.h / 2;
+    const kereszt = (h: Hely) => vizszintes ? h.y + h.h / 2 : h.x + h.w / 2;
+    const jeloltek = helyek.filter(h => h.id !== p.id && (irany === 'bal' ? h.x + h.w <= p.x + 0.000001 : irany === 'jobb' ? h.x >= p.x + p.w - 0.000001 : irany === 'fel' ? h.y + h.h <= p.y + 0.000001 : h.y >= p.y + p.h - 0.000001));
+    const pont = (h: Hely) => {
+      const atfedes = vizszintes ? Math.min(h.y + h.h, p.y + p.h) - Math.max(h.y, p.y) : Math.min(h.x + h.w, p.x + p.w) - Math.max(h.x, p.x);
+      return (atfedes > 0.000001 ? 0 : 10) + Math.abs(fo(h) - fo(p)) + Math.abs(kereszt(h) - kereszt(p));
+    };
+    jeloltek.sort((a, b) => pont(a) - pont(b));
+    if (jeloltek[0]) this.aktivPanelId = jeloltek[0].id;
   }
 
   /** Fül áthelyezése (fülsoron belül vagy panelek között). */
@@ -362,6 +421,7 @@ function ervenyes(x: unknown): { gyoker: Csomopont; aktivPanelId: string } | nul
         if (f.ut !== null && typeof f.ut !== 'string') return null;
         lat.add(f.id);
         const ful: Ful = { id: f.id, ut: f.ut as string | null };
+        if (f.rogzitett === true) ful.rogzitett = true;
         const nezet = nezetAllapot(f.nezet);
         if (nezet) ful.nezet = nezet;
         fulek.push(ful);

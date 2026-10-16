@@ -37,14 +37,14 @@ describe('olvasó: szöveg és soron belüli elemek', () => {
     expect(d.querySelector('div.keplet-blokk .katex-display')).not.toBeNull();
   });
 
-  it('a link formázva, de nem navigál; a wikilink az aliasát mutatja; a kép helyőrző', () => {
+  it('a link formázva, de nem navigál; a wikilink az aliasát mutatja; a kép a közös beágyazóba kerül', () => {
     const d = render('[szöveg](https://pelda.hu) és [[Cél#Fejezet|alias]] és [[Cél#Fejezet]] és ![kép](a.png)');
     const a = d.querySelector<HTMLAnchorElement>('a.link')!;
     expect(a.getAttribute('href')).toBeNull();
     expect(a.title).toBe('https://pelda.hu');
     const w = [...d.querySelectorAll('.wikilink')].map((x) => x.textContent);
     expect(w).toEqual(['alias', 'Cél › Fejezet']);
-    expect(d.querySelector('.kep-helyorzo')!.textContent).toContain('kép');
+    expect(d.querySelector<HTMLElement>('.beagyazas')!.dataset.cel).toBe('a.png');
   });
 
   it('HTML: a `sub`/`sup` elem lesz, minden más szöveg marad (nincs futó HTML)', () => {

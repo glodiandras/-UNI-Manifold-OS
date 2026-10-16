@@ -24,6 +24,7 @@
 <section
   class="panel"
   class:aktiv
+  data-panel-id={panel.id}
   aria-label={ful?.ut ? t('Panel: {ut}', { ut: ful.ut }) : t('Panel')}
   onpointerdowncapture={aktival}
   onfocusin={aktival}

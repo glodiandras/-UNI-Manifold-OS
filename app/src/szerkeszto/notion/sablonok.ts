@@ -110,6 +110,9 @@ export function sablonElemek(): SablonElem[] {
     fejezet(1, Heading1),
     fejezet(2, Heading2),
     fejezet(3, Heading3),
+    fejezet(4, Heading3),
+    fejezet(5, Heading3),
+    fejezet(6, Heading3),
     {
       id: 'idezet',
       nev: t('Idézet|beszuras'),

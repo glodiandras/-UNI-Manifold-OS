@@ -12,8 +12,8 @@ import { type EditorState, type Range, StateField } from '@codemirror/state';
 import { Decoration, type DecorationSet, EditorView } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import { linkek } from '../../lib/vault/linkek.svelte';
-import { BeagyazasWidget, linkVerzioValt } from '../beagyazas/widget';
-import { wikilinkAdat } from '../linkek/adat';
+import { BeagyazasWidget, linkVerzioValt, tartalomVerzioValt } from '../beagyazas/widget';
+import { kepAdat, wikilinkAdat } from '../linkek/adat';
 import { calloutAdat } from '../markdown/callout';
 import { kepletForras } from '../markdown/fa';
 import { kodRenderelok } from '../renderelok/regiszter';
@@ -53,6 +53,11 @@ export function blokkDiszitesek(state: EditorState): DecorationSet {
     enter(n) {
       if (TAROLO.has(n.name) && n.name !== 'Blockquote') return true;
       switch (n.name) {
+        case 'ObsidianCommentBlock':
+        case 'ObsidianComment': {
+          // Az LP a megjegyzést halvány forrásként tartja meg; csak az Olvasó rejti el.
+          return false;
+        }
         case 'Blockquote': {
           const a = calloutAdat(n.node, olvas);
           if (!a || !a.hajtas || a.fejVeg >= n.to) return true;
@@ -125,14 +130,19 @@ export function blokkDiszitesek(state: EditorState): DecorationSet {
           }
           return false;
         }
+        case 'Image':
         case 'Embed': {
           const forras = state.facet(jegyzetUtja);
-          const adat = forras ? wikilinkAdat(n.node, olvas) : null;
+          const adat = forras ? (n.name === 'Image' ? kepAdat(n.node, olvas) : wikilinkAdat(n.node, olvas)) : null;
           if (!forras || !adat) return false;
           const sor = doc.lineAt(n.from);
-          if (aktiv(aktivak, sor.from, doc.lineAt(n.to).to)) return false;
-          if (sor.text.trim() === olvas(n.from, n.to))
-            ki.push(Decoration.replace({ widget: new BeagyazasWidget(adat, forras, linkek.verzio, true), block: true }).range(sor.from, sor.to));
+          const aktivSor = aktiv(aktivak, sor.from, doc.lineAt(n.to).to);
+          if (sor.text.trim() === olvas(n.from, n.to)) {
+            const widget = new BeagyazasWidget(adat, forras, linkek.verzio, true);
+            if (aktivSor) ki.push(Decoration.widget({ widget, block: true, side: 1 }).range(sor.to));
+            else ki.push(Decoration.replace({ widget, block: true }).range(sor.from, sor.to));
+          }
+          else if (aktivSor) return false;
           else ki.push(Decoration.replace({ widget: new BeagyazasWidget(adat, forras, linkek.verzio, false) }).range(n.from, n.to));
           return false;
         }
@@ -156,7 +166,7 @@ export const blokkMezo = StateField.define<DecorationSet>({
       syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
       // a módváltáskor (Forrás → Live Preview) az előző állapotban még nincs meg a mező
       tr.startState.field(aktivBlokkok, false) !== tr.state.field(aktivBlokkok) ||
-      tr.effects.some((e) => e.is(calloutHajtasValt) || e.is(linkVerzioValt))
+      tr.effects.some((e) => e.is(calloutHajtasValt) || e.is(linkVerzioValt) || e.is(tartalomVerzioValt))
     )
       return blokkDiszitesek(tr.state);
     return ertek;

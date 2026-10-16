@@ -372,9 +372,16 @@ describe('```base blokk és ![[x.base]] beágyazás', () => {
     await vi.waitFor(() => expect(document.querySelector('.beagyazas-base .sor')).not.toBeNull());
     const d = szerkesztok.dokumentumok.kap('K/Könyvek.base')!;
     expect(d.nezetSzam).toBe(1);
-    v.dispatch({ selection: { anchor: v.state.doc.line(3).from + 2 } }); // a sor aktív lesz: a widget lebomlik
+    v.dispatch({ selection: { anchor: v.state.doc.line(3).from + 2 } });
+    // F11: az aktív önálló embed forrása alatt is megmarad a preview és a dokumentumkapcsolat.
+    expect(document.querySelector('.beagyazas-base')).not.toBeNull();
+    expect(d.nezetSzam).toBe(1);
+    // Valódi widget-megszűnés: a forrásjelölés kikerül a dokumentumból. A cél nem maradhat csatolva vagy cache-ben.
+    const sor = v.state.doc.line(3);
+    v.dispatch({ changes: { from: sor.from, to: sor.to, insert: '' } });
     await vi.waitFor(() => expect(document.querySelector('.beagyazas-base')).toBeNull());
     await vi.waitFor(() => expect(d.nezetSzam).toBe(0));
+    await vi.waitFor(() => expect(szerkesztok.dokumentumok.kap('K/Könyvek.base')).toBeUndefined());
   });
 
   it('sor közepén álló beágyazás csak link-chip', async () => {

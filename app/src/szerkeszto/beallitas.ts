@@ -34,6 +34,7 @@ import { linkBovitmeny } from './linkek/szerkeszto';
 import { linkNevForras, notionBovitmenyek } from './notion';
 import { elonezetPlugin, stilusPlugin } from './elo/sorok';
 import { OBSIDIAN_BOVITESEK } from './markdown/elemzo';
+import { autoParokBovitmeny } from './autoParok';
 
 export type SzerkesztoMod = 'elo' | 'forras';
 
@@ -130,6 +131,7 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     markdownNyelv(),
     history(),
     closeBrackets(),
+    autoParokBovitmeny(),
     // A [[…]] párt a wikilink-bővítmény kezeli; a CM nem párosíthatja előtte külön a [ karaktert.
     EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '{', "'", '"', '`'] } }]),
     highlightSpecialChars(),

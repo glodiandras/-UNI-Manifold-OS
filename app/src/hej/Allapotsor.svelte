@@ -5,9 +5,10 @@
   amíg az egér az alsó szélen áll, vagy a fókusz benne van (F6, ⌘P „Állapotsor megjelenítése”).
 -->
 <script lang="ts">
-  import { t, locale } from '../lib/i18n';
+  import { t, tp, locale } from '../lib/i18n';
   import { onMount } from 'svelte';
   import { allapotsorLathato, csend, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
+  import { statisztika } from '../lib/elrendezes/szovegStatisztika.svelte';
   import { feladatsor } from '../lib/vezerlo/feladatsor.svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
@@ -19,6 +20,8 @@
   import Jelenlet from './vezerlo/Jelenlet.svelte';
 
   const { felulet, fajlok, kapcsolat } = kornyezet();
+  const aktivFul = $derived(felulet.munkaterulet.aktivFul);
+  const szovegSzamok = $derived(statisztika.olvas(aktivFul?.id, aktivFul?.ut));
   const szam = $derived(new Intl.NumberFormat(locale()));
 
   const indexSzoveg = $derived.by(() => {
@@ -76,6 +79,13 @@
     {/if}
     {#if !felulet.oldalsav.nyitva}<span class="elem"><Jelenlet /></span>{/if}
     <span class="elem" role="status" title={fajlok.index?.hiba ?? undefined}>{indexSzoveg}</span>
+    {#if szovegSzamok}
+      <span class="elem szoveg-szamok" title={szovegSzamok.kijelolt ? t('Kijelölés. Teljes jegyzet: {szavak} szó, {karakterek} karakter.', { szavak: szovegSzamok.osszesSzavak, karakterek: szovegSzamok.osszesKarakterek }) : t('A teljes jegyzet szavai és karakterei')}>
+        {#if szovegSzamok.kijelolt}<span>{t('Kijelölés:')}</span>{/if}
+        <span>{tp('{n} szó', szovegSzamok.szavak)}</span>
+        <span>{tp('{n} karakter', szovegSzamok.karakterek)}</span>
+      </span>
+    {/if}
   </div>
   <button
     type="button"

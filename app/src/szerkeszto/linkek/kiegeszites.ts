@@ -47,7 +47,7 @@ const nyit = StateEffect.define<Allapot>();
 const zar = StateEffect.define<null>();
 const frissit = StateEffect.define<null>();
 
-const TILTOTT = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'MathBlock', 'InlineMath', 'DisplayMath', 'HTMLBlock', 'HTMLTag', 'CommentBlock', 'Comment']);
+const TILTOTT = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'MathBlock', 'InlineMath', 'DisplayMath', 'HTMLBlock', 'HTMLTag', 'CommentBlock', 'Comment', 'ObsidianCommentBlock', 'ObsidianComment']);
 
 /** Nyithat-e kiegészítés a `p` helyen (kódban, képletben, HTML-ben nem). */
 export function linkNyithato(state: EditorState, p: number): boolean {

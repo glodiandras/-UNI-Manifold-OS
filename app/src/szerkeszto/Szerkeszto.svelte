@@ -22,6 +22,7 @@
   import { linkek } from '../lib/vault/linkek.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
   import { beallitasok } from '../lib/beallitasok/allapot.svelte';
+  import { statisztika } from '../lib/elrendezes/szovegStatisztika.svelte';
   import { bovitmenyek, elonezetMod, forrasMod, irhatosagKapcsolo, modKapcsolo, opciokKapcsolo, szerkesztoOpciok, szinkronJel } from './beallitas';
   import { felismertNyelv } from './nyelv';
   import type { Csatolt, Dokumentum } from './dokumentum/dokumentum.svelte';
@@ -32,7 +33,7 @@
   import { kartyaAllapot } from '../lib/asszisztens/kartya.svelte';
   import { asszisztensApi } from '../lib/asszisztens/api';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-  import { linkVerzioValt } from './beagyazas/widget';
+  import { linkVerzioValt, tartalomVerzioValt } from './beagyazas/widget';
   import { eloFejezetek } from './linkek/kiegeszites';
   import Olvaso from './Olvaso.svelte';
   import Boritokep from './tulajdonsagok/Boritokep.svelte';
@@ -58,6 +59,16 @@
   let view = $state.raw<EditorView | null>(null);
   let docValtozat = $state(0);
   let tartalmiKod = $state('');
+  let statisztikaIdozito: ReturnType<typeof setTimeout> | null = null;
+
+  // A teljes dokumentum Unicode-számlálása nem futhat a leütés kritikus útján.
+  function statisztikaUtemez(v: EditorView) {
+    if (statisztikaIdozito) clearTimeout(statisztikaIdozito);
+    statisztikaIdozito = setTimeout(() => {
+      statisztikaIdozito = null;
+      if (view === v) statisztika.frissit(fulId, ut, v.state.doc.toString(), mod === 'olvaso' ? [] : v.state.selection.ranges);
+    }, 200);
+  }
 
   $effect(() => {
     // Más modul kikapcsolása az élő beágyazásokat is visszateszi egyszerű hivatkozássá.
@@ -158,6 +169,8 @@
       parent: cmHely,
       dispatchTransactions(trs, v) {
         v.update(trs);
+        if (trs.some(tr => tr.docChanged || tr.selection))
+          statisztikaUtemez(v);
         tartalmiKod = v.state.field(felismertNyelv);
         for (const tr of trs)
           if (tr.docChanged && !tr.annotation(szinkronJel)) {
@@ -169,6 +182,7 @@
       },
     });
     tartalmiKod = view.state.field(felismertNyelv);
+    statisztikaUtemez(view);
     if (tarolt) {
       view.dispatch({ effects: modKapcsolo.reconfigure(szerkMod === 'elo' ? elonezetMod() : forrasMod()) });
       const g = tarolt.gorgetes;
@@ -202,6 +216,8 @@
   }
 
   function lebont() {
+    if (statisztikaIdozito) clearTimeout(statisztikaIdozito);
+    statisztika.torol(fulId);
     if (allapotIdozito) clearTimeout(allapotIdozito);
     if (view) {
       const nyit = view.state.selection.main.head;
@@ -224,6 +240,7 @@
       felulet.szerkesztoMod = uj;
     }
     mod = uj;
+    if (view) statisztikaUtemez(view);
     nezetAllapotIr();
     requestAnimationFrame(() => {
       if (felso === undefined) return;
@@ -277,7 +294,8 @@
   // a fájlszerkezet változása (új fájl): a függő beágyazások újrafeloldódnak
   $effect(() => {
     const v = linkek.verzio;
-    untrack(() => view?.dispatch({ effects: linkVerzioValt.of(v) }));
+    const tv = linkek.tartalomVerzio;
+    untrack(() => view?.dispatch({ effects: [linkVerzioValt.of(v), tartalomVerzioValt.of(tv)] }));
   });
 
   // ------------------------------------------------------------------ életciklus

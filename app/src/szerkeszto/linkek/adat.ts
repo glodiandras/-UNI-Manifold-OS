@@ -3,6 +3,7 @@
 
 import type { SyntaxNode } from '@lezer/common';
 import type { Olvaso } from '../markdown/fa';
+import { markdownCel } from './markdown';
 
 export interface LinkAdat {
   /** a nyers cél (a `[[` utáni szöveg a `#`/`|` előtt); üres: az aktuális jegyzet (`[[#Fejezet]]`) */
@@ -13,6 +14,39 @@ export interface LinkAdat {
   beagyazas: boolean;
   from: number;
   to: number;
+  /** Markdown-képnél külön alt-szöveg: a méretalias ettől független. */
+  alt?: string;
+  /** Külső kép: sosem indul automatikus hálózati kérés. */
+  kulso?: boolean;
+}
+
+/** Markdown-kép: a szöveg és méret helyi értelmezés, a fájl feloldása továbbra is a core-é. */
+export function kepAdat(n: SyntaxNode, olvas: Olvaso): LinkAdat | null {
+  if (n.name !== 'Image') return null;
+  const url = gyermek(n, 'URL');
+  if (!url) return null;
+  let nyito: SyntaxNode | null = null;
+  let zaro: SyntaxNode | null = null;
+  for (let c = n.firstChild; c; c = c.nextSibling) {
+    if (c.name !== 'LinkMark') continue;
+    const jel = olvas(c.from, c.to);
+    if (jel === '![') nyito = c;
+    else if (nyito && jel === ']') { zaro = c; break; }
+  }
+  const felirat = nyito && zaro ? olvas(nyito.to, zaro.from) : '';
+  const meret = /\|\s*(\d+(?:\s*x\s*\d+)?)\s*$/i.exec(felirat);
+  const nyers = olvas(url.from, url.to);
+  const cim = markdownCel(nyers);
+  return {
+    cel: cim?.cel ?? nyers.replace(/^<|>$/g, ''),
+    alcel: cim?.alcel ?? null,
+    alias: meret ? meret[1] : null,
+    alt: meret ? felirat.slice(0, meret.index) : felirat,
+    kulso: !cim,
+    beagyazas: true,
+    from: n.from,
+    to: n.to,
+  };
 }
 
 function gyermek(n: SyntaxNode, nev: string): SyntaxNode | null {
@@ -56,14 +90,19 @@ export function meretAliasbol(alias: string | null): Meret | null {
 }
 
 /** A média-horgony: `t=243`, `t=12:40`, `t=1:02:03` másodpercben; `page=N`. Máskülönben `{}`. */
-export function mediaHorgony(alcel: string | null | undefined): { t?: number; page?: number } {
+export function mediaHorgony(alcel: string | null | undefined): { t?: number; page?: number; height?: number } {
   if (!alcel) return {};
-  const t = /^t=(\d+(?::\d+){0,2})(?:[,-].*)?$/i.exec(alcel.trim());
-  if (t) {
-    const resz = t[1].split(':').map(Number);
-    return { t: resz.reduce((a, x) => a * 60 + x, 0) };
+  const ki: { t?: number; page?: number; height?: number } = {};
+  for (const resz of alcel.trim().split('&')) {
+    const t = /^t=(\d+(?::\d+){0,2})(?:[,-].*)?$/i.exec(resz);
+    if (t) {
+      const szamok = t[1].split(':').map(Number);
+      const mp = szamok.reduce((a, x) => a * 60 + x, 0);
+      if (Number.isSafeInteger(mp)) ki.t = mp;
+    }
+    const p = /^(page|height)=(\d+)$/i.exec(resz);
+    if (p && Number.isSafeInteger(Number(p[2])) && Number(p[2]) >= 1)
+      ki[p[1].toLowerCase() as 'page' | 'height'] = Number(p[2]);
   }
-  const p = /^page=(\d+)/i.exec(alcel.trim());
-  if (p && Number(p[1]) >= 1) return { page: Number(p[1]) };
-  return {};
+  return ki;
 }

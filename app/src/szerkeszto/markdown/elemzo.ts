@@ -14,6 +14,7 @@ import { Labjegyzet } from './labjegyzet';
 import { Matek } from './matek';
 import { Tablazat } from './tablazat';
 import { Wikilink } from './wikilink';
+import { Megjegyzes } from './megjegyzes';
 
 export const OBSIDIAN_BOVITESEK: MarkdownExtension = [
   Frontmatter,
@@ -25,6 +26,7 @@ export const OBSIDIAN_BOVITESEK: MarkdownExtension = [
   Jeloles,
   Labjegyzet,
   Wikilink,
+  Megjegyzes,
 ];
 
 /** DOM és CodeMirror nélkül használható elemző (olvasó, képlet-szkript, tesztek). */

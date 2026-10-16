@@ -1,0 +1,11 @@
+{
+  "editor.headingLevel {level}": "Set as heading {level}",
+  "editor.paragraph": "Set as text",
+  "editor.toggleTask": "Toggle task status",
+  "editor.toggleBullet": "Toggle bullet list",
+  "editor.toggleNumbered": "Toggle numbered list",
+  "editor.toggleTaskList": "Toggle task list",
+  "editor.cycleList": "Cycle list type",
+  "editor.toggleQuote": "Toggle quote",
+  "editor.clearFormatting": "Clear formatting"
+}

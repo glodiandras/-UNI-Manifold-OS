@@ -214,6 +214,9 @@ export function blokkok(state: EditorState): Blokk[] {
         b.id = ID_SORVEG.exec(doc.line(b.utolsoSor).text)?.[1] ?? null;
         return b;
       }
+      case 'ObsidianCommentBlock':
+        // Az egysoros PDF-jelölő eddig bekezdés volt; a meglévő jelölő+idézet összekapcsolás megmarad.
+        return letrehoz(c, doc.lineAt(c.from).number === doc.lineAt(c.to).number ? 'bekezdes' : 'egyeb');
       case 'Blockquote': {
         const a = calloutAdat(c, olvas);
         const b = letrehoz(c, a ? 'callout' : 'idezet', { calloutTipus: a?.tipus ?? null });
@@ -318,7 +321,7 @@ export function blokkok(state: EditorState): Blokk[] {
       }
     }
     // PDF-kiemelés: az egysoros jelölősor és a közvetlenül a következő sorban kezdődő idézet egy blokk
-    const kov = c.name === 'Paragraph' ? c.nextSibling : null;
+    const kov = c.name === 'Paragraph' || c.name === 'ObsidianCommentBlock' ? c.nextSibling : null;
     if (kov?.name === 'Blockquote') {
       const sor = doc.lineAt(c.from);
       if (doc.lineAt(c.to).number === sor.number && doc.lineAt(kov.from).number === sor.number + 1 && KIEMELES_JELOLO.test(sor.text)) {

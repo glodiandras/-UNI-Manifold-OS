@@ -285,7 +285,6 @@
   "Oszlop|menu": "Column",
   "Fejléc, {o}. oszlop": "Header, column {o}",
   "{s}. sor, {o}. oszlop": "Row {s}, column {o}",
-  "[kép: {cim}]": "[image: {cim}]",
   "{n}. lábjegyzet": "Footnote {n}",
   "Kód másolása": "Copy code",
   "Másolva": "Copied",

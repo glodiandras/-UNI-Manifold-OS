@@ -12,7 +12,8 @@ import { ikonElem } from '../../lib/ikon/ikonElem';
 import { Check, ChevronRight, Copy } from '../../lib/ikon/ikonok';
 import { beagyazasElem } from '../beagyazas/rajzol';
 import type { LancElem } from '../beagyazas/regiszter';
-import { linkFelirat, wikilinkAdat } from '../linkek/adat';
+import { kepAdat, linkFelirat, wikilinkAdat } from '../linkek/adat';
+import { markdownCel } from '../linkek/markdown';
 import { kulsoCim } from '../linkek/kulso';
 import { calloutAdat } from '../markdown/callout';
 import { kepletForras, type Olvaso } from '../markdown/fa';
@@ -39,6 +40,7 @@ export interface RenderOpciok {
   labjegyzetek?: Map<string, SyntaxNode>;
   /** beágyazott tartalomban: a beágyazás-lánc és a mélység (a körkörös beágyazás védelme) */
   beagyazas?: { lanc: LancElem[]; melyseg: number; kesz?: () => void };
+  csakOlvashato?: boolean;
 }
 
 const JELOLOK = new Set([
@@ -213,6 +215,9 @@ function linkSzoveg(c: SyntaxNode, o: RenderOpciok): { from: number; to: number;
 
 function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
   switch (c.name) {
+    case 'ObsidianComment':
+    case 'ObsidianCommentBlock':
+      return;
     case 'Emphasis':
       return burkol(el('em'), c, o, w);
     case 'StrongEmphasis':
@@ -237,16 +242,20 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       const a = el('a', 'link');
       if (l.cim) {
         a.title = l.cim;
-        kulsoJeloles(a, l.cim);
+        const helyi = markdownCel(l.cim);
+        if (helyi && o.ut) {
+          a.classList.add('wikilink');
+          a.dataset.cel = helyi.cel;
+          if (helyi.alcel) a.dataset.alcel = helyi.alcel;
+          a.dataset.forras = o.ut;
+          a.setAttribute('role', 'link');
+          a.tabIndex = 0;
+        } else kulsoJeloles(a, l.cim);
       }
       return burkol(a, c, o, w, l.from, l.to);
     }
     case 'Image': {
-      const l = linkSzoveg(c, o);
-      const s = el('span', 'kep-helyorzo');
-      s.textContent = t('[kép: {cim}]', { cim: o.olvas(l.from, l.to) || l.cim });
-      if (l.cim) s.title = l.cim;
-      return w.elem(s);
+      return beagyazas(c, o, w);
     }
     case 'Autolink': {
       const url = gyermek(c, 'URL');
@@ -277,23 +286,8 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       }
       return w.elem(s);
     }
-    case 'Embed': {
-      const a = wikilinkAdat(c, o.olvas);
-      if (!a || !o.ut) {
-        const s = el('span', 'beagyazas-nyers');
-        s.textContent = o.olvas(c.from, c.to);
-        return w.elem(s);
-      }
-      return w.elem(
-        beagyazasElem(a, {
-          forras: o.ut,
-          lanc: o.beagyazas?.lanc ?? [{ ut: o.ut, alcel: null }],
-          melyseg: o.beagyazas?.melyseg ?? 0,
-          jel: o.lusta.jel,
-          kesz: o.beagyazas?.kesz,
-        }),
-      );
-    }
+    case 'Embed':
+      return beagyazas(c, o, w);
     case 'FootnoteReference': {
       const cimke = gyermek(c, 'FootnoteLabel');
       const nev = cimke ? o.olvas(cimke.from, cimke.to) : '';
@@ -325,6 +319,23 @@ function sorbanElem(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
       if (JELOLOK.has(c.name)) return;
       w.szoveg(o.olvas(c.from, c.to));
   }
+}
+
+function beagyazas(c: SyntaxNode, o: RenderOpciok, w: SorIro): void {
+  const a = c.name === 'Image' ? kepAdat(c, o.olvas) : wikilinkAdat(c, o.olvas);
+  if (!a || !o.ut) {
+    const s = el('span', 'beagyazas-nyers');
+    s.textContent = o.olvas(c.from, c.to);
+    return w.elem(s);
+  }
+  w.elem(beagyazasElem(a, {
+    forras: o.ut,
+    lanc: o.beagyazas?.lanc ?? [{ ut: o.ut, alcel: null }],
+    melyseg: o.beagyazas?.melyseg ?? 0,
+    jel: o.lusta.jel,
+    kesz: o.beagyazas?.kesz,
+    csakOlvashato: o.csakOlvashato,
+  }));
 }
 
 function entitas(s: string): string {
@@ -452,6 +463,9 @@ function feladat(n: SyntaxNode, o: RenderOpciok, li: HTMLElement): void {
   doboz.checked = allapot !== ' ';
   doboz.setAttribute('aria-label', allapot === ' ' ? t('Feladat: kész') : t('Feladat: nincs kész'));
   if (jel) doboz.dataset.jelolo = String(jel.from);
+  if (o.ut) doboz.dataset.jeloloUt = o.ut;
+  if (o.beagyazas) doboz.dataset.beagyazas = 'true';
+  doboz.disabled = o.csakOlvashato === true;
   const p = el('p');
   p.appendChild(doboz);
   const w = new SorIro(p);
@@ -611,6 +625,8 @@ export function blokk(n: SyntaxNode, o: RenderOpciok, cel: Node): void {
       return;
     }
     case 'LinkReference':
+    case 'ObsidianCommentBlock':
+    case 'ObsidianComment':
     case 'CommentBlock':
     case 'ProcessingInstructionBlock':
       return;

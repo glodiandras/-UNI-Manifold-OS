@@ -16,6 +16,10 @@ import type { Parancs, Regiszter } from './lib/parancsok/regiszter';
 
 export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
   const m = f.munkaterulet;
+  const panelFokusz = (muvelet: () => void) => {
+    muvelet();
+    queueMicrotask(() => document.querySelector<HTMLElement>(`[data-panel-id="${m.aktivPanelId}"] [role="tabpanel"]`)?.focus({ preventScroll: true }));
+  };
   const beallit = (valtozas: BeallitasokValtozas, alkalmazas: () => void): void | Promise<void> => {
     if (!beallitasok.adat) { alkalmazas(); return; }
     return beallitasok.ment(valtozas).then(ok => {
@@ -134,6 +138,7 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
       nev: tk('Új jegyzet a fájlfában'),
       kategoria: tk('Fájl'),
       ikon: FilePlus,
+      billentyu: 'Mod+N',
       futtat: () => {
         f.atfedes = null;
         f.oldalsav.nezet = 'fajlok';
@@ -143,8 +148,8 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
     },
     { id: 'fa.osszecsuk', nev: tk('Összes mappa összecsukása'), kategoria: tk('Fájl'), ikon: ChevronsDownUp, futtat: () => void (f.oldalsav.nyitott = []) },
     { id: 'ful.ujranyit', nev: tk('Bezárt fül újranyitása'), kategoria: tk('Fül'), billentyu: 'Mod+Shift+T', futtat: () => m.ujranyit() },
-    { id: 'navigacio.vissza', nev: tk('Vissza az előző jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowLeft', futtat: () => m.navigal(-1) },
-    { id: 'navigacio.elore', nev: tk('Előre a következő jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowRight', futtat: () => m.navigal(1) },
+    { id: 'navigacio.vissza', nev: tk('Vissza az előző jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowLeft', elerheto: () => m.navigalhato(-1), futtat: () => m.navigal(-1) },
+    { id: 'navigacio.elore', nev: tk('Előre a következő jegyzethez'), kategoria: tk('Navigáció'), billentyu: 'Mod+Alt+ArrowRight', elerheto: () => m.navigalhato(1), futtat: () => m.navigal(1) },
     { id: 'ful.uj', nev: tk('Új fül'), kategoria: tk('Fül'), billentyu: 'Mod+T', ikon: Plus, futtat: () => m.ujFul() },
     { id: 'ful.bezar', nev: tk('Fül bezárása'), kategoria: tk('Fül'), billentyu: 'Mod+W', ikon: X, futtat: () => m.bezar() },
     { id: 'ful.kovetkezo', nev: tk('Következő fül'), kategoria: tk('Fül'), billentyu: 'Ctrl+Tab', elerheto: () => m.aktivPanel.fulek.length > 1, futtat: () => m.lep(1) },
@@ -161,8 +166,17 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
     })),
     { id: 'panel.oszt-jobbra', nev: tk('Osztás jobbra'), kategoria: tk('Panel'), billentyu: 'Mod+Shift+2', ikon: Columns2, futtat: () => m.oszt('sor') },
     { id: 'panel.oszt-le', nev: tk('Osztás lefelé'), kategoria: tk('Panel'), billentyu: 'Mod+Alt+ArrowDown', ikon: Rows2, szerkesztoNyer: true, futtat: () => m.oszt('oszlop') }, // a szerkesztőben a ⌥⌘↓ a CM addCursorBelow-ja
-    { id: 'panel.kovetkezo', nev: tk('Következő panel'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => m.panelLep(1) },
-    { id: 'panel.elozo', nev: tk('Előző panel'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => m.panelLep(-1) },
+    { id: 'panel.kovetkezo', nev: tk('Következő panel'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelLep(1)) },
+    { id: 'panel.elozo', nev: tk('Előző panel'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelLep(-1)) },
+    { id: 'ful.rogzit', nev: tk('Fül rögzítése / feloldása'), kategoria: tk('Fül'), futtat: () => m.rogzit() },
+    { id: 'ful.tobbi-bezar', nev: tk('Többi nem rögzített fül bezárása'), kategoria: tk('Fül'), futtat: () => m.bezarTobbit('tobbi') },
+    { id: 'ful.jobb-bezar', nev: tk('Jobbra lévő nem rögzített fülek bezárása'), kategoria: tk('Fül'), futtat: () => m.bezarTobbit('jobb') },
+    { id: 'panel.fulek-bezar', nev: tk('Csoport nem rögzített füleinek bezárása'), kategoria: tk('Panel'), futtat: () => m.bezarTobbit('mind') },
+    { id: 'panel.bezar', nev: tk('Fülcsoport bezárása'), kategoria: tk('Panel'), futtat: () => m.bezarPanel() },
+    { id: 'panel.fokusz-bal', nev: tk('Fókusz a bal oldali panelre'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelIrany('bal')) },
+    { id: 'panel.fokusz-jobb', nev: tk('Fókusz a jobb oldali panelre'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelIrany('jobb')) },
+    { id: 'panel.fokusz-fel', nev: tk('Fókusz a felső panelre'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelIrany('fel')) },
+    { id: 'panel.fokusz-le', nev: tk('Fókusz az alsó panelre'), kategoria: tk('Panel'), elerheto: () => m.panelek().length > 1, futtat: () => panelFokusz(() => m.panelIrany('le')) },
     { id: 'fokusz.kovetkezo-regio', nev: tk('Következő régió'), kategoria: tk('Fókusz'), billentyu: 'F6', palettaban: false, futtat: () => regioLep(1) },
     { id: 'fokusz.elozo-regio', nev: tk('Előző régió'), kategoria: tk('Fókusz'), billentyu: 'Shift+F6', palettaban: false, futtat: () => regioLep(-1) },
     tema('rendszer', tk('A rendszer szerint'), Monitor),

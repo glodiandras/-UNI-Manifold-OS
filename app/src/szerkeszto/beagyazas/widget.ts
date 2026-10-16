@@ -10,15 +10,21 @@ import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
 import type { LinkAdat } from '../linkek/adat';
 import { beagyazasElem } from './rajzol';
 import { beallitasok } from '../../lib/beallitasok/allapot.svelte';
+import { linkek } from '../../lib/vault/linkek.svelte';
 
 /** A fájlszerkezet változott: a Live Preview blokkdíszítései újraszámolódnak. */
 export const linkVerzioValt = StateEffect.define<number>();
+/** A célfájl tartalma változott: a beágyazás újraolvassa a core szeletét. */
+export const tartalomVerzioValt = StateEffect.define<number>();
 
 const SAJAT_VEZERLO = 'a, button, video, audio, iframe, input, select, textarea, img.beagyazas-kep, .wikilink[data-cel], .bazis, .kviz, .beagyazas-canvas-kep, .beagyazas-pdf-nezo';
+// Az eq alapján a CM új WidgetType-példánnyal is újrahasználhatja ugyanazt a DOM-ot.
+// Az élettartam ezért a DOM-hoz tartozik, nem a legutóbbi dekoráció objektumához.
+const megszakitok = new WeakMap<HTMLElement, AbortController>();
 
 export class BeagyazasWidget extends WidgetType {
-  private megszakito: AbortController | null = null;
   private readonly modulok = JSON.stringify(beallitasok.ertek.modulok);
+  private readonly tartalomVerzio = linkek.tartalomVerzio;
 
   constructor(
     readonly link: LinkAdat,
@@ -34,23 +40,28 @@ export class BeagyazasWidget extends WidgetType {
       m.blokk === this.blokk &&
       m.forras === this.forras &&
       m.verzio === this.verzio &&
+      m.tartalomVerzio === this.tartalomVerzio &&
       m.modulok === this.modulok &&
       m.link.cel === this.link.cel &&
       m.link.alcel === this.link.alcel &&
-      m.link.alias === this.link.alias
+      m.link.alias === this.link.alias &&
+      m.link.alt === this.link.alt &&
+      m.link.kulso === this.link.kulso
     );
   }
 
   toDOM(view: EditorView) {
     const kont: HTMLElement = document.createElement(this.blokk ? 'div' : 'span');
     kont.className = this.blokk ? 'cm-beagyazas' : 'cm-beagyazas cm-beagyazas-sorban';
-    this.megszakito = new AbortController();
+    const megszakito = new AbortController();
+    megszakitok.set(kont, megszakito);
     kont.appendChild(
       beagyazasElem(this.link, {
         forras: this.forras,
         sorban: !this.blokk,
-        jel: this.megszakito.signal,
+        jel: megszakito.signal,
         kesz: () => view.requestMeasure(),
+        csakOlvashato: view.state.readOnly,
       }),
     );
     kont.addEventListener('mousedown', (ev: MouseEvent) => {
@@ -71,8 +82,9 @@ export class BeagyazasWidget extends WidgetType {
     return kont;
   }
 
-  destroy() {
-    this.megszakito?.abort();
+  destroy(dom: HTMLElement) {
+    megszakitok.get(dom)?.abort();
+    megszakitok.delete(dom);
   }
 
   get estimatedHeight() {

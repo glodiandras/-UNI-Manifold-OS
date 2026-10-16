@@ -6,6 +6,7 @@
 <script lang="ts">
   import { t } from '../lib/i18n';
   import { beallitasok } from '../lib/beallitasok/allapot.svelte';
+  import { linkek } from '../lib/vault/linkek.svelte';
   import { ensureSyntaxTree } from '@codemirror/language';
   import type { EditorView } from '@codemirror/view';
   import { onDestroy, onMount } from 'svelte';
@@ -33,7 +34,7 @@
     const gorgetes = gorgeto.scrollTop;
     lusta?.leall();
     lusta = new LustaRajzolo(gorgeto);
-    const f = dokumentumRenderel(fa, { olvas: (a, b) => doc.sliceString(a, b), ut, lusta, elotag });
+    const f = dokumentumRenderel(fa, { olvas: (a, b) => doc.sliceString(a, b), ut, lusta, elotag, csakOlvashato: state.readOnly || !!dok.csakOlvashato });
     tartalom.replaceChildren(f);
     gorgeto.scrollTop = gorgetes;
   }
@@ -96,6 +97,8 @@
   function valtas(e: Event) {
     const t = e.target as HTMLInputElement;
     if (!t.matches('input.feladat-jelolo') || t.dataset.jelolo === undefined) return;
+    // A beágyazás saját dokumentumot ír. Szeletbeli pozíció soha nem értelmezhető a befogadó jegyzetben.
+    if (t.dataset.beagyazas === 'true' || (t.dataset.jeloloUt !== undefined && t.dataset.jeloloUt !== ut)) return;
     if (view.state.readOnly || dok.csakOlvashato) {
       t.checked = !t.checked;
       return;
@@ -120,6 +123,7 @@
   // a dokumentum változása (jelölőnégyzet, külső változás) után újrarajzol, kicsit késleltetve
   $effect(() => {
     void valtozat;
+    void linkek.tartalomVerzio;
     void Object.values(beallitasok.ertek.modulok);
     if (kesleltetes) clearTimeout(kesleltetes);
     kesleltetes = setTimeout(rajzol, 120);

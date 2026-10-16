@@ -8,6 +8,7 @@
   let {}: NezetProps = $props();
 
   const LEHETOSEGEK: { id: string; nev: string; akkord?: string }[] = [
+    { id: 'fa.uj-jegyzet', nev: tk('Új jegyzet'), akkord: 'Mod+N' },
     { id: 'ma.megnyit', nev: tk('Ma') },
     { id: 'naplo.napi', nev: tk('Napi jegyzet'), akkord: 'Mod+Shift+D' },
     { id: 'hej.valto', nev: tk('Fájl megnyitása'), akkord: 'Mod+O' },

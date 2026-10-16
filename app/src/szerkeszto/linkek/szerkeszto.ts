@@ -12,21 +12,34 @@ import { wikilinkAdat, type LinkAdat } from './adat';
 import { domCel, elonezetKapcsol, type ElonezetCel } from './elonezet';
 import { kulsoCim, kulsoLink } from './kulso';
 import { linkMegnyit, nyitasMod } from './navigacio';
+import { markdownCel } from './markdown';
 
-const LINK_NEVEK = new Set(['Wikilink', 'Embed']);
+const LINK_NEVEK = new Set(['Wikilink', 'Embed', 'Link']);
 
 /** A `pos`-nál álló wikilink/beágyazás csomópontja (a határokon is). */
 export function linkCsomopont(state: EditorState, pos: number): SyntaxNode | null {
   const fa = syntaxTree(state);
   for (const oldal of [1, -1] as const)
-    for (let n: SyntaxNode | null = fa.resolveInner(pos, oldal); n; n = n.parent) if (LINK_NEVEK.has(n.name)) return n;
+    for (let n: SyntaxNode | null = fa.resolveInner(pos, oldal); n; n = n.parent) {
+      if (n.name === 'Image') break;
+      if (LINK_NEVEK.has(n.name)) return n;
+    }
   return null;
 }
 
 /** A `pos`-nál álló link adatai, vagy `null`. */
 export function linkAt(state: EditorState, pos: number): LinkAdat | null {
   const n = linkCsomopont(state, pos);
-  return n ? wikilinkAdat(n, (a, b) => state.doc.sliceString(a, b)) : null;
+  if (!n) return null;
+  if (n.name !== 'Link') return wikilinkAdat(n, (a, b) => state.doc.sliceString(a, b));
+  const url = n.getChild('URL');
+  if (!url) return null;
+  const cel = markdownCel(state.doc.sliceString(url.from, url.to));
+  if (!cel) return null;
+  const nyito = n.firstChild;
+  let zaro = nyito?.nextSibling;
+  while (zaro && !(zaro.name === 'LinkMark' && state.doc.sliceString(zaro.from, zaro.to) === ']')) zaro = zaro.nextSibling;
+  return { ...cel, alias: nyito && zaro ? state.doc.sliceString(nyito.to, zaro.from) : null, beagyazas: false, from: n.from, to: n.to };
 }
 
 function egerLink(view: EditorView, e: MouseEvent): LinkAdat | null {
@@ -118,14 +131,14 @@ function kirajzoltTartomany(view: EditorView, from: number, to: number): boolean
 
 const kattintas = EditorView.domEventHandlers({
   mousedown(e, view) {
-    if (e.button !== 0) return false;
+    if (e.button !== 0 && e.button !== 1) return false;
     const l = egerLink(view, e);
     const forras = view.state.facet(jegyzetUtja);
     if (!l) {
       // külső link: ⌘-kattintás mindig nyit; Live Preview-ban a kirajzolt (nem aktív) soron a sima kattintás is
       const cel = e.target instanceof HTMLElement && e.target.closest('.cm-line') ? view.posAtCoords({ x: e.clientX, y: e.clientY }) : null;
       const k = cel === null ? null : kulsoLinkAt(view.state, cel);
-      if (!k || !(e.metaKey || e.ctrlKey || kirajzoltTartomany(view, k.from, k.to))) return false;
+      if (!k || !(e.button === 1 || e.metaKey || e.ctrlKey || kirajzoltTartomany(view, k.from, k.to))) return false;
       e.preventDefault();
       kulsoLink(k.url);
       return true;
@@ -133,9 +146,9 @@ const kattintas = EditorView.domEventHandlers({
     if (!forras) return false;
     const meta = e.metaKey || e.ctrlKey;
     // a beágyazás widget a saját kattintását kezeli; a ⌘-kattintás a forrásmódban és az aktív sorban is nyit
-    if (!meta && (l.beagyazas || !kirajzolt(view, l))) return false;
+    if (e.button !== 1 && !meta && (l.beagyazas || !kirajzolt(view, l))) return false;
     e.preventDefault();
-    void linkMegnyit({ forras, cel: l.cel, alcel: l.alcel }, nyitasMod(e));
+    void linkMegnyit({ forras, cel: l.cel, alcel: l.alcel }, e.button === 1 ? 'ujful' : nyitasMod(e));
     return true;
   },
 });

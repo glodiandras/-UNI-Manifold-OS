@@ -112,7 +112,8 @@ interface Lap {
 function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: BeagyazasOpciok): void {
   const ut = adat.ut!;
   const meret = meretAliasbol(link.alias);
-  const kezdo = mediaHorgony(link.alcel).page ?? 1;
+  const horgony = mediaHorgony(link.alcel);
+  const kezdo = horgony.page ?? 1;
   let oldal = kezdo;
   let osszes = 0;
   kont.className = 'beagyazas beagyazas-media beagyazas-pdf-nezo';
@@ -145,7 +146,7 @@ function render(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: Beagy
   fej.append(cim, el('span', 'pdf-be-hely'), elozo, mezo, osszesJel, kov, gomb(t('Megnyitás'), t('Megnyitás a teljes olvasóban ezen az oldalon'), megnyit));
 
   const test = el('div', 'pdf-be-test');
-  test.style.height = `${meret?.szelesseg ?? (o.kompakt ? KOMPAKT_MAGASSAG : PDF_MAGASSAG)}px`;
+  test.style.height = `${horgony.height ?? meret?.szelesseg ?? (o.kompakt ? KOMPAKT_MAGASSAG : PDF_MAGASSAG)}px`;
   test.tabIndex = 0;
   test.setAttribute('role', 'group');
   test.setAttribute('aria-label', t('{nev}, görgethető lapok', { nev: fajlNev(ut) }));

@@ -7,16 +7,22 @@ export class LustaRajzolo {
   private readonly takaritok: (() => void)[] = [];
   private readonly megszakito = new AbortController();
 
-  constructor(gyoker: Element | null = null, azonnal = false) {
+  constructor(gyoker: Element | null = null, azonnal = false, szuloJel?: AbortSignal) {
     this.io =
       !azonnal && typeof IntersectionObserver === 'function'
         ? new IntersectionObserver((bejegyzesek) => this.lathato(bejegyzesek), { root: gyoker, rootMargin: '800px 0px' })
         : null;
+    if (szuloJel?.aborted) this.leall();
+    else if (szuloJel) {
+      const le = () => this.leall();
+      szuloJel.addEventListener('abort', le, { once: true });
+      this.takaritok.push(() => szuloJel.removeEventListener('abort', le));
+    }
   }
 
   /** Késleltetés nélküli rajzoló (a Live Preview widgetjei: a CodeMirror már csak a láthatót rajzolja). */
-  static azonnali(): LustaRajzolo {
-    return new LustaRajzolo(null, true);
+  static azonnali(szuloJel?: AbortSignal): LustaRajzolo {
+    return new LustaRajzolo(null, true, szuloJel);
   }
 
   get jel(): AbortSignal {
@@ -25,6 +31,7 @@ export class LustaRajzolo {
 
   /** Az elem rajzolása, amikor láthatóvá válik. */
   ker(el: Element, rajzol: () => void): void {
+    if (this.jel.aborted) return;
     if (!this.io) {
       rajzol();
       return;
@@ -35,10 +42,12 @@ export class LustaRajzolo {
 
   /** Takarító függvény a leállításhoz (pl. a Mermaid témafigyelője). */
   takarit(f: () => void): void {
-    this.takaritok.push(f);
+    if (this.jel.aborted) f();
+    else this.takaritok.push(f);
   }
 
   leall(): void {
+    if (this.jel.aborted) return;
     this.io?.disconnect();
     this.varo.clear();
     this.megszakito.abort();

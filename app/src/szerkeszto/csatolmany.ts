@@ -4,6 +4,7 @@ import { EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import { ApiHiba, kerdez } from '../lib/core/api';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import { linkek } from '../lib/vault/linkek.svelte';
+import { htmlMarkdown } from './vagolap-html';
 
 export const VAULT_HUZAS = 'application/x-manifold-vault';
 interface Feltoltes { azon: string; offset?: number; ut?: string; kesz: boolean; figyelmeztetes?: string }
@@ -49,6 +50,7 @@ export function csatolmanyBovitmeny(ut: string) {
   return ViewPlugin.fromClass(class {
     el = true;
     pontok = new Set<{ poz: number }>();
+    simaBeillesztes = false;
     constructor(readonly view: EditorView) {}
     update(u: ViewUpdate) {
       if (u.docChanged) for (const p of this.pontok) p.poz = u.changes.mapPos(p.poz, 1);
@@ -73,8 +75,16 @@ export function csatolmanyBovitmeny(ut: string) {
     }
   }, {
     eventHandlers: {
+      keydown(e) {
+        this.simaBeillesztes = e.key.toLowerCase() === 'v' && (e.metaKey || e.ctrlKey) && e.shiftKey;
+        return false;
+      },
+      keyup() { this.simaBeillesztes = false; return false; },
+      blur() { this.simaBeillesztes = false; return false; },
       paste(e) {
-        if (this.view.state.readOnly) return false;
+        const sima = this.simaBeillesztes;
+        this.simaBeillesztes = false;
+        if (this.view.state.readOnly || sima) return false;
         const fajlok = Array.from(e.clipboardData?.files ?? []);
         if (fajlok.length) {
           e.preventDefault();
@@ -87,6 +97,13 @@ export function csatolmanyBovitmeny(ut: string) {
           e.preventDefault();
           this.view.dispatch({ changes: { from: kij.from, to: kij.to,
             insert: `[${this.view.state.sliceDoc(kij.from, kij.to)}](<${s.replaceAll('>', '%3E')}>)` }, userEvent: 'input.paste' });
+          return true;
+        }
+        const html = e.clipboardData?.getData('text/html');
+        const markdown = html ? htmlMarkdown(html) : null;
+        if (markdown !== null) {
+          e.preventDefault();
+          this.view.dispatch(this.view.state.replaceSelection(markdown), { userEvent: 'input.paste', scrollIntoView: true });
           return true;
         }
         return false;

@@ -22,6 +22,7 @@
     cimke,
     ures,
     onvalaszt,
+    onbevitel,
     onbezar,
     lablec,
   }: {
@@ -33,6 +34,8 @@
     cimke: string;
     ures: string;
     onvalaszt: (e: T, m: Modositok) => void;
+    /** Egyedi Enter (pl. új jegyzet): igaz esetén a listaválasztás kimarad. */
+    onbevitel?: (e: KeyboardEvent) => boolean;
     onbezar: () => void;
     lablec?: Snippet;
   } = $props();
@@ -76,7 +79,7 @@
     else if (e.key === 'ArrowUp' || (ctrl && e.key === 'p')) lep(-1);
     else if (e.key === 'PageDown') lep(8, false);
     else if (e.key === 'PageUp') lep(-8, false);
-    else if (e.key === 'Enter') valaszt(aktiv, e);
+    else if (e.key === 'Enter') { if (!onbevitel?.(e)) valaszt(aktiv, e); }
     else if (e.key === 'Escape') onbezar();
     else if (e.key === 'Tab') {
       /* a fókusz a mezőben marad */

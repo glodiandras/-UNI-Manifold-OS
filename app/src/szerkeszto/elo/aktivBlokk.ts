@@ -32,6 +32,7 @@ const LEVEL = new Set([
   'HTMLBlock',
   'LinkReference',
   'CommentBlock',
+  'ObsidianCommentBlock',
   'ProcessingInstructionBlock',
   'Task',
 ]);

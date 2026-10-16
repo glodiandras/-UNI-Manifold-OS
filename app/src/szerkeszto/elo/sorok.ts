@@ -178,6 +178,8 @@ function stilusok(view: EditorView): DecorationSet {
             return false;
           case 'CommentBlock':
           case 'Comment':
+          case 'ObsidianCommentBlock':
+          case 'ObsidianComment':
             // HTML-megjegyzés (`<!-- … -->`): halványan, ahogy a jelölők (az olvasóban nem látszik)
             jelek.push(JELOLO.range(n.from, n.to));
             return false;
@@ -252,6 +254,10 @@ function elonezet(view: EditorView): DecorationSet {
           case 'Frontmatter':
           case 'HTMLBlock':
           case 'CommentBlock':
+          case 'ObsidianCommentBlock':
+            return false;
+          case 'ObsidianComment':
+            // A terv szerinti LP-viselkedés: a komment forrása halványan mindig látható.
             return false;
           case 'FencedCode': {
             if (egysegAktiv(n)) return false;
@@ -352,6 +358,17 @@ function elonezet(view: EditorView): DecorationSet {
             ki.push(ELREJT.range(zaro.from, zaro.to));
             return false;
           }
+          case 'Link': {
+            // A felirat formázása megmarad; a cím és az opcionális title csak az aktív soron látszik.
+            if (egysegAktiv(n)) return true;
+            const nyito = n.node.firstChild;
+            if (!nyito || olvas(nyito.from, nyito.to) !== '[') return true;
+            let zaro = nyito.nextSibling;
+            while (zaro && !(zaro.name === 'LinkMark' && olvas(zaro.from, zaro.to) === ']')) zaro = zaro.nextSibling;
+            if (!zaro || zaro.from <= nyito.to) return true;
+            ki.push(ELREJT.range(nyito.from, nyito.to), ELREJT.range(zaro.from, n.to));
+            return true;
+          }
           case 'HTMLTag': {
             // az engedélylistás soron belüli HTML (`H<sub>2</sub>O`, `<br>`) formázva, a címkék rejtve, mint az Olvasóban (C32)
             if (sorAktiv(n.from)) return false;
@@ -413,7 +430,7 @@ function elonezet(view: EditorView): DecorationSet {
 
 const BLOKK_AZON = /(?:^|[ \t])\^[A-Za-z0-9-]+[ \t]*$/;
 const BLOKK_AZON_JEL = Decoration.mark({ class: 'cm-blokk-azon' });
-const KOD_NEVEK = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'CodeText', 'Frontmatter', 'MathBlock', 'CommentBlock', 'Comment']);
+const KOD_NEVEK = new Set(['FencedCode', 'CodeBlock', 'InlineCode', 'CodeText', 'Frontmatter', 'MathBlock', 'CommentBlock', 'Comment', 'ObsidianCommentBlock', 'ObsidianComment']);
 
 export const elonezetPlugin = ViewPlugin.fromClass(
   class {

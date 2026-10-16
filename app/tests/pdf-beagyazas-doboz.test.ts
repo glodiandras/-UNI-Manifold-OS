@@ -148,6 +148,15 @@ describe('PDF-doboz: görgethető lapok', () => {
     expect(kont.querySelectorAll('.pdf-be-lapdoboz')).toHaveLength(5);
   });
 
+  it('a #height mindkét paramétersorrendben a |N elé kerül; az oldalszám megmarad', async () => {
+    for (const horgony of ['page=3&height=400', 'height=400&page=3']) {
+      const { kont, test, ac } = await doboz(horgony, '200');
+      expect(test.style.height).toBe('400px');
+      expect(kont.querySelector<HTMLInputElement>('.pdf-be-oldal')!.value).toBe('3');
+      ac.abort();
+    }
+  });
+
   it('betöltési hiba: érthető üzenet és „Megnyitás”', async () => {
     nyitHiba = new Error('Hibás PDF');
     const kont = document.createElement('span');

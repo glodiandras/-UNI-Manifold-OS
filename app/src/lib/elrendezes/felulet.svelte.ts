@@ -86,6 +86,8 @@ export class Felulet {
   faMegmutat = $state<{ ut: string; n: number } | null>(null);
   /** „Új jegyzet a fájlfában” kérés (C38, ⌘P): a fa a következő festéskor megnyitja a névmezőt, és nullázza. */
   faUjJegyzet = $state(false);
+  /** Gyorsváltó: előre kitöltött név, opcionális explicit relatív mappa, nyitási mód. */
+  faUjNev = $state<{ nev: string; mappa?: string; mod: 'aktiv' | 'ujful' | 'osztas' } | null>(null);
   /** A sablon-választó „új jegyzet sablonból” módban (C32b): a cél mappa (`null`: a fa fókuszált mappája); `null`: a sima beszúrás. */
   sablonUj = $state<{ mappa: string | null } | null>(null);
   /** A választott sablon az „új jegyzet sablonból” kéréshez (C32b): a fa a következő festéskor megnyitja a névmezőt, és nullázza. */

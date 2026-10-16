@@ -11,12 +11,16 @@ import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
 import { ApiHiba } from '../../lib/core/api';
 import { linkek, type BeagyazasAdat } from '../../lib/vault/linkek.svelte';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
+import { ikonElem } from '../../lib/ikon/ikonElem';
+import { TriangleAlert } from '../../lib/ikon/ikonok';
+import { szerkesztok } from '../szerkesztok.svelte';
 import { obsidianElemzo } from '../markdown/elemzo';
 import { dokumentumRenderel } from '../olvaso/html';
 import { LustaRajzolo } from '../olvaso/lusta';
 import { linkFelirat, mediaHorgony, meretAliasbol, type LinkAdat } from '../linkek/adat';
 import { ISMERT_KITERJESZTES, jegyzetLetrehoz, linkMegnyit, nyitasMod } from '../linkek/navigacio';
 import { kepetNagyit, kepVodor } from './nagyito';
+import { beagyazottFeladatValt } from './feladat';
 import { beagyazasRenderelok, jegyzetOsztalyRenderelok, type BeagyazasOpciok, type LancElem } from './regiszter';
 
 export const MAX_MELYSEG = 6;
@@ -50,7 +54,9 @@ export function beagyazasElem(link: LinkAdat, o: BeagyazasOpciok): HTMLElement {
   kont.dataset.cel = link.cel;
   if (link.alcel) kont.dataset.alcel = link.alcel;
   kont.title = `![[${link.cel}${link.alcel ? '#' + link.alcel : ''}]]`;
-  void betolt(kont, link, o);
+  if (link.kulso) {
+    uzenet(kont, 'beagyazas-kulso', t('Külső kép: {nev}. A megjelenítéshez előbb töltsd le.', { nev: link.alt || link.cel }));
+  } else void betolt(kont, link, o);
   return kont;
 }
 
@@ -163,17 +169,66 @@ function jegyzet(kont: HTMLElement, adat: BeagyazasAdat, link: LinkAdat, o: Beag
     dokumentumRenderel(fa, {
       olvas: (a, b) => szoveg.slice(a, b),
       ut: adat.ut!,
-      lusta: LustaRajzolo.azonnali(),
+      lusta: LustaRajzolo.azonnali(o.jel),
       elotag: `be${Math.random().toString(36).slice(2, 7)}`,
       beagyazas: { lanc, melyseg: melyseg + 1, kesz: o.kesz },
+      csakOlvashato: o.csakOlvashato || o.kompakt,
     }),
   );
+  feladatokKapcsol(torzs, adat, szoveg, o);
   if (!szoveg.trim()) {
     const u = el('span', 'beagyazas-uzenet');
     u.textContent = t('A jegyzet üres.');
     torzs.appendChild(u);
   }
   kont.appendChild(torzs);
+}
+
+function feladatokKapcsol(torzs: HTMLElement, adat: BeagyazasAdat, szoveg: string, o: BeagyazasOpciok): void {
+  const kezd = adat.kezd;
+  const szerkesztheto = !o.csakOlvashato && !o.kompakt && Number.isSafeInteger(kezd) && kezd! >= 1;
+  // Csak a közvetlenül ebben a szeletben álló jelölők; a belső beágyazásnak saját kezelője van.
+  for (const jel of torzs.querySelectorAll<HTMLInputElement>('input.feladat-jelolo')) {
+    jel.disabled = !szerkesztheto;
+    if (!szerkesztheto) jel.title = t('A feladatot a forrásjegyzetben szerkesztheted.');
+  }
+  let szelet = szoveg;
+  let hiba: HTMLElement | null = null;
+  torzs.addEventListener('change', (ev) => {
+    const jel = ev.target as HTMLInputElement;
+    if (!jel.matches('input.feladat-jelolo') || jel.closest('.beagyazas-torzs') !== torzs) return;
+    ev.stopPropagation();
+    const elozo = !jel.checked;
+    if (!szerkesztheto || o.jel?.aborted) { jel.checked = elozo; return; }
+    jel.disabled = true;
+    void (async () => {
+      let atirva = false;
+      try {
+        const d = await szerkesztok.dokumentumok.megnyit(adat.ut!);
+        if (!d.mentetlen) await d.kulsoValtozas();
+        if (o.jel?.aborted) { jel.checked = elozo; return; }
+        const uj = beagyazottFeladatValt(d, kezd!, szelet, Number(jel.dataset.jelolo));
+        if (uj === null) throw new Error(t('A beágyazott rész megváltozott. Nyisd meg a forrásjegyzetet, és próbáld újra.'));
+        szelet = uj;
+        atirva = true;
+        const eredmeny = await d.ment({ pillanat: d.nezetSzam === 0 });
+        if (!eredmeny.ok) throw new Error(t('A feladat mentése nem sikerült. A változás megvan; nyisd meg a forrásjegyzetet.'));
+        hiba?.remove();
+        hiba = null;
+      } catch (e) {
+        if (!atirva) jel.checked = elozo;
+        if (!o.jel?.aborted) {
+          hiba ??= el('span', 'beagyazas-feladat-hiba');
+          hiba.setAttribute('role', 'status');
+          hiba.replaceChildren(ikonElem(TriangleAlert, 14), document.createTextNode(e instanceof Error ? e.message : String(e)));
+          torzs.appendChild(hiba);
+          o.kesz?.();
+        }
+      } finally {
+        jel.disabled = false;
+      }
+    })();
+  });
 }
 
 // ---------------------------------------------------------------------- média és helyőrző
@@ -209,7 +264,7 @@ async function nagyitas(ut: string, img: HTMLElement): Promise<void> {
 async function kep(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement, o: BeagyazasOpciok): Promise<void> {
   const img = el('img', 'beagyazas-kep');
   const meret = meretAliasbol(link.alias);
-  img.alt = !meret && link.alias ? link.alias : fajlNev(adat.ut!);
+  img.alt = link.alt ?? (!meret && link.alias ? link.alias : fajlNev(adat.ut!));
   img.loading = 'lazy';
   img.decoding = 'async'; // a dekódolás ne a fő szálon (a kicsinyített változat mellett is)
   if (meret?.szelesseg) img.width = meret.szelesseg;
@@ -275,11 +330,11 @@ async function hang(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement): Pro
 
 async function pdf(adat: BeagyazasAdat, link: LinkAdat, kont: HTMLElement): Promise<void> {
   const f = el('iframe', 'beagyazas-pdf');
-  const { page } = mediaHorgony(link.alcel);
+  const { page, height } = mediaHorgony(link.alcel);
   const meret = meretAliasbol(link.alias);
   f.title = `${fajlNev(adat.ut!)}${page ? `, ${page}. oldal` : ''}`;
   f.loading = 'lazy';
-  f.style.height = `${meret?.szelesseg ?? PDF_MAGASSAG}px`;
+  f.style.height = `${height ?? meret?.szelesseg ?? PDF_MAGASSAG}px`;
   f.src = (await linkek.mediaUrl(adat.ut!)) + (page ? `#page=${page}` : '');
   kont.className = 'beagyazas beagyazas-media';
   kont.replaceChildren(f);

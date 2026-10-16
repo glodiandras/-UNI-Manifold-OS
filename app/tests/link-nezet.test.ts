@@ -84,7 +84,7 @@ describe('a kirajzolt link a Live Preview-ban', () => {
 });
 
 describe('a beágyazás widget a Live Preview-ban', () => {
-  it('egyedül álló sor: blokk-widget a tartalommal; az aktív sorban a forrás', async () => {
+  it('egyedül álló sor: blokk-widget a tartalommal; az aktív sorban forrás és alatta előnézet', async () => {
     tabla['Matek/Fő.md|Cél|'] = { tipus: 'jegyzet', ut: 'Cél.md', szoveg: '# Cél címe\n\nSzöveg.\n' };
     const doc = 'Előtte\n\n![[Cél]]\n\nUtána';
     const v = nezet(doc, doc.length);
@@ -92,7 +92,7 @@ describe('a beágyazás widget a Live Preview-ban', () => {
     expect(v.dom.querySelector('.cm-beagyazas-sorban')).toBeNull();
     expect(v.dom.textContent).not.toContain('![[Cél]]');
     v.dispatch({ selection: { anchor: doc.indexOf('![[') + 2 } });
-    expect(v.dom.querySelector('.cm-beagyazas')).toBeNull();
+    await vi.waitFor(() => expect(v.dom.querySelector('.cm-beagyazas .beagyazas-jegyzet h1')?.textContent).toBe('Cél címe'));
     expect(v.dom.textContent).toContain('![[Cél]]');
   });
 

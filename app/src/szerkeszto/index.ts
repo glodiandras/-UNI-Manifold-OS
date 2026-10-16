@@ -18,7 +18,8 @@ import type { VaultFajlok } from '../lib/vault/fajlok.svelte';
 import type { Parancs, Regiszter } from '../lib/parancsok/regiszter';
 import type { Dokumentumok } from './dokumentum/dokumentum.svelte';
 import { irhato } from './beallitas';
-import { korbefog } from './formazas';
+import { formazasTorles, korbefog } from './formazas';
+import { fejezetBeallit, feladatValt, feladatValthato, idezetValt, listaCiklus, listaValt } from './szerkezetiParancsok';
 import { atnevezesFigyel, atnevezesParancsok } from './linkek/atnevezes';
 import { linkBeszur } from './linkek/kiegeszites';
 import { elonezet } from './linkek/elonezet';
@@ -65,6 +66,7 @@ function parancsok(): Parancs[] {
   // a Notion-réteg parancsai (C09): Live Preview-ban érvényesek, a ⌘P-ből is (a szerkesztő állapotában
   // a kurzor megvan, a futtatás előtt a fókusz visszakerül a szerkesztőre)
   const elo = () => !!sz()?.nezet() && sz()!.mod() === 'elo' && irhatoNezet(sz());
+  const irhatoSzerkeszto = () => !!sz()?.nezet() && sz()!.mod() !== 'olvaso' && irhatoNezet(sz());
   const notion = (id: string, nev: string, fut: (v: EditorView) => unknown, tobb: Partial<Parancs> = {}): Parancs => ({
     id: `szerkeszto.${id}`,
     nev,
@@ -79,6 +81,18 @@ function parancsok(): Parancs[] {
     ...tobb,
   });
   return [
+    ...[0, 1, 2, 3, 4, 5, 6].map(szint => {
+      const parancs = notion(`fejezet-${szint}`, tk('editor.paragraph'), v => fejezetBeallit(v, szint), { elerheto: irhatoSzerkeszto });
+      if (szint) Object.defineProperty(parancs, 'nev', { enumerable: true, get: () => t('editor.headingLevel {level}', { level: szint }) });
+      return parancs;
+    }),
+    notion('feladat-valt', tk('editor.toggleTask'), feladatValt, { billentyu: 'Mod+Enter', elerheto: () => szerkeszt() && feladatValthato(sz()!.nezet()!.state) }),
+    notion('lista-valt', tk('editor.toggleBullet'), v => listaValt(v, 'lista'), { elerheto: irhatoSzerkeszto }),
+    notion('szamozott-valt', tk('editor.toggleNumbered'), v => listaValt(v, 'szamozott'), { elerheto: irhatoSzerkeszto }),
+    notion('feladatlista-valt', tk('editor.toggleTaskList'), v => listaValt(v, 'feladat'), { elerheto: irhatoSzerkeszto }),
+    notion('lista-ciklus', tk('editor.cycleList'), listaCiklus, { elerheto: irhatoSzerkeszto }),
+    notion('idezet-valt', tk('editor.toggleQuote'), idezetValt, { elerheto: irhatoSzerkeszto }),
+    notion('formazas-torles', tk('editor.clearFormatting'), formazasTorles, { elerheto: irhatoSzerkeszto }),
     // J2: a kézi hívás (⌘J; az ütközés-próba a regiszterben és a CM-keymapekben: tests/billentyu-utkozes.test.ts) — kijelölés
     // nélkül folytatás, kijelöléssel kifejtés; ⇧⌘J a kijelölés összefoglalása. A javaslat Tab-bal egy tranzakció (⌘Z).
     notion('asszisztens', tk('Asszisztens: kiegészítés a kurzornál vagy a kijelölés kifejtése'), v => v.dispatch({ effects: folytatasKezi.of({ mod: folytatasKeziMod(v) }) }),
@@ -121,8 +135,8 @@ function parancsok(): Parancs[] {
       id: 'szerkeszto.link-megnyit',
       nev: tk('Link megnyitása a kurzornál'),
       kategoria: tk('Szerkesztő'),
-      billentyu: 'Mod+Enter',
-      // csak ha a kurzor linken áll (különben a ⌘↩ a CodeMirror üres sort beszúró parancsáé marad)
+      billentyu: 'Alt+Enter',
+      // Az audit szerint ⌘↩ a feladaté, ⌥↩ a kurzornál álló linké.
       elerheto: () => {
         const v = sz()?.nezet();
         return !!v && sz()!.mod() !== 'olvaso' && v.hasFocus && !!linkAt(v.state, v.state.selection.main.head);

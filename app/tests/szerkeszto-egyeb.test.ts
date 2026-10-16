@@ -92,6 +92,8 @@ describe('parancsok', () => {
       ['Mod+I', 'szerkeszto.dolt'],
       ['Mod+Shift+H', 'szerkeszto.kiemeles'],
       ['Mod+F', 'szerkeszto.kereses'],
+      ['Mod+Enter', 'szerkeszto.feladat-valt'],
+      ['Alt+Enter', 'szerkeszto.link-megnyit'],
     ])
       expect(reg.akkordhoz(normalizalLeiras(akkord))?.id, akkord).toBe(id);
     // a ⌘H a macOS „Manifold elrejtése” (20. döntés): a felület nem nyelheti el

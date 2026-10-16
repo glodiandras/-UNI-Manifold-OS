@@ -6,10 +6,13 @@
   import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
-  import { CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, Network, Plus, X } from '../lib/ikon/ikonok';
+  import { CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, Network, Pin, Plus, X, ArrowLeft, ArrowRight } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
   import { nezetFul, type Ful, type PanelCs } from '../lib/elrendezes/munkaterulet.svelte';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
+  import { lebegoMenu, type MenuElem } from '../szerkeszto/notion/menu';
+  import { vagolapra } from '../szerkeszto/vagolap';
+  import { regiszter } from '../lib/parancsok/regiszter';
   import { fajlNev } from '../lib/vault/fajlok.svelte';
 
   const HUZAS_TIPUS = 'application/x-manifold-ful';
@@ -41,6 +44,12 @@
   }
 
   function billentyu(e: KeyboardEvent, i: number) {
+    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+      e.preventDefault();
+      const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      menu(panel.fulek[i], r.left, r.bottom);
+      return;
+    }
     let j: number;
     if (e.key === 'ArrowRight') j = (i + 1) % panel.fulek.length;
     else if (e.key === 'ArrowLeft') j = (i - 1 + panel.fulek.length) % panel.fulek.length;
@@ -56,6 +65,29 @@
     aktival(f);
     lista?.querySelector<HTMLElement>(`#${tabId(f)}`)?.focus();
   }
+
+  function menu(f: Ful, x: number, y: number) {
+    aktival(f);
+    const elemek: MenuElem[] = [], akciok = new Map<string, () => void>();
+    const hozzaad = (id: string, nev: string, fn: () => void) => { elemek.push({ id, nev }); akciok.set(id, fn); };
+    hozzaad('rogzit', f.rogzitett ? t('Fül rögzítésének feloldása') : t('Fül rögzítése'), () => m.rogzit(panel.id, f.id));
+    hozzaad('bezar', t('Fül bezárása'), () => m.bezar(panel.id, f.id));
+    hozzaad('tobbi', t('Többi nem rögzített fül bezárása'), () => m.bezarTobbit('tobbi', panel.id, f.id));
+    hozzaad('jobb', t('Jobbra lévő nem rögzített fülek bezárása'), () => m.bezarTobbit('jobb', panel.id, f.id));
+    hozzaad('mind', t('Csoport nem rögzített füleinek bezárása'), () => m.bezarTobbit('mind', panel.id, f.id));
+    hozzaad('oszt-jobbra', t('Osztás jobbra'), () => m.oszt('sor'));
+    hozzaad('oszt-le', t('Osztás lefelé'), () => m.oszt('oszlop'));
+    if (f.ut) {
+      const ut = f.ut;
+      hozzaad('megmutat', t('Megmutatás a fájlfában'), () => felulet.megmutatFaban(ut));
+      hozzaad('ut', t('Vault-út másolása'), () => void vagolapra(ut));
+      if (regiszter.kap('vault.atnevezes') && regiszter.elerheto(regiszter.kap('vault.atnevezes')!)) hozzaad('atnevez', t('Átnevezés…'), () => void regiszter.futtat('vault.atnevezes', 'gomb'));
+    }
+    hozzaad('csoport', t('Fülcsoport bezárása'), () => m.bezarPanel(panel.id));
+    lebegoMenu({ focus: () => lista?.querySelector<HTMLElement>(`#${tabId(panel.fulek.find(f => f.id === panel.aktiv) ?? f)}`)?.focus() }, x, y, elemek, akciok, t('Fül menü'));
+  }
+
+  function navigal(irany: -1 | 1) { m.aktival(panel.id); m.navigal(irany); }
 
   function huzasKezd(e: DragEvent, f: Ful) {
     e.dataTransfer?.setData(HUZAS_TIPUS, f.id);
@@ -89,6 +121,8 @@
 </script>
 
 <div class="fulsor" class:aktiv-panel={aktivPanel} data-csend-halvanyul data-csend-terulet>
+  <IkonGomb ikon={ArrowLeft} cimke={t('Vissza az előző jegyzethez')} kicsi disabled={!m.navigalhato(-1, panel.aktiv ?? undefined)} onclick={() => navigal(-1)} />
+  <IkonGomb ikon={ArrowRight} cimke={t('Előre a következő jegyzethez')} kicsi disabled={!m.navigalhato(1, panel.aktiv ?? undefined)} onclick={() => navigal(1)} />
   <div
     class="fulek"
     role="tablist"
@@ -98,6 +132,7 @@
     ondragover={felett}
     ondragleave={() => (ejtesHely = null)}
     ondrop={ejt}
+    ondblclick={(e) => { if (e.target === e.currentTarget) m.ujFul(panel.id); }}
   >
     {#each panel.fulek as f, i (f.id)}
       {@const aktiv = f.id === panel.aktiv}
@@ -109,6 +144,7 @@
         draggable="true"
         role="presentation"
         ondragstart={(e) => huzasKezd(e, f)}
+        oncontextmenu={(e) => { e.preventDefault(); menu(f, e.clientX, e.clientY); }}
         onauxclick={(e) => {
           if (e.button === 1) m.bezar(panel.id, f.id);
         }}
@@ -119,6 +155,7 @@
           id={tabId(f)}
           class="fej"
           aria-selected={aktiv}
+          aria-label={f.rogzitett ? `${cim(f)} · ${t('Rögzített fül')}` : undefined}
           aria-controls={aktiv ? nezetId : undefined}
           tabindex={aktiv ? 0 : -1}
           title={f.ut ?? cim(f)}
@@ -131,6 +168,7 @@
             <JegyzetIkon ut={f.ut} tipus={f.ut ? fajlok.info(f.ut)?.tipus : undefined} meret={14} />
           {/if}
           <span class="nev">{cim(f)}</span>
+          {#if f.rogzitett}<span title={t('Rögzített fül')}><Ikon ikon={Pin} meret={14} /></span>{/if}
         </button>
         <button
           type="button"

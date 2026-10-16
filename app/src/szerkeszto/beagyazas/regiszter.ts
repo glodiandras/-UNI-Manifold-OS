@@ -22,6 +22,8 @@ export interface BeagyazasOpciok {
   kompakt?: boolean;
   /** sor közepén álló beágyazás: a jegyzet helyett csak link-chip (a kép és a videó marad) */
   sorban?: boolean;
+  /** A befogadó nézetből nem indítható szerkesztés (pl. csak olvasható jegyzet). */
+  csakOlvashato?: boolean;
   jel?: AbortSignal;
   /** a tartalom megérkezett (a méret változhatott: a CodeMirror új mérést kér) */
   kesz?: () => void;

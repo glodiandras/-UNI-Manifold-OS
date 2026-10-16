@@ -9,7 +9,8 @@
 
 import { t, tk } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
+import { EditorSelection, type EditorState, type Extension, StateEffect, StateField } from '@codemirror/state';
+import { isolateHistory } from '@codemirror/commands';
 import { EditorView, showTooltip, type Tooltip, type TooltipView, ViewPlugin, type ViewUpdate } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { IconNode } from 'lucide';
@@ -302,6 +303,25 @@ const egerFigyelo = ViewPlugin.fromClass(EgerFigyelo, {
 export function linkParancs(view: EditorView): boolean {
   if (view.state.readOnly) return false;
   const r = view.state.selection.main;
+  // A Forrás nézetben nincs lebegő eszköztár. A parancs ott is azonnal, közönséges Markdownnal
+  // működik, az URL helyén álló kurzorral; nincs egy soha létre nem jövő tooltipre váró RAF.
+  if (view.state.field(lathato, false) === undefined) {
+    const s = view.state;
+    const l = linkAdat(s);
+    if (l && s.selection.ranges.length === 1) {
+      view.dispatch({ selection: EditorSelection.range(l.urlFrom, l.urlTo), scrollIntoView: true });
+      return true;
+    }
+    const tr = s.changeByRange((k) => {
+      const szoveg = szovegKodol(s.sliceDoc(k.from, k.to));
+      return {
+        changes: { from: k.from, to: k.to, insert: `[${szoveg}]()` },
+        range: EditorSelection.cursor(k.from + (k.empty ? 1 : szoveg.length + 3)),
+      };
+    });
+    view.dispatch(s.update(tr, { userEvent: 'input.link', annotations: isolateHistory.of('full'), scrollIntoView: true }));
+    return true;
+  }
   if (r.empty) {
     view.dispatch({
       changes: { from: r.head, insert: '[]()' },

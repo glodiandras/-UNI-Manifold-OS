@@ -76,7 +76,7 @@ function regiszterKulcsok(): Map<string, string> {
 // Az indokolt kivételek: a regiszter parancsa a szerkesztőn KÍVÜL is él, vagy szándékosan ugyanazt teszi, mint a CM-é.
 const KIVETELEK: Record<string, string> = {
   'Mod+f': 'a szerkesztő keresése maga a CM keresőpanelje (openSearchPanel) — ugyanaz a művelet',
-  'Mod+Enter': 'a linkmegnyitás csak linken álló kurzornál érvényes; különben a CM üres sort beszúró parancsa fut',
+  'Mod+Enter': 'az írható szerkesztőben a feladat állapota vált (F11, Obsidian-kiosztás); kódban/Olvasóban a CM-é marad',
   'Mod+Alt+ArrowDown':
     'az „Osztás lefelé” a szerkesztőn kívül él; a szerkesztőben a CM addCursorBelow-ja nyer (`szerkesztoNyer`, a kezelő ' +
     'kihagyja a CodeMirrorban; a parancsok.test.ts őrzi)',

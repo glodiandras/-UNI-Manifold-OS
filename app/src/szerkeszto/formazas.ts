@@ -13,6 +13,7 @@
 // dönt (`**` = legalább 2, `*` = páratlan), így a ⌘I a `**x**`-et nem bontja szét, hanem `***x***`-t csinál.
 
 import { t } from '../lib/i18n';
+import { isolateHistory } from '@codemirror/commands';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
 import { EditorSelection, type EditorState, type SelectionRange } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
@@ -82,7 +83,7 @@ function blokkotNyitna(s: EditorState, r: SelectionRange, jel: string): boolean 
     from: uj.from,
     to: uj.to,
     enter: (n) => {
-      if ((n.name === 'FencedCode' || n.name === 'HorizontalRule') && n.from >= uj.from) lenne = true;
+      if (['FencedCode', 'HorizontalRule', 'MathBlock', 'CommentBlock', 'ObsidianCommentBlock'].includes(n.name) && n.from >= uj.from) lenne = true;
       return !lenne;
     },
   });
@@ -153,7 +154,33 @@ export function korbefog(view: EditorView, jel: string): boolean {
       range: EditorSelection.range(r.from + n, r.to + n),
     };
   });
-  view.dispatch(s.update(tr, { scrollIntoView: true, userEvent: 'input.formazas' }));
+  view.dispatch(s.update(tr, { scrollIntoView: true, userEvent: 'input.formazas', annotations: isolateHistory.of('full') }));
   if (jel === '==' && beszur) kiemelesFigyelmeztet();
+  return true;
+}
+
+/** A kijelölt soron belüli formázás törlése a szintaxisfa jelölőivel. A kód/matek tartalma és a
+ *  Markdown-link célja adat marad; csak az értelmezett formázópár kerül le, nyers csillag nem. */
+export function formazasTorles(view: EditorView): boolean {
+  const s = view.state;
+  if (s.readOnly || s.selection.ranges.every((r) => r.empty)) return false;
+  const fa = ensureSyntaxTree(s, s.doc.length, 200);
+  if (!fa) return false;
+  const parok = new Set(['StrongEmphasis', 'Emphasis', 'Strikethrough', 'Highlight', 'InlineCode', 'InlineMath']);
+  const jelek = new Set(['EmphasisMark', 'StrikethroughMark', 'HighlightMark', 'CodeMark', 'MathMark']);
+  const torol = new Map<number, number>();
+  fa.iterate({ enter(n) {
+    if (!parok.has(n.name)) return;
+    const elso = n.node.firstChild;
+    const utolso = n.node.lastChild;
+    if (!elso || !utolso || elso === utolso || !jelek.has(elso.name) || !jelek.has(utolso.name)) return;
+    const kijelolt = s.selection.ranges.some((r) => !r.empty && ((r.from <= n.from && r.to >= n.to) || (r.from >= elso.to && r.to <= utolso.from)));
+    if (!kijelolt) return;
+    torol.set(elso.from, elso.to);
+    torol.set(utolso.from, utolso.to);
+  } });
+  if (!torol.size) return false;
+  const changes = [...torol].sort(([a], [b]) => a - b).map(([from, to]) => ({ from, to }));
+  view.dispatch({ changes, annotations: isolateHistory.of('full'), userEvent: 'input.formazas', scrollIntoView: true });
   return true;
 }

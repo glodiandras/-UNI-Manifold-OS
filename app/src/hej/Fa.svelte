@@ -72,8 +72,19 @@
   // „Új jegyzet a fájlfában” (C38, ⌘P): a fa eszköztára csendben rejtett, a parancs ugyanazt nyitja
   $effect(() => {
     if (!felulet.faUjJegyzet) return;
-    untrack(() => (felulet.faUjJegyzet = false));
-    void tick().then(() => ujJegyzetNyit());
+    const cel = untrack(() => {
+      felulet.faUjJegyzet = false;
+      const c = felulet.faUjNev;
+      felulet.faUjNev = null;
+      return c;
+    });
+    void atfedesVegere().then(async () => {
+      await ujJegyzetNyit(cel?.mappa ?? alapMappa());
+      if (cel && ujJegyzet) {
+        ujJegyzet = { ...ujJegyzet, nev: cel.nev, mod: cel.mod };
+        await ujJegyzetLetrehoz();
+      }
+    });
   });
 
   // „Új jegyzet sablonból” (C32b): a sablon-választó után a névmező nyílik, a létrehozás a `/api/sablon/uj` úton megy
@@ -139,6 +150,7 @@
     hiba: string | null;
     folyamat: boolean;
     tipus: UjTipus;
+    mod?: 'aktiv' | 'ujful' | 'osztas';
     sablon?: string;
     problemak?: SemaProblema[];
     megerosit?: boolean;
@@ -196,7 +208,7 @@
       }
       ujJegyzet = null;
       if (u.tipus === 'mappa') { await fajlok.frissit(); valt(d.ut, true); fokuszUt = d.ut; return; }
-      felulet.munkaterulet.megnyit(d.ut, 'aktiv');
+      felulet.munkaterulet.megnyit(d.ut, u.mod ?? 'aktiv');
       const ful = felulet.munkaterulet.aktivFul;
       if (d.kurzor != null && ful && ful.ut === d.ut && !ful.nezet) ful.nezet = { kurzor: d.kurzor };
       felulet.megmutatFaban(d.ut);

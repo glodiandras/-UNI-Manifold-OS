@@ -41,6 +41,8 @@ export class LinkSzolgaltatas {
   mediaToken = $state<string | null>(null);
   /** Nő, ha a fájlhalmaz szerkezete változott: a feloldások érvénytelenek. */
   verzio = $state(0);
+  /** Nő minden tartalmi eseménynél is: a beágyazott szeletek újraolvasandók, a feloldási cache maradhat. */
+  tartalomVerzio = $state(0);
   private readonly feloldasok = new Map<string, string | null>();
   private aliasok: Promise<Record<string, string[]>> | null = null;
   private tokenVaro: Promise<string | null> | null = null;
@@ -56,11 +58,13 @@ export class LinkSzolgaltatas {
     const le1 = k.figyel('hello', (e) => {
       if (typeof e.media_token === 'string') this.mediaToken = e.media_token;
       this.ervenytelenit();
+      this.tartalomVerzio++;
     });
     const le2 = k.figyel('vault_valtozas', (e) => {
       const utak = (e.utak as string[] | undefined) ?? [];
       const torolt = (e.torolt as string[] | undefined) ?? [];
       this.aliasok = null; // az `aliases` bármely mentéssel változhat
+      this.tartalomVerzio++;
       if (e.tomeges || torolt.length || utak.some((u) => !ismert(u))) this.ervenytelenit();
     });
     return () => {

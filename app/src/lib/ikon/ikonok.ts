@@ -53,6 +53,7 @@ export {
   PanelLeft,
   PanelRight,
   Plus,
+  Pin,
   Rows2,
   Search,
   Settings,

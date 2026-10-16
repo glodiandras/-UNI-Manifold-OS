@@ -2,7 +2,7 @@
 // visszatér a megnyitóra, és az ARIA-szerkezet (combobox + listbox) helyes.
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { flushSync } from 'svelte';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Paletta from '../src/atfedes/Paletta.svelte';
 import Valto from '../src/atfedes/Valto.svelte';
 import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
@@ -11,6 +11,7 @@ import { modalisNyitva } from '../src/lib/fokusz/hatokor';
 import { KORNYEZET_KULCS } from '../src/lib/kornyezet';
 import { regiszter } from '../src/lib/parancsok/regiszter';
 import { VaultFajlok, type FajlInfo } from '../src/lib/vault/fajlok.svelte';
+import { linkek } from '../src/lib/vault/linkek.svelte';
 
 const FAJLOK: FajlInfo[] = [
   { ut: 'Matek/Sorozatok/04 - Mértani sorozat.md', tipus: 'md', meret: 3300, mtime: 100 },
@@ -32,6 +33,8 @@ const opciok = () => screen.getAllByRole('option').map((o) => o.textContent?.rep
 afterEach(() => cleanup());
 
 describe('gyorsváltó (⌘O)', () => {
+  // Az aliasok saját tesztkészlete külön vizsgálja a hibát; a billentyű- és fókuszpróbák offline fájlneveket használnak.
+  beforeEach(() => { vi.spyOn(linkek, 'aliasokKap').mockResolvedValue({}); });
   it('combobox + listbox, a fókusz a mezőben; üresen a legutóbbiak, aztán módosítás szerint', () => {
     const { context } = kornyezet({ legutobbiFajlok: ['Matek/Sorozatok/04 - Mértani sorozat.md'] });
     render(Valto, { context });

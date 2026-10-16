@@ -812,12 +812,24 @@ button.callout-hajto:hover {
 .beagyazas-video {
   display: block;
   max-width: 100%;
-  height: auto;
   border-radius: var(--kerekites);
+}
+
+.beagyazas-kep:not([height]),
+.beagyazas-video:not([height]) {
+  height: auto;
 }
 
 .beagyazas-kep {
   cursor: zoom-in; /* kattintásra az eredeti nyílik (nagyító, C11a) */
+}
+
+.beagyazas-feladat-hiba {
+  display: flex;
+  align-items: center;
+  gap: var(--t-1);
+  margin-top: var(--t-2);
+  color: var(--szoveg);
 }
 
 /* a nagyító: modális réteg az eredeti képpel (beagyazas/nagyito.ts) */
