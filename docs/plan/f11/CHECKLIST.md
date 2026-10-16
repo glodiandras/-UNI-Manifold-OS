@@ -21,7 +21,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | `01-rendering-09` | should | Verified | Markdown links to notes do not navigate (should, M, high) | f11-linkek-megjegyzes.test.ts; f11-olvaso.svelte.test.ts |
 | `01-rendering-10` | should | Open | Inline footnotes `^[text]` (should, S, high) | — |
 | `01-rendering-11` | should | Open | Broader (sanitised) HTML: blocks, attributes, `<img>`, `<details>`, `<span style>` (should, M, high) | — |
-| `01-rendering-12` | should | Open | ⌘F in Reading view (should, S, high) | — |
+| `01-rendering-12` | should | Verified | ⌘F in Reading view (should, S, high) | f11-olvaso-kereses.test.ts / .svelte.test.ts; literal text, cross-format matches, navigation, async refresh, no document edits |
 | `01-rendering-13` | should | Open | Hanging indent for wrapped list lines in LP (should, S, high) | — |
 | `01-rendering-14` | should | Partial | Font size / zoom (should, S, high) | F5 font size delivered; UI zoom remains open. |
 
@@ -52,8 +52,8 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | `03-properties-02` | must | Verified | Clicking a `#tag` does not open search (must, S, confidence high) | f11-cimke-navigacio.svelte.test.ts (Reader/LP/Source, shared query, module gates) |
 | `03-properties-03` | must | Verified | No tag autocomplete in the body (must, M, confidence high) | f11-cimke-kiegeszites.test.ts; f11-cimke-cache.test.ts |
 | `03-properties-04` | must | Verified | Quick switcher ignores aliases (must, S, confidence high) | f11-workspace.svelte.test.ts |
-| `03-properties-05` | must | Open | Per-key property types are read-only (must, M, confidence high) | — |
-| `03-properties-06` | should | Open | No type icon and no per-property menu (should, S, confidence high) | — |
+| `03-properties-05` | must | Verified | Per-key property types are read-only (must, M, confidence high) | f11-tulajdonsag-tipus.test.ts; test_tulajdonsag_tipusok: explicit CAS metadata Save, snapshots, no value conversion. Optional first-use inferred-type registration remains deferred. |
+| `03-properties-06` | should | Partial | No type icon and no per-property menu (should, S, confidence high) | Type icon and explicit chooser verified; row right-click Cut/Copy/Paste/Remove remains open. |
 | `03-properties-07` | should | Open | Keys cannot be renamed in place (should, M, confidence high) | — |
 | `03-properties-08` | should | Verified | Tag chips in the properties panel are not clickable (should, S, confidence high) | f11-cimke-navigacio.svelte.test.ts (read-only chips; Search/Tags gates) |
 | `03-properties-09` | should | Open | No Properties / All-properties sidebar views (should, M, confidence high) | — |
@@ -84,7 +84,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 | `05-editing-04` | should | Verified | Markdown auto-pairing (`*`, `_`, `~`, `=`, `$`) · should · S · confidence high | f11-auto-parok.test.ts |
 | `05-editing-05` | should | Verified | Customisable hotkeys · should · M · confidence high | F5: beallitasok.test.ts; billentyu-utkozes.test.ts |
 | `05-editing-06` | should | Verified | Rich-text paste → Markdown, paste as plain text · should · M · confidence medium (Obsidian converts HTML clipboard to Markdown; `⇧⌘V` pastes plain) | f11-vagolap-html.test.ts; paste integration tests |
-| `05-editing-07` | should | Open | Find in reading view · should · M · confidence high | — |
+| `05-editing-07` | should | Verified | Find in reading view · should · M · confidence high | f11-olvaso-kereses.test.ts / .svelte.test.ts; Cmd+F keeps Reading mode, Enter/ShiftEnter/Escape, case switch and bounded DOM marks |
 | `05-editing-08` | should | Verified | `⌘K` with a selection does nothing in Source mode · should · S · confidence high | f11-szerkezeti-parancsok.test.ts |
 
 ## 06-workspace
@@ -127,15 +127,15 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
-| `08-search-01` | must | Open | Docked, persistent results pane (R17) — must, M | — |
+| `08-search-01` | must | Verified | Docked, persistent results pane (R17) — must, M | f11-dock-search.svelte.test.ts; shared overlay/sidebar state, query/results/scroll retained, open-result focus, module gates |
 | `08-search-02` | should | Open | Property search `[key]`, `[key:value]` (Q16) — should, M | — |
 | `08-search-03` | should | Open | `match-case:` / `ignore-case:` and a Match-case toggle (Q14) — should, S–M | — |
 | `08-search-04` | should | Open | Sort order (R7) — should, S | — |
 | `08-search-05` | should | Open | “Show more context” (R3) — should, S | — |
-| `08-search-06` | should | Open | Live refresh of results (R10) — should, S | — |
+| `08-search-06` | should | Verified | Live refresh of results (R10) — should, S | f11-dock-search.svelte.test.ts; shared WS leases, debounce, stable selected key, abort/late-response guards |
 | `08-search-07` | should | Open | `task:`, `task-todo:`, `task-done:` (Q12) — should, M | — |
 | `08-search-08` | should | Open | `section:(…)` (Q10) — should, M | — |
 | `08-search-11` | should | Open | Substring matching for bare words (Q1) — should, M–L, confidence medium | — |
-| `08-search-12` | should | Open | Find in Reading view (F5) — should, M | — |
+| `08-search-12` | should | Partial | Find in Reading view (F5) — should, M | Reader find verified, including overlay Tab focus handoff. Accent-insensitive matching and overlay query prefill remain open. |
 | `08-search-13` | should | Open | Embedded search block (R24) — should, M | — |
 | `08-search-24` | should | Verified | Click `#tag` → search (R22) — should, S (search side) | f11-cimke-navigacio.svelte.test.ts; existing nested-tag core search tests |

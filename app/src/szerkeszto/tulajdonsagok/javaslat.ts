@@ -252,11 +252,16 @@ export function linkLista(
 // ---------------------------------------------------------------------- a core-listák gyorsítótára
 
 const ELAVUL_MS = 15_000;
+let tipusVerzio = 0;
+
+/** Explicit típusmódosítás után minden panel/CM cache következő olvasása friss listát kér. */
+export function tipusJavaslatokElavult(): void { tipusVerzio++; }
 
 /** A kulcs- és érték-listák rövid életű gyorsítótára (a fókuszonkénti újrakérés helyett; a vault változása a következő
  *  lejárattal látszik). A folyamatban lévő kérés megosztott. */
 export class JavaslatTar {
   private readonly tar = new Map<string, { ido: number; adat: Promise<unknown> }>();
+  private tipusVerzio = tipusVerzio;
 
   constructor(
     private readonly api: Pick<TulajdonsagApi, 'kulcsok' | 'ertekek'>,
@@ -264,6 +269,7 @@ export class JavaslatTar {
   ) {}
 
   private kap<T>(kulcs: string, f: () => Promise<T>): Promise<T> {
+    if (this.tipusVerzio !== tipusVerzio) { this.tar.clear(); this.tipusVerzio = tipusVerzio; }
     const t = this.tar.get(kulcs);
     if (t && this.most() - t.ido < ELAVUL_MS) return t.adat as Promise<T>;
     const adat = f().catch((e) => {

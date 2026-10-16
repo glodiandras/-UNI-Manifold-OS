@@ -5,6 +5,8 @@
 
 import { t } from '../i18n';
 
+import type { CoreKapcsolat } from '../core/ws.svelte';
+import { modulEngedelyezett } from '../beallitasok/allapot.svelte';
 import { ApiHiba, kerdez } from '../core/api';
 
 export interface KeresesHely {
@@ -160,6 +162,46 @@ export class VaultKereses {
   private sorszam = 0;
   private idozito: ReturnType<typeof setTimeout> | null = null;
   private vezerlo: AbortController | null = null;
+  private readonly figyelok = new Map<CoreKapcsolat, { db: number; le: () => void }>();
+  private igenylok = 0;
+  private frissitesIdozito: ReturnType<typeof setTimeout> | null = null;
+
+  /** Az overlay és a dokkolt lista egy keresést és egy WS-előfizetést használ; az utolsó fogyasztó leállítja a háttérmunkát. */
+  igenyel(k: CoreKapcsolat): () => void {
+    const meglevo = this.figyelok.get(k);
+    if (meglevo) meglevo.db++;
+    else {
+      const le = [k.figyel('index', () => {
+        if (this.indexEpul) this.indexKesz(); else this.valtozasra();
+      }), k.figyel('pdf_szoveg', e => { this.pdfSzoveg = e as unknown as PdfSzovegAllapot; this.valtozasra(); }),
+      k.figyel('vault_valtozas', () => this.valtozasra())];
+      this.figyelok.set(k, { db: 1, le: () => le.forEach(f => f()) });
+    }
+    if (++this.igenylok === 1 && this.q.trim() && !this.folyamat && modulEngedelyezett('kereses')) this.utemez(true);
+    let el = true;
+    return () => {
+      if (!el) return;
+      el = false;
+      const figyelo = this.figyelok.get(k);
+      if (figyelo && --figyelo.db === 0) { figyelo.le(); this.figyelok.delete(k); }
+      if (--this.igenylok === 0) {
+        if (this.frissitesIdozito) clearTimeout(this.frissitesIdozito);
+        if (this.idozito) clearTimeout(this.idozito);
+        this.frissitesIdozito = this.idozito = null;
+        this.sorszam++;
+        this.vezerlo?.abort(); this.vezerlo = null; this.folyamat = false;
+      }
+    };
+  }
+
+  private valtozasra(): void {
+    if (!this.igenylok || !modulEngedelyezett('kereses') || !this.q.trim()) return;
+    if (this.frissitesIdozito) clearTimeout(this.frissitesIdozito);
+    this.frissitesIdozito = setTimeout(() => {
+      this.frissitesIdozito = null;
+      if (this.igenylok && modulEngedelyezett('kereses')) this.utemez(true);
+    }, 600);
+  }
   /** a lekérdezés a minimális hossz alatt van (a panel tippet mutat) */
   rovid = $state(false);
   /** „Jelentés szerint” (C25b): a hibrid végpont (szó szerinti + vektoros, rerankerrel); alapból a szó szerinti keresés */
@@ -215,7 +257,7 @@ export class VaultKereses {
         ? `/api/kereses/hibrid?q=${encodeURIComponent(q)}&limit=${KERESES_LIMIT}&mod=hibrid`
         : `/api/vault/kereses?q=${encodeURIComponent(q)}&limit=${KERESES_LIMIT}&kornyezet=1`;
       const v = await kerdez<KeresesValasz>(ut, { idokorlat: 15000, jel: vezerlo.signal });
-      if (sorszam !== this.sorszam) return;
+      if (sorszam !== this.sorszam || q !== this.q.trim()) return;
       this.eredmeny = v;
       this.hiba = null;
       this.indexEpul = false;
@@ -227,7 +269,7 @@ export class VaultKereses {
         }, BETOLTES_UJRA_MS);
       }
     } catch (e) {
-      if (sorszam !== this.sorszam) return;
+      if (sorszam !== this.sorszam || q !== this.q.trim()) return;
       this.eredmeny = null;
       if (e instanceof ApiHiba && e.statusz === 503) {
         this.indexEpul = true;

@@ -274,7 +274,7 @@ class EllenorzesTest(Alap):
         kulso.mkdir()
         (kulso / "x.md").write_text("# kint\n", encoding="utf-8")
         os.symlink(kulso, self.v / "link")
-        for ut in ("../kint.md", ".obsidian/app.md", "T01/.rejtett.md", "link/x.md", "T01/kep.png", "T01/x.pdf", ""):
+        for ut in ("../kint.md", ".obsidian/app.md", ".obsidian/types.json", "T01/.rejtett.md", "link/x.md", "T01/kep.png", "T01/x.pdf", ""):
             with self.subTest(ut):
                 self.hiba(400, {"tipus": "uj", "ut": ut, "tartalom": "x"})
         self.hiba(400, {"tipus": "beszuras", "ut": "link/x.md", "szakasz": "kint", "szoveg": "x", "letrehoz": True})

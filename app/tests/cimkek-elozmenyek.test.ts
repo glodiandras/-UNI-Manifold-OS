@@ -72,9 +72,11 @@ describe('az oldalsáv második füle (Címkék)', () => {
     const { felulet, context } = kornyezet();
     render(Oldalsav, { context });
     const fulek = screen.getAllByRole('tab').map((t) => t.textContent?.trim());
-    expect(fulek).toEqual(['Fájlok', 'Címkék']);
-    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowLeft' });
+    expect(fulek).toEqual(['Fájlok', 'Címkék', 'Keresés']);
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
     expect(felulet.oldalsav.nezet).toBe('cimkek');
+    await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+    expect(felulet.oldalsav.nezet).toBe('kereses');
     await fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
     expect(felulet.oldalsav.nezet).toBe('fajlok');
     felulet.oldalsav.nezet = 'cimkek';

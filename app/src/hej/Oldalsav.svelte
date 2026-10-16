@@ -1,7 +1,6 @@
 <!--
-  Bal oldalsáv: a fájlfa és a címkefa, alul a Manifold-gomb — csak a szó, ikon nélkül (TERV 5.3).
-  A nézetek közt a fejlécben váltunk (a keresés a nagy keresőablak, ⌘⇧F, E3; a címkefa a „Címkék” fül, C11b); a nézet tartós (a felület
-  állapotában).
+  Bal oldalsáv: a fájlfa, a címkefa és a tartós keresőpanel. A ⇧⌘F gyors átfedésként is megmarad.
+  A kereső listája a fülváltások alatt is megmarad; a nyitott oldalsáv-nézet a felület állapotában tartós.
 -->
 <script lang="ts">
   import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
@@ -13,11 +12,14 @@
   import { kornyezet } from '../lib/kornyezet';
   import { regiszter } from '../lib/parancsok/regiszter';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
+  import KeresoTartalom from '../lib/kereses/KeresoTartalom.svelte';
   import Cimkek from './Cimkek.svelte';
   import Fa from './Fa.svelte';
 
   const { felulet } = kornyezet();
-  const nezet = $derived(modulEngedelyezett('cimkek') ? felulet.oldalsav.nezet : 'fajlok');
+  const nezet = $derived((felulet.oldalsav.nezet === 'cimkek' && !modulEngedelyezett('cimkek')) || (felulet.oldalsav.nezet === 'kereses' && !modulEngedelyezett('kereses')) ? 'fajlok' : felulet.oldalsav.nezet);
+  let keresett = $state(false);
+  $effect(() => { if (nezet === 'kereses') keresett = true; });
   // C38: a rejtett oldalsáv átfedésként jön elő (bal szél, F6); a DOM-ja rejtve is megmarad (nincs állapotvesztés)
   const atfedes = $derived(!felulet.oldalsav.nyitva && csend.oldalsavAtfedes);
   const rejtett = $derived(!felulet.oldalsav.nyitva && !atfedes);
@@ -39,9 +41,10 @@
   const ALAP_NEZETEK = [
     { id: 'fajlok', nev: tk('Fájlok') },
     { id: 'cimkek', nev: tk('Címkék') },
+    { id: 'kereses', nev: tk('Keresés') },
   ] as const;
 
-  const NEZETEK = $derived(ALAP_NEZETEK.filter(n => n.id !== 'cimkek' || modulEngedelyezett('cimkek')));
+  const NEZETEK = $derived(ALAP_NEZETEK.filter(n => (n.id !== 'cimkek' || modulEngedelyezett('cimkek')) && (n.id !== 'kereses' || modulEngedelyezett('kereses'))));
 
   /** A fülek léptetése nyilakkal (← →): a kijelölt fül kapja a fókuszt. */
   function fulBillentyu(e: KeyboardEvent) {
@@ -95,8 +98,13 @@
   <div class="tartalom" id="oldalsav-panel" role="tabpanel" aria-labelledby={`oldalsav-ful-${nezet}`}>
     {#if nezet === 'fajlok'}
       <Fa />
-    {:else}
+    {:else if nezet === 'cimkek'}
       <Cimkek />
+    {/if}
+    {#if keresett}
+      <div class="kereso-panel" hidden={nezet !== 'kereses'} inert={nezet !== 'kereses'}>
+        <KeresoTartalom dokkolt lathato={nezet === 'kereses' && !rejtett && felulet.atfedes === null && modulEngedelyezett('kereses')} />
+      </div>
     {/if}
   </div>
 </nav>
@@ -180,6 +188,8 @@
   .ful:focus-visible {
     outline-offset: var(--fokusz-tav-befele);
   }
+
+  .kereso-panel { height: 100%; }
 
   .tartalom {
     flex: 1;

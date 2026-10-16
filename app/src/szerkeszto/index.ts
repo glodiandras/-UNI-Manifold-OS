@@ -217,9 +217,11 @@ function parancsok(): Parancs[] {
       kategoria: tk('Szerkesztő'),
       billentyu: 'Mod+F',
       ikon: Search,
-      elerheto: () => !!sz() && sz()!.mod() !== 'olvaso',
+      elerheto: () => !!sz() && (sz()!.mod() !== 'olvaso' || !!sz()!.keresesNyit),
       futtat: () => {
-        const v = sz()?.nezet();
+        const p = sz();
+        if (p?.mod() === 'olvaso') { p.keresesNyit?.(); return; }
+        const v = p?.nezet();
         if (v) openSearchPanel(v);
       },
     },

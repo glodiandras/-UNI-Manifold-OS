@@ -1,6 +1,6 @@
 # F11 — Daily editing and navigation implementation
 
-Status: in progress; latest checkpoint: tags, unresolved links and explorer (2026-10-16). F5 is closed; no later phase is being started here.
+Status: in progress; latest checkpoint: property types, persistent search and Reading find (2026-10-16). F5 is closed; no later phase is being started here.
 
 The product objective is an easy, dependable editor that can compete with Obsidian while retaining Manifold's existing tools and AI gates. The original v2 checkout and the real vault remain read-only. All verification uses synthetic data. The source audits are evidence and implementation proposals; product constraints in CLAUDE.md and the user's request remain authoritative.
 
@@ -17,7 +17,7 @@ The product objective is an easy, dependable editor that can compete with Obsidi
 
 ## Remaining release work
 
-The per-gap inventory is [CHECKLIST.md](CHECKLIST.md). The first open daily-use priorities after the second checkpoint are property-type editing, explorer creation-time sorting, and a docked persistent search view. Additional must/should work includes folding, Reading find, complete workspace layouts/navigation history, richer property/search operations, and link-format preservation through renames.
+The per-gap inventory is [CHECKLIST.md](CHECKLIST.md). The next daily-use must work is explorer creation-time sorting, complete multiline comments and explicit remote-image downloads. Additional must/should work includes folding, complete workspace layouts/navigation history, richer property/search operations, property row actions, and link-format preservation through renames.
 
 ## Second checkpoint: tags, unresolved links and explorer
 
@@ -32,6 +32,16 @@ After this batch the first remaining daily-use must work is property-type editin
 Remote images remain a visible offline placeholder. D3 permits explicit downloads, not an automatic proxy fetch or a relaxed CSP; the implementation still needs a concrete user-triggered download path with bounds and error recovery. Existing AI features remain intact, with model/calibration changes reserved for their planned phases.
 
 PLAN §10 names fourteen audits and a ranked critical top-25. Only eight audit documents are present. That source gap is recorded in the checklist; implementation proceeds on the available concrete requirements, without claiming the missing scope was audited or the final must100%/should80% gate was reached.
+
+## Third checkpoint: property types, persistent search and Reading find
+
+The property icon opens an explicit vault-wide type chooser. Save updates only `.obsidian/types.json`; it never rewrites a note or converts an existing value. Incompatible values remain visible. Tag/alias keys keep fixed types. The first-use automatic inferred-type registration is deliberately deferred so it cannot split the note-save transaction. Context-menu clipboard/remove actions remain open.
+
+The metadata writer is a narrow exception to the hidden-path prohibition. Machine step tokens are denied; no automated caller is added. It validates bounded strict JSON, preserves unknown fields and exact numeric values, compares SHA-256 revisions, checks workspace identity independently of cached availability, and pins the root/config directory descriptors. All reads, temporary files and atomic replacements use the same descriptor. It requires a live snapshot store and a successful pre-snapshot containing the exact previous bytes; excluded/malformed/symlink files fail before replacement. A dedicated post-snapshot can be reverted using the existing snapshot endpoint. Post-replacement fsync or snapshot failure returns the new revision with an explicit uncertainty/warning, never a false untouched-file claim. Index timeouts also remain visible. External edits can still race the final CAS check and rename as in the existing optimistic note-save model; no cross-application lock is claimed.
+
+The Search sidebar and Cmd+Shift+F overlay share one query/result/request owner and one extracted results component. Docking and result navigation retain the list and scroll. Sidebar view choice persists. Visible consumers share WS leases; the final release aborts pending work. Live refresh is debounced and retains the selected key. Overlay outro/focus restoration finishes before the dock or Reader search takes focus. Module gates remain active.
+
+Reading Cmd+F searches native rendered Markdown text across inline formatting without changing modes, note bytes or editor history. Literal/case matching, Enter/ShiftEnter wrapping, Escape/focus return, collapsed callouts and asynchronous embed refresh are covered. Every result is navigable; at most 120 nearby logical results are marked at once. Interactive/opaque Svelte widgets, PDF content and math are excluded. Accent-insensitive matching and initial query transfer from the overlay remain open refinements.
 
 ## Verification
 

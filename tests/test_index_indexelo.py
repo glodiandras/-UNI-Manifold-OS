@@ -127,12 +127,13 @@ class IndexTest(_Alap):
 
     def test_types_json_valtozasa(self):
         (self.v / "T.md").write_text("---\nszam: 12\n---\n")
-        ix, _ = self.indit()
+        ix, ev = self.indit()
         self.assertEqual(ix.jegyzet("T.md")["tulajdonsagok"][0]["tipus"], "number")
         (self.v / ".obsidian" / "types.json").write_text(json.dumps({"types": {"szam": "text"}}))
         ix.frissit([".obsidian/types.json"])
         t = ix.jegyzet("T.md")["tulajdonsagok"][0]
         self.assertEqual((t["tipus"], t["ervenyes"]), ("text", True))
+        self.assertTrue(any(e["tipus"] == "tulajdonsag_tipusok" for e in ev))
 
 
 class FigyeloTest(_Alap):

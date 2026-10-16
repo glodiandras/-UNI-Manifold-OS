@@ -431,8 +431,8 @@ describe('⌘⇧F', () => {
     expect((mezo() as HTMLInputElement).value).toBe('path:"Matek/" ');
   });
 
-  it('a régi „kereses” oldalsáv-nézet a fájlfára esik vissza', () => {
-    expect(new Felulet({ oldalsav: { szelesseg: 264, nyitva: true, nezet: 'kereses' } }).oldalsav.nezet).toBe('fajlok');
+  it('a „kereses” oldalsáv-nézet tartósan visszatérhet', () => {
+    expect(new Felulet({ oldalsav: { szelesseg: 264, nyitva: true, nezet: 'kereses' } }).oldalsav.nezet).toBe('kereses');
   });
 });
 

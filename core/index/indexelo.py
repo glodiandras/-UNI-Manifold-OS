@@ -501,6 +501,7 @@ class Index(IndexOlvaso):
         tar.meta(c, "tipusok", json.dumps(self.tipusok, sort_keys=True))
         c.execute("COMMIT")
         self._uj_generacio(None, True)
+        self.publish({"tipus": "tulajdonsag_tipusok"})      # változatlan FM-et mutató panelek / kulcs-cache is frissül
 
     # ---------------------------------------------------------------- alkalmazás
 

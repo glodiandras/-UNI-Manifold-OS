@@ -12,10 +12,10 @@
 <script lang="ts">
   import { t as tx, tp as tpx } from '../../lib/i18n';
   import type { Text } from '@codemirror/state';
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { csend } from '../../lib/elrendezes/csend.svelte';
   import Ikon from '../../lib/ikon/Ikon.svelte';
-  import { ChevronRight, Pencil, Plus, SlidersHorizontal, Trash2, TriangleAlert } from '../../lib/ikon/ikonok';
+  import { Calendar, Check, ChevronRight, FileClock, Hash, Link, List, Pencil, Plus, SlidersHorizontal, Tags, Trash2, TriangleAlert, Type } from '../../lib/ikon/ikonok';
   import type { Csere } from '../dokumentum/kulonbseg';
   import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
   import { linkek } from '../../lib/vault/linkek.svelte';
@@ -34,8 +34,8 @@
     type JavaslatLista,
     type LinkForras,
   } from './javaslat';
-  import { TulajdonsagModell } from './modell.svelte';
-  import type { Elemzes, KulcsJavaslat, Tulajdonsag, TulajdonsagApi, TulajdonsagTipus } from './tipusok';
+  import { TulajdonsagModell, tipusValtozas } from './modell.svelte';
+  import { rogzitettTipus, type Elemzes, type KulcsJavaslat, type TaroltTulajdonsagTipus, type Tulajdonsag, type TulajdonsagApi, type TulajdonsagTipus } from './tipusok';
 
   let {
     ut,
@@ -70,12 +70,14 @@
     untrack(() => api),
     () => szoveg(),
     (c) => alkalmaz(c),
+    () => irhato,
   );
   const id = $props.id();
   const tar = new JavaslatTar(untrack(() => api));
 
   $effect(() => {
     void valtozat;
+    void tipusValtozas.verzio;
     untrack(() => void m.frissit());
   });
   onMount(() => void m.frissit());
@@ -96,7 +98,7 @@
   type Fajta = 'jelolo' | 'datum' | 'datumido' | 'szam' | 'lista' | 'link' | 'status' | 'csak' | 'szoveg';
 
   function fajta(t: Tulajdonsag): Fajta {
-    if (t.tipus === 'unknown' || (typeof t.ertek === 'object' && t.ertek !== null && !Array.isArray(t.ertek))) return 'csak';
+    if (!t.ervenyes || t.tipus === 'unknown' || (typeof t.ertek === 'object' && t.ertek !== null && !Array.isArray(t.ertek))) return 'csak';
     if (t.kulcs === 'Status' && statusok.length) return 'status';
     if (t.tipus === 'checkbox') return 'jelolo';
     if (t.tipus === 'date') return 'datum';
@@ -169,6 +171,50 @@
   function chipNyit(nyers: string, e: MouseEvent) {
     const w = wikiReszek(nyers);
     if (w) void linkMegnyit({ forras: ut, cel: w.cel, alcel: w.alcel }, nyitasMod(e));
+  }
+
+  // ---------------------------------------------------------------- vault-szintű tulajdonságtípus
+
+  const TIPUSOK: { id: TaroltTulajdonsagTipus; nev: () => string; ikon: typeof Type }[] = [
+    { id: 'text', nev: () => tx('Szöveg|tipus'), ikon: Type },
+    { id: 'multitext', nev: () => tx('Lista|tipus'), ikon: List },
+    { id: 'number', nev: () => tx('Szám|tipus'), ikon: Hash },
+    { id: 'checkbox', nev: () => tx('Jelölő|tipus'), ikon: Check },
+    { id: 'date', nev: () => tx('Dátum|tipus'), ikon: Calendar },
+    { id: 'datetime', nev: () => tx('Dátum és idő'), ikon: FileClock },
+    { id: 'tags', nev: () => tx('Címkék'), ikon: Tags },
+    { id: 'aliases', nev: () => tx('Aliasok'), ikon: Link },
+  ];
+  const tipusAdat = (tipus: TulajdonsagTipus) => TIPUSOK.find((t) => t.id === tipus);
+  let tipusKulcs = $state<string | null>(null);
+  let tipusCel = $state<TaroltTulajdonsagTipus>('text');
+  let tipusMezo: HTMLSelectElement | undefined = $state();
+  let tipusNyito: HTMLButtonElement | null = null;
+
+  async function tipusNyit(t: Tulajdonsag, nyito: HTMLButtonElement) {
+    if (!irhato || m.tipusDolgozik) return;
+    tipusNyito = nyito;
+    tipusKulcs = t.kulcs;
+    tipusCel = rogzitettTipus(t.kulcs) ?? (tipusAdat(t.tipus)?.id ?? 'text');
+    m.tipusHiba = null;
+    if (rogzitettTipus(t.kulcs)) return;
+    if (!api.tipusok || !api.tipusBeallit) { m.tipusHiba = tx('A típusválasztó nem érhető el ehhez a munkatérhez.'); return; }
+    if (await m.tipusokatTolt() && tipusKulcs === t.kulcs) {
+      const nev = m.tipusAdat?.types[t.kulcs];
+      tipusCel = TIPUSOK.find((t) => t.id === nev)?.id ?? tipusCel;
+      await tick();
+      tipusMezo?.focus();
+    }
+  }
+
+  function tipusZar() {
+    if (m.tipusDolgozik) return;
+    tipusKulcs = null;
+    if (tipusNyito?.isConnected) tipusNyito.focus();
+  }
+
+  async function tipusMent() {
+    if (tipusKulcs && await m.tipusValt(tipusKulcs, tipusCel)) tipusZar();
   }
 
   // ---------------------------------------------------------------- új tulajdonság
@@ -255,6 +301,8 @@
   const ujElutasitva = $derived(m.elutasitott && !tul.some((t) => t.kulcs === m.elutasitott?.kulcs) ? m.elutasitott : null);
 </script>
 
+<svelte:window onkeydown={(e) => { if (tipusKulcs && e.key === 'Escape' && !m.tipusDolgozik) { e.stopPropagation(); tipusZar(); } }} />
+
 {#snippet megerosites(fuggo: NonNullable<typeof m.fuggo>)}
   <div class="figyelmeztetes" role="alert">
     <span class="figy-ikon"><Ikon ikon={TriangleAlert} meret={14} /></span>
@@ -312,6 +360,7 @@
 
   <div class="torzs" id="{id}-lista" hidden={!nyitva}>
     {#if m.hiba}<p class="hiba" role="alert">{m.hiba}</p>{/if}
+    {#if m.tipusFigyelmeztetes}<p class="tipus-figyelmeztetes" role="status"><Ikon ikon={TriangleAlert} meret={14} />{m.tipusFigyelmeztetes}</p>{/if}
     {#if problemakNyitva && problemak.length}
       <ul class="problemak" id="{id}-problemak" aria-label={tx('Séma-eltérések')}>
         {#each problemak as p, i (i)}<li class:hiba={p.szint === 'hiba'}>{p.uzenet}</li>{/each}
@@ -325,18 +374,23 @@
     {#each tul as t (t.kulcs)}
       {@const f = fajta(t)}
       <div class="sor" class:ervenytelen={!t.ervenyes}>
-        <label class="kulcs" for="{id}-{t.kulcs}" title={t.kulcs}>{t.kulcs}</label>
+        <div class="kulcs-cella">
+          <button type="button" class="tipus-gomb" aria-label={tx('{kulcs} típusa: {tipus}', { kulcs: t.kulcs, tipus: tipusAdat(t.tipus)?.nev() ?? tx('Ismeretlen típus') })} aria-expanded={tipusKulcs === t.kulcs} aria-controls="{id}-tipus-{t.kulcs}" disabled={!irhato || m.tipusDolgozik || m.dolgozik} onclick={(e) => void tipusNyit(t, e.currentTarget)}>
+            <Ikon ikon={tipusAdat(t.tipus)?.ikon ?? TriangleAlert} meret={16} />
+          </button>
+          <label class="kulcs" for="{id}-{t.kulcs}" title={t.kulcs}>{t.kulcs}</label>
+        </div>
         <div class="ertek">
           {#key `${m.verzio}:${t.kulcs}`}
             {#if f === 'jelolo'}
-              <input id="{id}-{t.kulcs}" type="checkbox" class="jelolo" checked={t.ertek === true} disabled={!irhato} onchange={(e) => beallit(t.kulcs, e.currentTarget.checked, 'checkbox')} />
+              <input id="{id}-{t.kulcs}" type="checkbox" class="jelolo" checked={t.ertek === true} disabled={!irhato || m.tipusDolgozik} onchange={(e) => beallit(t.kulcs, e.currentTarget.checked, 'checkbox')} />
             {:else if f === 'datum' || f === 'datumido'}
               <input
                 id="{id}-{t.kulcs}"
                 type={f === 'datum' ? 'date' : 'datetime-local'}
                 class="mezo"
                 value={datumBevitel(f === 'datum' ? 'date' : 'datetime', t.ertek)}
-                disabled={!irhato}
+                disabled={!irhato || m.tipusDolgozik}
                 onchange={(e) => beallit(t.kulcs, e.currentTarget.value === '' ? null : e.currentTarget.value, f === 'datum' ? 'date' : 'datetime')}
               />
             {:else if f === 'status'}
@@ -347,7 +401,7 @@
                 cimke={t.kulcs}
                 value={ertekSzoveg(t.ertek)}
                 placeholder="—"
-                readonly={!irhato}
+                readonly={!irhato || m.tipusDolgozik}
                 nyitFokuszra
                 javasol={javaslo(t.kulcs, { fajta: 'ertek', jelenlegi: ertekSzoveg(t.ertek) })}
                 onvalaszt={(e) => void szovegJavaslat(t, e)}
@@ -358,7 +412,7 @@
               <ListaMezo
                 elemek={listaElemek(t.ertek)}
                 cimke={t.kulcs}
-                {irhato}
+                irhato={irhato && !m.tipusDolgozik}
                 link={linkLista(t)}
                 cimkes={t.tipus === 'tags'}
                 onvaltozas={(uj) => beallit(t.kulcs, uj, listaTipus(t))}
@@ -385,7 +439,7 @@
                 inputmode="decimal"
                 value={ertekSzoveg(t.ertek)}
                 placeholder={tx('Üres')}
-                readonly={!irhato}
+                readonly={!irhato || m.tipusDolgozik}
                 onchange={(e) => szovegValtozas(t, e)}
                 onkeydown={enterBlur}
               />
@@ -396,7 +450,7 @@
                 cimke={t.kulcs}
                 value={ertekSzoveg(t.ertek)}
                 placeholder={tx('Üres')}
-                readonly={!irhato}
+                readonly={!irhato || m.tipusDolgozik}
                 javasol={javaslo(t.kulcs, { fajta: javaslatFajta(t.kulcs, t.ertek), jelenlegi: ertekSzoveg(t.ertek) })}
                 onvalaszt={(e) => void szovegJavaslat(t, e)}
                 onchange={(e) => szovegValtozas(t, e)}
@@ -407,11 +461,31 @@
           {/key}
         </div>
         {#if irhato}
-          <button type="button" class="torol" aria-label={tx('{kulcs} törlése', { kulcs: t.kulcs })} title={tx('Törlés')} onclick={() => torol(t.kulcs)}>
+          <button type="button" class="torol" disabled={m.tipusDolgozik} aria-label={tx('{kulcs} törlése', { kulcs: t.kulcs })} title={tx('Törlés')} onclick={() => torol(t.kulcs)}>
             <Ikon ikon={Trash2} meret={14} />
           </button>
         {/if}
       </div>
+      {#if !t.ervenyes}<p class="tipus-info ervenytelen-info"><Ikon ikon={TriangleAlert} meret={14} />{tx('A meglévő érték ehhez a típushoz nem érvényes; a forrásban megmaradt.')}</p>{/if}
+      {#if tipusKulcs === t.kulcs}
+        <div class="tipus-menu" id="{id}-tipus-{t.kulcs}" role="group" aria-label={tx('A(z) „{kulcs}” típusa', { kulcs: t.kulcs })}>
+          {#if rogzitettTipus(t.kulcs)}
+            <p>{tx('A beépített címke- és aliasmezők típusa rögzített.')}</p>
+          {:else}
+            <p class="tipus-info">{tx('Az összes jegyzetre érvényes. A meglévő értékek megmaradnak.')}</p>
+            {#if m.tipusBetolt}<p role="status">{tx('Típusok betöltése…')}</p>{/if}
+            <select class="mezo" aria-label={tx('Tulajdonság típusa')} bind:this={tipusMezo} bind:value={tipusCel} disabled={m.tipusBetolt || m.tipusDolgozik || !m.tipusIrhato || m.tipusUtkozes}>
+              {#each TIPUSOK as tipus (tipus.id)}<option value={tipus.id} disabled={tipus.id === 'tags' || tipus.id === 'aliases'}>{tipus.nev()}</option>{/each}
+            </select>
+            {#if m.tipusHiba}<p class="tipus-hiba" role="alert"><Ikon ikon={TriangleAlert} meret={14} />{m.tipusHiba}</p>{/if}
+            {#if m.tipusUtkozes || m.tipusHiba}
+              <button type="button" class="m-gomb semleges gomb" disabled={m.tipusBetolt || m.tipusDolgozik} onclick={() => void m.tipusokatTolt()}>{tx('Típusok újratöltése')}</button>
+            {/if}
+            <button type="button" class="m-gomb semleges gomb" disabled={!m.tipusIrhato || !m.tipusAdat || m.tipusBetolt || m.tipusDolgozik || m.dolgozik || m.tipusUtkozes || !!m.tipusHiba || tipusCel === 'tags' || tipusCel === 'aliases'} onclick={() => void tipusMent()}>{m.tipusDolgozik ? tx('Típus mentése…') : tx('Típus mentése')}</button>
+          {/if}
+          <button type="button" class="m-gomb semleges gomb halvany" disabled={m.tipusDolgozik} onclick={tipusZar}>{tx('Bezárás')}</button>
+        </div>
+      {/if}
       {#if m.elutasitott?.kulcs === t.kulcs}{@render elutasitas(m.elutasitott.uzenet)}{/if}
       {#if m.fuggo?.muvelet.kulcs === t.kulcs}{@render megerosites(m.fuggo)}{/if}
     {/each}
@@ -439,7 +513,7 @@
             onvalaszt={(e) => void ujErtekValaszt(e)}
           />
         {/if}
-        <button type="submit" class="m-gomb semleges gomb" disabled={!ujNev.trim() || m.dolgozik}>{tx('Hozzáadás')}</button>
+        <button type="submit" class="m-gomb semleges gomb" disabled={!ujNev.trim() || m.dolgozik || m.tipusDolgozik}>{tx('Hozzáadás')}</button>
         <button type="button" class="m-gomb semleges gomb halvany" onclick={() => ((ujNyitva = false), m.elvet())}>{tx('Mégse')}</button>
       </form>
       {#if ujElutasitva}{@render elutasitas(ujElutasitva.uzenet)}{/if}
@@ -573,6 +647,15 @@
     white-space: nowrap;
     color: var(--szoveg-halvany);
   }
+
+  .kulcs-cella { display: flex; align-items: start; gap: var(--t-1); min-width: 0; }
+  .tipus-gomb { flex: none; display: grid; place-items: center; width: var(--magassag-suru); height: var(--magassag-suru); border-radius: var(--kerekites-kicsi); color: var(--szoveg-halvany); }
+  .tipus-gomb:hover:not(:disabled) { background: var(--hatter-hover); color: var(--szoveg); }
+  .tipus-menu { margin: var(--t-1) 0 var(--t-2); padding: var(--t-3); border: var(--keret-vastag) solid var(--keret); border-radius: var(--kerekites); background: var(--hatter); display: flex; flex-wrap: wrap; align-items: center; gap: var(--t-2); }
+  .tipus-menu p { flex-basis: 100%; margin: 0; }
+  .tipus-info { color: var(--szoveg-masodlagos); font-size: var(--betu-kicsi); }
+  .tipus-hiba, .ervenytelen-info { display: flex; align-items: start; gap: var(--t-2); color: var(--hiba); font-size: var(--betu-kicsi); }
+  .tipus-figyelmeztetes { display: flex; align-items: start; gap: var(--t-2); color: var(--figyelmeztetes); font-size: var(--betu-kicsi); }
 
   .ertek {
     min-width: 0;

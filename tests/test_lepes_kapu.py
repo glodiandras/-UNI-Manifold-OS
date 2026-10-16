@@ -15,6 +15,7 @@ from tests.helpers import REPO, alg_core, tmpdir
 # A döntéstábla: a core minden nem-GET végpontja VAGY a lépés-folyamat számára engedett (`lepes_kapu.ENGEDELYEZETT`), VAGY itt, tiltottként
 # szerepel. Egy új író végpont, amely egyik helyen sincs, bukó teszt: a hozzáadó dönti el, hívhatja-e egy lánc.
 TILTOTT = {
+    ('POST', '/api/vault/tulajdonsagok/tipus'),  # F11: explicit felhasználói vault-típusválasztás.
     ('PUT', '/api/beallitasok'),  # F5: Setup/privacy/modules are user choices, never machine-step actions.
     # CX: csak a felület indíthatja ezeket, gépi lépés nem.
     ('POST', '/api/vault/import'),
@@ -90,8 +91,8 @@ class ForraskodTest(unittest.TestCase):
     """A lánc-kód (`modulok/`, `core/probafeladat.py`) nem hivatkozik szerkesztői író végpontra, és nem importálja a vaultot író
     core-modulokat — a vaultba a `gepi_kliens` a gépi írás szolgáltatásán át ír (28(a))."""
     TILTOTT_UTAK = ("/api/vault/fajl", "/api/vault/uj", "/api/vault/atnevezes", "/api/vault/elozmeny", "/api/pdf/kiemeles",
-                    "/api/naplo/ma", "/api/pillanat/")
-    TILTOTT_MODULOK = {"vaultio", "atnevezes", "elozmeny", "pdfkiemeles", "naplo", "snapshot", "frame", "tulajdonsagok"}
+                    "/api/naplo/ma", "/api/pillanat/", "/api/vault/tulajdonsagok/tipus")
+    TILTOTT_MODULOK = {"vaultio", "atnevezes", "elozmeny", "pdfkiemeles", "naplo", "snapshot", "frame", "tulajdonsagok", "tulajdonsag_tipusok"}
     # Szűk, megnevezett kivételek (Mac-integráció 2026-10-07): (1) író kód nélküli állandó: a H1-előtag regexe (L46) egyetlen helyen
     # él, a kvíz és a forráshűség-kapu csak a mintát olvassa; (2) a videólánc (47. döntés) a SAJÁT ytdlp pillanatkép-tárát rögzíti
     # (`var/ytdlp.git`, a kód és a staging), nem a vaultot — a vaultba a lánc nem ír (47(c)).

@@ -12,7 +12,9 @@ UTAK = {
     "/api/vault/visszahivatkozasok": "hivatkozasok", "/api/vault/emlitesek": "hivatkozasok",
 }
 KULON_UTAK = {"/api/kereses/kerdezz": "kerdezz", "/api/kereses/valasz": "kerdezz",
-              "/api/kereses/hasonlosag": "asszisztens"}
+              "/api/kereses/hasonlosag": "asszisztens",
+              "/api/vault/tulajdonsagok/tipusok": "tulajdonsagok",
+              "/api/vault/tulajdonsagok/tipus": "tulajdonsagok"}
 FELADATOK = {"kartya": "kartya", "kviz": "kviz", "osszefoglalas": "osszefoglalas", "matek": "matek",
              "grafikon": "matek", "cpp": "kod", "fuzet": "fuzet", "video": "video", "atirat": "video"}
 

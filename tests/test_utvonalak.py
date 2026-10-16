@@ -451,6 +451,12 @@ for m, u, torzs, kod in [("GET", "/api/beallitasok", None, 200), ("PUT", "/api/b
     KERESEK.append((m, u, torzs, {}))
 
 
+for m, u, torzs, kod in [("GET", "/api/vault/tulajdonsagok/tipusok", None, 200),
+                         ("POST", "/api/vault/tulajdonsagok/tipus", {}, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
 class UtvonalTabla(unittest.TestCase):
     def setUp(self):
         self._t = tmpdir()

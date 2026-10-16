@@ -1,7 +1,7 @@
 """Munkaterek (F3-DESIGN §3): egy Markdown-mappa (vault) Manifold-munkatérré tétele, megnyitása, eltávolítása, és a gép
 regisztere (`{install}/workspaces.json`).
 
-A lemezen (§3.1): `<vault>/.obsidian/` (ha hiányzott, üresen jön létre, mint az Obsidianban; utána nem írunk bele),
+A lemezen (§3.1): `<vault>/.obsidian/` (ha hiányzott, üresen jön létre; az explicit F11 típusválasztás külön kezeli a types.json-t),
 `<vault>/.manifold/workspace.toml` (a W réteg; a létrehozás UTOLSÓ lépése, a véglegesítési pont), `.gitignore` (`var/`),
 `README.txt`, és a `{var}` (`.manifold/var/`; szinkronizált mappában `{install}/workspaces/<id>/var`). A `.manifold` minden
 vault-bejárónak láthatatlan (I6, `core/rejtett.py`), a pillanatkép kizárja (`[pillanat.vault] kizar`).

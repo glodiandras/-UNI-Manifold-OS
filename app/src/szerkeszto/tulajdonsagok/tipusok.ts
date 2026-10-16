@@ -2,6 +2,19 @@
 // (core/tulajdonsagok.py). Egyetlen helyen, mert a `GET /api/vault/jegyzet` válasza a felületen nincs tipizálva.
 
 export type TulajdonsagTipus = 'text' | 'multitext' | 'number' | 'checkbox' | 'date' | 'datetime' | 'tags' | 'aliases' | 'unknown';
+export type TaroltTulajdonsagTipus = Exclude<TulajdonsagTipus, 'unknown'>;
+
+export interface TulajdonsagTipusok {
+  rev: string;
+  types: Record<string, string>;
+  git?: boolean;
+  figyelmeztetes?: string;
+}
+
+/** A tag/tags és alias/aliases kulcsok típusa a core-ban is rögzített. */
+export function rogzitettTipus(kulcs: string): 'tags' | 'aliases' | null {
+  return /^tags?$/i.test(kulcs) ? 'tags' : /^alias(?:es)?$/i.test(kulcs) ? 'aliases' : null;
+}
 
 export interface Tulajdonsag {
   kulcs: string;
@@ -101,4 +114,6 @@ export interface TulajdonsagApi {
   /** a gépelés közbeni javaslatok forrásai (tiszta olvasók); hiányukban a mező javaslat nélkül működik */
   kulcsok?(ut: string): Promise<{ kulcsok: KulcsJavaslat[]; index_kesz: boolean }>;
   ertekek?(ut: string, kulcs: string): Promise<ErtekJavaslatok>;
+  tipusok?(): Promise<TulajdonsagTipusok>;
+  tipusBeallit?(kulcs: string, tipus: TaroltTulajdonsagTipus, rev: string): Promise<TulajdonsagTipusok>;
 }

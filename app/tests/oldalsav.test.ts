@@ -336,7 +336,7 @@ describe('az oldalsáv nézetei', () => {
   it('a fülek: Fájlok és Címkék (a Keresés fül megszűnt, E3); a váltás tartós; a címkék nézetben a fa nincs a DOM-ban', async () => {
     const { felulet, context } = kornyezet();
     render(Oldalsav, { context });
-    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Fájlok', 'Címkék']);
+    expect(screen.getAllByRole('tab').map((t) => t.textContent?.trim())).toEqual(['Fájlok', 'Címkék', 'Keresés']);
     expect(screen.getByRole('tab', { name: 'Fájlok' }).getAttribute('aria-selected')).toBe('true');
     await fireEvent.click(screen.getByRole('tab', { name: 'Címkék' }));
     expect(felulet.oldalsav.nezet).toBe('cimkek');

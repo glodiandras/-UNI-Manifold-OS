@@ -14,8 +14,8 @@ export const MAX_LEGUTOBBI_FAJL = 50;
 export const MAX_LEGUTOBBI_PARANCS = 20;
 export const MAX_NYITOTT_MAPPA = 2000;
 
-/** Az oldalsáv nézete: a fájlfa vagy a címkefa (C11b); a keresés a nagy keresőablak (E3). */
-export type OldalsavNezet = 'fajlok' | 'cimkek';
+/** Az oldalsáv nézete: fájlfa, címkefa vagy tartós kereső; a gyors keresőablak külön is megmarad. */
+export type OldalsavNezet = 'fajlok' | 'cimkek' | 'kereses';
 
 export type Atfedes = 'paletta' | 'valto' | 'kereso' | 'atnevezes' | 'sablon' | 'cpp-feladat' | 'kulso-ai' | null;
 
@@ -114,7 +114,7 @@ export class Felulet {
     this.oldalsav = {
       szelesseg: szam(o.szelesseg, OLDALSAV.min, OLDALSAV.max, OLDALSAV.alap),
       nyitva: logikai(o.nyitva, true),
-      nezet: o.nezet === 'cimkek' ? o.nezet : 'fajlok', // a régi „kereses” (E3 előtt) a fájlfára esik
+      nezet: o.nezet === 'cimkek' || o.nezet === 'kereses' ? o.nezet : 'fajlok',
       nyitott: szovegek(o.nyitott, MAX_NYITOTT_MAPPA),
       rendezes: faRendezes(o.rendezes),
     };

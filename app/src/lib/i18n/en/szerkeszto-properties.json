@@ -1,0 +1,16 @@
+{
+  "Tulajdonság típusa": "Property type",
+  "{kulcs} típusa: {tipus}": "{kulcs} type: {tipus}",
+  "A(z) „{kulcs}” típusa": "Type of “{kulcs}”",
+  "Az összes jegyzetre érvényes. A meglévő értékek megmaradnak.": "Applies to every note. Existing values are kept.",
+  "A beépített címke- és aliasmezők típusa rögzített.": "Built-in tag and alias properties have a fixed type.",
+  "Típus mentése": "Save type",
+  "Típus mentése…": "Saving type…",
+  "Típusok betöltése…": "Loading property types…",
+  "Típusok újratöltése": "Reload property types",
+  "A típusválasztó nem érhető el ehhez a munkatérhez.": "Property types are unavailable for this workspace.",
+  "A tulajdonságtípusok közben megváltoztak. Töltsd újra a listát, majd próbáld újra.": "Property types changed elsewhere. Reload the list, then try again.",
+  "A meglévő érték ehhez a típushoz nem érvényes; a forrásban megmaradt.": "The existing value is incompatible with this type and is kept in the source.",
+  "Aliasok": "Aliases",
+  "Ismeretlen típus": "Unknown type"
+}

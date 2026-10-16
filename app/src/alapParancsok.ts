@@ -11,7 +11,7 @@ import { rendszerErtesites } from './lib/ertesites/rendszer';
 import { regioFokusz, regioLep } from './lib/fokusz/fokusz';
 import { ChevronsDownUp, Columns2, Command, FilePlus, FileClock, Monitor, Moon, Network, PanelBottom, PanelLeft, PanelRight, Plus, Rows2, Search, SlidersHorizontal, Sun, Tag, X } from './lib/ikon/ikonok';
 import { t, tk } from './lib/i18n';
-import { keresoMegnyit } from './lib/kereses/kereso';
+import { keresoMegnyit, keresoOldalsav } from './lib/kereses/kereso';
 import type { Parancs, Regiszter } from './lib/parancsok/regiszter';
 
 export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
@@ -68,6 +68,7 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
         else keresoMegnyit(f);
       },
     },
+    { id: 'kereses.oldalsav', nev: tk('Keresés az oldalsávban'), kategoria: tk('Keresés'), ikon: Search, futtat: () => keresoOldalsav(f) },
     {
       id: 'cimkek.panel',
       nev: tk('Címkék (címkefa)'),

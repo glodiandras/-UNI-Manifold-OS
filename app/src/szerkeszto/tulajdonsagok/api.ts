@@ -1,12 +1,12 @@
-// A tulajdonság-szerkesztő core-hívásai. Tiszta számoló végpontok: a core nem ír fájlt, az írás a nyitott
-// dokumentumon át megy (egy írási út: automatikus mentés, ütközés, ⌘Z).
+// A jegyzetértékek tiszta számoló végpontjai: a dokumentum írása a nyitott szerkesztőn át megy.
+// Az explicit tipusBeallit külön vault-konfigurációt ment CAS-sal; jegyzetértéket soha nem ír át.
 
 import { kerdez } from '../../lib/core/api';
 import { tartalmiNyelv } from '../../lib/munkater/nyelv.svelte';
 import { asszisztensApi } from '../../lib/asszisztens/api';
 import { vezerloKapcsolok } from '../../lib/vezerlo/kapcsolok.svelte';
 import { beallitKiserok } from '../../osszefoglalas/allando';
-import type { Elemzes, ErtekJavaslatok, KulcsJavaslat, ModositEredmeny, Muvelet, OsszefesulesEredmeny, Sema, TulajdonsagApi } from './tipusok';
+import type { Elemzes, ErtekJavaslatok, KulcsJavaslat, ModositEredmeny, Muvelet, OsszefesulesEredmeny, Sema, TulajdonsagApi, TulajdonsagTipusok } from './tipusok';
 
 /** A sablon frontmatterének összefésülése a jegyzetével (C32b): tiszta számoló, nem ír fájlt. */
 export function osszefesul(ut: string, fm: string | null, sablonFm: string): Promise<OsszefesulesEredmeny> {
@@ -52,6 +52,8 @@ export function tulajdonsagApi(): TulajdonsagApi {
       kerdez<{ kulcsok: KulcsJavaslat[]; index_kesz: boolean }>(`/api/vault/tulajdonsagok/kulcsok?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 }),
     ertekek: (ut, kulcs) =>
       kerdez<ErtekJavaslatok>(`/api/vault/tulajdonsagok/ertekek?ut=${encodeURIComponent(ut)}&kulcs=${encodeURIComponent(kulcs)}`, { idokorlat: 5000 }),
+    tipusok: () => kerdez<TulajdonsagTipusok>('/api/vault/tulajdonsagok/tipusok', { idokorlat: 5000 }),
+    tipusBeallit: (kulcs, tipus, rev) => kerdez<TulajdonsagTipusok>('/api/vault/tulajdonsagok/tipus', { metodus: 'POST', torzs: { kulcs, tipus, rev }, idokorlat: 8000 }),
   };
 }
 

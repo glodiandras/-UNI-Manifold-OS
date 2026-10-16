@@ -262,6 +262,7 @@
     mod: () => mod,
     olvasoValt: () => modBeallit(mod === 'olvaso' ? felulet.szerkesztoMod : 'olvaso'),
     forrasValt: () => modBeallit(mod === 'elo' ? 'forras' : mod === 'forras' ? 'elo' : felulet.szerkesztoMod === 'elo' ? 'forras' : 'elo'),
+    keresesNyit: () => { if (mod === 'olvaso') void olvaso?.keresesNyit(); },
     mentes: async () => {
       await dok?.ment();
     },

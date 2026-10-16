@@ -9,7 +9,9 @@
   import { linkek } from '../lib/vault/linkek.svelte';
   import { ensureSyntaxTree } from '@codemirror/language';
   import type { EditorView } from '@codemirror/view';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import { ChevronDown, ChevronUp, X } from '../lib/ikon/ikonok';
+  import IkonGomb from '../lib/ui/IkonGomb.svelte';
   import type { Dokumentum } from './dokumentum/dokumentum.svelte';
   import { obsidianElemzo } from './markdown/elemzo';
   import { domCel, elonezetKapcsol } from './linkek/elonezet';
@@ -18,6 +20,7 @@
   import { dokumentumRenderel } from './olvaso/html';
   import { LustaRajzolo } from './olvaso/lusta';
   import { feloldatlanJelol } from './linkek/feloldatlan';
+  import { OlvasoKereses } from './olvaso/kereses';
 
   let { view, dok, ut, valtozat, nyelv = '' }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string } = $props();
 
@@ -25,7 +28,39 @@
   let tartalom: HTMLElement | undefined = $state();
   let lusta: LustaRajzolo | null = null;
   let kesleltetes: ReturnType<typeof setTimeout> | null = null;
+  let kereses: OlvasoKereses | null = null;
+  let keresesNyitva = $state(false);
+  let lekerdezes = $state('');
+  let betuerzekeny = $state(false);
+  let talalatok = $state({ osszes: 0, aktualis: 0 });
+  let keresoMezo: HTMLInputElement | undefined = $state();
   const elotag = `lj${Math.random().toString(36).slice(2, 8)}`;
+
+  export async function keresesNyit(): Promise<void> {
+    keresesNyitva = true;
+    await tick();
+    keresoMezo?.focus();
+    keresoMezo?.select();
+  }
+
+  function keresesBezar() {
+    keresesNyitva = false;
+    kereses?.keres('');
+    tartalom?.focus({ preventScroll: true });
+  }
+
+  function keresoBillentyu(e: KeyboardEvent) {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') {
+      e.preventDefault(); e.stopPropagation(); kereses?.lep(e.shiftKey ? -1 : 1);
+    } else if (e.key === 'Escape') {
+      e.preventDefault(); e.stopPropagation(); keresesBezar();
+    }
+  }
+
+  $effect(() => {
+    if (keresesNyitva) kereses?.keres(lekerdezes, betuerzekeny);
+  });
 
   function rajzol() {
     if (!tartalom || !gorgeto) return;
@@ -90,6 +125,7 @@
   }
 
   function billentyu(e: KeyboardEvent) {
+    if (keresesNyitva && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); keresesBezar(); return; }
     if (e.key === 'Enter' && linkNyit(e)) return;
     if ((e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement).closest('[data-labjegyzet], [data-labjegyzet-vissza]')) {
       kattintas(e as unknown as MouseEvent);
@@ -118,6 +154,7 @@
   }
 
   onMount(() => {
+    if (tartalom) kereses = new OlvasoKereses(tartalom, allapot => { talalatok = allapot; });
     rajzol();
     return tartalom ? elonezetKapcsol(tartalom, domCel) : undefined;
   });
@@ -135,9 +172,20 @@
   onDestroy(() => {
     if (kesleltetes) clearTimeout(kesleltetes);
     lusta?.leall();
+    kereses?.leallit();
   });
 </script>
 
+{#if keresesNyitva}
+  <div class="olvaso-kereso" role="search" aria-label={t('Keresés az olvasóban')}>
+    <input bind:this={keresoMezo} bind:value={lekerdezes} aria-label={t('Keresés az olvasóban')} placeholder={t('Keresés a megjelenített szövegben…')} onkeydown={keresoBillentyu} spellcheck="false" />
+    <label class="betuerzekeny"><input type="checkbox" bind:checked={betuerzekeny} />{t('Kis- és nagybetű megkülönböztetése')}</label>
+    <span class="kereso-eredmeny" role="status" aria-live="polite">{lekerdezes ? t('{aktualis}/{osszes} találat', talalatok) : ''}</span>
+    <IkonGomb ikon={ChevronUp} cimke={t('Előző találat')} kicsi disabled={!talalatok.osszes} onclick={() => kereses?.lep(-1)} />
+    <IkonGomb ikon={ChevronDown} cimke={t('Következő találat')} kicsi disabled={!talalatok.osszes} onclick={() => kereses?.lep(1)} />
+    <IkonGomb ikon={X} cimke={t('Keresés bezárása')} kicsi onclick={keresesBezar} />
+  </div>
+{/if}
 <div class="olvaso-gorgeto gorgeto" bind:this={gorgeto}>
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
   <article
@@ -145,6 +193,7 @@
     lang={nyelv}
     bind:this={tartalom}
     aria-label={t('Olvasó nézet')}
+    tabindex="-1"
     onclick={kattintas}
     onkeydown={billentyu}
     onchange={valtas}
@@ -152,6 +201,32 @@
 </div>
 
 <style>
+  .olvaso-kereso {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--t-2);
+    padding: var(--t-2) var(--t-3);
+    background: var(--hatter-emelt);
+    border-bottom: var(--keret-vastag) solid var(--keret);
+    font-size: var(--betu-kicsi);
+  }
+
+  .olvaso-kereso > input {
+    flex: 1;
+    min-width: var(--magassag-mezo);
+    padding: var(--t-1) var(--t-2);
+    background: var(--hatter);
+    color: var(--szoveg);
+    border: var(--keret-vastag) solid var(--keret);
+    border-radius: var(--kerekites-kicsi);
+  }
+
+  .betuerzekeny { display: inline-flex; align-items: center; gap: var(--t-1); }
+  .kereso-eredmeny { color: var(--szoveg-masodlagos); font-variant-numeric: tabular-nums; }
+  :global(.olvaso mark.olvaso-talalat) { background: var(--jeloles-hatter); color: inherit; }
+  :global(.olvaso mark.olvaso-talalat-aktiv) { outline: var(--keret-vastag) solid var(--szoveg); }
+
   .olvaso-gorgeto {
     flex: 1;
     min-height: 0;

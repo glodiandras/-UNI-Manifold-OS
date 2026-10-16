@@ -10,7 +10,20 @@ import type { Text } from '@codemirror/state';
 import { ApiHiba } from '../../lib/core/api';
 import type { Csere } from '../dokumentum/kulonbseg';
 import { blokkCsere, fmBlokk } from './fm';
-import type { Elemzes, Muvelet, Sema, SemaProblema, TulajdonsagApi } from './tipusok';
+import { rogzitettTipus, type Elemzes, type Muvelet, type Sema, type SemaProblema, type TulajdonsagApi, type TaroltTulajdonsagTipus, type TulajdonsagTipusok } from './tipusok';
+import { tipusJavaslatokElavult } from './javaslat';
+
+/** A nyitott panelek egy explicit vault-típusmódosítás után a saját változatlan YAML-jukat is újraelemzik. */
+export const tipusValtozas = $state({ verzio: 0, rev: null as string | null });
+
+/** A saját HTTP-válasz és a core WS-eseménye ugyanarra a rev-re csak egyszer érvénytelenít. */
+export function tipusokValtoztak(adat: { rev?: unknown } = {}): void {
+  const rev = typeof adat.rev === 'string' ? adat.rev : null;
+  if (rev !== null && rev === tipusValtozas.rev) return;
+  tipusValtozas.rev = rev;
+  tipusValtozas.verzio++;
+  tipusJavaslatokElavult();
+}
 
 export interface Fuggo {
   muvelet: Muvelet;
@@ -33,23 +46,34 @@ export class TulajdonsagModell {
   /** A mezők újrainduló állapota: az elvetett vagy elutasított módosítás után a bevitel a tárolt értékre áll vissza. */
   verzio = $state(0);
   dolgozik = $state(false);
+  tipusAdat = $state.raw<TulajdonsagTipusok | null>(null);
+  tipusBetolt = $state(false);
+  tipusDolgozik = $state(false);
+  tipusHiba = $state<string | null>(null);
+  tipusUtkozes = $state(false);
+  tipusFigyelmeztetes = $state<string | null>(null);
 
   private utolsoFm: string | null | undefined = undefined;
   private sorszam = 0;
   private semaKert = false;
+  private tipusSorszam = 0;
+  private tipusVerzio = tipusValtozas.verzio;
 
   constructor(
     readonly ut: string,
     private readonly api: TulajdonsagApi,
     private readonly szoveg: () => Text,
     private readonly alkalmaz: (c: Csere) => void,
+    private readonly irhato: () => boolean = () => true,
   ) {}
 
   /** A dokumentum frontmatterének (újra)elemzése; változatlan blokknál nem kérdez. */
   async frissit(): Promise<void> {
     const b = fmBlokk(this.szoveg());
     const fm = b?.szoveg ?? null;
-    if (fm === this.utolsoFm && this.elemzes) return;
+    const masTipus = this.tipusVerzio !== tipusValtozas.verzio;
+    this.tipusVerzio = tipusValtozas.verzio;
+    if (!masTipus && fm === this.utolsoFm && this.elemzes) return;
     this.utolsoFm = fm;
     const en = ++this.sorszam;
     try {
@@ -69,7 +93,7 @@ export class TulajdonsagModell {
 
   /** Egy módosítás kérése. `true`, ha a dokumentumba került. */
   async muvelet(m: Muvelet, megerosit = false): Promise<boolean> {
-    if (this.dolgozik) return false;
+    if (this.dolgozik || this.tipusDolgozik) return false;
     const blokk = fmBlokk(this.szoveg());
     const kuldott = blokk?.szoveg ?? null;
     this.dolgozik = true;
@@ -125,5 +149,46 @@ export class TulajdonsagModell {
     this.fuggo = null;
     this.elutasitott = null;
     this.verzio++;
+  }
+
+  get tipusIrhato(): boolean { return !!this.api.tipusok && !!this.api.tipusBeallit && this.irhato(); }
+
+  async tipusokatTolt(): Promise<boolean> {
+    if (!this.api.tipusok || this.tipusDolgozik) return false;
+    const en = ++this.tipusSorszam;
+    this.tipusBetolt = true;
+    this.tipusHiba = null;
+    this.tipusUtkozes = false;
+    try {
+      const adat = await this.api.tipusok();
+      if (en !== this.tipusSorszam) return false;
+      this.tipusAdat = adat;
+      return true;
+    } catch (e) {
+      if (en === this.tipusSorszam) this.tipusHiba = e instanceof Error ? e.message : t('A típusválasztó nem érhető el ehhez a munkatérhez.');
+      return false;
+    } finally { if (en === this.tipusSorszam) this.tipusBetolt = false; }
+  }
+
+  /** Csak a vault típusnyilvántartása változik: nincs modosit/alkalmaz és nincs értékkonverzió. */
+  async tipusValt(kulcs: string, tipus: TaroltTulajdonsagTipus): Promise<boolean> {
+    if (!this.tipusIrhato || !this.api.tipusBeallit || !this.tipusAdat || this.tipusDolgozik || this.tipusBetolt || this.tipusUtkozes || !!this.tipusHiba || this.dolgozik || rogzitettTipus(kulcs) || tipus === 'tags' || tipus === 'aliases') return false;
+    const rev = this.tipusAdat.rev;
+    this.tipusDolgozik = true;
+    this.tipusHiba = null;
+    this.tipusUtkozes = false;
+    this.tipusFigyelmeztetes = null;
+    try {
+      this.tipusAdat = await this.api.tipusBeallit(kulcs, tipus, rev);
+      this.tipusFigyelmeztetes = this.tipusAdat.figyelmeztetes ?? null;
+      tipusokValtoztak(this.tipusAdat);
+      await this.frissit();
+      this.verzio++;
+      return true;
+    } catch (e) {
+      this.tipusUtkozes = e instanceof ApiHiba && e.statusz === 409;
+      this.tipusHiba = this.tipusUtkozes ? t('A tulajdonságtípusok közben megváltoztak. Töltsd újra a listát, majd próbáld újra.') : e instanceof Error ? e.message : t('A típusválasztó nem érhető el ehhez a munkatérhez.');
+      return false;
+    } finally { this.tipusDolgozik = false; }
   }
 }

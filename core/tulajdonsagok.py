@@ -826,7 +826,9 @@ class Tulajdonsagok:
 
 
 def utvonalak(r) -> None:
-    """A tulajdonság-szerkesztő végpontjai (C11b): mind tiszta olvasó/számoló, íróvégpont nincs."""
+    """A jegyzetek FM-műveletei tiszta számolók; az F11 típusválasztó csak types.json-t ír."""
+    from . import tulajdonsag_tipusok
+
     def sema(k):
         return k.app.tulajdonsagok.sema.leiras(k.q.get("ut"))
 
@@ -859,6 +861,8 @@ def utvonalak(r) -> None:
     r.get("/api/vault/sema", sema)
     r.get("/api/vault/tulajdonsagok/kulcsok", kulcsok)                # a javaslatok: tiszta olvasók
     r.get("/api/vault/tulajdonsagok/ertekek", ertekek)
+    r.get("/api/vault/tulajdonsagok/tipusok", lambda k: tulajdonsag_tipusok.olvas(k.app.vault))
+    r.post("/api/vault/tulajdonsagok/tipus", lambda k: tulajdonsag_tipusok.beallit(k.app.vault, k.torzs(), k.app.index))
     r.post("/api/vault/tulajdonsagok/elemez", elemez)
     r.post("/api/vault/tulajdonsagok/osszefesul", osszefesul)
     r.post("/api/vault/tulajdonsagok/modosit", modosit)

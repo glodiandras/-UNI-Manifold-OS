@@ -39,6 +39,7 @@
   import { matekTelepit } from './matek';
   import { kartyaTelepit } from './kartya';
   import { kiserokBetolt } from './szerkeszto/tulajdonsagok/api';
+  import { tipusokValtoztak } from './szerkeszto/tulajdonsagok/modell.svelte';
   import { osszefoglalasTelepit } from './osszefoglalas';
   import { kilepesMentes, mentetlenSzovegek, szerkesztesLezar, szerkesztoTelepit } from './szerkeszto';
   import { szerkesztok } from './szerkeszto/szerkesztok.svelte';
@@ -148,6 +149,9 @@
       fajlok.figyel(kapcsolat),
       ikonok.figyel(kapcsolat),
       cimkek.figyel(kapcsolat),
+      kapcsolat.figyel('tulajdonsag_tipusok', (e) => tipusokValtoztak({ rev: e.rev as string })),
+      kapcsolat.figyel('hello', () => tipusokValtoztak({})),
+      kapcsolat.figyel('kimaradt', () => tipusokValtoztak({})),
       grafAdat.figyel(kapcsolat),
       // a vezérlő (C17): a feladatsor élő nézete, a feladat végének értesítése, a parancsok
       vezerloTelepit(regiszter, felulet, kapcsolat),
