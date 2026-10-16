@@ -4,6 +4,7 @@
 
 import type { BlockContext, LeafBlock, LeafBlockParser, MarkdownConfig } from '@lezer/markdown';
 import { tags as t } from '@lezer/highlight';
+import { megjegyzesesLevel } from './megjegyzes';
 
 const JELOLO = /^\[[^\n]\][ \t]/u;
 
@@ -14,11 +15,13 @@ class FeladatElemzo implements LeafBlockParser {
 
   finish(cx: BlockContext, leaf: LeafBlock) {
     const hossz = (leaf.content.codePointAt(1) ?? 0) > 0xffff ? 4 : 3;
+    // a feladat szövegében nyíló `%%` megjegyzés üres sorokon át is tart (a `leaf.content` ekkor bővül)
+    const elemek = megjegyzesesLevel(cx, leaf, hossz) ?? cx.parser.parseInline(leaf.content.slice(hossz), leaf.start + hossz);
     cx.addLeafElement(
       leaf,
       cx.elt('Task', leaf.start, leaf.start + leaf.content.length, [
         cx.elt('TaskMarker', leaf.start, leaf.start + hossz),
-        ...cx.parser.parseInline(leaf.content.slice(hossz), leaf.start + hossz),
+        ...elemek,
       ]),
     );
     return true;

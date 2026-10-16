@@ -65,10 +65,16 @@ describe('Obsidian %% megjegyzések', () => {
     const elem = dokumentumRenderel(fa, { ut: 'Host.md', olvas: (a, b) => doc.slice(a, b), lusta: LustaRajzolo.azonnali() });
     expect(elem.textContent).toContain('Visible  text'); expect(elem.textContent).not.toContain('secret'); expect(elem.textContent).not.toContain('Hidden'); expect(elem.textContent).toContain('End');
   });
-  it('kód, frontmatter, escape és lezáratlan jelölő szöveg marad', () => {
-    for (const doc of ['---\nvalue: %%yaml%%\n---', '`%%code%%`', '```md\n%%fence%%\n```', '\\%%escaped%%', '%%open']) {
+  it('kód, frontmatter és escape szöveg marad; a lezáratlan jelölő a szöveg végéig tartó megjegyzés', () => {
+    // 01-rendering-01: a lezáratlan `%%` (Obsidian-paritás) a dokumentum végéig rejt, ezért az egyetlen escape-elt nyitó
+    // utáni `%%` is nyit; mindkét jelölőt escape-elve szöveg marad
+    for (const doc of ['---\nvalue: %%yaml%%\n---', '`%%code%%`', '```md\n%%fence%%\n```', '\\%%escaped\\%%']) {
       const nevek: string[] = []; obsidianElemzo.parse(doc).iterate({ enter(n) { nevek.push(n.name); } });
       expect(nevek.filter(n => n.startsWith('ObsidianComment'))).toEqual([]);
+    }
+    for (const [doc, megjegyzes] of [['%%open', '%%open'], ['\\%%escaped%%', '%%']]) {
+      const ki: string[] = []; obsidianElemzo.parse(doc).iterate({ enter(n) { if (n.name === 'ObsidianComment') ki.push(doc.slice(n.from, n.to)); } });
+      expect(ki).toEqual([megjegyzes]);
     }
   });
   it('LP halvány forrásként tartja meg, Source megőrzi a megjegyzést', () => {

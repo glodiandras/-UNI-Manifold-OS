@@ -12,6 +12,8 @@ export interface FajlInfo {
   tipus: FajlTipus;
   meret: number;
   mtime: number | null;
+  /** Valódi fájllétrehozási idő epoch-másodpercben. Ha a fájlrendszer nem ad születési időt, ismeretlen. */
+  ctime?: number | null;
 }
 
 export interface IndexAllapot {

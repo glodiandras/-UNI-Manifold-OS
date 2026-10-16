@@ -178,8 +178,9 @@ class IndexOlvaso:
     def fa(self) -> dict:
         with self.olvaso(nehez=True) as c:
             mappak = [r[0] for r in c.execute("SELECT ut FROM mappa WHERE torolve IS NULL ORDER BY ut")]
-            fajlok = [{"ut": r[0], "tipus": r[1], "meret": r[2], "mtime": r[3] / 1e9 if r[3] else None}
-                      for r in c.execute("SELECT ut, tipus, meret, mtime_ns FROM fajl WHERE torolve IS NULL ORDER BY ut")]
+            fajlok = [{"ut": r[0], "tipus": r[1], "meret": r[2], "mtime": r[3] / 1e9 if r[3] else None,
+                       "ctime": r[4] / 1e9 if r[4] else None}     # F11: valódi születési idő, vagy None (sosem mtime)
+                      for r in c.execute("SELECT ut, tipus, meret, mtime_ns, ctime_ns FROM fajl WHERE torolve IS NULL ORDER BY ut")]
         return {"mappak": mappak, "fajlok": fajlok, "kesz": self.allapot_d["kesz"]}
 
     @staticmethod
@@ -216,7 +217,8 @@ class IndexOlvaso:
                           "datumok": json.loads(r["datumok"])}
                          for r in c.execute("SELECT * FROM feladat WHERE fajl_id = ? ORDER BY sor", (fid,))]
             return {
-                "ut": f["ut"], "tipus": f["tipus"], "meret": f["meret"], "mtime": f["mtime_ns"] / 1e9, "hash": f["hash"],
+                "ut": f["ut"], "tipus": f["tipus"], "meret": f["meret"], "mtime": f["mtime_ns"] / 1e9,
+                "ctime": f["ctime_ns"] / 1e9 if f["ctime_ns"] else None, "hash": f["hash"],
                 "fm_nyers": f["fm_nyers"], "fm_hiba": f["fm_hiba"], "canvas_hiba": f["canvas_hiba"],
                 "tulajdonsagok": tul, "aliasok": json.loads(f["aliasok"] or "[]"),
                 "fejezetek": sorok("SELECT szint, szoveg, sor FROM fejezet WHERE fajl_id = ? ORDER BY sor"),

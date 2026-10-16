@@ -7,9 +7,14 @@ import { locale } from '../i18n';
 import type { FajlInfo, FajlTipus } from './fajlok.svelte';
 import { fajlNev } from './fajlok.svelte';
 
-export const FA_RENDEZESEK = ['nev', 'nev-forditva', 'modositva', 'modositva-regi'] as const;
+export const FA_RENDEZESEK = ['nev', 'nev-forditva', 'modositva', 'modositva-regi', 'letrehozva', 'letrehozva-regi'] as const;
 export type FaRendezes = typeof FA_RENDEZESEK[number];
 export function faRendezes(ertek: unknown): FaRendezes { return FA_RENDEZESEK.includes(ertek as FaRendezes) ? ertek as FaRendezes : 'nev'; }
+export function faIdoMezo(rendezes: FaRendezes): 'mtime' | 'ctime' | null {
+  if (rendezes === 'modositva' || rendezes === 'modositva-regi') return 'mtime';
+  if (rendezes === 'letrehozva' || rendezes === 'letrehozva-regi') return 'ctime';
+  return null;
+}
 
 export interface FaCsomopont {
   /** a vault-relatív NFC út; a gyökér üres */
@@ -20,6 +25,8 @@ export interface FaCsomopont {
   tipus?: FajlTipus;
   /** Valódi fájl-módosítási idő másodpercben. Ismeretlen érték nem kap kitalált dátumot. */
   mtime?: number | null;
+  /** Valódi születési idő másodpercben; nincs mtime- vagy POSIX ctime-helyettesítés. */
+  ctime?: number | null;
   gyerekek: FaCsomopont[];
   /** mappánál: a teljes részfa fájljainak száma (a szám a sor végén) */
   fajlok: number;
@@ -59,6 +66,7 @@ function mappaNev(ut: string): string {
 
 /** A fa a core listáiból. A `mappak` az üres mappákat is hozza; a fájlok szülőmappái hiányuk esetén is létrejönnek. */
 export function faEpit(lista: readonly FajlInfo[], mappak: readonly string[], rendezes: FaRendezes = 'nev'): FaCsomopont {
+  const idomezo = faIdoMezo(rendezes);
   const gyoker: FaCsomopont = { ut: '', nev: '', mappa: true, gyerekek: [], fajlok: 0, jegyzetek: 0 };
   const mappaTerkep = new Map<string, FaCsomopont>([['', gyoker]]);
 
@@ -75,7 +83,12 @@ export function faEpit(lista: readonly FajlInfo[], mappak: readonly string[], re
   for (const m of mappak) if (m) mappaCsomopont(m);
   for (const f of lista) {
     const szulo = f.ut.includes('/') ? f.ut.slice(0, f.ut.lastIndexOf('/')) : '';
-    mappaCsomopont(szulo).gyerekek.push({ ut: f.ut, nev: fajlNev(f.ut), mappa: false, tipus: f.tipus, mtime: typeof f.mtime === 'number' && Number.isFinite(f.mtime) ? f.mtime : null, gyerekek: [], fajlok: 0, jegyzetek: 0 });
+    mappaCsomopont(szulo).gyerekek.push({
+      ut: f.ut, nev: fajlNev(f.ut), mappa: false, tipus: f.tipus,
+      mtime: typeof f.mtime === 'number' && Number.isFinite(f.mtime) ? f.mtime : null,
+      ctime: typeof f.ctime === 'number' && Number.isFinite(f.ctime) ? f.ctime : null,
+      gyerekek: [], fajlok: 0, jegyzetek: 0,
+    });
   }
 
   const rendez = (cs: FaCsomopont): void => {
@@ -97,10 +110,10 @@ export function faEpit(lista: readonly FajlInfo[], mappak: readonly string[], re
       if (a.mappa !== b.mappa) return a.mappa ? -1 : 1;
       const nev = nevHasonlit(a.nev, b.nev) || nevHasonlit(a.ut, b.ut) || (a.ut < b.ut ? -1 : a.ut > b.ut ? 1 : 0);
       // A dátum-módokban a mappák név szerint maradnak; nincs kitalált mappa-dátum.
-      if (!a.mappa && (rendezes === 'modositva' || rendezes === 'modositva-regi')) {
-        const ai = a.mtime ?? null, bi = b.mtime ?? null;
+      if (!a.mappa && idomezo) {
+        const ai = a[idomezo] ?? null, bi = b[idomezo] ?? null;
         if (ai === null || bi === null) return ai === bi ? nev : ai === null ? 1 : -1;
-        return (rendezes === 'modositva' ? bi - ai : ai - bi) || nev;
+        return (rendezes === 'modositva' || rendezes === 'letrehozva' ? bi - ai : ai - bi) || nev;
       }
       return rendezes === 'nev-forditva' ? -nev : nev;
     });

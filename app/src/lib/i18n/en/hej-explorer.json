@@ -3,6 +3,8 @@
   "Fájlnév (Z–A)": "File name (Z–A)",
   "Módosítás: legújabb elöl": "Modified: newest first",
   "Módosítás: legrégebbi elöl": "Modified: oldest first",
+  "Létrehozás: legújabb elöl": "Created: newest first",
+  "Létrehozás: legrégebbi elöl": "Created: oldest first",
   "Rendezés: {mod}": "Sort order: {mod}",
   "Fájlok rendezése": "File sort order",
   "Összes mappa kinyitása": "Expand all folders",

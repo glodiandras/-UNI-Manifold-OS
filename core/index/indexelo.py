@@ -60,6 +60,16 @@ def tipus(nev: str) -> tuple[str, str]:
     return kit, _KIT_TIPUS.get(kit, "egyeb")
 
 
+def _szuletesi_ns(st: os.stat_result) -> int | None:
+    """F11: a fájl **valódi születési ideje** ns-ban (`st_birthtime`), vagy None, ha a fájlrendszer nem ad ilyet. Sosem az
+    mtime és sosem a POSIX `st_ctime` (az az inode-változás ideje, nem a létrehozásé)."""
+    ns = getattr(st, "st_birthtime_ns", None)
+    if ns is not None:
+        return int(ns)
+    szuletes = getattr(st, "st_birthtime", None)
+    return None if szuletes is None else int(szuletes * 1e9)
+
+
 def _ervenyes(rel: str) -> bool:
     """A legacy bejárás szabálya egy útra: a `SKIP_DIRS` mappák alatt és a pontos fájl nem tartozik bele."""
     reszek = rel.split("/")
@@ -576,10 +586,14 @@ class Index(IndexOlvaso):
                 if not utkapu.belul(self.root, full):          # T098: az FSEvents-ből jövő út sem olvasható a vaulton kívülre
                     torolt = [*torolt, rp]
                     continue
-                r = c.execute("SELECT id, meret, mtime_ns, hash, torolve, lemez_ut FROM fajl WHERE ut = ?",
+                r = c.execute("SELECT id, meret, mtime_ns, hash, torolve, lemez_ut, ctime_ns FROM fajl WHERE ut = ?",
                               (rp,)).fetchone()
                 el = r is not None and r["torolve"] is None
                 if el and r["meret"] == st.st_size and r["mtime_ns"] == st.st_mtime_ns and r["lemez_ut"] == lemez:
+                    if r["ctime_ns"] is None:           # F11: a 6-os migráció után csak a születési időt töltjük ki, újraelemzés nélkül
+                        szuletes = _szuletesi_ns(st)
+                        if szuletes is not None:
+                            c.execute("UPDATE fajl SET ctime_ns = ? WHERE id = ?", (szuletes, r["id"]))
                     continue
                 kit, tip = tipus(rp.rsplit("/", 1)[-1])
                 b = h = None
@@ -591,8 +605,8 @@ class Index(IndexOlvaso):
                         continue
                     h = hashlib.sha1(b).hexdigest()
                 if el and tip != "pdf" and (h is None or h == r["hash"]):
-                    c.execute("UPDATE fajl SET meret = ?, mtime_ns = ?, lemez_ut = ? WHERE id = ?",
-                              (st.st_size, st.st_mtime_ns, lemez, r["id"]))
+                    c.execute("UPDATE fajl SET meret = ?, mtime_ns = ?, lemez_ut = ?, ctime_ns = COALESCE(?, ctime_ns) "
+                              "WHERE id = ?", (st.st_size, st.st_mtime_ns, lemez, _szuletesi_ns(st), r["id"]))
                     irt = True
                     erintett.append(rp)
                     if r["lemez_ut"] != lemez:          # a gráf a `lemez_ut` szerint rendez
@@ -685,15 +699,15 @@ class Index(IndexOlvaso):
         self._elemzesi_hibak[rp] = szoveg
         print(f"[index] {rp}: {szoveg}", file=sys.stderr, flush=True)
         mappa, _, nev = rp.rpartition("/")
-        adat = (rp, lemez, nev, kit, mappa, tip, st.st_size, st.st_mtime_ns, h, None,
+        adat = (rp, lemez, nev, kit, mappa, tip, st.st_size, st.st_mtime_ns, _szuletesi_ns(st), h, None,
                 szoveg if tip == "md" else None, szoveg if tip == "canvas" else None, "[]", most)
         if fid is None:
-            fid = c.execute("INSERT INTO fajl(ut, lemez_ut, nev, kit, mappa, tipus, meret, mtime_ns, hash, fm_nyers, "
-                            "fm_hiba, canvas_hiba, aliasok, indexelve, torolve) "
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)", adat).lastrowid
+            fid = c.execute("INSERT INTO fajl(ut, lemez_ut, nev, kit, mappa, tipus, meret, mtime_ns, ctime_ns, hash, "
+                            "fm_nyers, fm_hiba, canvas_hiba, aliasok, indexelve, torolve) "
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)", adat).lastrowid
         else:
             self._szarmaztatott_torol(fid)
-            c.execute("UPDATE fajl SET ut=?, lemez_ut=?, nev=?, kit=?, mappa=?, tipus=?, meret=?, mtime_ns=?, hash=?, "
+            c.execute("UPDATE fajl SET ut=?, lemez_ut=?, nev=?, kit=?, mappa=?, tipus=?, meret=?, mtime_ns=?, ctime_ns=COALESCE(?, ctime_ns), hash=?, "
                       "fm_nyers=?, fm_hiba=?, canvas_hiba=?, aliasok=?, indexelve=?, torolve=NULL WHERE id=?", (*adat, fid))
         torzs = nev.rsplit(".", 1)[0] if tip in ("md", "canvas", "base") else nev
         c.execute("INSERT INTO fts(rowid, ut, nev, tartalom) VALUES (?, ?, ?, '')", (fid, rp, torzs))
@@ -738,16 +752,16 @@ class Index(IndexOlvaso):
             j = elemzo.elemez(feloldas.szoveg(b), self.tipusok)
         elif tip == "canvas":
             j = elemzo.elemez_canvas(*feloldas.canvas_olvas(full))
-        adat = (rp, lemez, nev, kit, mappa, tip, st.st_size, st.st_mtime_ns, h,
+        adat = (rp, lemez, nev, kit, mappa, tip, st.st_size, st.st_mtime_ns, _szuletesi_ns(st), h,
                 j.fm_nyers if j else None, j.fm_hiba if j else None, j.canvas_hiba if j else None,
                 json.dumps(j.aliasok, ensure_ascii=False) if j else "[]", most)
         if fid is None:
-            fid = c.execute("INSERT INTO fajl(ut, lemez_ut, nev, kit, mappa, tipus, meret, mtime_ns, hash, fm_nyers, "
-                            "fm_hiba, canvas_hiba, aliasok, indexelve, torolve) "
-                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)", adat).lastrowid
+            fid = c.execute("INSERT INTO fajl(ut, lemez_ut, nev, kit, mappa, tipus, meret, mtime_ns, ctime_ns, hash, "
+                            "fm_nyers, fm_hiba, canvas_hiba, aliasok, indexelve, torolve) "
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)", adat).lastrowid
         else:
             self._szarmaztatott_torol(fid)
-            c.execute("UPDATE fajl SET ut=?, lemez_ut=?, nev=?, kit=?, mappa=?, tipus=?, meret=?, mtime_ns=?, hash=?, "
+            c.execute("UPDATE fajl SET ut=?, lemez_ut=?, nev=?, kit=?, mappa=?, tipus=?, meret=?, mtime_ns=?, ctime_ns=COALESCE(?, ctime_ns), hash=?, "
                       "fm_nyers=?, fm_hiba=?, canvas_hiba=?, aliasok=?, indexelve=?, torolve=NULL WHERE id=?",
                       (*adat, fid))
         torzs = nev.rsplit(".", 1)[0] if tip in ("md", "canvas", "base") else nev

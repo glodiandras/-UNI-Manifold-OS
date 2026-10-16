@@ -19,7 +19,7 @@
   import { kornyezet } from '../lib/kornyezet';
   import { keresoMegnyit } from '../lib/kereses/kereso';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
-  import { athelyezheto, faEpit, lapit, mappakatKinyit, type FaCsomopont, type FaRendezes } from '../lib/vault/fa';
+  import { athelyezheto, faEpit, faIdoMezo, lapit, mappakatKinyit, type FaCsomopont, type FaRendezes } from '../lib/vault/fa';
   import { lebegoMenu, type MenuElem } from '../szerkeszto/notion/menu';
   import { mediaUt } from '../osszefoglalas/allando';
   import { osszefoglalasFajlbol, osszefoglalasMappabol, tartalmiJegyzet } from '../osszefoglalas/parancsok';
@@ -41,11 +41,13 @@
     { id: 'nev-forditva', nev: tk('Fájlnév (Z–A)') },
     { id: 'modositva', nev: tk('Módosítás: legújabb elöl') },
     { id: 'modositva-regi', nev: tk('Módosítás: legrégebbi elöl') },
+    { id: 'letrehozva', nev: tk('Létrehozás: legújabb elöl') },
+    { id: 'letrehozva-regi', nev: tk('Létrehozás: legrégebbi elöl') },
   ];
   const rendezesCim = $derived(t('Rendezés: {mod}', { mod: t(RENDEZES.find(r => r.id === felulet.oldalsav.rendezes)?.nev ?? RENDEZES[0].nev) }));
 
   $effect(() => {
-    if (felulet.oldalsav.rendezes === 'modositva' || felulet.oldalsav.rendezes === 'modositva-regi') return fajlok.idobelyegeketFigyel();
+    if (faIdoMezo(felulet.oldalsav.rendezes)) return fajlok.idobelyegeketFigyel();
   });
 
   function rendezesMenu(e: MouseEvent) {

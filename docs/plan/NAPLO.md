@@ -257,3 +257,22 @@ This is the next bounded F11 checkpoint. The phase remains open; the available e
 - Final targeted core regression: **363 cases, 361 passed, 2 justified skips, 0 unjustified skips**, `var/f11-panels-core-verified.log` (`MOS_SETTINGS='' MOS_SZIGORU=1`). This covers the 25 new type-service/API cases, existing property operations, HTTP routes, documentation/error contracts, module/machine guards, snapshots/run locks, machine writes, parser/search/index retyping and native WebKit/link integration. The two skips are the already documented F8 user-documentation/hotkey-documentation gates; they are not claimed complete.
 - Actual synthetic WKWebView checks cover ready/open/embed/type/save/follow-link, exit-before-autosave and unmount-before-autosave. Current fixture timings are recorded in the same log; these are not an Obsidian or real-vault benchmark. Frontend and native-shell source fingerprints are current (`var/f11-panels-fingerprints.log`); whitespace checks pass. The original v2 and real vault remain read-only. No browser visual audit is claimed.
 - The complete Python suite was not rerun for this checkpoint. Its fresh final F11 run remains open, as do the complete parity and product release gates. Automatic continuation remains active for the unfinished work.
+
+## F11 — Creation-time sort and multi-paragraph `%%` comments checkpoint (2026-10-16)
+
+The phase remains open; no final parity percentage is claimed. Work was split between two delegated agents on disjoint files (core index: sonnet; shared Markdown parser: opus); the explorer frontend and verification were done in the main session.
+
+**Delivered**
+- `07-explorer-01` (must) closed: the explorer offers "Created: newest/oldest first". The index schema moves to v6 with a nullable `fajl.ctime_ns` holding the real `st_birthtime`; `Index.fa()` and `jegyzet()` return `ctime` (epoch seconds or null). It is never derived from mtime or POSIX `st_ctime`; files without a birthtime sort last and are retried on each sync. The v5→v6 migration only adds the column (no hash/mtime reset, no full reparse); the first sync fills unchanged rows with a plain UPDATE that bumps no generation or event. Content updates use `COALESCE`, so an unavailable birthtime never erases a stored value. Atomic saves already restore the original birthtime (`core/tartos.py`); that interaction was not separately tested.
+- `01-rendering-01` (must) closed: `%%` comments now open mid-paragraph, span blank lines and run to end of document if unterminated. A leaf-block parser takes over at paragraph finish and produces one Paragraph/Task node, so Reading shows no empty `<p>` and the block model is unchanged. Code, math, HTML tags, link destinations and wikilinks consume `%%` first; headings, fences and lists inside an open comment create no tags, links or tasks. LP/Source keep the muted source. An older test that pinned unterminated `%%` as plain text was deliberately changed to the new behaviour.
+
+**Known limits**
+- A `%%` opened inside an ATX/Setext heading or table cell does not span; unterminated there stays text. A setext underline or table delimiter directly after an open comment line is interpreted by its own parser. Fences or `$$` inside a comment do not protect; the first `%%` closes.
+- Editor/core mismatch (read, not changed): `core/index/maszk.py` and `elemzo.py` do not mask `%%`, so the index still records links, tags, tasks and headings inside comments while the editor does not. `core/szoveg_tisztit.py` strips terminated comments across paragraphs but not unterminated ones. A separate index-compatibility decision is needed.
+- Not tested: real non-birthtime filesystems (SMB/exFAT) beyond monkeypatched stat; the `fa` HTTP route end to end (checked by code reading and `Index.fa()` tests).
+
+**Verification**
+- Complete frontend: **184 files / 2,519 tests passed**, `var/f11-ctime-ui-full.log`; `tsc --noEmit` clean; `svelte-check` 0 errors / 0 warnings. Core + WKWebView integration (test_app, link/index/migration/ctime): **97 tests OK, 0 skips**, `var/f11-ctime-core-final.log`. Whitespace check clean. Two existing tests were minimally updated for the schema version (`tar.VERZIO`).
+- The complete Python suite was not rerun; it remains a required F11 closure gate. No browser visual audit. The real vault and v2 were not touched.
+
+**Remaining must work**: external-image download under D3 (`04-embeds-02`, needs an explicit design decision). Folding, selection/rename/copy in the explorer, linked panes, named layouts and the other Open checklist rows remain.

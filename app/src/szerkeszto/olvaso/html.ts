@@ -377,9 +377,22 @@ function azonositoNelkul(o: RenderOpciok, from: number, to: number): number | nu
   return o.olvas(from, veg).trim() === '' ? null : veg;
 }
 
+/** Igaz, ha a bekezdés `%%` megjegyzéseken kívül csak szóközt tartalmaz: az olvasóban nem lesz belőle üres `<p>`. */
+function csakMegjegyzes(n: SyntaxNode, o: RenderOpciok, from: number, to: number): boolean {
+  let poz = from;
+  let volt = false;
+  for (let c = n.firstChild; c; c = c.nextSibling) {
+    if (c.name !== 'ObsidianComment' || c.to <= from || c.from >= to) continue;
+    if (o.olvas(poz, Math.max(poz, c.from)).trim()) return false;
+    volt = true;
+    poz = Math.max(poz, c.to);
+  }
+  return volt && !o.olvas(Math.min(poz, to), to).trim();
+}
+
 function bekezdes(n: SyntaxNode, o: RenderOpciok, cel: Node, from = n.from, to = n.to): void {
   const veg = azonositoNelkul(o, from, to);
-  if (veg === null) return;
+  if (veg === null || csakMegjegyzes(n, o, from, veg)) return;
   const p = el('p');
   const w = new SorIro(p);
   sorban(n, from, veg, o, w);

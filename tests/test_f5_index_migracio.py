@@ -46,7 +46,7 @@ class F5IndexMigracioTest(unittest.TestCase):
             c.close()
             c = tar.nyit(db, iro=True)
             try:
-                self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], 5)
+                self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], tar.VERZIO)
                 utana = {r["ut"]: (r["hash"], r["mtime_ns"]) for r in c.execute("SELECT ut, hash, mtime_ns FROM fajl")}
                 for ut in ("Dir/Source.md", "Dir/Board.canvas"):
                     self.assertEqual(utana[ut], (None, None), ut)

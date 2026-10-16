@@ -10,7 +10,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
-| `01-rendering-01` | must | Partial | `%% comments %%` (must, S, high) | Reader + muted LP/Source and PDF-marker regression covered. Inline-open comments spanning blank paragraphs remain open. |
+| `01-rendering-01` | must | Verified | `%% comments %%` (must, S, high) | f11-komment-tobbbekezdes.test.ts, f11-linkek-megjegyzes.test.ts: mid-paragraph open, across blank lines, unterminated to EOF, protected contexts, Reader without empty `<p>`, PDF-marker regression. Known limits in NAPLO (heading/table-cell open does not span; core index does not mask `%%`). |
 | `01-rendering-02` | must | Verified | Inline `#tags` (must, S, high) | f11-cimke-elemzo.test.ts; f11-cimke-navigacio.svelte.test.ts |
 | `01-rendering-03` | must | Verified | Markdown-syntax images to vault files (must, M, high) | f11-embeds.test.ts; f11-olvaso.svelte.test.ts |
 | `01-rendering-04` | should | Open | External images (should, M, high) | — |
@@ -112,7 +112,7 @@ Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN �
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |
 |---|---|---|---|---|
-| `07-explorer-01` | must | Partial | Rendezési módok (must, M, magas) | f11-explorer.svelte.test.ts: persistent name/mtime modes at every level, live metadata. Creation-time ordering needs real birthtime index/API support; no fabricated timestamps. |
+| `07-explorer-01` | must | Verified | Rendezési módok (must, M, magas) | f11-explorer.svelte.test.ts: name/mtime/creation modes at every level, real birthtime only (no mtime fallback, unknown last); tests/test_f11_index_ctime.py: index v6 `ctime_ns`, migration without reparse, no-birthtime = NULL. |
 | `07-explorer-02` | should | Verified | Expand all (should, S, magas) | f11-explorer.svelte.test.ts (empty/nested folders, saved opens, 2000 cap) |
 | `07-explorer-03` | should | Open | Soron belüli átnevezés (should, M, magas) | — |
 | `07-explorer-04` | should | Open | Többes kijelölés (should, L, magas) | — |

@@ -6,7 +6,7 @@ import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
 import { Felulet, MAX_NYITOTT_MAPPA } from '../src/lib/elrendezes/felulet.svelte';
 import { nyelv } from '../src/lib/i18n';
 import { KORNYEZET_KULCS } from '../src/lib/kornyezet';
-import { faEpit, faRendezes, mappakatKinyit, type FaRendezes } from '../src/lib/vault/fa';
+import { faEpit, faIdoMezo, faRendezes, mappakatKinyit, type FaRendezes } from '../src/lib/vault/fa';
 import { VaultFajlok, type FajlInfo } from '../src/lib/vault/fajlok.svelte';
 
 const f = (ut: string, mtime: number | null = 1): FajlInfo => ({ ut, mtime, tipus: 'md', meret: 1 });
@@ -43,6 +43,38 @@ describe('F11 a fájlfa rendezése', () => {
     expect(faEpit(lista, [], 'modositva').gyerekek.map(g => g.ut)).toEqual(['A.md', 'B.md', 'Epoch.md', 'Invalid.md', 'Unknown.md']);
     expect(faEpit([...lista].reverse(), [], 'modositva-regi').gyerekek.map(g => g.ut)).toEqual(['Epoch.md', 'A.md', 'B.md', 'Invalid.md', 'Unknown.md']);
     expect(faEpit([f('Same.MD'), f('Same.md')], [], 'modositva').gyerekek.map(g => g.ut)).toEqual(['Same.md', 'Same.MD']);
+  });
+
+  it.each([
+    ['letrehozva', ['Alpha', 'Zeta', 'B.md', 'A.md', 'Unknown.md']],
+    ['letrehozva-regi', ['Alpha', 'Zeta', 'A.md', 'B.md', 'Unknown.md']],
+  ] as [FaRendezes, string[]][])('%s a valódi születési időt használja; az mtime nem helyettesít, az ismeretlen a végén áll', (mod, varhato) => {
+    // Az mtime szándékosan az ctime-mal ellentétes sorrendű: ha bárhol átszivárogna, a sorrend megfordulna.
+    const lista = [
+      { ...f('A.md', 99), ctime: 1 }, { ...f('B.md', 1), ctime: 9 },
+      { ...f('Unknown.md', 50), ctime: null }, f('Zeta/X.md', 5),
+    ];
+    const fa = faEpit(lista, ['Alpha/Empty'], mod);
+    expect(fa.gyerekek.map(g => g.ut)).toEqual(varhato);
+    expect(faEpit(lista.slice(0, 3), [], mod).gyerekek.at(-1)!.ctime).toBeNull();
+  });
+
+  it('a faIdoMezo a rendezési módhoz a megfelelő időmezőt adja', () => {
+    expect(faIdoMezo('modositva')).toBe('mtime'); expect(faIdoMezo('modositva-regi')).toBe('mtime');
+    expect(faIdoMezo('letrehozva')).toBe('ctime'); expect(faIdoMezo('letrehozva-regi')).toBe('ctime');
+    expect(faIdoMezo('nev')).toBeNull(); expect(faIdoMezo('nev-forditva')).toBeNull();
+    expect(faRendezes('letrehozva-regi')).toBe('letrehozva-regi');
+  });
+
+  it('a létrehozás szerinti módot a menü kínálja, és a mód mentése túléli az újratöltést', async () => {
+    const k = kornyezet();
+    render(Fa, { context: k.context });
+    await fireEvent.click(screen.getByRole('button', { name: 'Sort order: File name (A–Z)' }));
+    expect(screen.getByText('Created: newest first')).toBeTruthy();
+    expect(screen.getByText('Created: oldest first')).toBeTruthy();
+    await fireEvent.click(screen.getByText('Created: oldest first'));
+    expect(k.felulet.oldalsav.rendezes).toBe('letrehozva-regi');
+    expect(new Felulet(JSON.parse(JSON.stringify(k.felulet.sorosit()))).oldalsav.rendezes).toBe('letrehozva-regi');
   });
 
   it('a rendezés mentése megőrzi a korábbi nyitásokat; régi vagy hibás érték névrendre áll vissza', () => {

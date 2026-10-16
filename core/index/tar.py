@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-VERZIO = 5
+VERZIO = 6
 # C33 (T171): a sérült adatbázis jele — SQLITE_CORRUPT (11) és SQLITE_NOTADB (26), a kiterjesztett kód alsó bájtja
 SERULT_KODOK = (11, 26)
 
@@ -27,6 +27,7 @@ CREATE TABLE fajl(
     mappa TEXT NOT NULL,
     tipus TEXT NOT NULL,                -- md | canvas | base | pdf | kep | video | hang | felirat | egyeb
     meret INTEGER, mtime_ns INTEGER,
+    ctime_ns INTEGER,                   -- F11: valódi születési idő (st_birthtime), vagy NULL; sosem mtime/st_ctime
     hash TEXT,                          -- sha1 (csak szöveges fájlra)
     fm_nyers TEXT, fm_hiba TEXT, canvas_hiba TEXT,
     aliasok TEXT,                       -- JSON-lista
@@ -233,6 +234,16 @@ def migral(c: sqlite3.Connection) -> None:
             resz = ids[i:i + 500]
             c.execute(f"UPDATE fajl SET hash = NULL, mtime_ns = NULL WHERE id IN ({','.join('?' for _ in resz)})", resz)
         c.execute("PRAGMA user_version = 5")
+        c.execute("COMMIT")
+    if v < 6:
+        # F11: `fajl.ctime_ns` = a fájl valódi születési ideje (`st_birthtime`), vagy NULL, ha a fájlrendszer nem ad ilyet
+        # (sosem mtime és sosem a POSIX `st_ctime`). A hash-ek és az mtime-ok NEM törlődnek (felesleges teljes újraelemzés):
+        # a következő szinkron a NULL `ctime_ns` sorokat csak UPDATE-tel tölti ki (`Index._alkalmaz`). A friss séma már
+        # tartalmazza az oszlopot, ezért az ALTER csak a régi (v1–v5) indexen fut.
+        c.execute("BEGIN")
+        if not any(r[1] == "ctime_ns" for r in c.execute("PRAGMA table_info(fajl)")):
+            c.execute("ALTER TABLE fajl ADD COLUMN ctime_ns INTEGER")
+        c.execute("PRAGMA user_version = 6")
         c.execute("COMMIT")
 
 
