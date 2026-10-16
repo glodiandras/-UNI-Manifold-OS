@@ -49,7 +49,8 @@ def _szkriptek() -> list[Path]:
 
 
 def _utak_kulcsai() -> set[str]:
-    return set(config.load({"MOS_ROOT": str(REPO)}).data["utak"])
+    # F3-DESIGN §2.4: a `vault` nincs az `os.toml [utak]`-ban, de a kézi szkript akkor sem írhat kézzel `MOS_VAULT`-ot
+    return set(config.utak_kulcsok(config.load({"MOS_ROOT": str(REPO)}).data))
 
 
 class MunkafaEsLegacy(unittest.TestCase):

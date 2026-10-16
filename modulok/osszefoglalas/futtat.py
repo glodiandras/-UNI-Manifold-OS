@@ -31,6 +31,7 @@ import os
 import time
 from pathlib import Path
 
+from core import rejtett
 from core.index import elemzo
 from modulok.kartya import horgony
 from modulok.kartya.lanc import Worker, vault_md_utak
@@ -132,7 +133,7 @@ def olvas_mappa(cfg) -> dict[str, FM.Elemzes]:
     if not gyoker.is_dir():
         return ki
     for dp, dn, fn in os.walk(gyoker):
-        dn[:] = sorted(d for d in dn if not d.startswith("."))
+        dn[:] = sorted(d for d in rejtett.metsz(dn) if not d.startswith("."))     # I6: minden pontos mappa kimarad
         for f in sorted(fn):
             if f.startswith(".") or not f.endswith(".md"):
                 continue

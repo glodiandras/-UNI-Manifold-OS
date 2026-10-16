@@ -31,15 +31,18 @@ class ZarTest(Alap):
         self.assertEqual(b.zar, Path(self._t.name) / "masik.lock")
 
     def test_a_klon_workere_ugyanazt_a_zarat_tartja(self):
-        """T010 (L23): a klónos próba (`proba_app`, `_kornyezet.elkulonit`) külön `MOS_STATE`-et kap, de a valódi
+        """T010 (L23): a klónos próba (`proba_app`, `_kornyezet.elkulonit`) külön `MOS_STATE`-et és külön `MOS_INSTALL`-t kap
+        (F3-DESIGN §4: a modellzár a `{install_state}`-ben van, ezt a `MOS_STATE` már nem mozgatja), de a valódi
         configból számolt zárat adja át `MANIFOLD_MODELL_ZAR`-ként — különben a próba és az éles két modellt tölthetne
         be egyszerre (2026-09-23: két párhuzamos modell 14 GB-ot foglalt a 16-ból)."""
         from core import config
         valodi = self.b.zar
         klon_env = {"MOS_ROOT": str(self.root), "HOME": str(Path(self._t.name) / "home"),
-                    "MOS_STATE": str(Path(self._t.name) / "klon" / "state"), "MANIFOLD_MODELL_ZAR": str(valodi)}
+                    "MOS_STATE": str(Path(self._t.name) / "klon" / "state"),
+                    "MOS_INSTALL": str(Path(self._t.name) / "klon" / "install"), "MANIFOLD_MODELL_ZAR": str(valodi)}
         kcfg = config.load(klon_env)
         self.assertNotEqual(kcfg.path("state"), self.cfg.path("state"))
+        self.assertNotEqual(kcfg.path("install_state"), self.cfg.path("install_state"))
         self.assertEqual(B.betolt(kcfg, klon_env).zar, valodi)
         # a zár nélküli átadás külön zárat adna: ez a hiba, amit a segéd megelőz
         self.assertNotEqual(B.betolt(kcfg, {}).zar, valodi)

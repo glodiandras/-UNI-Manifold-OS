@@ -1,13 +1,17 @@
 """Dolgozat ↔ felkészülési jegyzet kötése (C28a; L59, a legacy `szemelyes/dolgozat.py` `kotes`-ének portja):
-biztos / valószínű / áthelyezve? az eseményhez, órarend szerint / nincs a jegyzethez. Tiszta függvények."""
+biztos / valószínű / áthelyezve? az eseményhez, órarend szerint / nincs a jegyzethez. Tiszta függvények.
+
+Áthelyezve a `tests/test_felkeszultseg_kotes.py`-ból (F3): a tesztek a fejlesztő tantárgy-szótárát (`Matematika`/`matek`, `Német`, …) és napi
+jegyzet-útját (`X01 - Napló & To-Do/…`) definiálják, ezek a `v2-kompat` presetben élnek, ezért a szótár a presetből épül."""
 import unicodedata
 import unittest
 
 from core import naptar
 from core.felkeszultseg import kotes
+from tests.preset_v2 import v2_cfg
 
 MAPPA = "Dolgozatok"
-T = naptar.targyak_cfg(None)
+T = naptar.targyak_cfg(v2_cfg())          # a `v2-kompat` preset `[naptar.szotar.targyak]`-ja
 
 
 def esemeny(azon, nap, targyak=(), fajta="dolgozat", kategoria="hatarido", cim=""):

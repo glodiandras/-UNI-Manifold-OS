@@ -44,7 +44,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
-KISERO_ELOTAG = "ATTCHMNTS - "        # a kísérőjegyzet-mappák névelőtagja, ha a `[vault] kisero_elotag` hiányzik
+from . import kiserok
+
+KISERO_ELOTAG = kiserok.ALAP_ELOTAG   # a kísérőjegyzet-mappák névelőtagja, ha a `[vault] kisero_elotag` hiányzik (a forrás: core/kiserok.py)
 _MONDAT_HATAR = re.compile(r"(?<=[.!?])\s+|\n+")
 UTEM_MP = 60.0
 
@@ -114,15 +116,13 @@ def forras_ujjlenyomat(md: str | frozenset[str]) -> str:
 
 
 def kisero_elotag(cfg) -> str:
-    """A kísérőjegyzet-mappák névelőtagja: `[vault] kisero_elotag` (hiányában `KISERO_ELOTAG`)."""
-    v = cfg.section("vault").get("kisero_elotag") if cfg is not None else None
-    return v if isinstance(v, str) and v else KISERO_ELOTAG
+    """A kísérőjegyzet-mappák névelőtagja: `[vault] kisero_elotag` (hiányában `KISERO_ELOTAG`); egyetlen forrás: `core/kiserok.py`."""
+    return kiserok.kisero_elotag(cfg)
 
 
 def tartalmi_ut(ut: str, elotag: str = KISERO_ELOTAG) -> bool:
     """Tartalmi `.md`: nem kísérőjegyzet (egyetlen útvonal-elem sem kezdődik az `elotag`-gal), nem rejtett mappa."""
-    reszek = ut.replace("\\", "/").split("/")
-    return ut.lower().endswith(".md") and not any(r.startswith(elotag) or r.startswith(".") for r in reszek)
+    return kiserok.tartalmi_elotaggal(ut, elotag)
 
 
 def hossz(m: frozenset[str]) -> int:

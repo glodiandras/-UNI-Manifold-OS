@@ -6,13 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { trackerKliens } from '../src/lib/tracker/kliens.svelte';
 import { linkek } from '../src/lib/vault/linkek.svelte';
 import { kvizTelepit } from '../src/kviz';
-import { kvizUt } from '../src/kviz/allando';
+import { KVIZ_MAPPA, kvizUt } from '../src/kviz/allando';
 import { jegyzetOsztalyRenderelok } from '../src/szerkeszto/beagyazas/regiszter';
 import { obsidianElemzo } from '../src/szerkeszto/markdown/elemzo';
 import { dokumentumRenderel } from '../src/szerkeszto/olvaso/html';
 import { LustaRajzolo } from '../src/szerkeszto/olvaso/lusta';
 
-const KVIZ_UT = 'ATTCHMNTS - quizes/Cím — Kvíz 2026-10-04 2030.md';
+const KVIZ_UT = `${KVIZ_MAPPA}/Cím — Kvíz 2026-10-04 2030.md`;
 const HELYES = [1, 2, 0];
 let kerelmek: { ut: string; torzs?: any }[];
 let le: () => void;
@@ -122,8 +122,8 @@ describe('a beágyazás', () => {
     expect(kvizUt(KVIZ_UT)).toBe(true);
     expect(kvizUt(KVIZ_UT.normalize('NFD'))).toBe(true);
     expect(kvizUt('M03/Jegyzet.md')).toBe(false);
-    expect(kvizUt('ATTCHMNTS - quizes/kep.png')).toBe(false);
-    expect(kvizUt('ATTCHMNTS - quizes.md')).toBe(false);
+    expect(kvizUt(`${KVIZ_MAPPA}/kep.png`)).toBe(false);
+    expect(kvizUt(`${KVIZ_MAPPA}.md`)).toBe(false);
     expect(kvizUt(undefined)).toBe(false);
   });
 

@@ -31,6 +31,7 @@
   import { kodTelepit } from './kod';
   import { matekTelepit } from './matek';
   import { kartyaTelepit } from './kartya';
+  import { kiserokBetolt } from './szerkeszto/tulajdonsagok/api';
   import { osszefoglalasTelepit } from './osszefoglalas';
   import { kilepesMentes, mentetlenSzovegek, szerkesztesLezar, szerkesztoTelepit } from './szerkeszto';
   import { szerkesztok } from './szerkeszto/szerkesztok.svelte';
@@ -109,6 +110,8 @@
       naptarTelepit(regiszter, felulet, kapcsolat),
       // a bukott induló betöltés pótlása, amikor a core él (minden `hello`-n, amíg nem sikerül)
       kapcsolat.figyel('hello', () => void betoltesPotol(felulet, mento)),
+      // a munkatér kísérőmappái (kártya, kvíz, összefoglaló): minden `hello`-n újra, hogy a munkatér-váltás után is stimmeljenek
+      kapcsolat.figyel('hello', () => void kiserokBetolt()),
     ];
     kapcsolat.indit();
     void fajlok.frissit();

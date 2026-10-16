@@ -32,6 +32,7 @@ import shutil
 import subprocess
 import time
 import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -758,22 +759,36 @@ class Repo:
 
     # ------------------------------------------------------------ mentés
 
-    def bundle(self, dest_dir: Path, keep: int = 10) -> Path | None:
+    def bundle(self, dest_dir: Path, keep: int = 10, torolheto: Callable[[Path], bool] | None = None,
+               maradek_kor_mp: float = 0.0) -> Path | None:
         """Teljes git bundle a `dest_dir` alá; a legrégebbiek a `keep` fölött törlődnek (csak a saját, `<név>-*.bundle`
-        mintájú fájlok). A bundle előbb `.bundle.tmp`-be készül és tartósan lemezre kerül, csak utána `os.replace`: egy
-        megszakadt mentés nem hagy csonka `.bundle`-t; a megmaradt `.bundle.tmp`-ket a következő mentés takarítja."""
+        mintájú fájlok; `torolheto`, `maradek_kor_mp`: lásd `bundle_keszit`). A bundle előbb `.bundle.tmp`-be készül és tartósan lemezre kerül,
+        csak utána `os.replace`: egy megszakadt mentés nem hagy csonka `.bundle`-t; a megmaradt `.bundle.tmp`-ket a következő
+        mentés takarítja."""
         if not self.has_head():
             return None
         return bundle_keszit(self.name, lambda tmp: self.git("bundle", "create", "-q", str(tmp), "--all",
-                                                             timeout=GIT_BUNDLE_IDOKORLAT_MP), dest_dir, keep)
+                                                             timeout=GIT_BUNDLE_IDOKORLAT_MP), dest_dir, keep, torolheto,
+                             maradek_kor_mp)
 
 
-def bundle_keszit(nev: str, keszit, dest_dir: Path, keep: int = 10) -> Path:
+def bundle_keszit(nev: str, keszit, dest_dir: Path, keep: int = 10,
+                  torolheto: Callable[[Path], bool] | None = None, maradek_kor_mp: float = 0.0) -> Path:
     """A közös bundle-mag (a vault/ytdlp tároló és a kódtár): `keszit(tmp)` kiírja a bundle-t a `tmp` útra; a tartós
-    átnevezés és a `<nev>-*.bundle` rotáció itt van."""
+    átnevezés és a `<nev>-*.bundle` rotáció itt van. `torolheto(régi)` (F3-DESIGN §5): a `keep` fölötti régi bundle csak akkor
+    törlődik, ha igazat ad; `None` = mindegyik törölhető (a mai viselkedés). A közös, tulajdonos nélküli mappában (`mentes`
+    „örökölt” szabálya) ezzel marad meg az ismeretlen fejű, idegen bundle; a hiba vagy a kivétel „nem törölhető”-t jelent.
+    `maradek_kor_mp`: a megszakadt mentés félkész `<nev>-*.bundle.tmp` fájlját csak az törli, amelyik legalább ennyi másodperce áll
+    (0: mind — a saját mappa); a közös mappában egy másik író éppen készülő bundle-je így nem esik áldozatul."""
     dest_dir = Path(dest_dir)
     dest_dir.mkdir(parents=True, exist_ok=True)
+    most = time.time()
     for maradek in dest_dir.glob(f"{nev}-*.bundle.tmp"):
+        try:
+            if maradek_kor_mp > 0 and most - maradek.stat().st_mtime < maradek_kor_mp:
+                continue
+        except OSError:
+            continue
         maradek.unlink(missing_ok=True)               # egy korábbi megszakadt mentés félkész fájlja
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     target = dest_dir / f"{nev}-{stamp}.bundle"
@@ -786,22 +801,97 @@ def bundle_keszit(nev: str, keszit, dest_dir: Path, keep: int = 10) -> Path:
     tartos.fsync_mappa(dest_dir)
     own = sorted(dest_dir.glob(f"{nev}-*.bundle"))
     for old in own[:-keep] if keep > 0 else []:
+        if torolheto is not None:
+            try:
+                if not torolheto(old):
+                    continue
+            except (SnapshotError, OSError):
+                continue                                  # nem bizonyítható, hogy a miénk: marad
         old.unlink()
     return target
 
 
-def exclusions(cfg, name: str) -> dict[str, list[str]]:
-    """A tároló visszavonási kivételei (`[pillanat.<név>].kivetelek` JSON-fájl): commit → útminták."""
-    import json
-    sec = cfg.section("pillanat", name)
-    path = sec.get("kivetelek")
+_KIVETEL_KULCS = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")      # teljes commit-azonosító: a rövid kulcs sok commitra illene
+KIVETEL_MAX_BAJT = 1 << 20
+KIVETEL_MAX_UT = 256
+KIVETEL_MAX_HOSSZ = 512
+_KIVETEL_VEZERLO = re.compile("[\x00-\x08\x0a-\x1f\x7f\x85\u2028\u2029]")
+
+
+def _kivetel_ut_hiba(minta) -> str | None:
+    """Egy visszavonási kivétel útmintája (`fnmatch`): vault-relatív, szöveg, nincs abszolút / `..` / pontos szakasz / vezérlőkarakter,
+    és az ELSŐ szakasza literális (a `*`, `*/x.md` minden commit minden fájlját kivenné a visszavonásból)."""
+    if not isinstance(minta, str) or not minta or len(minta) > KIVETEL_MAX_HOSSZ:
+        return "szöveg kell (legfeljebb 512 karakter)"
+    if _KIVETEL_VEZERLO.search(minta) or "\\" in minta:
+        return "vezérlőkarakter vagy visszaperjel"
+    if minta.startswith(("/", "~")):
+        return "abszolút út"
+    reszek = [r for r in minta.split("/") if r]
+    if not reszek or any(r == ".." or r.startswith(".") for r in reszek):
+        return "`..` vagy pontos szakasz"
+    if not reszek[0].strip("*?[]"):
+        return "az első szakasz nem lehet csupa helyettesítő jel"
+    return None
+
+
+def kivetelek_olvas(p: Path) -> tuple[dict[str, list[str]], list[str]]:
+    """A visszavonási kivételek fájlja → (az érvényes bejegyzések: commit → útminták, a hibák leírása). A fájl a termékben a munkatér
+    `pillanat-kivetelek.json`-ja (megbízhatatlan: a vault utazik): az olvashatatlan fájl és az érvénytelen bejegyzés (nem teljes
+    commit-azonosító, nem `{"utak": [...]}` alak, túl sok vagy érvénytelen útminta) kimarad, és a hibák közé kerül — a visszavonás a
+    többivel fut, nem kivétellel áll le. A `_`-kezdetű kulcsok (`_leiras`) megjegyzések."""
+    hibak: list[str] = []
+    try:
+        with open(p, "rb") as f:
+            nyers = f.read(KIVETEL_MAX_BAJT + 1)
+        if len(nyers) > KIVETEL_MAX_BAJT:
+            return {}, [f"{p.name}: a fájl túl nagy"]
+        adat = json.loads(nyers.decode("utf-8"))
+    except (OSError, ValueError, RecursionError) as e:
+        return {}, [f"{p.name}: nem olvasható JSON ({type(e).__name__})"]
+    if not isinstance(adat, dict):
+        return {}, [f"{p.name}: JSON-objektum kell"]
+    ki: dict[str, list[str]] = {}
+    for kulcs, v in adat.items():
+        if not isinstance(kulcs, str) or kulcs.startswith("_"):
+            continue
+        if not _KIVETEL_KULCS.fullmatch(kulcs):
+            hibak.append(f"{kulcs[:16]}: nem teljes (40/64 hexa jegyű) commit-azonosító")
+            continue
+        utak = v.get("utak") if isinstance(v, dict) else None
+        if not isinstance(utak, list) or len(utak) > KIVETEL_MAX_UT:
+            hibak.append(f"{kulcs[:12]}: `utak` lista kell (legfeljebb {KIVETEL_MAX_UT} elem)")
+            continue
+        rossz = next((h for h in map(_kivetel_ut_hiba, utak) if h), None)
+        if rossz:
+            hibak.append(f"{kulcs[:12]}: érvénytelen útminta ({rossz})")
+            continue
+        ki[kulcs] = list(utak)
+    return ki, hibak
+
+
+def _kivetel_fajl(cfg, name: str) -> Path | None:
+    path = cfg.section("pillanat", name).get("kivetelek")
     if not path:
-        return {}
-    p = Path(cfg.expand(path))
-    if not p.exists():
-        return {}
-    data = json.loads(p.read_text(encoding="utf-8"))
-    return {k: v["utak"] for k, v in data.items() if not k.startswith("_")}
+        return None
+    try:
+        p = Path(cfg.expand(path))
+    except Exception:  # noqa: BLE001 — feloldatlan kulcs (nincs munkatér): nincs kivétel
+        return None
+    return p if p.is_file() else None
+
+
+def exclusions(cfg, name: str) -> dict[str, list[str]]:
+    """A tároló visszavonási kivételei (`[pillanat.<név>].kivetelek` JSON-fájl): commit → útminták. Csak az érvényes bejegyzések
+    (`kivetelek_olvas`); hiányzó fájl: `{}`. A hibákat a doctor mutatja (`kivetelek_hibak`)."""
+    p = _kivetel_fajl(cfg, name)
+    return kivetelek_olvas(p)[0] if p is not None else {}
+
+
+def kivetelek_hibak(cfg, name: str) -> list[str]:
+    """A tároló kivétel-fájljának érvénytelen bejegyzései (a doctor figyelmeztetése); üres: minden rendben vagy nincs fájl."""
+    p = _kivetel_fajl(cfg, name)
+    return kivetelek_olvas(p)[1] if p is not None else []
 
 
 def repos(cfg) -> dict[str, Repo]:

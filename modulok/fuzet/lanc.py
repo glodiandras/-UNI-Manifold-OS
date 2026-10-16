@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from core import fuzet as F
-from core import gepi_kliens
+from core import gepi_kliens, kiserok, rejtett
 
 from . import formatum, kep, modszer
 from .katalogus import ALAP_ELMELET_MAPPA, Katalogus
@@ -92,10 +92,11 @@ class Lanc:
         self._kat = katalogus
         self.tar = Gyorsitotar(cfg)
         fz = cfg.section("fuzet")
-        self.cel_mappa = str(fz.get("cel_mappa") or formatum.ALAP_CEL_MAPPA)
+        self.cel_mappa = kiserok.kisero_mappa(cfg, "fuzet")
         self.szakasz = formatum.szakasz_fejlec(fz.get("szakasz"))
         self.elmelet_mappa = str(fz.get("elmelet_mappa") or ALAP_ELMELET_MAPPA)
         self.cimkek = dict(cfg.section("pdf").get("tags") or {})       # `[pdf.tags]`: betű → tantárgy-címke (a tantárgy-felismerés kiegészítése)
+        self.nevek = dict(cfg.section("pdf").get("nevek") or {})       # `[pdf.nevek]`: betű → tantárgynevek (az első a kanonikus)
         self.kepletek_max = int(fz.get("kepletek_max", 20))
         self.max_foto = int(max_foto or fz.get("max_foto", 40))
         self.tmp = cfg.path("tmp") / "fuzet"
@@ -108,7 +109,7 @@ class Lanc:
     def kat(self) -> Katalogus:
         if self._kat is None:
             self._kat = Katalogus.vaultbol(self.cfg.path("vault"), elmelet_mappa=self.elmelet_mappa,
-                                           szakasz=self.szakasz.removeprefix("## "), cimkek=self.cimkek)
+                                           szakasz=self.szakasz.removeprefix("## "), cimkek=self.cimkek, nevek=self.nevek)
         return self._kat
 
     def _haladas(self, szazalek: float) -> None:
@@ -173,11 +174,11 @@ class Lanc:
             foto.jegyzet = self.cel
             return
         kat = self.kat()
-        if not modszer.ismert_targy(foto.olvasat, self.cimkek):       # 80(h): „sehová nem illik” — nem köt be, nincs újrapróba
+        if not modszer.ismert_targy(foto.olvasat, self.cimkek, self.nevek):       # 80(h): „sehová nem illik” — nem köt be, nincs újrapróba
             foto.allapot = "kihagyva"
             foto.uzenet = f"nem illik sehová: a tantárgy ismeretlen ({foto.olvasat.get('tantargy') or '?'})"
             return
-        jl = modszer.jeloltek(foto.olvasat, kat, self.cimkek)
+        jl = modszer.jeloltek(foto.olvasat, kat, self.cimkek, self.nevek)
         foto.jeloltek = jl
         if not jl:
             foto.allapot, foto.uzenet = "hiba", "nincs jelölt jegyzet (a tantárgy ismeretlen)"
@@ -200,7 +201,7 @@ class Lanc:
         if self._nevek is None:
             root, cel, nevek = self.cfg.path("vault"), nfc(self.cel_mappa), set()
             for dp, dn, fn in os.walk(root):
-                dn[:] = [d for d in dn if not d.startswith(".")]
+                dn[:] = [d for d in rejtett.metsz(dn) if not d.startswith(".")]     # I6: minden pontos mappa kimarad
                 rel = nfc(os.path.relpath(dp, root))
                 if rel == cel:
                     continue

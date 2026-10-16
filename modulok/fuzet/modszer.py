@@ -27,8 +27,7 @@ BM25_KIEGESZITES = 5
 MAX_TOKEN_FEJEZET = 360
 MAX_TOKEN_VALASZTO = 24
 MAX_TOKEN_FORGATAS = 60
-TANTARGYAK = {"M": "Matematika", "F": "Fizika", "T": "Történelem", "I": "Irodalom", "N": "Magyar nyelvtan",
-              "D": "Digitális kultúra", "E": "Angol nyelv"}
+# a tantárgy-betűk nevei a `[pdf.nevek]`-ből (betű → nevek, az első a kanonikus) és a `[pdf.tags]`-ből jönnek; beépített lista nincs
 
 FEJEZET_PROMPT = (
     "A {n} képen egy magyar középiskolás diák kézzel írt iskolai füzetének oldalai láthatók (egy fotó két oldala). "
@@ -107,23 +106,24 @@ def olvasat(valasz, kat) -> dict:
 
 # ---------------------------------------------------------------- 2. lépés
 
-def targy_betu(tantargy: str, cimkek: dict | None = None) -> str | None:
-    """A tantárgy betűje a modell válaszából. A `cimkek` (`[pdf.tags]`: betű → címke) címkéi előbb számítanak; ami nem illik rájuk, azt az
-    alap-lista (`TANTARGYAK`) nevei döntik el — így a konfigurálatlan és a hiányos táblázat mellett is a meglévő nevek érvényesek."""
+def targy_betu(tantargy: str, cimkek: dict | None = None, nevek: dict | None = None) -> str | None:
+    """A tantárgy betűje a modell válaszából. A `cimkek` (`[pdf.tags]`: betű → címke) címkéi előbb számítanak; ami nem illik rájuk, azt a
+    `nevek` (`[pdf.nevek]`: betű → nevek) kanonikus (első) nevei döntik el. Mindkettő üres: nincs tantárgy-felismerés."""
     t = nfc(tantargy).lower()
     for b, nev in (cimkek or {}).items():
         if isinstance(nev, str) and nev.strip() and nev.strip().lower() in t:
             return str(b)
-    for b, nev in TANTARGYAK.items():
-        if nev.lower() in t:
-            return b
+    for b, lista in (nevek or {}).items():
+        nev = lista[0] if isinstance(lista, (list, tuple)) and lista else None
+        if isinstance(nev, str) and nev.strip() and nev.strip().lower() in t:
+            return str(b)
     return None
 
 
-def jeloltek(olv: dict, kat, cimkek: dict | None = None) -> list[str]:
+def jeloltek(olv: dict, kat, cimkek: dict | None = None, nevek: dict | None = None) -> list[str]:
     """A legacy `jeloltek()`-je: a választott fejezetek jegyzetei; ha nincs fejezet, a tantárgy két szóalapú legjobb fejezete;
     utána a tantárgy(ak)on belüli szóalapú rangsor első `BM25_KIEGESZITES` még nem szereplő jegyzete."""
-    betuk = {k[0] for k in olv["fejezetek"]} | ({targy_betu(olv["tantargy"], cimkek)} - {None})
+    betuk = {k[0] for k in olv["fejezetek"]} | ({targy_betu(olv["tantargy"], cimkek, nevek or getattr(kat, "nevek", None))} - {None})
     lekerdezes = f"{olv['cimek']} {olv['tartalom']}"
     kodok = [k for k in olv["fejezetek"] if k in kat.fej]
     if not kodok and betuk:
@@ -182,7 +182,7 @@ def dontes(valasz, olv: dict, jl: list[str], kat) -> tuple[str | None, bool]:
     return None, True
 
 
-def ismert_targy(olv: dict, cimkek: dict | None = None) -> bool:
+def ismert_targy(olv: dict, cimkek: dict | None = None, nevek: dict | None = None) -> bool:
     """80(h): az 1. lépés tantárgya a zárt listában van-e (a tantárgy neve vagy legalább egy érvényes fejezetkód). Ismeretlen tantárgyú
     (pl. a listán nem szereplő) fotó nem kerül a szóalapú rangsor szerinti, bármelyik tantárgyba eső jelöltekhez."""
-    return bool(olv.get("fejezetek")) or targy_betu(olv.get("tantargy") or "", cimkek) is not None
+    return bool(olv.get("fejezetek")) or targy_betu(olv.get("tantargy") or "", cimkek, nevek) is not None

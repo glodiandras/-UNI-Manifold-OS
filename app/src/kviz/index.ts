@@ -6,12 +6,10 @@ import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
 import type { Regiszter } from '../lib/parancsok/regiszter';
 import { jegyzetOsztalyRenderelok } from '../szerkeszto/beagyazas/regiszter';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
+import { kiseroUt } from '../osszefoglalas/allando';
 import { kvizUt } from './allando';
 import { kvizGeneral } from './api';
 import { kvizRenderelo } from './beagyazas';
-
-// mirror of config — F3 replaces with /api/workspace
-const KISERO_ELOTAG = 'ATTCHMNTS - ';
 
 function hibaSzoveg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
@@ -26,7 +24,7 @@ export async function kvizEbbol(indit: (ut: string) => Promise<unknown> = kvizGe
     ertesitesek.ertesit({ szint: 'info', cim: 'Nyiss meg egy jegyzetet', szoveg: 'A kvíz a nyitott jegyzetből készül.' });
     return;
   }
-  if (kvizUt(p.ut) || p.ut.normalize('NFC').split('/').some((r) => r.startsWith(KISERO_ELOTAG))) {
+  if (kvizUt(p.ut) || kiseroUt(p.ut)) {
     ertesitesek.ertesit({ szint: 'info', cim: 'Ez egy kísérőjegyzet', szoveg: 'Kvíz a forrásjegyzetből készül, nem a kvízből vagy a kártyákból.' });
     return;
   }

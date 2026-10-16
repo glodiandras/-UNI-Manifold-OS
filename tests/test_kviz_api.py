@@ -325,7 +325,7 @@ class KitoltesSzakaszTest(Alap):
         self.assertIn("## Kérdések", szoveg)                                       # a jegyzet többi része érintetlen
         self.assertTrue(var_ra(lambda: len(self.commitok()) == 1, 10))
         self.assertEqual(len(self.repo.log(20)), self.fejek + 1)                    # egy gépi commit a két kitöltésre
-        self.assertEqual(self.api().utolso_iras.get(KVIZ), "ok")
+        self.assertTrue(var_ra(lambda: self.api().utolso_iras.get(KVIZ) == "ok", 10))   # az eredmény a commit UTÁN íródik be (futási verseny)
 
     def test_a_jeloles_is_bekerul(self):
         t = self.token()

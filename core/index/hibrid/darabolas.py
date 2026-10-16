@@ -6,7 +6,8 @@ Bemenet: a jegyzet `fts.tartalom` szövege (`\\n` sorvégek, frontmatterrel — 
 Szabály: a frontmatter kimarad; a címsor új szakaszt nyit (a címsor-út a darab fejléce); a szakaszon belül a bekezdések
 (üres sorral elválasztva; a kód- és a `$$`-blokkon belül nem vágunk) `darab_max` karakterig gyűlnek, az ennél hosszabb
 bekezdés önálló darab, és ha `darab_max * 1,5`-nél is hosszabb, sorhatáron vágódik. A gép írta, nem tartalmi szakaszok
-(`modulok.kapuk.forras.KIHAGYOTT_SZAKASZOK`: Füzet, Gyakorlás, Kitöltések — a kapuval egy lista) kimaradnak.
+(a kapu listája: `modulok.kapuk.forras.kihagyott_szakaszok(cfg)`, a `[kapuk] kihagyott_szakaszok`; alap: Füzet, Gyakorlás, Kitöltések)
+kimaradnak. A hívó a konfig listáját adja (`bekezdesek(…, kihagyott=…)`, `darabol(…, kihagyott=…)`); hiányában a kapu alapja.
 
 Darabonként: a sorhatár (`sor_kezd`, `sor_veg`), a címsor-út, a darab bekezdéseinek `^blokk` azonosítói (a blokk záró
 sorával: a horgony a bekezdésé, amelyben az idézet áll) és a szöveg sha1-e (`hash`: a változatlan darab vektora
@@ -68,14 +69,15 @@ def _kihagyott() -> tuple[str, ...]:
     return KIHAGYOTT_SZAKASZOK
 
 
-def bekezdesek(tartalom: str, fejezetek, blokkok) -> list[tuple[tuple[str, ...], Bekezdes]]:
-    """A jegyzet bekezdései a címsor-útjukkal, a frontmatter, a címsorok és a kihagyott szakaszok nélkül."""
+def bekezdesek(tartalom: str, fejezetek, blokkok, kihagyott: tuple[str, ...] | list[str] | None = None) -> list[tuple[tuple[str, ...], Bekezdes]]:
+    """A jegyzet bekezdései a címsor-útjukkal, a frontmatter, a címsorok és a kihagyott szakaszok nélkül. `kihagyott`: a szakaszok
+    címei (a `[kapuk] kihagyott_szakaszok`); hiányában a kapu alapja."""
     sorok = tartalom.split("\n")
     fm = FM_RE.match(tartalom)
     elso = tartalom[:fm.end()].count("\n") + 1 if fm else 1           # az első törzssor (1-től)
     fej_sorok = {int(f[2]): (int(f[0]), str(f[1])) for f in fejezetek}
     blokk_sorok = {int(b[1]): str(b[0]) for b in blokkok}
-    kihagy = {k.casefold() for k in _kihagyott()}
+    kihagy = {k.casefold() for k in (_kihagyott() if kihagyott is None else kihagyott)}
     ut: list[tuple[int, str]] = []
     kihagyva_szint: int | None = None
     ki: list[tuple[tuple[str, ...], Bekezdes]] = []
@@ -119,8 +121,10 @@ def bekezdesek(tartalom: str, fejezetek, blokkok) -> list[tuple[tuple[str, ...],
     return ki
 
 
-def darabol(ut: str, tartalom: str, fejezetek=(), blokkok=(), darab_max: int = DARAB_MAX) -> list[Darab]:
-    """A jegyzet darabjai (lásd a modul leírását). `fejezetek`: `(szint, szoveg, sor)`; `blokkok`: `(azon, sor, …)`."""
+def darabol(ut: str, tartalom: str, fejezetek=(), blokkok=(), darab_max: int = DARAB_MAX,
+            kihagyott: tuple[str, ...] | list[str] | None = None) -> list[Darab]:
+    """A jegyzet darabjai (lásd a modul leírását). `fejezetek`: `(szint, szoveg, sor)`; `blokkok`: `(azon, sor, …)`; `kihagyott`: a
+    kihagyott szakaszok címei (`[kapuk] kihagyott_szakaszok`; hiányában a kapu alapja)."""
     ki: list[Darab] = []
     csoport: list[Bekezdes] = []
     csoport_ut: tuple[str, ...] | None = None
@@ -130,7 +134,7 @@ def darabol(ut: str, tartalom: str, fejezetek=(), blokkok=(), darab_max: int = D
             ki.append(Darab(ut, len(ki), bek[0].sor_kezd, bek[-1].sor_veg, fut,
                             "\n\n".join(b.szoveg for b in bek), tuple(bek)))
 
-    for fut, b in bekezdesek(tartalom, fejezetek, blokkok):
+    for fut, b in bekezdesek(tartalom, fejezetek, blokkok, kihagyott):
         if csoport and (fut != csoport_ut or sum(len(x.szoveg) + 2 for x in csoport) + len(b.szoveg) > darab_max):
             kiad(csoport, csoport_ut)
             csoport = []

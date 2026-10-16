@@ -439,6 +439,16 @@ class AuditKapukTest(Alap):
         self.hiba(400, self.cs("T01/kk.md", tart.replace("status: Completed", "STATUS: Completed")))  # átnevezés
         self.assertTrue(self.G.ir(self.keres(self.cs("T01/kk.md", tart + "törzs\n")))["valtozas"])    # a Status változatlan: mehet
 
+    def test_a_status_tilalom_a_vault_semajatol_fuggetlenul_megvan_ahol_a_jegyzetnek_van_statusa(self):
+        """A `schema.json` megbízhatatlan (a vault utazik): `status_gazdai: false` (vagy `[sema] mod = ki`) mellett sem írható át, nem
+        törölhető és nem nevezhető át a meglévő Status; az, hogy a séma szerint védett-e az ÚJ Status, a séma szava."""
+        self.G.tul.sema.status_gazdai = False
+        tart = "---\nTags:\nSource:\nStatus: Completed\nNN:\nCanvas:\n---\n# kk\n"
+        ir(self.v, "T01/kk.md", tart)
+        self.hiba(400, self.cs("T01/kk.md", tart.replace("Status: Completed", "Status: Review")))
+        self.hiba(400, self.cs("T01/kk.md", tart.replace("Status: Completed\n", "")))
+        self.assertTrue(self.G.ir(self.keres(self.cs("T01/kk.md", tart + "törzs\n")))["valtozas"])      # a Status változatlan: mehet
+
     # ---- T133
     def test_hianyos_jegyzetben_ujabb_kulcs_torlese_400(self):
         tart = "---\nTags:\nSource:\nNN:\nCanvas:\n---\n# hianyos\n"                          # nincs Status

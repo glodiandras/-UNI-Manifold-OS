@@ -43,6 +43,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// A core API-titka (a kézfogásból): a lapba a betöltés előtt injektáljuk, újraindításkor visszaadjuk a core-nak.
     private var titok: String?
     private var gyoker: URL?
+    /// Termék-elrendezés (a gyökér `*.app/Contents/Resources/manifold`): a vault a regiszterből (F3-DESIGN §2.6).
+    private var termek = false
+    /// A core-nak átadott vault (`MOS_VAULT`; termékben a regiszter `utolso` munkaterének mappája), az újraindítás is ezt kapja.
+    private var inditottVault: String?
+    /// A kézfogás `vault`-ja (kanonikus út): ennek a kötetét figyeli a lecsatolás (F3).
+    private var figyeltVault: String?
     private var shown = false
     private let naptarEngedely = NaptarEngedely()
     private var kezfogasMunka: DispatchWorkItem?
@@ -81,6 +87,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 #if MOS_DEVELOPER
         if selftest {                                    // a biztonsági és életciklus-döntések táblázata (C11a, C29.7b)
             let hibak = Biztonsag.ellenorzes() + NaptarLogika.ellenorzes() + CoreProcess.ellenorzes() + Eletciklus.ellenorzes() + HelyiMenu.ellenorzes() + ErtesitesLogika.ellenorzes() + Kuka.ellenorzes()
+                + RootLocator.ellenorzes() + Telepites.ellenorzes()
             if !hibak.isEmpty { return finishSelftest(ok: false, note: "biztonsági próba: " + hibak.joined(separator: "; ")) }
         }
 #endif
@@ -104,11 +111,27 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         }
         if !selftest { buildWindow() }
 
-        guard let root = RootLocator.locate(environment: ProcessInfo.processInfo.environment, bundle: Bundle.main.bundleURL) else {
+        let kornyezet = ProcessInfo.processInfo.environment
+        guard let hely = RootLocator.locate(environment: kornyezet, bundle: Bundle.main.bundleURL) else {
             return fail("A Manifold alkalmazásmappája nem található. A Manifold.app-nak az alkalmazásmappájában kell lennie (bin/mos és config/os.toml mellett). A külső kötet nincs csatlakoztatva?")
         }
-        self.gyoker = root
-        indit(CoreProcess(root: root))
+        self.gyoker = hely.root
+        self.termek = hely.termek
+        if hely.termek {
+            // F3-DESIGN §2.6: a termék a vaultot a regiszterből kapja (az F5 indítóig az utoljára megnyitott munkatér)
+            if Telepites.athelyezett(Bundle.main.bundleURL) {
+                return fail("A Manifold egy ideiglenes, csak olvasható helyről fut (a macOS áthelyezte, mert még a letöltési helyén van). Húzd a Manifoldot az Alkalmazások mappába, majd indítsd onnan.")
+            }
+            guard let vault = Telepites.termekVault(environment: kornyezet) else {
+                return fail("Még nincs Manifold-munkatér ezen a gépen. Hozz létre egyet egy jegyzetmappából: mos workspace letrehoz <mappa>.")
+            }
+            var mappa: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: vault, isDirectory: &mappa), mappa.boolValue else {
+                return fail("A munkatér mappája nem érhető el: \(vault). Csatlakoztatva van a kötet?")
+            }
+            inditottVault = vault
+        }
+        indit(CoreProcess(root: hely.root, vault: inditottVault, termek: hely.termek))
         // C29.6 (M5): a kötet lecsatolása (Finder-kiadás, diskutil) előtt mentünk és leállunk
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(kotetLecsatol(_:)),
                                                           name: NSWorkspace.willUnmountNotification, object: nil)
@@ -132,10 +155,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 self.kezfogasMunka = nil
                 switch result {
                 case .success(let k):
+                    if let v = k.vault { self.figyeltVault = v }
                     self.coreElindult(port: k.port, titok: k.titok)
                 case .failure(.failed(let msg)):
                     if self.coreHalalFolyamatban { self.ujraindulasHiba("A core nem indult el újra.\n\n\(msg)") }
                     else { self.fail("A core nem indult el.\n\n\(msg)") }
+                case .failure(.konfig(let kod, let uzenet)):
+                    let szoveg = CoreProcess.konfigSzoveg(kod: kod, uzenet: uzenet)
+                    if self.coreHalalFolyamatban { self.ujraindulasHiba("A core nem indult el újra.\n\n\(szoveg)") }
+                    else { self.fail(szoveg) }
                 case .failure(.foglalt(let pid, let vault)):
                     self.masikPeldany(pid: pid, vault: vault)
                 }
@@ -411,11 +439,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         NSApp.terminate(nil)
     }
 
-    /// A Manifold-OS gyökerét hordozó kötet lecsatolására: a meglévő kilépési út (a felület ment, a core a futó
+    /// A figyelt utak: a vault a kézfogásból (F3-DESIGN §2.6; régi core-nál az indításkor átadott), és a kódfa (hordozható
+    /// elrendezésben a v2 óta ez a figyelt kötet; a kódja nélkül maradó core-t is rendezetten állítjuk le).
+    private var figyeltUtak: [String] {
+        [figyeltVault ?? inditottVault, gyoker?.path].compactMap { $0 }
+    }
+
+    /// A vaultot (vagy a kódfát) hordozó kötet lecsatolására: a meglévő kilépési út (a felület ment, a core a futó
     /// feladat végén leáll és a belső lemezre menti a HEAD-et). A valódi kihúzás (K03) nem értesít: az az összeomlás-ág.
     @objc private func kotetLecsatol(_ n: Notification) {
-        guard !selftest || forgatokonyv == "lecsatolas", let gyoker,
-              CoreProcess.gyokertErint(devicePath: n.userInfo?["NSDevicePath"] as? String, gyoker: gyoker.path) else { return }
+        guard !selftest || forgatokonyv == "lecsatolas",
+              CoreProcess.barmelyiketErinti(devicePath: n.userInfo?["NSDevicePath"] as? String, utak: figyeltUtak) else { return }
         NSApp.terminate(nil)
     }
 
@@ -665,7 +699,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         guard let gyoker else { return NSApp.terminate(nil) }
         ujraindulasMentetlen = mentetlen
         coreHalalFolyamatban = true                       // a `coreElindult` ebből tudja, hogy újraindításról van szó
-        indit(CoreProcess(root: gyoker, port: port, titok: titok))
+        indit(CoreProcess(root: gyoker, vault: inditottVault, termek: termek, port: port, titok: titok))
     }
 
     private func ujraindulasHiba(_ uzenet: String) {
@@ -751,7 +785,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                     // A valódi ⌘Q is eseményből jön, nem GCD-blokkból. C33 (`lecsatolas`): a kötet lecsatolásának értesítése
                     // (a Finder-kiadás, diskutil) — ugyanaz a rendezett út, a héj saját megfigyelőjén át.
                     let lecsatolas = self.forgatokonyv == "lecsatolas"
-                    let gyokerUt = self.gyoker?.path ?? ""
+                    // F3: a kézfogás vaultjának kötete (nem a kódfáé) — régi core-nál a gyökér
+                    let gyokerUt = self.figyeltVault ?? self.gyoker?.path ?? ""
                     let idozito = Timer(timeInterval: 0.2, repeats: false) { _ in
                         if lecsatolas {
                             NSWorkspace.shared.notificationCenter.post(name: NSWorkspace.willUnmountNotification, object: NSWorkspace.shared,

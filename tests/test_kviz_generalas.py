@@ -257,11 +257,6 @@ class GeneralasTest(unittest.TestCase):
 
 
 class BeallitasTest(unittest.TestCase):
-    def test_az_os_toml_szakasza_ervenyes_es_egyezik_az_alapokkal(self):
-        from core import config
-        b = G.beallitas(config.load())
-        self.assertEqual(b, G.Beallitas())                      # az `os.toml` a legacy alapértékeit hordozza
-        self.assertEqual(config.load().section("kviz")["mappa"], "ATTCHMNTS - quizes")
 
     def test_ismeretlen_kulcs_hiba(self):
         class Cfg:

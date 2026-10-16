@@ -1,0 +1,125 @@
+{
+  "_leiras": "A `v2-kompat` preset sémája (a Manifold-OS 2.0 fejlesztő vaultjának konvenciója): a `config/vault-sema.json` jogutódja.",
+  "mezosorrend": [
+    "Tags",
+    "Source",
+    "Status",
+    "NN",
+    "Canvas"
+  ],
+  "extra_kulcsok": [
+    "version"
+  ],
+  "_extra_kulcsok": "Ezek a kulcsok a sorrend-összevetésből kimaradnak (bárhol állhatnak): a sablonok `version` mezője.",
+  "tags_ertekkeszlet": [
+    "History",
+    "Literature",
+    "Mathematics",
+    "Physics",
+    "Informatics",
+    "Grammar",
+    "English",
+    "Íráskészség",
+    "AI",
+    "Workflow",
+    "Projekt-1",
+    "Napló"
+  ],
+  "status_ertekkeszlet": [
+    "Completed",
+    "In progress",
+    "Review"
+  ],
+  "status_gazdai": true,
+  "_status_gazdai": "A Status mezőt csak a felhasználó tölti; gépi író nem (a core `forras: gep` esetén elutasítja).",
+  "kivetel_osztalyok": [
+    {
+      "nev": "kviz",
+      "kisero": "kviz",
+      "mezosorrend": [
+        "Source",
+        "Kviz",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1_minta": "^(.+ — Kvíz \\d{4}-\\d{2}-\\d{2} \\d{4}(?: \\(\\d+\\))?)$",
+      "h1_egyezzen_fajlnevvel": true
+    },
+    {
+      "nev": "kartya",
+      "kisero": "kartya",
+      "mezosorrend": [
+        "Source",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1": false
+    },
+    {
+      "nev": "osszefoglalo",
+      "kisero": "osszefoglalas",
+      "mezosorrend": [
+        "Source",
+        "Osszefoglalas",
+        "Szint",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1": false
+    },
+    {
+      "nev": "konyv-jegyzet",
+      "utvonal_elotag": [
+        "Books/"
+      ],
+      "mezosorrend": [
+        "Szerző",
+        "Műfaj",
+        "Rate",
+        "Status"
+      ],
+      "tartalmi": true,
+      "h1": false
+    }
+  ],
+  "h1": {
+    "_leiras": "A H1-szabály: a jegyzet első 1. szintű fejezete (H1) a fájlnév a `NN[F] - ` sorszám-előtag levágása után (NFC). A `kivetel_utvonalak` csak az egyezés-ellenőrzést hagyják el (a H1 hiánya továbbra is sértés); a `kivetel_osztalyok`: `nincs_egyezes` (a H1 nem a fájlnév: megoldás-sorszámos, témakör-címes), `h1_nelkul_is_jo` (a sablon-váznak nincs H1-e). A `kviz` és a `konyv-jegyzet` H1-szabálya a fenti `kivetel_osztalyok` `h1_minta`/`h1` mezőjében áll.",
+    "szabaly": "fajlnev",
+    "sorszam_elotag": "^\\d+[A-Z]? - ",
+    "kivetel_utvonalak": [
+      "X01 - Napló & To-Do/",
+      "_Template/"
+    ],
+    "kivetel_osztalyok": [
+      {
+        "nev": "megoldas-sorszamos",
+        "mod": "nincs_egyezes",
+        "mappa_nev": "Megoldások",
+        "fajlnev_minta": "(?:\\s\\d+|\\d+\\.?\\s*feladat|\\d+-(?:es|as|ös|os)\\s+feladat)$"
+      },
+      {
+        "nev": "temakor-cim",
+        "mod": "nincs_egyezes",
+        "source_tartalmaz": "témakörök.pdf"
+      },
+      {
+        "nev": "sablon-vaz",
+        "mod": "h1_nelkul_is_jo",
+        "utvonal_elotag": [
+          "_Template/"
+        ]
+      }
+    ]
+  },
+  "sema_nelkuli_utak": [],
+  "sema_nelkuli_nevek": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "MEMORY.md"
+  ],
+  "_sema_nelkuli_nevek": "Ügynök-hordozó fájlok: nem vault-jegyzetek, a séma nem vonatkozik rájuk, és gép nem ír beléjük. A fájlnév számít, bármely mélységben, kis-nagybetűtől függetlenül (a kód saját állandója ugyanezt a három nevet mindig tartja); a `sema_nelkuli_utak` egyedi, pontos útvonalakkal bővíthető.",
+  "_kisero": "A `kisero` osztályok útvonal-előtagja a `core/kiserok.py`-ból származik (a `[vault] kisero_elotag` és a fajta mappa-kulcsa): nincs külön lista."
+}

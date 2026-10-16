@@ -93,7 +93,7 @@ def allapot(app) -> dict:
     fuggo: list[dict] = []
     if gyoker.is_dir():
         for dp, dn, fn in os.walk(gyoker):
-            dn[:] = sorted(x for x in dn if not x.startswith("."))
+            dn[:] = sorted(x for x in dn if not x.startswith("."))     # I6: minden pontos mappa kimarad (a `.manifold` is; staging, nem vault)
             if "integration.json" in fn:
                 try:
                     st = json.loads(Path(dp, "integration.json").read_text(encoding="utf-8")).get("integration_status") or "?"

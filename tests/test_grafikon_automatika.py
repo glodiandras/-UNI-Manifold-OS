@@ -60,16 +60,6 @@ class Dontes(unittest.TestCase):
         st, j = self.dont()
         self.assertEqual((st, j.ok), ("jelolt", "uj"))
 
-    def test_sorrend_es_kizarasok(self):
-        for kw, st in (({"ut": "T01/ATTCHMNTS - cards/X — kártyák.md"}, "szuro"),
-                       ({"ut": ".obsidian/x.md"}, "szuro"),
-                       ({"md": FM + "# T\n\nCsak szöveg, képlet nélkül, elég hosszan, hogy ne a rövidség döntsön róla.\n"}, "nem_kell"),
-                       ({"md": "$y=x$"}, "rovid"),
-                       ({"mtime": CSEND - 9 * 60 + 1}, "csend"),
-                       ({"sor": {"tiltva": "x"}}, "tiltva")):
-            self.assertEqual(self.dont(**kw)[0], st, kw)
-        self.assertEqual(self.dont(mtime=CSEND - 10 * 60)[0], "jelolt")
-
     def test_alap_utan_valtozas(self):
         md = FM + SZOVEG
         sor = sor_(md)

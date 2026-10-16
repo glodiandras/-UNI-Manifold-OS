@@ -1,0 +1,57 @@
+{
+  "_leiras": "A szállított semleges séma (a feloldási lánc vége: munkatér-fájl → a megnevezett preset sémája → ez). Nincs kulcssorrend, nincs értékkészlet (`null`: nincs korlát): a mezők nyitottak. A `[sema] mod` dönti el, hogy a séma érték- és kulcsellenőrzése számít-e (alap: `ki`); a Status gazdai védelme a módtól független.",
+  "_null": "`null` értékkészlet = nincs korlát; üres `mezosorrend` = a normál jegyzet kulcsai nyitottak (nincs ismeretlen-kulcs és sorrend-sértés).",
+  "mezosorrend": [],
+  "extra_kulcsok": [],
+  "tags_ertekkeszlet": null,
+  "status_ertekkeszlet": null,
+  "status_gazdai": true,
+  "_status_gazdai": "A Status mezőt csak a felhasználó tölti és változtatja; gépi író nem (a core `forras: gep` esetén elutasítja). A séma módjától független: a `[sema] mod = ki` sem engedi.",
+  "kivetel_osztalyok": [
+    {
+      "nev": "kviz",
+      "kisero": "kviz",
+      "mezosorrend": [
+        "Source",
+        "Kviz",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1_minta": "^(.+ — Kvíz \\d{4}-\\d{2}-\\d{2} \\d{4}(?: \\(\\d+\\))?)$",
+      "h1_egyezzen_fajlnevvel": true
+    },
+    {
+      "nev": "kartya",
+      "kisero": "kartya",
+      "mezosorrend": [
+        "Source",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1": false
+    },
+    {
+      "nev": "osszefoglalo",
+      "kisero": "osszefoglalas",
+      "mezosorrend": [
+        "Source",
+        "Osszefoglalas",
+        "Szint",
+        "Modell",
+        "Keszult"
+      ],
+      "tartalmi": false,
+      "h1": false
+    }
+  ],
+  "h1": {},
+  "sema_nelkuli_utak": [],
+  "sema_nelkuli_nevek": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "MEMORY.md"
+  ],
+  "_sema_nelkuli_nevek": "Ügynök-hordozó fájlok: nem vault-jegyzetek, a séma nem vonatkozik rájuk, és gép nem ír beléjük (a kód saját állandója ugyanezt a három nevet mindig tartja)."
+}

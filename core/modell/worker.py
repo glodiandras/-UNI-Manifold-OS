@@ -1,8 +1,10 @@
 """A modell-worker: külön folyamat, egyszerre EGY modellel (ARCHITECTURE 1.–2.; a legacy `gazda` utódja).
 
 Életciklus (a héj↔core mintája): a core indítja stdin-csővel; az első stdout-sor `{"port", "pid"}`; a
-stdin lezárulásakor a folyó hívás végén kiürít és kilép. Egy gépen egy worker fut (`{run}/worker.lock`),
-a címe a `{run}/worker.pid`-ben (`"<pid> <port> <titok>"`, L29; 0600). A worker a vaultba nem ír és nem olvas belőle.
+stdin lezárulásakor a folyó hívás végén kiürít és kilép. Egy telepítésen egy worker fut (`{install_run}/worker.lock`; F3-DESIGN
+§4), a címe a `{install_run}/worker.pid`-ben (`"<pid> <port> <titok>"`, L29; 0600): a többi core (más munkatér) ezen át veszi
+át (D4: a worker az indító core gyermeke). A worker csak a telepítés szakaszait olvassa (`config.load(munkater=False)`), a
+vaultba nem ír és nem olvas belőle. Hordozható elrendezésben az `{install_run}` a v2-beli `var/run`.
 
 Biztonság (L29): csak `127.0.0.1`; a `Host` csak helyi cím; minden kérésben `X-Manifold: <titok>`. C33 (T182): a titok
 munkamenetenként sorsolt (a core a `MOS_WORKER_TITOK` env-ben adja, különben a worker sorsol), a pidfájl 0600, így egy
@@ -341,7 +343,7 @@ def gazda_osszerak(cfg: config.Config, titok: str | None = None) -> Gazda:
 
 
 def pidfajl_ir(ut: Path, pid: int, port: int, titok: str) -> None:
-    """A `{run}/worker.pid` (`"<pid> <port> <titok>"`) 0600-as joggal, atomi cserével (T182): a titkot más fiók nem olvassa."""
+    """A `{install_run}/worker.pid` (`"<pid> <port> <titok>"`) 0600-as joggal, atomi cserével (T182): a titkot más fiók nem olvassa."""
     tmp = ut.with_name(f".{ut.name}.{os.getpid()}.tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
@@ -354,15 +356,16 @@ def pidfajl_ir(ut: Path, pid: int, port: int, titok: str) -> None:
 
 def main(stdin=None, out=None) -> int:
     # L28: futásidőben offline; a modellek a {models} alatt
-    cfg = config.load()
+    # F3: a worker gépszintű — csak a telepítés szakaszai kellenek, munkatér nélkül is betölt (a `{var}` családja halasztott)
+    cfg = config.load(munkater=False)
     os.environ.update({"HF_HOME": str(cfg.path("models")), "HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
-    run = cfg.path("run")
+    run = cfg.path("install_run")
     run.mkdir(parents=True, exist_ok=True)
     lock_fd = os.open(run / "worker.lock", os.O_RDWR | os.O_CREAT, 0o644)
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
-        print(json.dumps({"hiba": "már fut egy modell-worker (var/run/worker.pid)"}), flush=True)
+        print(json.dumps({"hiba": f"már fut egy modell-worker ({run / 'worker.pid'})"}, ensure_ascii=False), flush=True)
         return 3
     titok = os.environ.get("MOS_WORKER_TITOK") or secrets.token_urlsafe(24)
     g = gazda_osszerak(cfg, titok=titok)

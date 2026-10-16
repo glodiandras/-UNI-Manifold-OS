@@ -32,10 +32,10 @@ import os
 import re
 import unicodedata
 
-from .. import utkapu
+from .. import rejtett, utkapu
 from .maszk import link_maszk, mask_code  # noqa: F401 — a `mask_code` innen is elérhető (a maszk helye: `maszk.py`)
 
-SKIP_DIRS = {".obsidian", ".trash", ".git", "node_modules"}
+SKIP_DIRS = rejtett.KIHAGYOTT_MAPPAK     # I6 (F3): egy forrás minden vault-bejárónak — benne a `.manifold` (próbaklónok, állapot)
 
 WIKI_RE = re.compile(r"!?\[\[([^\]\|\#]*)")
 MD_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
@@ -123,7 +123,7 @@ def bejaras(root) -> list[tuple[str, str]]:
     root = os.fspath(root)
     out = []
     for dp, dn, fn in os.walk(root):
-        dn[:] = [d for d in dn if d not in SKIP_DIRS]
+        rejtett.metsz(dn)
         for f in fn:
             if not f.startswith(".") and utkapu.belul(root, os.path.join(dp, f)):     # T098: vaulton kívülre mutató symlink nem fájl
                 out.append(os.path.join(dp, f))

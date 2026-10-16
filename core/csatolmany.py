@@ -12,7 +12,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from . import frame, snapshot, tartos, vaultio
+from . import frame, rejtett, snapshot, tartos, vaultio
 from .utvonalak import HttpError
 
 DARAB = 4 * 1024 * 1024
@@ -304,7 +304,10 @@ def kuka(app, d, vegrehajt=None):
             raise HttpError(400, 'Csak a vaulton belüli fájl vagy mappa tehető a Kukába.')
         utak = [rp]
         if p.is_dir():
-            utak += [vaultio.nfc(f.relative_to(app.vault.root).as_posix()) for f in p.rglob('*') if f.is_file()]
+            for dp, dn, fn in os.walk(p):        # I6 (F3): a `.manifold` (állapot) nélkül; a többi mappa (`.git`, `node_modules` …) zárolt marad (v2)
+                rejtett.metsz_munkater(dn)
+                utak += [vaultio.nfc((Path(dp) / f).relative_to(app.vault.root).as_posix()) for f in fn
+                         if (Path(dp) / f).is_file()]
         zarak = {}
         for u in sorted(utak, key=lambda u: vaultio.nfc(u).casefold()):
             z = vaultio._ut_zar(u)

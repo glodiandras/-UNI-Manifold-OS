@@ -37,8 +37,17 @@ def szerdak(db: int, *, perc: int = 30, ut: str = MATEK, tantargy: str = "Mathem
     return [sor(SZERDA - timedelta(days=7 * k), ut, perc, tantargy) for k in range(kezdet, kezdet + db)]
 
 
+class _Cfg:
+    """Álkonfig: az `[asszisztens] tantargy_nevek` a munkatér adata (a termék üresen szállítja; a fejlesztő szótára a `v2-kompat` presetben
+    van, `tests/preset_v2/test_asszisztens_v2.py`), itt egy semleges, kifejezett térkép."""
+    NEVEK = {"Mathematics": "matematika", "Physics": "fizika"}
+
+    def section(self, *a):
+        return {"tantargy_nevek": dict(self.NEVEK)} if a == ("asszisztens",) else {}
+
+
 class TisztaTest(unittest.TestCase):
-    B = beallitasok(type("C", (), {"section": lambda self, *a: {}})())
+    B = beallitasok(_Cfg())
 
     def j(self, sorok, ma=SZERDA, szorzo=1.0):
         return szokas.javaslat(sorok, ma, self.B, szorzo)

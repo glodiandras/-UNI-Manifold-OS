@@ -35,6 +35,7 @@ import math
 import re
 from dataclasses import dataclass
 
+from . import kiserok
 from .index import maszk
 
 NYELV = "teszt"
@@ -248,7 +249,7 @@ def cpp_vaz() -> str:
 def feladat_vaz(nev: str, tag: str | None) -> str:
     """Az új feladat-jegyzet beépített váza (a vault sémája: `Tags`, `Source`, `Status`, `NN`, `Canvas`; a `Tags` a
     legfelső mappa tárgybetűjéből, vagy üres). A sablonmappa `C++ feladat` jegyzete felülírja (a `{{title}}` a jegyzet neve)."""
-    tags = f"Tags:\n  - {tag}\n" if tag else "Tags:\n"
+    tags = f"Tags:\n  - {kiserok.yaml_cimke(tag)}\n" if tag else "Tags:\n"      # a címke a munkatér beállításából jön: nyersen nem írjuk
     return (f"---\n{tags}Source:\nStatus:\nNN:\nCanvas:\n---\n\n"
             f"# {nev}\n\n"
             "## Feladat\n\nÍrd ide a feladat leírását.\n\n"

@@ -22,6 +22,7 @@ from dataclasses import dataclass, field, fields
 from datetime import datetime
 from typing import Callable
 
+from core import kiserok
 from modulok.eval.kozos import kimenet
 from modulok.kapuk import forras as KF
 from modulok.kapuk import huseg as KH
@@ -74,6 +75,7 @@ def beallitas(cfg) -> Beallitas:
     ismeretlen = sorted(set(adat) - _MEZOK)
     if ismeretlen:
         raise ValueError(f"[osszefoglalas]: ismeretlen kulcs: {', '.join(ismeretlen)}")
+    adat["mappa"] = kiserok.kisero_mappa(cfg, "osszefoglalas")
     return Beallitas(**adat, kihagyott_szakaszok=KF.kihagyott_szakaszok(cfg))
 
 

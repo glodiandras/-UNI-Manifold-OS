@@ -67,8 +67,10 @@ def index_hashek(c) -> dict[str, str | None]:
     return {u: h for u, h in c.execute("SELECT ut, hash FROM fajl WHERE torolve IS NULL AND tipus = 'md'")}
 
 
-def jegyzet_darabjai(c, ut: str, darab_max: int = darabolas.DARAB_MAX) -> list[darabolas.Darab]:
-    """A jegyzet darabjai az index tábláiból (`fts.tartalom`, `fejezet`, `blokk`); nincs ilyen élő jegyzet → `[]`."""
+def jegyzet_darabjai(c, ut: str, darab_max: int = darabolas.DARAB_MAX,
+                     kihagyott: tuple[str, ...] | list[str] | None = None) -> list[darabolas.Darab]:
+    """A jegyzet darabjai az index tábláiból (`fts.tartalom`, `fejezet`, `blokk`); nincs ilyen élő jegyzet → `[]`. `kihagyott`: a
+    kihagyott szakaszok címei (`[kapuk] kihagyott_szakaszok`; hiányában a kapu alapja)."""
     r = c.execute("SELECT f.id, fts.tartalom FROM fajl f JOIN fts ON fts.rowid = f.id "
                   "WHERE f.ut = ? AND f.torolve IS NULL AND f.tipus = 'md'", (ut,)).fetchone()
     if r is None:
@@ -76,7 +78,7 @@ def jegyzet_darabjai(c, ut: str, darab_max: int = darabolas.DARAB_MAX) -> list[d
     fid, tartalom = r[0], r[1] or ""
     fejezetek = c.execute("SELECT szint, szoveg, sor FROM fejezet WHERE fajl_id = ? ORDER BY sor", (fid,)).fetchall()
     blokkok = c.execute("SELECT azon, sor, kezdo_sor FROM blokk WHERE fajl_id = ? ORDER BY sor", (fid,)).fetchall()
-    return darabolas.darabol(ut, tartalom, [tuple(x) for x in fejezetek], [tuple(x) for x in blokkok], darab_max)
+    return darabolas.darabol(ut, tartalom, [tuple(x) for x in fejezetek], [tuple(x) for x in blokkok], darab_max, kihagyott)
 
 
 @dataclass
@@ -101,7 +103,7 @@ class Eredmeny:
 
 def frissit(index_olvaso, tar: Vektortar, beagyazo: Beagyazo, folytathat: Callable[[], bool] = lambda: True,
             koteg: int = 16, max_jegyzet: int | None = None, darab_max: int = darabolas.DARAB_MAX,
-            ido: Callable[[], float] = time.time) -> Eredmeny:
+            ido: Callable[[], float] = time.time, kihagyott: tuple[str, ...] | list[str] | None = None) -> Eredmeny:
     """A tár a vaulthoz igazítva (lásd a modul leírását). `index_olvaso`: kontextuskezelő-gyár a `vault.sqlite`
     olvasó kapcsolatához (az `IndexOlvaso.olvaso`); `max_jegyzet`: legfeljebb ennyi jegyzet ágyazódik be ebben a futásban."""
     t0 = time.monotonic()
@@ -121,7 +123,7 @@ def frissit(index_olvaso, tar: Vektortar, beagyazo: Beagyazo, folytathat: Callab
             break
         with index_olvaso() as c:
             r = c.execute("SELECT hash FROM fajl WHERE ut = ? AND torolve IS NULL AND tipus = 'md'", (ut,)).fetchone()
-            darabok = jegyzet_darabjai(c, ut, darab_max)
+            darabok = jegyzet_darabjai(c, ut, darab_max, kihagyott)
         if r is None:                                   # közben eltűnt: a következő terv törli
             continue
         meglevo = tar.vektorok_hash_szerint(d.hash for d in darabok)

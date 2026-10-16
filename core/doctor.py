@@ -1,6 +1,11 @@
 """Doctor: jelzi, ha bármi a rendszer-Pythonra, a ~/Applications-re vagy a ~/.cache-re mutat.
 
 Csak a standard könyvtárat használja, így a venv nélkül is fut. Kilépési kód: 0 zöld, 1 piros.
+
+Két mód (F3-DESIGN §6): `hordozhato` (a fejlesztő checkoutja, a v2 szabályai változatlanul) és `termek` (a `*.app` csomag:
+csomag-épség, I1, a munkatér, a regiszter, a kötet- és zárszabályok). Minden sor stabil `kod`-ot, `osztaly`-t (`termek` |
+`fejleszto`) és — ha van gépi javítása — `javitas`-azonosítót kap; a `--json` kimenet ezt adja a Health nézetnek (F7). A doctor
+csak olvas: a javítás azonosítója a nézet dolga, a végrehajtása nem itt történik.
 """
 from __future__ import annotations
 
@@ -12,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -34,6 +40,48 @@ class Eredmeny:
     allapot: str
     nev: str
     uzenet: str
+    kod: str = ""                 # stabil azonosító (a Health ezzel hivatkozik a sorra; a `nev` szövege változhat)
+    osztaly: str = "termek"       # "termek": a termék felhasználóját érinti; "fejleszto": csak forrás-checkouton értelmes
+    javitas: str | None = None    # gépi javítás azonosítója (JAVITASOK), vagy None
+
+    def szotar(self) -> dict:
+        return {"kod": self.kod, "allapot": self.allapot, "nev": self.nev, "uzenet": self.uzenet,
+                "osztaly": self.osztaly, "javitas": self.javitas}
+
+
+JAVITASOK = ("regiszter_takarit", "zar_takarit")      # a doctor csak az azonosítót adja; a végrehajtás a Health (F7) dolga
+
+# A rögzített nevű sorok kódjai. A dinamikus nevűek (`pillanatkép (<tár>)`, `<tár>.git`, `build-<rész>`…) a névből képződnek
+# (`_kod_nevbol`). A kódok nem változnak, ha a szöveg igen: a `tests/test_doctor_termek.py` rögzíti őket.
+_NEV_KOD = {
+    "gyökér": "gyoker", "kötet": "kotet", "var symlink": "var_symlink", "vault": "vault", "vault .gitattributes": "vault_gitattributes",
+    "vault ideiglenes fájlok": "vault_ideiglenes", "python": "python", "~/Applications, ~/.cache": "sajat_utak",
+    "vault-séma": "vault_sema", "git": "git", "git függőség": "git_fuggoseg", "offline": "offline", "runtime": "runtime",
+    "lock": "lock", "runtime verzió": "runtime_verzio", "requirements.in": "requirements_in", "ffmpeg": "ffmpeg",
+    "modell-revízió": "modell_revizio", "kalibráció-pillanatkép": "kalibracio_pillanatkep", "Manifold.app": "manifold_app",
+    "aláírás": "alairas", "naptár-segéd": "naptar_seged", "naptár-engedély": "naptar_engedely", "home írások": "home_irasok",
+    "@napi-rs/canvas": "napi_canvas", "Spotlight": "spotlight", "felület": "felulet", "mentés": "mentes",
+    "mentés (kódtár)": "mentes_kodtar", "mentés (állapot)": "mentes_allapot", "mentés hiba": "mentes_hiba", "index": "index",
+    "index (félretett)": "index_felretett", "kapu": "kapu", "C++ eszköztár": "cpp_eszkoztar", "C++ linker": "cpp_linker",
+    "C++ SDK": "cpp_sdk", "próbaklónok": "probaklonok", "próbaklónok (gépi)": "probaklonok_gepi", "core": "core",
+    "összeomlás-horog": "osszeomlas_horog", "pillanatkép bináris": "pillanatkep_binaris",
+    "pillanatkép kód (ytdlp)": "pillanatkep_kod_ytdlp",
+}
+# Csak forrás-checkouton (hordozható elrendezés) értelmes sorok: a termék-futásban nem is keletkeznek, a hordozhatóban `fejleszto`
+FEJLESZTO_KODOK = frozenset({"gyoker", "var_symlink", "python", "sajat_utak", "runtime", "lock", "runtime_verzio", "requirements_in",
+                             "manifold_app", "alairas", "napi_canvas", "felulet", "kapu", "osszeomlas_horog"})
+FEJLESZTO_ELOTAGOK = ("build_",)
+
+
+def _ascii(szoveg: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", szoveg) if not unicodedata.combining(c))
+
+
+def _kod_nevbol(nev: str) -> str:
+    """A sor kódja a nevéből: a rögzített táblából, különben ékezetmentes, `_`-elválasztású kisbetűs szlug."""
+    if nev in _NEV_KOD:
+        return _NEV_KOD[nev]
+    return re.sub(r"[^a-z0-9]+", "_", _ascii(nev).lower()).strip("_") or "sor"
 
 
 def _szoveges(p: Path) -> str | None:
@@ -62,18 +110,56 @@ def _sajat_fajlok(root: Path):
 
 
 def _sema_ellenor(cfg) -> tuple[str, str]:
-    """A `[sema] vault`: a kulcs megvan, a fájl létezik, és olvasható JSON-objektum a kötelező
-    `mezosorrend` listával. A doctor importmentes (a venv nélkül is fut), ezért csak a `json`-nal olvas."""
+    """A vault-séma a feloldási lánc szerint (F3-DESIGN §2.4; `core/kiserok.sema_fajl`): a `[sema] vault` fájl, ha létezik (termékben
+    `{workspace}/schema.json`) → az első megnevezett preset `<nev>.schema.json`-ja → a szállított `[sema] alap`. A kiválasztott fájl
+    olvasható JSON-objektum kell legyen a kötelező `mezosorrend` listával. Ha egyik sincs, az csak `[sema] mod != "ki"` esetén hiba
+    (kikapcsolt sémaellenőrzésnek nincs mire hivatkoznia). A doctor importmentes (a venv nélkül is fut)."""
     try:
-        nyers = cfg.section("sema").get("vault")
-    except Exception as e:  # noqa: BLE001 — a hibás config is jelzés, nem összeomlás
-        return HIBA, f"a [sema] szakasz nem olvasható: {e}"
-    if not nyers:
-        return HIBA, "a config/os.toml [sema] vault kulcsa hiányzik"
+        from . import kiserok
+        sec = cfg.section("sema")
+        fajlok = kiserok.sema_fajlok(cfg)
+    except Exception as e:  # noqa: BLE001 — a hibás config vagy a feloldó hibája jelzés, nem összeomlás
+        return HIBA, f"a vault-séma feloldása nem sikerült: {e}"
+    if fajlok:
+        # a betöltő az első ÉRVÉNYES jelöltet használja (`Sema.betolt`): az előtte állók hibája figyelmeztetés, nem hiba
+        kihagyott = []
+        for ut in fajlok:
+            try:
+                kiserok.sema_olvas(ut)
+            except kiserok.SemaHiba as e:
+                kihagyott.append(str(e))
+                continue
+            allapot, uzenet = _sema_fajl(ut)
+            if kihagyott:
+                return FIGYELEM, f"a(z) {_fentiek(kihagyott)} érvénytelen, ezért kimarad; helyette: {uzenet}"
+            return allapot, uzenet
+        return HIBA, f"nincs érvényes vault-séma: {_fentiek(kihagyott)}"
+    probalt = []
+    for kulcs in ("vault", "alap"):
+        try:
+            if sec.get(kulcs):
+                probalt.append(cfg.expand(sec[kulcs]))
+        except config.ConfigError:
+            pass                                  # nincs megnyitott munkatér: a `{workspace}` alatti elem nem számít
+    if sec.get("mod", "ki") == "ki":
+        return INFO, "nincs vault-séma, de a sémaellenőrzés ki van kapcsolva ([sema] mod = ki)"
+    return HIBA, f"nincs vault-séma: a munkatér, a presetek és a szállított alap sémája sem található ({', '.join(probalt) or 'nincs [sema] út'})"
+
+
+def _kivetelek_sor(cfg: config.Config, add) -> None:
+    """A visszavonási kivételek fájlja (`[pillanat.<tár>].kivetelek`; a termékben a munkatér `pillanat-kivetelek.json`-ja, megbízhatatlan):
+    az érvénytelen bejegyzés kimarad a visszavonásból (nem kivétellel áll le), és itt figyelmeztet."""
     try:
-        ut = Path(cfg.expand(nyers))
-    except Exception as e:  # noqa: BLE001
-        return HIBA, f"a [sema] vault nem oldható fel: {e}"
+        from . import snapshot
+        gondok = [f"{nev}: {h}" for nev in cfg.section("pillanat") for h in snapshot.kivetelek_hibak(cfg, nev)]
+    except Exception:  # noqa: BLE001 — feloldatlan útnál (nincs munkatér) nincs mit jelezni
+        return
+    if gondok:
+        add(FIGYELEM, "visszavonási kivételek", f"{len(gondok)} érvénytelen bejegyzés kimarad a visszavonásból: {_fentiek(gondok)}",
+            kod="kivetelek_hibas")
+
+
+def _sema_fajl(ut: Path) -> tuple[str, str]:
     if not ut.is_file():
         return HIBA, f"nincs vault-séma: {ut}"
     try:
@@ -94,7 +180,10 @@ def _tarolok(cfg: config.Config) -> list[tuple[str, Path]]:
     nélkül is fut)."""
     out = []
     for name, sec in cfg.section("pillanat").items():
-        g = Path(cfg.expand(sec["git_dir"]))
+        try:
+            g = Path(cfg.expand(sec["git_dir"]))
+        except config.ConfigError:
+            continue                                # nincs vault/munkatér: ennek a tárolónak nincs hova állnia
         if (g / "HEAD").is_file():
             out.append((name, g))
     return out
@@ -178,7 +267,7 @@ def _vault(cfg: config.Config, environment: dict[str, str], add) -> None:
                                                  f"({_fentiek(tmp)}); a core következő indulása törli")
 
 
-def _tarolok_allapota(cfg: config.Config, add) -> None:
+def _tarolok_allapota(cfg: config.Config, add, termek: bool = False) -> None:
     """T024: ha a tároló munkafája él, a pillanatkép-tárolónak is élnie kell (visszavonás, előzmény, bundle nélküle
     nincs), a `core.worktree` a munkafára mutat, és az `info/exclude` a configból generált. A vaultnál HIBA; más
     tárolónál (a ytdlp munkafája a C20-ig hiányzik) csak az a baj, ha a munkafa megvan, a tároló nincs."""
@@ -209,6 +298,16 @@ def _tarolok_allapota(cfg: config.Config, add) -> None:
             add(sulyos, felirat, "; ".join(hibak))
         else:
             add(OK, felirat, f"{repo.git_dir} rendben")
+        if name == "vault" and (termek or (repo.work_tree / ".manifold").is_dir()):
+            # F3 I6: a `.manifold/` (benne a próbaklónok és az állapot) a pillanatképbe soha nem kerülhet
+            kizarva = ".manifold/" in (_szoveges(repo.git_dir / "info" / "exclude") or "").splitlines()
+            if kizarva:
+                add(OK, "pillanatkép (.manifold)", "a .manifold/ az info/exclude-ban van: a munkatér állapota nem kerül a pillanatképbe",
+                    kod="manifold_kizarva")
+            else:
+                add(HIBA if termek else FIGYELEM, "pillanatkép (.manifold)",
+                    "a .manifold/ nincs az info/exclude-ban: a munkatér állapota (a próbaklónokkal együtt) bekerülhet a pillanatképbe "
+                    "(a core következő indulása újragenerálja az info/exclude-ot)", kod="manifold_kizarva")
 
 
 def _tarolt_binaris(cfg: config.Config, add) -> None:
@@ -241,7 +340,7 @@ def _tarolt_binaris(cfg: config.Config, add) -> None:
                                                       "kézi változásként kerül az ytdlp tárba")
 
 
-def _video_ffmpeg(cfg: config.Config, home: Path, add) -> None:
+def _video_ffmpeg(cfg: config.Config, home: Path, add, termek: bool = False) -> None:
     """C20a (2. audit T055): a videólánc ffmpeg-je a `runtime/ffmpeg/ffmpeg` pinelt build legyen — a home-beli (`~/.local/bin`, egy törölt
     Save4K-alkalmazás symlinkje) és a rendszer-útvonali ffmpeg **tiltott**; a bináris sha256-ja egyezzen a `config/runtime-pins.env`
     `FFMPEG_BIN_SHA256`-jával. A hiány csak FIGYELEM (a videólánc nem indul, az app igen). Csak olvas."""
@@ -253,7 +352,8 @@ def _video_ffmpeg(cfg: config.Config, home: Path, add) -> None:
         add(HIBA, "ffmpeg", f"tiltott hely: {felold} — a home-beli és a rendszer-ffmpeg nem használható (a pinelt build: runtime/ffmpeg/ffmpeg)")
         return
     if not (ff.is_file() and os.access(ff, os.X_OK)):
-        add(FIGYELEM, "ffmpeg", f"hiányzik: {ff} — a videólánc nem indul (bin/mos runtime fetch ffmpeg)")
+        add(FIGYELEM, "ffmpeg", f"hiányzik: {ff} — a videólánc nem indul "
+                                f"({'a csomag hiányos: telepítsd újra a Manifoldot' if termek else 'bin/mos runtime fetch ffmpeg'})")
         return
     pins = _szoveges(cfg.root / "config" / "runtime-pins.env") or ""
     m = re.search(r"^FFMPEG_BIN_SHA256=(\S+)", pins, re.M)
@@ -350,36 +450,43 @@ def _kovetelmenyek(cfg: config.Config, add) -> None:
         add(OK, "requirements.in", f"{len(kellene)} csomag, mind a lockban")
 
 
-def _never_index(var: Path, add) -> None:
-    """L50 (C34, T190): a `var/.metadata_never_index` megléte (Spotlight-kizárás). A `bin/mos` minden indításkor létrehozza."""
+def _never_index(var: Path, add, install: Path | None = None) -> None:
+    """L50 (C34, T190): a `var/.metadata_never_index` megléte (Spotlight-kizárás). A `bin/mos` minden indításkor létrehozza;
+    termékben a `core.gyokerek.biztosit_mappak` a `{var}` és a `{install}` alatt is (az `install` csak ott adott, ahol különbözik)."""
     if not var.is_dir():
         return
-    if (var / ".metadata_never_index").exists():
-        add(OK, "Spotlight", "a var/ Spotlight-kizárt (.metadata_never_index)")
+    helyek = [var] + ([install] if install is not None and install.is_dir() and install != var else [])
+    hianyzik = [h for h in helyek if not (h / ".metadata_never_index").exists()]
+    if not hianyzik:
+        add(OK, "Spotlight", "a var/ Spotlight-kizárt (.metadata_never_index)" if len(helyek) == 1
+            else "a var/ és a telepítési mappa Spotlight-kizárt (.metadata_never_index)")
     else:
-        add(FIGYELEM, "Spotlight", "hiányzik a var/.metadata_never_index: a Spotlight indexelné a modelleket és az indexeket — "
-                                   "a következő bin/mos hívás létrehozza")
+        add(FIGYELEM, "Spotlight", f"hiányzik a .metadata_never_index: {', '.join(str(h) for h in hianyzik)} — a Spotlight indexelné "
+                                   "a modelleket és az indexeket — a következő indítás létrehozza")
 
 
 APP_AZONOSITO = config.BUNDLE_ID
 HOME_KIVETEL = f"Library/Preferences/{APP_AZONOSITO}.plist"
 HOME_NEM_ENGEDETT = ("Library/Saved Application State", "Library/Caches", "Library/WebKit", "Library/HTTPStorages",
                      "Library/Application Support", "Library/Containers", "Library/Logs")
+HOME_TERMEK_ENGEDETT = "Library/Application Support/Manifold"       # a termék telepítési mappája (`{install}`): a saját helye
 
 
-def _home_irasok(home: Path, add) -> None:
+def _home_irasok(home: Path, add, termek: bool = False) -> None:
     """C34 (T189, K1-A2-hej-11): a héj a home alá nem ír — kivéve az AppKit/cfprefsd `~/Library/Preferences/<BUNDLE_ID>.plist`-jét (a natív helyi menü helyesírás-panelje ablakkeret-bejegyzéseket tesz bele), és a belső lemezes mentést
     (`~/Manifold-backup`). Az első megengedett kivétel (INFO); bármi más a héj azonosítójával (mentett ablakállapot,
     WebKit-tár, gyorsítótár) FIGYELEM. Csak olvas."""
     try:
         if (home / HOME_KIVETEL).is_file():
-            add(INFO, "home írások", f"~/{HOME_KIVETEL} megengedett kivétel (AppKit ablakkeretek; a belső mentés, ~/Manifold-backup "
-                                     "mellett az egyetlen hely, ahová a Manifold a home alá ír)")
+            add(INFO, "home írások", f"~/{HOME_KIVETEL} megengedett kivétel (AppKit ablakkeretek; " + (
+                f"a telepítési mappa, ~/{HOME_TERMEK_ENGEDETT} mellett az egyetlen hely, ahová a Manifold a home alá ír)" if termek else
+                "a belső mentés, ~/Manifold-backup mellett az egyetlen hely, ahová a Manifold a home alá ír)"))
         idegen = []
         for rel in HOME_NEM_ENGEDETT:
             d = home / rel
             if d.is_dir():
-                idegen += [f"~/{rel}/{p.name}" for p in d.glob(f"{APP_AZONOSITO}*")]
+                idegen += [f"~/{rel}/{p.name}" for p in d.glob(f"{APP_AZONOSITO}*")
+                           if not (termek and f"{rel}/{p.name}" == HOME_TERMEK_ENGEDETT)]
         if idegen:
             add(FIGYELEM, "home írások", f"a héj azonosítójával a home alatt nem engedett fájl: {_fentiek(sorted(idegen))} "
                                          "(az ablak-visszaállítás és a nonPersistent WebKit-tár miatt nem jöhetne létre)")
@@ -722,86 +829,606 @@ def _cpp(cfg: config.Config, add, kivul: bool) -> None:
         add(OK, "C++ SDK", f"SDK {sdk_v}" + (f" (macOS {os_v})" if os_v else ""))
 
 
-def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
-              futo_python: Path | None = None) -> list[Eredmeny]:
-    root, r = cfg.root, []
-    add = lambda a, n, u: r.append(Eredmeny(a, n, u))  # noqa: E731
-    runtime, venv, var = cfg.path("runtime"), cfg.path("venv"), cfg.path("var")
-    futo = Path(futo_python or sys.executable)
+# ------------------------------------------------------------------ F3: termék (csomag) és munkatér (F3-DESIGN §3, §4, §5, §6)
 
-    # gyökér
-    ok = (root / "bin" / "mos").exists() and (root / "config" / "os.toml").exists()
-    add(OK if ok else HIBA, "gyökér", str(root) if ok else f"nem érvényes gyökér: {root}")
-    if var.exists() and cfg.path("vault").exists():
-        add(OK if var.stat().st_dev == cfg.path("vault").stat().st_dev else HIBA, "kötet",
-            "a var/ és a vault ugyanazon a köteten van" if var.stat().st_dev == cfg.path("vault").stat().st_dev
-            else "a var/ és a vault külön köteten van (az atomi csere és a klón nem működik)")
-    elif not var.exists():
-        add(HIBA, "kötet", f"nincs var/: {var}")
+MIN_SZABAD_FIGYELEM = 5 << 30           # ez alatt kevés a hely (pillanatképek, bundle-ök, index nőnek)
+MIN_SZABAD_HIBA = 1 << 30               # ez alatt az atomi írás és a mentés megbízhatatlan
+_MNT_LOCAL = 0x00001000                  # <sys/mount.h>: a kötet helyi (nem hálózati)
 
-    # a var/ symlinkje (T002): egy munkafa `var/`-ja a valódi állapotra mutatna, és az ott indított core (selftest,
-    # core start) a valódi kör-zárat, szándéknaplókat, feladatsort, indexet és személyes adatot kapná
-    gyoker_var = root / "var"
-    if gyoker_var.is_symlink():
-        cel = Path(os.path.realpath(gyoker_var))
-        belul = cel == Path(os.path.realpath(root)) or Path(os.path.realpath(root)) in cel.parents
-        add(OK if belul else HIBA, "var symlink",
-            f"a var/ symlink, de a gyökéren belülre mutat: {os.readlink(gyoker_var)}" if belul else
-            f"a var/ symlink, amely a gyökéren ({root}) kívülre mutat: {os.readlink(gyoker_var)} → {cel}; a core a valódi "
-            "állapotot használná (egy munkafának saját var/ kell; bin/mos: munkafa-mód)")
+
+def _formatumok() -> tuple[int, int]:
+    """(`FORMATUM`, `FORMATUM_MAX`) a `core/workspace.py`-ból; ha az nem tölthető be, az F3 alapértéke (1, 1). A doctor
+    importmentes marad: a venv nélkül és a workspace-modul nélkül is fut."""
+    try:
+        from . import workspace
+        return int(workspace.FORMATUM), int(workspace.FORMATUM_MAX)
+    except Exception:  # noqa: BLE001 — bármi, ami a modul betöltését akadályozza, nem állíthatja meg az ellenőrzést
+        return 1, 1
+
+
+def _legkozelebbi(p: Path) -> Path:
+    """A legközelebbi létező ős (maga az út, ha létezik)."""
+    q = Path(p)
+    while not q.exists() and q.parent != q:
+        q = q.parent
+    return q
+
+
+def _eszkoz(p: Path) -> int | None:
+    """Az út kötetének azonosítója (`st_dev`); nem létező útnál a legközelebbi létező őséé."""
+    try:
+        return os.stat(_legkozelebbi(p)).st_dev
+    except OSError:
+        return None
+
+
+def _alatt(p: Path, anya: Path) -> bool:
+    """`p` az `anya` maga vagy alatta áll — a normalizált és a valós (symlinkeket feloldó) írásmód szerint is."""
+    for a, b in ((os.path.normpath(p), os.path.normpath(anya)), (os.path.realpath(p), os.path.realpath(anya))):
+        if a == b or a.startswith(b.rstrip(os.sep) + os.sep):
+            return True
+    return False
+
+
+def _fajlrendszer(ut: Path) -> tuple[str, bool] | None:
+    """(a fájlrendszer neve kisbetűvel, helyi-e) a `statfs`-ből (macOS); más rendszeren vagy hibánál None. Külön függvény, hogy a
+    teszt lecserélhesse."""
+    if sys.platform != "darwin":
+        return None
+    try:
+        import ctypes
+
+        class Statfs(ctypes.Structure):          # <sys/mount.h> struct statfs (64 bites inode-változat)
+            _fields_ = [("f_bsize", ctypes.c_uint32), ("f_iosize", ctypes.c_int32), ("f_blocks", ctypes.c_uint64),
+                        ("f_bfree", ctypes.c_uint64), ("f_bavail", ctypes.c_uint64), ("f_files", ctypes.c_uint64),
+                        ("f_ffree", ctypes.c_uint64), ("f_fsid", ctypes.c_int32 * 2), ("f_owner", ctypes.c_uint32),
+                        ("f_type", ctypes.c_uint32), ("f_flags", ctypes.c_uint32), ("f_fssubtype", ctypes.c_uint32),
+                        ("f_fstypename", ctypes.c_char * 16), ("f_mntonname", ctypes.c_char * 1024),
+                        ("f_mntfromname", ctypes.c_char * 1024), ("f_flags_ext", ctypes.c_uint32),
+                        ("f_reserved", ctypes.c_uint32 * 7)]
+        libc = ctypes.CDLL(None, use_errno=True)
+        fv = getattr(libc, "statfs$INODE64", None) or libc.statfs
+        fv.argtypes = [ctypes.c_char_p, ctypes.POINTER(Statfs)]
+        fv.restype = ctypes.c_int
+        sf = Statfs()
+        if fv(os.fsencode(_legkozelebbi(ut)), ctypes.byref(sf)) != 0:
+            return None
+        return sf.f_fstypename.decode("ascii", "replace").lower(), bool(sf.f_flags & _MNT_LOCAL)
+    except (OSError, AttributeError, ValueError):
+        return None
+
+
+def _szinkron_fajta(ut: Path) -> str | None:
+    """A mappa szinkronizált-e: `"icloud"` | `"cloudstorage"` | `"dropbox"` | None (az út alapján, a symlinkek feloldásával)."""
+    s = os.path.realpath(ut)
+    reszek = s.split(os.sep)
+    if "/Library/Mobile Documents/" in s + "/":
+        return "icloud"
+    if "/Library/CloudStorage/" in s + "/":
+        mogotte = s.split("/Library/CloudStorage/", 1)[1].split("/", 1)[0]
+        return "dropbox" if mogotte.startswith("Dropbox") else "cloudstorage"
+    if any(r == "Dropbox" or r.startswith("Dropbox (") for r in reszek):
+        return "dropbox"
+    q = Path(s)
+    if any((a / ".dropbox").is_file() for a in (q, *q.parents)):
+        return "dropbox"
+    return None
+
+
+def _szabad_bajt(p: Path) -> int | None:
+    """A kötet szabad bájtjai (a legközelebbi létező ősön mérve); külön függvény, hogy a teszt lecserélhesse."""
+    try:
+        return shutil.disk_usage(_legkozelebbi(p)).free
+    except OSError:
+        return None
+
+
+def _codesign(app: Path) -> tuple[int, str]:
+    """`codesign --verify --deep --strict` → (visszatérési kód, hibaszöveg); külön függvény, hogy a teszt lecserélhesse."""
+    try:
+        c = subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 1, str(e)
+    return c.returncode, c.stderr.strip()
+
+
+def _bundle_sorok(cfg: config.Config, add) -> None:
+    """Termék: a csomag épsége. Az `epites.json` (a felületé az `app_dist` alatt, a héjé a `Contents/Resources/` alatt, mindkettő
+    `core.epites.jegyzek` kimenete) megvan és érvényes, a felület `index.html`-je megvan, és a csomagolt `core`+`modulok` ujjlenyomata
+    egyezik a héj jegyzékében rögzítettel (a forrás-részek — felület, héj — a csomagban nem újraszámolhatók). Az App Translocation
+    (a Gatekeeper a karanténos appot egy írásvédett, véletlen útra másolja) külön jelzés."""
+    root = cfg.root
+    if "/AppTranslocation/" in str(root) or "/AppTranslocation/" in os.path.realpath(root):
+        add(FIGYELEM, "csomag helye", f"az app App Translocation alatt fut ({root}): az útja minden indításkor más, a csomag "
+                                      "írásvédett — húzd a Manifoldot az Alkalmazások mappába, és onnan nyisd meg",
+            kod="bundle_athelyezett")
+    from . import epites
+    dist = cfg.path("app_dist")
+    hianyzik, hibas, adatok = [], [], {}
+    for nev, ut in (("felület", dist / "epites.json"), ("héj", root.parent / "epites.json")):
+        try:
+            d = json.loads(ut.read_text(encoding="utf-8"))
+        except OSError:
+            hianyzik.append(f"{nev}: {ut}")
+            continue
+        except ValueError:
+            hibas.append(f"{nev}: {ut.name} nem JSON")
+            continue
+        if isinstance(d, dict) and d.get("verzio") == 1 and all(isinstance(d.get(x), str) for x in epites.RESZEK):
+            adatok[nev] = d
+        else:
+            hibas.append(f"{nev}: {ut.name} érvénytelen jegyzék")
+    if not (dist / "index.html").is_file():
+        hianyzik.append(f"felület: {dist / 'index.html'}")
+    if hianyzik or hibas:
+        add(HIBA, "csomag épsége", f"a csomag hiányos vagy sérült ({_fentiek(hianyzik + hibas)}) — telepítsd újra a Manifoldot",
+            kod="bundle_hianyos")
+        return
+    mag = epites.ujjlenyomat(root, "mag")
+    if adatok["héj"]["mag"] != mag:
+        add(HIBA, "csomag épsége", f"a csomagolt core és modulok ujjlenyomata ({mag[:12]}) eltér a build jegyzékében rögzítettől "
+                                   f"({adatok['héj']['mag'][:12]}): a csomag a build után megváltozott — telepítsd újra a Manifoldot",
+            kod="bundle_modositott")
     else:
-        add(OK, "var symlink", "a var/ nem symlink")
+        add(OK, "csomag épsége", f"az epites.json megvan, a core és a modulok ujjlenyomata egyezik ({mag[:12]})", kod="bundle_epites")
 
-    _vault(cfg, environment, add)
-    _tarolok_allapota(cfg, add)
-    _tarolt_binaris(cfg, add)
+
+def _i1_sor(cfg: config.Config, add) -> None:
+    """I1 (termék): semmi írható nem oldódik fel a csak olvasható kódfa (`{os}`) alá. A `config.load` már megtagadja; a doctor a
+    kapott `Config`-ot újra ellenőrzi (pl. közvetlenül épített, vagy környezettel felülírt `Config`-nál)."""
+    rossz = [f"{k}={p}" for k, p in sorted(cfg.utak.items()) if k not in config.CSAK_OLVASOTT and _alatt(p, cfg.root)]
+    if rossz:
+        add(HIBA, "írás a kódfába", f"írható útvonal mutat a csak olvasható csomagba: {_fentiek(rossz)} — a core ide nem írhat",
+            kod="iras_a_kodba")
+    else:
+        add(OK, "írás a kódfába", "minden írható útvonal a csomagon kívül van", kod="iras_a_kodba")
+
+
+def _kotet_termek(cfg: config.Config, add) -> None:
+    """Termék: a `{var}`, a `{tmp}`, a beérkező mappák és a staging a vault kötetén álljon (atomi `os.replace`, APFS-klón)."""
+    vault = cfg.utak.get("vault")
+    if vault is None or not vault.exists():
+        return
+    dv = _eszkoz(vault)
+    kulon = []
+    for k in ("var", "tmp", "fuzet_bejovo", "video_bejovo", "staging"):
+        p = cfg.utak.get(k)
+        d = _eszkoz(p) if p is not None else None
+        if d is not None and dv is not None and d != dv:
+            kulon.append(f"{k} ({p})")
+    if kulon:
+        add(HIBA, "kötet", f"a vault kötetén kívül van: {_fentiek(kulon)} (az atomi csere és a klón nem működik)")
+    else:
+        add(OK, "kötet", "a var/, a tmp, a beérkező mappák és a staging a vault kötetén vannak")
+
+
+def _kotet_fajlrendszer(cfg: config.Config, add) -> None:
+    """A vault kötete: helyi-e (a `flock` hálózati kötetén megbízhatatlan) és APFS-e (különben nincs próbaklón: a gépi írás
+    D9-próbája 503-at ad — csökkentett mód)."""
+    vault = cfg.utak.get("vault")
+    if vault is None or not vault.is_dir():
+        return
+    fs = _fajlrendszer(vault)
+    if fs is None:
+        add(INFO, "vault kötete", "a fájlrendszer fajtája nem állapítható meg", kod="kotet_fajlrendszer")
+        return
+    nev, helyi = fs
+    if not helyi:
+        add(HIBA, "vault kötete", f"hálózati kötet ({nev}): a zárak (flock) rajta megbízhatatlanok — a Manifold nem nyithatja meg",
+            kod="kotet_halozati")
+    elif nev != "apfs":
+        add(FIGYELEM, "vault kötete", f"a vault kötete nem APFS ({nev}): nincs APFS-klón, ezért a gépi írások próbakörét a core "
+                                      "elutasítja (csökkentett mód)", kod="kotet_nem_apfs")
+    else:
+        add(OK, "vault kötete", "helyi APFS-kötet", kod="kotet_fajlrendszer")
+
+
+def _szinkron_sor(cfg: config.Config, add) -> None:
+    """A vault szinkronizált mappában van-e (iCloud Drive, CloudStorage, Dropbox). Az állapot (SQLite, git) szinkronizálva megsérül:
+    ott a regiszter `allapot = "telepites"`-e az állapotot a telepítési mappába viszi. Nincs szinkronizált mappa → nincs sor."""
+    vault, var = cfg.utak.get("vault"), cfg.utak.get("var")
+    fajta = _szinkron_fajta(vault) if vault is not None else None
+    if fajta is None:
+        return
+    if var is not None and _alatt(var, vault):
+        add(FIGYELEM, "szinkronizált mappa", f"a vault szinkronizált mappában van ({fajta}), és az állapota (var/) is benne áll: az SQLite- "
+                                              "és git-állapot szinkronizálva megsérülhet — az állapotnak a telepítési mappában kell lennie",
+            kod="szinkron_mappa")
+    else:
+        add(INFO, "szinkronizált mappa", f"a vault szinkronizált mappában van ({fajta}); az állapot kívül van, a szinkron csak a "
+                                          "jegyzeteket és a beállításokat viszi — az előzmény gépenként külön", kod="szinkron_mappa")
+
+
+def _munkater_sorok(cfg: config.Config, termek: bool, add) -> None:
+    """A `{workspace}/workspace.toml`: érvényes-e (TOML, `[workspace] id`, számformátumok), egyezik-e a core azonosítójával, és a
+    formátuma olvasható-e / kell-e migráció. Hordozható módban a réteg nem kötelező (csak ha létezik); termékben igen."""
+    ws = cfg.utak.get("workspace")
+    if ws is None:
+        return
+    try:                                                # I7/K3: a `.manifold` (var, workspace.toml) link nem lehet
+        config.munkater_mappa_ellenoriz(cfg.utak.get("vault") or ws.parent, ws)
+    except config.ConfigError as e:
+        add(HIBA, "munkatér", f"a munkatér-mappa szimbolikus link, ezért nem használható: {e.param.get('ut', ws)}",
+            kod="munkater_symlink")
+        return
+    ut = ws / "workspace.toml"
+    if not ut.is_file():
+        if termek:
+            var = cfg.utak.get("var")
+            reszleges = var is not None and (var / "letrehozas.json").is_file()
+            add(HIBA, "munkatér", "nincs workspace.toml: " + ("a létrehozás félbeszakadt (a következő létrehozás folytatja)" if reszleges
+                                                               else "a mappa nem Manifold-munkatér"), kod="workspace_toml")
+        return
+    try:
+        adat = config.toml_megbizhatatlan(ut, "workspace_toml_hibas")      # méret- és mélységkorláttal (megbízhatatlan réteg)
+    except (OSError, config.ConfigError) as e:
+        add(HIBA, "munkatér", f"a workspace.toml nem olvasható: {e}", kod="workspace_toml")
+        return
+    w = adat.get("workspace")
+    w = w if isinstance(w, dict) else {}
+    az, formatum, olvaso_min = w.get("id"), w.get("formatum", 1), w.get("olvaso_min", 1)
+    hibak = []
+    if not (isinstance(az, str) and config.ID_MINTA.match(az)):
+        hibak.append("a [workspace] id hiányzik, vagy nem 32 kisbetűs hexa jegy")
+    elif cfg.workspace_id and az != cfg.workspace_id:
+        hibak.append(f"az id ({az[:8]}…) eltér a core munkatér-azonosítójától ({cfg.workspace_id[:8]}…)")
+    if not all(isinstance(x, int) and not isinstance(x, bool) for x in (formatum, olvaso_min)):
+        hibak.append("a formatum és az olvaso_min egész szám kell legyen")
+    if hibak:
+        add(HIBA, "munkatér", f"a workspace.toml érvénytelen: {'; '.join(hibak)}", kod="workspace_toml")
+        return
+    add(OK, "munkatér", f"workspace.toml rendben (id {az[:8]}…, formátum {formatum})", kod="workspace_toml")
+    fm, fm_max = _formatumok()
+    if olvaso_min > fm_max:
+        add(HIBA, "munkatér formátuma", f"a munkatér újabb formátumú (olvasáshoz kell: {olvaso_min}, ez a Manifold legfeljebb {fm_max}-t "
+                                         "ért): frissítsd a Manifoldot", kod="workspace_ujabb")
+    elif formatum < fm:
+        add(FIGYELEM, "munkatér formátuma", f"a munkatér formátuma ({formatum}) régebbi a jelenleginél ({fm}): migráció esedékes",
+            kod="workspace_migracio")
+    else:
+        add(OK, "munkatér formátuma", f"formátum {formatum} (olvasáshoz kell: {olvaso_min})", kod="workspace_formatum")
+
+
+def _lecsatolt(p: str) -> bool:
+    """A `/Volumes/<kötet>/…` út kötete nincs csatlakoztatva (ez nem érvénytelen út: a külső lemez még nincs a gépben)."""
+    resz = Path(p).parts
+    return len(resz) >= 3 and resz[:2] == ("/", "Volumes") and not Path("/Volumes", resz[2]).exists()
+
+
+def _regiszter_sorok(cfg: config.Config, termek: bool, add) -> None:
+    """A gép regisztere (`{install}/workspaces.json`, csak olvasva): olvasható-e, a munkatér benne van-e a mostani útjával, és vannak-e
+    benne érvénytelen (nem létező, nem lecsatolt kötetre mutató) utak. Hordozható módban csak ha a fájl létezik."""
+    install = cfg.utak.get("install")
+    if install is None:
+        return
+    ut = install / "workspaces.json"
+    if not ut.is_file():
+        if termek:
+            add(INFO, "regiszter", "még nincs munkatér-regiszter (az első megnyitás hozza létre)", kod="regiszter")
+        return
+    try:
+        reg = json.loads(ut.read_text(encoding="utf-8"))
+        mt = reg["munkaterek"]
+        if not isinstance(mt, dict):
+            raise TypeError("munkaterek")
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        add(FIGYELEM, "regiszter", f"a munkatér-regiszter nem olvasható ({e}): csak a legutóbbiak listája vész el, a munkatér nem — "
+                                    "a megnyitás újra felveszi", kod="regiszter")
+        return
+    gondok = []
+    sajat, vault = cfg.workspace_id, cfg.utak.get("vault")
+    if sajat:
+        e = mt.get(sajat)
+        if not isinstance(e, dict):
+            gondok.append("a munkatér nincs a regiszterben (a következő megnyitás felveszi)")
+        elif vault is not None:
+            reg_ut = e.get("kanonikus") or e.get("vault")
+            if isinstance(reg_ut, str) and not _azonos_ut(reg_ut, vault):
+                gondok.append(f"a regiszter másik helyen ismeri ({reg_ut}): a mappa mozgatva vagy másolva lett — a megnyitás frissíti")
+    if gondok:
+        add(FIGYELEM, "regiszter", "; ".join(gondok), kod="regiszter")
+    else:
+        add(OK, "regiszter", f"{len(mt)} munkatér a regiszterben" + (", ez is" if sajat else ""), kod="regiszter")
+    ervenytelen, lecsatolt = [], 0
+    for az, e in sorted(mt.items()):
+        p = e.get("vault") if isinstance(e, dict) else None
+        cimke = (e.get("nev") if isinstance(e, dict) else None) or str(az)[:8]
+        if not isinstance(p, str) or not p:
+            ervenytelen.append(f"{cimke} (nincs út)")
+        elif not Path(p).exists():
+            if _lecsatolt(p):
+                lecsatolt += 1
+            else:
+                ervenytelen.append(f"{cimke} ({p})")
+    if ervenytelen:
+        add(FIGYELEM, "regiszter érvénytelen utak", f"{len(ervenytelen)} regisztrált munkatér útja nem létezik: {_fentiek(ervenytelen)} — "
+                                                     "a bejegyzés eltávolítható (a fájlokhoz nem nyúl)",
+            kod="regiszter_ervenytelen_ut", javitas="regiszter_takarit")
+
+
+def _azonos_ut(a, b) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return os.path.realpath(a) == os.path.realpath(b)
+
+
+def _mentes_tulajdonos(cfg: config.Config, add) -> None:
+    """A belső mentés mappájának tulajdonosa (egy forrás: `core/mentes.tulajdonos`, csak olvas): másik munkatér jelölője → a régi
+    mentések nem forognak; jelölő nélküli, nem üres (örökölt, pl. a v2 és a hordozható közös `~/Manifold-backup`-ja) → csak a saját
+    fejű bundle törölhető; a vaultban álló mentési mappát a mentés elutasítja; és a vaulttal azonos lemezen álló mentés lemezhiba
+    ellen nem véd."""
+    from . import mentes
+    backup, vault = cfg.utak.get("backup"), cfg.utak.get("vault")
+    if backup is None:
+        return
+    if vault is not None and _alatt(backup, vault):
+        add(HIBA, "mentés helye", f"a mentési mappa ({backup}) a vaultban van: a mentés elmarad (a bundle bekerülne a vault pillanatképébe "
+                                   "és a külső mentésbe) — válassz a vaulton kívüli mappát", kod="mentes_a_vaultban")
+    try:
+        allapot = mentes.tulajdonos(cfg)
+    except (AttributeError, OSError, config.ConfigError):
+        allapot = None                              # nincs ilyen olvasó (régi mentes.py), vagy a mappa nem olvasható: nincs jelzés
+    if allapot == "idegen":
+        add(FIGYELEM, "mentés tulajdonosa", f"a mentési mappa ({backup}) másik munkatéré, vagy a jelölője olvashatatlan: a régi "
+                                             "mentések nem törlődnek, a forgatás kikapcsolt — válassz ennek a munkatérnek külön mappát",
+            kod="mentes_idegen_mappa")
+    elif allapot == "orokolt":
+        add(FIGYELEM, "mentés tulajdonosa", f"a mentési mappa ({backup}) jelölő nélküli és nem üres (korábbi telepítés vagy másik "
+                                             "munkatér használta), vagy a jelölője egy másik, még meglévő mappa (másolat) azonosítóját "
+                                             "viseli: csak a saját fejű bundle-ök törölhetők, az állapot- és migrációs másolatok "
+                                             "forgatása ki van kapcsolva — válassz külön mappát", kod="mentes_orokolt_mappa")
+    elif allapot == "sajat":
+        add(OK, "mentés tulajdonosa", "a mentési mappa ennek a munkatérnek a jelölőjét viseli", kod="mentes_tulajdonos")
+    if vault is not None:
+        dv, db = _eszkoz(vault), _eszkoz(backup)
+        if dv is not None and dv == db:
+            add(INFO, "mentés lemeze", "a belső mentés a vaulttal azonos lemezen van: lemezhiba ellen nem véd — a teljes mentés külső "
+                                        "kötetre véd", kod="mentes_azonos_lemez")
+
+
+def _elutasitott_sor(cfg: config.Config, add) -> None:
+    """A rétegek (telepítés, preset, munkatér) által beállítani próbált, de nem engedett vagy érvénytelen kulcsok (`cfg.elutasitott`)."""
+    lista = [f"{reteg}: {kulcs} ({kod})" for reteg, kulcs, kod in getattr(cfg, "elutasitott", [])]
+    if lista:
+        add(FIGYELEM, "elutasított beállítások", f"{len(lista)} réteg-beállítás nem érvényesült (nem engedett kulcs vagy érvénytelen érték): "
+                                                  f"{_fentiek(lista)}", kod="workspace_kulcs_tiltott")
+    else:
+        add(OK, "elutasított beállítások", "minden réteg-beállítás érvényesült", kod="konfig_kulcsok")
+
+
+def _telepites_irhato(cfg: config.Config, add) -> None:
+    """A `{install}` (modellek, zárak, regiszter, mentések gyökere) írható — vagy a legközelebbi létező őse az, ahol a core létrehozza."""
+    install = cfg.utak.get("install")
+    if install is None:
+        return
+    q = _legkozelebbi(install)
+    if q.is_dir() and os.access(q, os.W_OK | os.X_OK):
+        add(OK, "telepítési mappa", f"{install} írható" + ("" if q == install else " (a core az első indításkor létrehozza)"),
+            kod="telepites_irhato")
+    else:
+        add(HIBA, "telepítési mappa", f"a telepítési mappa nem írható: {q} — a modellek, a zárak és a regiszter nem tárolhatók",
+            kod="telepites_irhato")
+
+
+def _szabad_hely(cfg: config.Config, add) -> None:
+    """Szabad hely a vault és a telepítés kötetén (egy sor, a rosszabb állapot dönt)."""
+    sorok, allapot = [], OK
+    for nev, p in (("vault", cfg.utak.get("vault")), ("telepítés", cfg.utak.get("install"))):
+        szabad = _szabad_bajt(p) if p is not None else None
+        if szabad is None:
+            continue
+        sorok.append(f"{nev}: {szabad / 1e9:.1f} GB")
+        if szabad < MIN_SZABAD_HIBA:
+            allapot = HIBA
+        elif szabad < MIN_SZABAD_FIGYELEM and allapot == OK:
+            allapot = FIGYELEM
+    if not sorok:
+        return
+    add(allapot, "szabad hely", ", ".join(sorok) + {OK: " szabad", FIGYELEM: " szabad — kevés (a pillanatképek és a mentések nőnek)",
+                                                    HIBA: " szabad — kritikusan kevés (az atomi írás és a mentés megbízhatatlan)"}[allapot],
+        kod="szabad_hely")
+
+
+def _zar_helye(cfg: config.Config, environment: dict[str, str], termek: bool, add) -> None:
+    """A gépszintű zárak (worker, modell) a `{install}` alatt oldódnak fel, nem a vault állapota alatt. (A modellzár a hordozható
+    módban a telepítési réteggel szándékosan máshová is állítható — ott csak a rögzített kulcsokat nézi.)"""
+    install = cfg.utak.get("install")
+    if install is None:
+        return
+    rossz = [f"{k}={cfg.utak[k]}" for k in ("install_run", "install_state", "install_logs") if k in cfg.utak and not _alatt(cfg.utak[k], install)]
+    zar = cfg.section("modellgazda").get("zar")
+    if termek and zar and not environment.get("MANIFOLD_MODELL_ZAR"):
+        try:
+            if not _alatt(Path(cfg.expand(zar)), install):
+                rossz.append(f"modellgazda.zar={cfg.expand(zar)}")
+        except config.ConfigError:
+            pass
+    if rossz:
+        add(HIBA, "gépszintű zárak", f"a zárak nem a telepítési mappa alatt vannak: {_fentiek(rossz)} — két munkatér külön zárat kapna",
+            kod="zar_helye")
+    else:
+        add(OK, "gépszintű zárak", "a worker- és modellzárak a telepítési mappa alatt vannak", kod="zar_helye")
+
+
+def _pid_szam(szoveg: str) -> int | None:
+    m = re.match(r"\s*(?:pid\s+)?(\d+)", szoveg or "")
+    return int(m.group(1)) if m else None
+
+
+def _flock_szabad(ut: Path) -> bool | None:
+    """A zárfájl `flock`-ja szabad-e (csak olvasva nyit, azonnal elengedi); a fájl hiánya vagy hiba: None."""
+    try:
+        with open(ut, "r") as fh:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return False
+            fcntl.flock(fh, fcntl.LOCK_UN)
+            return True
+    except OSError:
+        return None
+
+
+def _elavult_zarak(cfg: config.Config, add) -> None:
+    """Elakadt `worker.pid`: a worker rendezett kilépéskor törli, tehát a megmaradása összeomlás nyoma. Javítható (`zar_takarit`), ha a
+    pid halott ÉS a `worker.lock` flock-ja szabad. (A `core.lock` fájlt a core sosem törli, ezért egy halott pidű, szabad zár az
+    ő rendes kilépés utáni állapota — az nem jelzés.) Csak olvas."""
+    run = cfg.utak.get("install_run")
+    if run is None or not (run / "worker.pid").is_file():
+        return
+    try:
+        pid = _pid_szam((run / "worker.pid").read_text(encoding="utf-8"))
+    except OSError:
+        return
+    if pid is not None and _pid_el(pid):
+        return
+    szabad = _flock_szabad(run / "worker.lock")
+    if szabad is False:
+        add(FIGYELEM, "elakadt zár", f"a {run / 'worker.pid'} halott folyamatra mutat, de a worker.lock foglalt: nem törölhető biztonságosan",
+            kod="zar_elavult")
+    else:
+        add(FIGYELEM, "elakadt zár", f"a {run / 'worker.pid'} halott folyamatra mutat (a worker összeomlott); a zár szabad, a fájl törölhető",
+            kod="zar_elavult", javitas="zar_takarit")
+
+
+def _runtime_termek(cfg: config.Config, add) -> None:
+    """Termék: a csomagolt Python és Node megvan (a verziójukat a csomag épsége fedi)."""
+    runtime = cfg.path("runtime")
+    hi = [n for n, p in (("python", runtime / "python" / "bin" / "python3"), ("node", runtime / "node" / "bin" / "node")) if not p.exists()]
+    add(HIBA if hi else OK, "runtime", f"a csomagból hiányzik: {', '.join(hi)} — telepítsd újra a Manifoldot" if hi else "Python és Node megvan")
+
+
+def _cpp_termek(cfg: config.Config, add) -> None:
+    """Termék: a C++ eszköztár (`{install}/toolchains`) opcionális — hiánya INFO, nem hiba."""
+    llvm, sdk = cfg.path("llvm"), cfg.path("sdk")
+    van = all(_futtathato(llvm / "bin" / n) for n in ("clang++", "clang-format", "ld64.lld")) and (sdk / "usr" / "include").is_dir()
+    if van:
+        add(OK, "C++ eszköztár", f"clang++, clang-format, ld64.lld és az SDK megvan ({llvm.parent})")
+    else:
+        add(INFO, "C++ eszköztár", "nincs telepítve (opcionális): a C++ munkafelülethez a Beállításokban telepíthető")
+
+
+def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
+              futo_python: Path | None = None, *, termek: bool | None = None) -> list[Eredmeny]:
+    """Az ellenőrzések sorra. `termek=None`: a `cfg.elrendezes` dönt (a `*.app` csomag termék, a checkout hordozható). Minden sor
+    stabil `kod`-ot, `osztaly`-t és (ha van gépi javítása) `javitas`-t kap."""
+    if termek is None:
+        termek = cfg.elrendezes == "termek"
+    root, r = cfg.root, []
+
+    def add(allapot, nev, uzenet, kod=None, javitas=None, osztaly=None):
+        kod = kod or _kod_nevbol(nev)
+        if osztaly is None:
+            osztaly = "fejleszto" if not termek and (kod in FEJLESZTO_KODOK or kod.startswith(FEJLESZTO_ELOTAGOK)) else "termek"
+        r.append(Eredmeny(allapot, nev, uzenet, kod, osztaly, javitas))
+
+    runtime, venv = cfg.path("runtime"), cfg.path("venv")
+    var, vault, install = cfg.utak.get("var"), cfg.utak.get("vault"), cfg.utak.get("install")
+    futo = Path(futo_python or sys.executable)
+    ws_ok = vault is not None and var is not None       # a vaultra és a munkatér állapotára épülő ellenőrzések feltétele
+
+    # gyökér, kötet
+    if termek:
+        _bundle_sorok(cfg, add)
+        _i1_sor(cfg, add)
+    else:
+        ok = (root / "bin" / "mos").exists() and (root / "config" / "os.toml").exists()
+        add(OK if ok else HIBA, "gyökér", str(root) if ok else f"nem érvényes gyökér: {root}")
+        if var.exists() and vault is not None and vault.exists():
+            add(OK if var.stat().st_dev == vault.stat().st_dev else HIBA, "kötet",
+                "a var/ és a vault ugyanazon a köteten van" if var.stat().st_dev == vault.stat().st_dev
+                else "a var/ és a vault külön köteten van (az atomi csere és a klón nem működik)")
+        elif not var.exists():
+            add(HIBA, "kötet", f"nincs var/: {var}")
+
+        # a var/ symlinkje (T002): egy munkafa `var/`-ja a valódi állapotra mutatna, és az ott indított core (selftest,
+        # core start) a valódi kör-zárat, szándéknaplókat, feladatsort, indexet és személyes adatot kapná
+        gyoker_var = root / "var"
+        if gyoker_var.is_symlink():
+            cel = Path(os.path.realpath(gyoker_var))
+            belul = cel == Path(os.path.realpath(root)) or Path(os.path.realpath(root)) in cel.parents
+            add(OK if belul else HIBA, "var symlink",
+                f"a var/ symlink, de a gyökéren belülre mutat: {os.readlink(gyoker_var)}" if belul else
+                f"a var/ symlink, amely a gyökéren ({root}) kívülre mutat: {os.readlink(gyoker_var)} → {cel}; a core a valódi "
+                "állapotot használná (egy munkafának saját var/ kell; bin/mos: munkafa-mód)")
+        else:
+            add(OK, "var symlink", "a var/ nem symlink")
+
+    # nincs vault / nincs munkatér: a hozzájuk kötött ellenőrzések kimaradnak
+    if vault is None:
+        add(INFO if termek else HIBA, "vault",
+            "nincs megnyitott munkatér (a vaultot a héj adja a MOS_VAULT-tal): csak a gépszintű ellenőrzések futottak" if termek else
+            "nincs vault megadva: futtasd a `bin/mos portable init --vault <mappa>` parancsot (vagy add meg a MOS_VAULT-ot)",
+            kod="nincs_vault")
+    elif var is None:
+        add(HIBA, "munkatér", f"a mappa nem Manifold-munkatér ({vault}): nincs .manifold/workspace.toml", kod="nincs_workspace")
+    if ws_ok:
+        _vault(cfg, environment, add)
+        _tarolok_allapota(cfg, add, termek)
+        _tarolt_binaris(cfg, add)
+        _munkater_sorok(cfg, termek, add)
+        _kotet_fajlrendszer(cfg, add)
+        if termek:
+            _kotet_termek(cfg, add)
+        _szinkron_sor(cfg, add)
+    _regiszter_sorok(cfg, termek, add)
+    _elutasitott_sor(cfg, add)
+    _telepites_irhato(cfg, add)
+    _szabad_hely(cfg, add)
+    _zar_helye(cfg, environment, termek, add)
+    _elavult_zarak(cfg, add)
 
     # rendszer-Python
     sajat = str(futo).startswith(str(runtime)) or str(Path(sys.prefix if futo_python is None else futo)).startswith(str(root))
     tiltott = [t for t in TILTOTT_PYTHON if str(futo).startswith(t)]
     rossz = [] if (sajat and not tiltott) else [f"a futó Python a Manifold-mappán kívül van: {futo}"]
-    cfgfile = venv / "pyvenv.cfg"
-    if cfgfile.exists():
-        szoveg = cfgfile.read_text(encoding="utf-8")
-        for kulcs in ("home", "executable", "command"):
-            m = re.search(rf"^{kulcs}\s*=\s*(.+)$", szoveg, re.M)
-            if m and kulcs != "command" and not m.group(1).strip().startswith(str(runtime)):
-                rossz.append(f"pyvenv.cfg {kulcs} = {m.group(1).strip()}")
-        py = venv / "bin" / "python"
-        if py.is_symlink() and not str(py.resolve()).startswith(str(runtime.resolve())):
-            rossz.append(f"a venv Pythonja a Manifold-mappán kívülre mutat: {py.resolve()}")
-        for s in sorted((venv / "bin").glob("*")) if (venv / "bin").is_dir() else []:
-            t = _szoveges(s) if not s.is_symlink() else None
-            if t and t.startswith("#!") and str(venv) not in "\n".join(t.split("\n")[:3]) \
-                    and not t.split("\n", 1)[0][2:].startswith(("/bin/sh", "/usr/bin/env")):
-                rossz.append(f"shebang a Manifold-mappán kívülre mutat: {s.name}")
-    else:
-        rossz.append(f"nincs venv: {venv} (bin/mos runtime install)")
-    # munkafa-mód (bin/mos, T002): a munkafának nincs saját venv-je, az eszköztár a fő checkoutból jön — azt ott kell
-    # ellenőrizni; a munkafa állapota (var/) viszont a sajátja, és az alábbi ellenőrzések rá vonatkoznak
-    eszkoztar_kivul = bool(environment.get("MOS_MUNKAFA")) and not (venv / "bin" / "python").exists()
+    eszkoztar_kivul = False
+    if not termek:
+        cfgfile = venv / "pyvenv.cfg"
+        if cfgfile.exists():
+            szoveg = cfgfile.read_text(encoding="utf-8")
+            for kulcs in ("home", "executable", "command"):
+                m = re.search(rf"^{kulcs}\s*=\s*(.+)$", szoveg, re.M)
+                if m and kulcs != "command" and not m.group(1).strip().startswith(str(runtime)):
+                    rossz.append(f"pyvenv.cfg {kulcs} = {m.group(1).strip()}")
+            py = venv / "bin" / "python"
+            if py.is_symlink() and not str(py.resolve()).startswith(str(runtime.resolve())):
+                rossz.append(f"a venv Pythonja a Manifold-mappán kívülre mutat: {py.resolve()}")
+            for s in sorted((venv / "bin").glob("*")) if (venv / "bin").is_dir() else []:
+                t = _szoveges(s) if not s.is_symlink() else None
+                if t and t.startswith("#!") and str(venv) not in "\n".join(t.split("\n")[:3]) \
+                        and not t.split("\n", 1)[0][2:].startswith(("/bin/sh", "/usr/bin/env")):
+                    rossz.append(f"shebang a Manifold-mappán kívülre mutat: {s.name}")
+        else:
+            rossz.append(f"nincs venv: {venv} (bin/mos runtime install)")
+        # munkafa-mód (bin/mos, T002): a munkafának nincs saját venv-je, az eszköztár a fő checkoutból jön — azt ott kell
+        # ellenőrizni; a munkafa állapota (var/) viszont a sajátja, és az alábbi ellenőrzések rá vonatkoznak
+        eszkoztar_kivul = bool(environment.get("MOS_MUNKAFA")) and not (venv / "bin" / "python").exists()
     if eszkoztar_kivul:
         add(INFO, "python", "munkafa-mód: a Python és a venv a fő checkoutból jön; ott ellenőrizd (bin/mos doctor)")
     else:
-        add(HIBA if rossz else OK, "python", _fentiek(rossz) if rossz else "a hordozható Python fut, a venv is arra mutat")
+        add(HIBA if rossz else OK, "python", _fentiek(rossz) if rossz else
+            ("a csomagolt Python fut" if termek else "a hordozható Python fut, a venv is arra mutat"))
 
-    # ~/Applications, ~/.cache — saját fájlok
+    # ~/Applications, ~/.cache — saját fájlok (csak a forrás-checkouton: a csomag lezárt, az épségét a csomag-sorok adják)
     hibas_sajat = []
-    for p in _sajat_fajlok(root):
-        t = _szoveges(p)
-        if not t:
-            continue
-        t = _kod(t)
-        rel = p.relative_to(root)
-        if SAJAT_MINTA.search(t):
-            hibas_sajat.append(str(rel))
     app = root / "Manifold.app"
-    if app.exists():
-        plist = _szoveges(app / "Contents" / "Info.plist") or ""
-        if SAJAT_MINTA.search(plist):
-            hibas_sajat.append("Manifold.app/Contents/Info.plist")
-    if app.is_symlink() and str(app.resolve()).startswith(str(home / "Applications")):
-        hibas_sajat.append("Manifold.app a ~/Applications-re mutat")
+    if not termek:
+        for p in _sajat_fajlok(root):
+            t = _szoveges(p)
+            if not t:
+                continue
+            t = _kod(t)
+            rel = p.relative_to(root)
+            if SAJAT_MINTA.search(t):
+                hibas_sajat.append(str(rel))
+        if app.exists():
+            plist = _szoveges(app / "Contents" / "Info.plist") or ""
+            if SAJAT_MINTA.search(plist):
+                hibas_sajat.append("Manifold.app/Contents/Info.plist")
+        if app.is_symlink() and str(app.resolve()).startswith(str(home / "Applications")):
+            hibas_sajat.append("Manifold.app a ~/Applications-re mutat")
     envrosszak = []
     for k, v in sorted(environment.items()):
         if k.startswith(ENV_UTAS) and v:
@@ -810,9 +1437,10 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
     add(HIBA if hibas_sajat or envrosszak else OK, "~/Applications, ~/.cache",
         _fentiek(hibas_sajat + envrosszak) if hibas_sajat or envrosszak else "semmi nem használja")
 
-    # vault-séma: a `[sema] vault` feloldódik, és olvasható JSON
+    # vault-séma: a `[sema] vault` feloldódik, és olvasható JSON (termékben a feloldási lánc)
     allapot, uzenet = _sema_ellenor(cfg)
     add(allapot, "vault-séma", uzenet)
+    _kivetelek_sor(cfg, add)
 
     # git (K1, M10): a pillanatkép a rendszer gitjére épül
     utvonal = environment.get("PATH") or os.environ.get("PATH", "")
@@ -829,75 +1457,115 @@ def ellenoriz(cfg: config.Config, environment: dict[str, str], home: Path,
 
     # offline
     off = environment.get("HF_HUB_OFFLINE") == "1"
-    add(OK if off else HIBA, "offline", "HF_HUB_OFFLINE=1" if off else "HF_HUB_OFFLINE nincs 1-re állítva (bin/mos állítja)")
+    add(OK if off else HIBA, "offline", "HF_HUB_OFFLINE=1" if off else
+        f"HF_HUB_OFFLINE nincs 1-re állítva ({'a core indításkor állítja' if termek else 'bin/mos állítja'})")
 
     # runtime
-    hi = [n for n, p in (("uv", runtime / "uv"), ("python", runtime / "python" / "bin" / "python3"),
-                         ("node", runtime / "node" / "bin" / "node")) if not p.exists()]
-    if hi and eszkoztar_kivul:       # munkafa-mód (T002): a runtime a fő checkoutból jön (`bin/mos`), a munkafában nincs
-        add(INFO, "runtime", f"munkafa-mód: a runtime a fő checkoutból jön (itt hiányzik: {', '.join(hi)}); ott ellenőrizd")
+    if termek:
+        _runtime_termek(cfg, add)
     else:
-        add(HIBA if hi else OK, "runtime", f"hiányzik: {', '.join(hi)}" if hi else "uv, Python, Node megvan")
-    lock = root / "config" / "requirements.lock"
-    if lock.exists() and (venv / "bin" / "python").exists() and (runtime / "uv").exists():
-        elvart = set(re.findall(r"^([A-Za-z0-9_.-]+==[^\s\\]+)", lock.read_text(encoding="utf-8"), re.M))
-        p = subprocess.run([str(runtime / "uv"), "pip", "freeze", "--python", str(venv / "bin" / "python"), "--no-config", "--offline"],
-                           capture_output=True, text=True, env={**os.environ, "UV_CACHE_DIR": str(cfg.path("cache") / "uv")})
-        norm = lambda s: s.lower().replace("_", "-")  # noqa: E731
-        van = {norm(x) for x in p.stdout.split() if "==" in x}
-        kul = {norm(x) for x in elvart} ^ van
-        add(OK if p.returncode == 0 and not kul else HIBA, "lock",
-            "a venv egyezik a requirements.lock-kal" if p.returncode == 0 and not kul else f"eltérés a lockhoz képest: {_fentiek(sorted(kul))}")
-    elif eszkoztar_kivul:
-        add(INFO, "lock", "munkafa-mód: a venv a fő checkoutban van; a lock-egyezést ott ellenőrizd (bin/mos doctor)")
-    else:
-        add(HIBA, "lock", "nincs lock, venv vagy uv az összevetéshez")
-
-    _runtime_verziok(cfg, add, eszkoztar_kivul)
-    _kovetelmenyek(cfg, add)
-    _video_ffmpeg(cfg, home, add)
+        hi = [n for n, p in (("uv", runtime / "uv"), ("python", runtime / "python" / "bin" / "python3"),
+                             ("node", runtime / "node" / "bin" / "node")) if not p.exists()]
+        if hi and eszkoztar_kivul:       # munkafa-mód (T002): a runtime a fő checkoutból jön (`bin/mos`), a munkafában nincs
+            add(INFO, "runtime", f"munkafa-mód: a runtime a fő checkoutból jön (itt hiányzik: {', '.join(hi)}); ott ellenőrizd")
+        else:
+            add(HIBA if hi else OK, "runtime", f"hiányzik: {', '.join(hi)}" if hi else "uv, Python, Node megvan")
+        lock = root / "config" / "requirements.lock"
+        if lock.exists() and (venv / "bin" / "python").exists() and (runtime / "uv").exists():
+            elvart = set(re.findall(r"^([A-Za-z0-9_.-]+==[^\s\\]+)", lock.read_text(encoding="utf-8"), re.M))
+            p = subprocess.run([str(runtime / "uv"), "pip", "freeze", "--python", str(venv / "bin" / "python"), "--no-config", "--offline"],
+                               capture_output=True, text=True, env={**os.environ, "UV_CACHE_DIR": str(cfg.path("cache") / "uv")})
+            norm = lambda s: s.lower().replace("_", "-")  # noqa: E731
+            van = {norm(x) for x in p.stdout.split() if "==" in x}
+            kul = {norm(x) for x in elvart} ^ van
+            add(OK if p.returncode == 0 and not kul else HIBA, "lock",
+                "a venv egyezik a requirements.lock-kal" if p.returncode == 0 and not kul else f"eltérés a lockhoz képest: {_fentiek(sorted(kul))}")
+        elif eszkoztar_kivul:
+            add(INFO, "lock", "munkafa-mód: a venv a fő checkoutban van; a lock-egyezést ott ellenőrizd (bin/mos doctor)")
+        else:
+            add(HIBA, "lock", "nincs lock, venv vagy uv az összevetéshez")
+        _runtime_verziok(cfg, add, eszkoztar_kivul)
+        _kovetelmenyek(cfg, add)
+    _video_ffmpeg(cfg, home, add, termek)
     _modell_reviziok(cfg, add)
 
     # app
-    if app.exists():
-        c = subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], capture_output=True, text=True)
-        add(OK if c.returncode == 0 else HIBA, "Manifold.app", "megvan, aláírása érvényes" if c.returncode == 0 else f"aláírás: {c.stderr.strip()}")
-    else:
-        add(HIBA, "Manifold.app", "hiányzik (shell/build.sh)")
-    if app.exists():
+    if termek:
+        app = root.parents[2] if len(root.parents) > 2 else root
+        rc, hiba = _codesign(app)
+        add(OK if rc == 0 else HIBA, "Manifold.app", "megvan, aláírása érvényes" if rc == 0 else f"aláírás: {hiba}")
         _alairas(app, add)
         _naptar(cfg, add)
-    _home_irasok(home, add)
-    _napi_canvas(root, add)
-    _never_index(var, add)
-    dist = cfg.path("app_dist")
-    if (dist / "index.html").is_file():
-        from .epites import allapot as epites_allapot
-        ep = epites_allapot(cfg.root)
-        for resz in ep["reszek"]:
-            add(OK if resz["friss"] else FIGYELEM, "build-" + resz["resz"],
-                f"forrással egyező build ({resz['azonosito']})" if resz["friss"] else
-                "hiányzó vagy elavult buildjegyzék; újrafordítás szükséges: " + ", ".join(resz["elteres"]))
     else:
-        add(FIGYELEM, "felület", "nincs app/dist: a héj üres lapot mutat (bin/mos app install, majd bin/mos app build)")
-    _mentes(cfg, add)
-    _index(cfg, add)
-    _kapu(cfg, add)
-    _cpp(cfg, add, eszkoztar_kivul)
-    _proba_klonok(cfg, add)
-    _core_fut(cfg, add)
+        if app.exists():
+            rc, hiba = _codesign(app)
+            add(OK if rc == 0 else HIBA, "Manifold.app", "megvan, aláírása érvényes" if rc == 0 else f"aláírás: {hiba}")
+        else:
+            add(HIBA, "Manifold.app", "hiányzik (shell/build.sh)")
+        if app.exists():
+            _alairas(app, add)
+            _naptar(cfg, add)
+    _home_irasok(home, add, termek)
+    if not termek:
+        _napi_canvas(root, add)
+    if var is not None:
+        _never_index(var, add, install if termek else None)
+    if not termek:
+        dist = cfg.path("app_dist")
+        if (dist / "index.html").is_file():
+            from .epites import allapot as epites_allapot
+            ep = epites_allapot(cfg.root)
+            for resz in ep["reszek"]:
+                add(OK if resz["friss"] else FIGYELEM, "build-" + resz["resz"],
+                    f"forrással egyező build ({resz['azonosito']})" if resz["friss"] else
+                    "hiányzó vagy elavult buildjegyzék; újrafordítás szükséges: " + ", ".join(resz["elteres"]))
+        else:
+            add(FIGYELEM, "felület", "nincs app/dist: a héj üres lapot mutat (bin/mos app install, majd bin/mos app build)")
+    if ws_ok and "backup" in cfg.utak:
+        _mentes(cfg, add)
+        _mentes_tulajdonos(cfg, add)
+    if var is not None:
+        _index(cfg, add)
+        if not termek:
+            _kapu(cfg, add)
+    if termek:
+        _cpp_termek(cfg, add)
+    else:
+        _cpp(cfg, add, eszkoztar_kivul)
+    if var is not None:
+        _proba_klonok(cfg, add)
+        _core_fut(cfg, add)
     if environment.get("MOS_OSSZEOMLAS"):
         add(HIBA, "összeomlás-horog", f"MOS_OSSZEOMLAS={environment['MOS_OSSZEOMLAS']}: az összeomlás-injektáló horog be van "
                                       "kapcsolva (csak a tesztállványé, éles környezetben soha)")
     return r
 
 
+def jelentes(elrendezes: str | None, eredmenyek: list[Eredmeny]) -> dict:
+    """A `--json` kimenet: az elrendezés, az összesítés és a sorok (`kod`, `allapot`, `nev`, `uzenet`, `osztaly`, `javitas`)."""
+    szamok = {a: sum(1 for e in eredmenyek if e.allapot == a) for a in (OK, HIBA, FIGYELEM, INFO)}
+    return {"verzio": 1, "elrendezes": elrendezes, "zold": szamok[HIBA] == 0, "osszesen": szamok,
+            "eredmenyek": [e.szotar() for e in eredmenyek]}
+
+
 def main(argv: list[str]) -> int:
-    cfg = config.load()
-    eredmenyek = ellenoriz(cfg, dict(os.environ), Path(os.environ.get("HOME", "~")).expanduser())
+    json_ki = "--json" in argv
+    try:
+        try:
+            cfg = config.load()
+        except config.ConfigError as e:
+            if e.kod != "nem_workspace":
+                raise
+            cfg = config.load(munkater=False)           # termék munkatér nélkül: a gépszintű ellenőrzések így is futnak
+        eredmenyek = ellenoriz(cfg, dict(os.environ), Path(os.environ.get("HOME", "~")).expanduser())
+    except config.ConfigError as e:                     # a hibás konfiguráció maga a jelzés, nem traceback
+        cfg, eredmenyek = None, [Eredmeny(HIBA, "konfiguráció", str(e), kod=e.kod, osztaly="termek")]
+    if json_ki:
+        print(json.dumps(jelentes(cfg.elrendezes if cfg is not None else None, eredmenyek), ensure_ascii=False, indent=2))
+        return 1 if any(e.allapot == HIBA for e in eredmenyek) else 0
     jel = {OK: "✓", HIBA: "✗", INFO: "·", FIGYELEM: "!"}
     for e in eredmenyek:
-        print(f"{jel[e.allapot]} {e.nev}: {e.uzenet}")
+        print(f"{jel[e.allapot]} {e.nev}: {e.uzenet}" + (f" [javítás: {e.javitas}]" if e.javitas else ""))
     piros = [e for e in eredmenyek if e.allapot == HIBA]
     print("\nA doctor zöld." if not piros else f"\nA doctor piros: {len(piros)} hiba.")
     return 1 if piros else 0

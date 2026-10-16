@@ -52,6 +52,26 @@ class CsatolmanyTest(Alap):
         self.assertTrue(cel.is_dir())
         self.assertFalse((self.v / "Új").exists())
 
+    def test_kuka_zarolja_a_node_modules_es_a_rejtett_mappak_fajljait_a_manifoldot_nem(self):
+        """I6: a `.manifold` (állapot, próbaklónok) nem kerül a zárolandó útvonalak közé; a v2 `rglob`-ja minden más fájlt zárolt
+        (a `node_modules` a vaultban írható mappa), ezen az I6 nem szűkít."""
+        from unittest import mock
+        from core import vaultio
+        for rel in ("Mappa/a.md", "Mappa/node_modules/csomag/b.md", "Mappa/.git/c", "Mappa/.manifold/var/tmp/klon/d.md"):
+            (self.v / rel).parent.mkdir(parents=True, exist_ok=True)
+            (self.v / rel).write_text("x", encoding="utf-8")
+        zart = []
+        eredeti = vaultio._ut_zar
+
+        def zar(u):
+            zart.append(u)
+            return eredeti(u)
+        with mock.patch.object(vaultio, "_ut_zar", side_effect=zar):
+            csatolmany.kuka(self.app(), {"ut": "Mappa", "megerosit": True}, lambda p: None)
+        self.assertIn("Mappa/node_modules/csomag/b.md", zart)
+        self.assertIn("Mappa/.git/c", zart)
+        self.assertFalse([u for u in zart if ".manifold" in u])
+
     def test_kepimport_nem_kuld_be_feladatot(self):
         """80(a): a behúzott/beillesztett kép importja semmilyen feladatot (AI-t) nem indít."""
         from unittest import mock

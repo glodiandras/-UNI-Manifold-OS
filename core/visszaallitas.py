@@ -5,8 +5,8 @@
 Egy pillanatkép-tároló (`[pillanat.<tár>]`, alapból a vaulté) újraépítése egy `git bundle`-ből (`~/Manifold-backup/
 vault-*.bundle`, L18), ha az SSD-n álló tároló elveszett. A lépéssor (ARCHITECTURE 4. „Visszaállítás”):
 
-1. **Előfeltétel**: a core nem fut (`{run}/core.lock` szabad), és a `{vault_git}` (a tár `git_dir`-je) **hiányzik vagy
-   üres mappa**. Meglévő tárolót a parancs nem ír felül, nem fésül össze — azt a felhasználó nevezi át előbb.
+1. **Előfeltétel**: a core nem fut (a `{run}/core.lock` és a vault-őr szabad), és a `{vault_git}` (a tár `git_dir`-je)
+   **hiányzik vagy üres mappa**. Meglévő tárolót a parancs nem ír felül, nem fésül össze — azt a felhasználó nevezi át előbb.
 2. A bundle `git clone --bare`-rel egy ideiglenes testvérmappába (`<git_dir>.visszaallitas-<pid>`), ott `bundle verify`
    és `fsck`; a `origin` távoli (a bundle útja) törlődik; csak siker után kerül a helyére (`os.rename`).
 3. A tároló a 2.0 beállításait kapja (`snapshot.Repo.init`: `core.worktree` = a munkafa, NFD/CRLF-hű config, a configból
@@ -25,7 +25,6 @@ az állapotmásolaté (`mos-allapot-*/`) fájlmásolás; azokhoz ez a parancs ne
 from __future__ import annotations
 
 import argparse
-import fcntl
 import os
 import shutil
 import subprocess
@@ -40,19 +39,15 @@ class VisszaallitasHiba(Exception):
 
 
 def _core_fut(cfg) -> bool:
-    zar = cfg.path("run") / "core.lock"
-    if not zar.is_file():
-        return False
+    """Fut-e core ezen a vaulton (F3-DESIGN §4): a `{run}/core.lock` és a vault-őr (`{install_run}/vaults/<k>.lock`) CSAK
+    OLVASVA vizsgálva — a szinkronizált mappás munkatér core-ja (más `{run}`) a vault-őrön látszik. Semmit nem hoz létre."""
+    from .server import vault_or_ut, zar_foglalt       # lusta: a CLI-nek a szerver többi része nem kell
+    zarak = [cfg.path("run") / "core.lock"]
     try:
-        with open(zar, "r") as fh:
-            try:
-                fcntl.flock(fh, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            except BlockingIOError:
-                return True
-            fcntl.flock(fh, fcntl.LOCK_UN)
-    except OSError:
-        return False
-    return False
+        zarak.append(vault_or_ut(cfg))
+    except (config.ConfigError, OSError):
+        pass
+    return any(zar_foglalt(z) is not None for z in zarak)
 
 
 def _ures_vagy_hianyzik(p: Path) -> bool:
@@ -96,7 +91,7 @@ def visszaallit(cfg, bundle, tar: str = "vault", log=lambda s: None) -> dict:
     repo = tarolok[tar]
     git_dir, munkafa = repo.git_dir, repo.work_tree
     if _core_fut(cfg):
-        raise VisszaallitasHiba("a core fut (a {run}/core.lock foglalt): előbb lépj ki a Manifoldból")
+        raise VisszaallitasHiba("a core fut (a {run}/core.lock vagy a vault-őr foglalt): előbb lépj ki a Manifoldból")
     if not _ures_vagy_hianyzik(git_dir):
         raise VisszaallitasHiba(f"a tároló nem üres: {git_dir} — meglévő tárolót a visszaállítás nem ír felül; "
                                 "ha valóban pótolni kell, előbb nevezd át (pl. `<név>.regi`)")

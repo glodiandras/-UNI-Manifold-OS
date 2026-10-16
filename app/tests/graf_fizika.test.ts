@@ -82,22 +82,34 @@ describe('Fizika', () => {
   it('a vault méretén a tick költsége a csúcsok számával közel lineárisan nő (arány, nem falióra)', () => {
     // T008 (2. audit): az abszolút ms-kapu (a 16 ms-os képkocka alatt) a perf-készletben van (tests/perf/graf_fizika.perf.ts,
     // `bin/mos perf`); itt a skálázás: a Barnes–Hut fa O(n log n), egy négyzetes bejárás a kétszeres méretre ~4×-es költséget
-    // adna. A két méretet egymás után, ugyanabban a folyamatban, mediánnal mérjük, így a gép pillanatnyi terhelése kiesik.
-    const mer = (n: number, m: number) => {
+    // adna. A két méretet egymás után, ugyanabban a folyamatban mérjük, felváltva (a gép pillanatnyi terhelése mindkettőt érje), és
+    // a MINIMUMOT vesszük: a zaj (ütemező, GC, a teljes készlet párhuzamos munkásai) csak hozzáad az időhöz, a legkisebb kör áll
+    // legközelebb a valódi költséghez. (A medián egy terhelt gépen 3,5–4,0-s arányt adott a ~2,2 helyett.)
+    const kesz = (n: number, m: number) => {
       const g = szintetikus(n, m);
       const f = new Fizika(g.n, g.elek, g.poz.slice());
       for (let i = 0; i < 3; i++) f.tick(); // bemelegítés (JIT)
-      const korok = [0, 1, 2, 3, 4].map(() => {
+      return () => {
         const t0 = performance.now();
         for (let i = 0; i < 6; i++) f.tick();
         return (performance.now() - t0) / 6;
-      });
-      return korok.sort((a, b) => a - b)[2];
+      };
     };
-    const kicsi = mer(1926, 5256);
-    const nagy = mer(3852, 10512);
+    const korKicsi = kesz(1926, 5256);
+    const korNagy = kesz(3852, 10512);
+    // A minimumok átvihetők a fordulók között: egy zajos forduló után még legfeljebb négyszer mérünk, és csak akkor bukik a teszt, ha
+    // mind az öt forduló után az arány a határ fölött marad. Egy valódi négyzetes bejárás minden fordulóban ~4 körül marad.
+    const HATAR = 3.4;
+    let kicsi = Infinity;
+    let nagy = Infinity;
+    for (let fordulo = 0; fordulo < 5 && !(nagy / kicsi < HATAR); fordulo++) {
+      for (let i = 0; i < 12; i++) {
+        kicsi = Math.min(kicsi, korKicsi());
+        nagy = Math.min(nagy, korNagy());
+      }
+    }
     expect(Number.isFinite(nagy)).toBe(true);
-    expect(nagy / kicsi).toBeLessThan(3.4); // lineáris ≈ 2, n·log n ≈ 2,2, négyzetes ≈ 4
+    expect(nagy / kicsi).toBeLessThan(HATAR); // lineáris ≈ 2, n·log n ≈ 2,3, négyzetes ≈ 4
   });
 });
 

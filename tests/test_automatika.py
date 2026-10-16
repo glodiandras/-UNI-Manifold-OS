@@ -55,18 +55,6 @@ class DontesTest(unittest.TestCase):
     def dont(self, sor=None, mtime=0.0, most=10_000.0, md=SZOVEG, f=None):
         return A.dont(f or self.F, "M/a.md", h(md), mtime, most, sor, lambda u: md)
 
-    def test_sorrend(self):
-        self.assertEqual(A.dont(self.F, "ATTCHMNTS - cards/x.md", "h", 0, 1e6, None, lambda u: "")[0], "szuro")
-        self.assertEqual(self.dont({"tiltva": "x"})[0], "tiltva")
-        self.assertEqual(self.dont({"hash": h(SZOVEG)})[0], "elbiralt")
-        self.assertEqual(self.dont(mtime=9_500.0)[0], "csend")                   # 10 percen belül változott
-        self.assertEqual(self.dont()[1].ok, "uj")
-        self.assertEqual(self.dont(md="Rövid.")[0], "rovid")
-        alap = {"alap": __import__("json").dumps(sorted(A.mondatok(SZOVEG))), "ujjlenyomat": "x"}
-        self.assertEqual(self.dont(alap, md=SZOVEG + "\n\nEgy új mondat itt.")[0], "nem_eleg")
-        kesz = {**alap, "ujjlenyomat": A.forras_ujjlenyomat(SZOVEG)}
-        self.assertEqual(self.dont(kesz)[0], "mar_kesz")
-
     def test_kuszob_nulla_olvasas_nelkul(self):
         f = A.Fogyaszto("v", "v", kuszob=0, csend_perc=1)
         st, j = A.dont(f, "M/a.md", "h", 0, 1e6, {"hash": "regi"}, lambda u: self.fail("nem olvashat"))

@@ -4,6 +4,7 @@
 import { kerdez } from '../../lib/core/api';
 import { asszisztensApi } from '../../lib/asszisztens/api';
 import { vezerloKapcsolok } from '../../lib/vezerlo/kapcsolok.svelte';
+import { beallitKiserok } from '../../osszefoglalas/allando';
 import type { Elemzes, ErtekJavaslatok, KulcsJavaslat, ModositEredmeny, Muvelet, OsszefesulesEredmeny, Sema, TulajdonsagApi } from './tipusok';
 
 /** A sablon frontmatterének összefésülése a jegyzetével (C32b): tiszta számoló, nem ír fájlt. */
@@ -13,6 +14,17 @@ export function osszefesul(ut: string, fm: string | null, sablonFm: string): Pro
     torzs: { ut, fm, sablon_fm: sablonFm },
     idokorlat: 8000,
   });
+}
+
+/** A munkatér kísérőmappái a core-ból (`GET /api/vault/sema`): a kártya-, kvíz- és összefoglaló-állandók igazodnak hozzájuk. Hiba esetén a
+ *  szállított alap marad (a felület nem akad el rajta). */
+export async function kiserokBetolt(keres: typeof kerdez = kerdez): Promise<void> {
+  try {
+    const s = await keres<Sema>('/api/vault/sema', { idokorlat: 5000 });
+    beallitKiserok(s.kisero, s.kisero_elotag);
+  } catch {
+    /* az alap marad */
+  }
 }
 
 export function tulajdonsagApi(): TulajdonsagApi {
@@ -28,7 +40,11 @@ export function tulajdonsagApi(): TulajdonsagApi {
       if (r.ok && r.valtozas) cimkeTanul(ut, fm, m);
       return r;
     },
-    sema: (ut) => kerdez<Sema>(`/api/vault/sema?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 }),
+    sema: async (ut) => {
+      const s = await kerdez<Sema>(`/api/vault/sema?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 });
+      beallitKiserok(s.kisero, s.kisero_elotag);
+      return s;
+    },
     kulcsok: (ut) =>
       kerdez<{ kulcsok: KulcsJavaslat[]; index_kesz: boolean }>(`/api/vault/tulajdonsagok/kulcsok?ut=${encodeURIComponent(ut)}`, { idokorlat: 5000 }),
     ertekek: (ut, kulcs) =>

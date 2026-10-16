@@ -74,27 +74,38 @@ class DoctorTeszt(unittest.TestCase):
         self.assertEqual(futtat(self.root, self.home)["~/Applications, ~/.cache"].allapot, doctor.HIBA)
 
     def test_vault_sema_zold_a_sajat_masolattal(self):
-        """T162 (2. audit, C11b): a `[sema] vault` a 2.0 saját `config/vault-sema.json`-jára mutat, és betölthető."""
+        """T162 (2. audit, C11b): a séma-feloldási lánc (munkatér-fájl → az első preset sémája → `[sema] alap`) elemén betölthető."""
         r = futtat(self.root, self.home)["vault-séma"]
         self.assertEqual(r.allapot, doctor.OK, r.uzenet)
 
     def test_vault_sema_nem_letezo_utra_mutat_piros(self):
-        """T162: a `[sema] vault` nem létező fájlra mutat → HIBA, az út szerepel az üzenetben."""
+        """T162: a `[sema] vault` nem létező fájlra mutat és a lánc többi eleme sincs meg → HIBA, az út szerepel az üzenetben."""
         toml = self.root / "config" / "os.toml"
         toml.write_text(toml.read_text(encoding="utf-8").replace(
-            'vault = "{os}/config/vault-sema.json"', 'vault = "{os}/config/nincs-ilyen-sema.json"'), encoding="utf-8")
+            'vault = "{os}/config/vault-sema.json"', 'vault = "{os}/config/nincs-ilyen-sema.json"').replace(
+            'alap = "{os}/config/schema-default.json"', 'alap = "{os}/config/nincs-alap.json"'), encoding="utf-8")
+        (self.root / "config" / "presets" / "v2-kompat.schema.json").unlink()
         r = futtat(self.root, self.home)["vault-séma"]
         self.assertEqual(r.allapot, doctor.HIBA)
         self.assertIn("nincs-ilyen-sema.json", r.uzenet)
 
     def test_vault_sema_hianyzo_vagy_hibas_fajl_piros(self):
-        sema = self.root / "config" / "vault-sema.json"
+        sema = self.root / "config" / "presets" / "v2-kompat.schema.json"
+        alap = self.root / "config" / "schema-default.json"
         sema.write_text("{nem json", encoding="utf-8")
-        self.assertEqual(futtat(self.root, self.home)["vault-séma"].allapot, doctor.HIBA)
+        # a hibás preset-séma nem áll meg: a betöltő a lánc következő ÉRVÉNYES jelöltjét (a szállított alapot) használja, a doctor figyelmeztet
+        r = futtat(self.root, self.home)["vault-séma"]
+        self.assertEqual(r.allapot, doctor.FIGYELEM)
+        self.assertIn("v2-kompat.schema.json", r.uzenet)
         sema.write_text('{"tags_ertekkeszlet": []}', encoding="utf-8")
+        self.assertEqual(futtat(self.root, self.home)["vault-séma"].allapot, doctor.FIGYELEM)
+        alap_tartalom = alap.read_text(encoding="utf-8")
+        alap.write_text("{nem json", encoding="utf-8")                  # a lánc minden jelöltje hibás: nincs érvényes séma
         self.assertEqual(futtat(self.root, self.home)["vault-séma"].allapot, doctor.HIBA)
+        alap.write_text(alap_tartalom, encoding="utf-8")
         sema.unlink()
-        self.assertEqual(futtat(self.root, self.home)["vault-séma"].allapot, doctor.HIBA)
+        # a lánc a `[sema] alap` szállított sémájával folytatódik (F3-DESIGN §2.4): hiányzó munkatér-sémafájl nem hiba
+        self.assertEqual(futtat(self.root, self.home)["vault-séma"].allapot, doctor.OK)
 
     def test_var_symlink_az_oson_kivulre_piros(self):
         """T002 (2. audit): a symlinkelt `var/`-ú munkafa core-ja a valódi állapotot használná."""

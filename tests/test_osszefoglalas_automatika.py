@@ -24,18 +24,6 @@ class Dontes(unittest.TestCase):
         self.assertEqual(AU.dont(allapot(csend_mp=9 * 60 + 59), B).ok, "meg_valtozik")
         self.assertTrue(AU.dont(allapot(csend_mp=10 * 60), B).fusson)
 
-    def test_sorrend_es_kizarasok(self):
-        self.assertEqual(AU.dont(allapot(kapcsolo_be=False), B).ok, "kapcsolo_ki")
-        self.assertEqual(AU.dont(allapot(ut="ATTCHMNTS - cards/X — kártyák.md"), B).ok, "nem_tartalmi")
-        self.assertEqual(AU.dont(allapot(ut="T/ATTCHMNTS - summaries/X — összefoglaló.md"), B).ok, "nem_tartalmi")
-        self.assertEqual(AU.dont(allapot(ut="T/jegyzet.canvas"), B).ok, "nem_tartalmi")
-        self.assertEqual(AU.dont(allapot(ut=".obsidian/x.md"), B).ok, "nem_tartalmi")
-        self.assertEqual(AU.dont(allapot(tiltva=True), B).ok, "tiltva")
-        self.assertEqual(AU.dont(allapot(md="# Rövid\n\nPár szó."), B).ok, "rovid")
-        # a kapcsoló mindent megelőz, a csend a változás mértéke előtt jön
-        self.assertEqual(AU.dont(allapot(kapcsolo_be=False, tiltva=True, csend_mp=0), B).ok, "kapcsolo_ki")
-        self.assertEqual(AU.dont(allapot(csend_mp=0, alap=AU.mondatok(JEGYZET)), B).ok, "meg_valtozik")
-
     def test_valtozatlan_vagy_keves_modositas_nem_fut(self):
         alap = AU.mondatok(JEGYZET)
         d = AU.dont(allapot(alap=alap), B)

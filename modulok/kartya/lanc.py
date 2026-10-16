@@ -18,6 +18,8 @@ from __future__ import annotations
 import os
 from datetime import date
 
+from core import rejtett
+
 from . import formatum, generalas, horgony, szinkron
 
 FELADAT = "szoveg"
@@ -84,7 +86,7 @@ def vault_md_utak(cfg) -> list[str]:
     vault = str(cfg.path("vault"))
     ki = []
     for d, mappak, fajlok in os.walk(vault):
-        mappak[:] = [m for m in mappak if not m.startswith(".")]
+        mappak[:] = [m for m in rejtett.metsz(mappak) if not m.startswith(".")]     # I6: minden pontos mappa kimarad
         for f in fajlok:
             if f.lower().endswith(".md"):
                 ki.append(formatum.nfc(os.path.relpath(os.path.join(d, f), vault)))

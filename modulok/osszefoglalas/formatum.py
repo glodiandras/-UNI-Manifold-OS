@@ -35,13 +35,14 @@ from datetime import datetime
 
 import yaml
 
+from core import kiserok
 from core.index.maszk import FM_RE, mask_code
 from modulok.kartya.formatum import kiseronev as _kiseronev
 
 SZINTEK = ("jegyzet", "mappa", "video", "kontextus")
 AZON_RE = re.compile(r"^OSSZ-\d{8}-\d{6}(?:-[0-9a-z]{1,12})*$")
 UTOTAG = " — összefoglaló"
-ALAP_MAPPA = "ATTCHMNTS - summaries"    # a kísérőjegyzetek mappája, ha az `[osszefoglalas] mappa` hiányzik
+ALAP_MAPPA = kiserok.alap_mappa("osszefoglalas")   # a kísérőjegyzetek mappája, ha az `[osszefoglalas] mappa` hiányzik (a forrás: core/kiserok.py)
 CIM_UTOTAG = " — Összefoglaló"
 ALLITASOK_CIM = "## Állítások"
 FELIRAT = "forrás"

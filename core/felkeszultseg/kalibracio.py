@@ -305,6 +305,9 @@ def config_ir(cfg, jelentes_: dict, mikor: datetime | None = None) -> dict:
     állapotra; a futó core a következő indulásakor olvassa újra a konfigurációt."""
     if jelentes_.get("allapot") != "javasolt":
         raise ValueError(f"a súlyok nem alkalmazhatók ({jelentes_.get('allapot')}): {jelentes_.get('ok')}")
+    if getattr(cfg, "elrendezes", "hordozhato") == "termek":
+        # a termékben a kódfa (`os.toml`) írásvédett csomag: a súlyokat a munkatér/telepítés beállítása viszi (F5 Beállítások)
+        raise ValueError("a súlyok rögzítése a termékben nem lehetséges: a konfigurációs fájl a csomag része (írásvédett)")
     forras = getattr(cfg, "source", None)
     if not forras or not Path(forras).is_file():
         raise ValueError("a konfigurációs fájl helye ismeretlen")

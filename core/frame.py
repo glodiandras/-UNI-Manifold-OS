@@ -17,7 +17,7 @@ import subprocess
 import time
 from pathlib import Path
 
-from . import snapshot
+from . import rejtett, snapshot
 from .config import Config
 
 KLON_JEL = "mos.klon"          # a `trial_clone` ezt írja a klón git-configjába (a `mentes.ment` kihagyja)
@@ -165,7 +165,7 @@ def tmp_maradekok(cfg: Config) -> list[Path]:
         return []
     ki = []
     for dp, almappak, fajlok in os.walk(root):
-        almappak[:] = [a for a in almappak if not a.startswith(".") and a != "node_modules"]
+        almappak[:] = [a for a in rejtett.metsz(almappak) if not a.startswith(".")]     # I6: a `.manifold` próbaklónjai sem
         ki.extend(Path(dp) / f for f in fajlok if f.endswith(".manifold-tmp") and TMP_MINTA.match(f))
     return sorted(ki)
 
@@ -278,11 +278,32 @@ def apfs_clone(src: Path, dst: Path) -> None:
         raise RuntimeError(f"APFS-klón nem sikerült: {src} → {dst}: {p.stderr.strip()}")
 
 
+KLON_KIHAGY = (".manifold",)     # a vault-klónból kimarad: a munkatér állapota (benne a `{tmp}/proba` klónjai; I6, K2)
+_CP_CSOMAG = 200                 # ennyi gyökér-bejegyzés egy `cp` hívásban (az argumentumhossz korlátja alatt)
+
+
+def apfs_clone_vault(src: Path, dst: Path, kihagy=KLON_KIHAGY) -> None:
+    """A vault APFS-klónja a `.manifold` NÉLKÜL (F3, §3.6): `mkdir dst`, majd `cp -c -R` a gyökér minden más bejegyzésére —
+    a v2 `cp -c -R <vault> <dst>`-jével azonos tartalom, csak a munkatér mappája hiányzik. A termékben a `{tmp}` a vaultban
+    van (`.manifold/var/tmp`), így a klón nem tartalmazhatja önmagát és a korábbi próbaklónokat (rekurzió)."""
+    src, dst = Path(src), Path(dst)
+    kihagyott = {k.casefold() for k in kihagy}
+    nevek = sorted(n for n in os.listdir(src) if n.casefold() not in kihagyott)
+    dst.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        os.chmod(dst, os.stat(src).st_mode & 0o7777)
+    for i in range(0, len(nevek), _CP_CSOMAG):
+        csomag = [str(src / n) for n in nevek[i:i + _CP_CSOMAG]]
+        p = subprocess.run(["cp", "-c", "-R", *csomag, str(dst) + "/"], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise RuntimeError(f"APFS-klón nem sikerült: {src} → {dst}: {p.stderr.strip()}")
+
+
 def trial_clone(cfg: Config, dest: Path) -> tuple[Path, Path]:
-    """A vault és a pillanatkép-tároló APFS-klónja a `dest` alá; a klónban a `core.worktree` a
+    """A vault (a `.manifold` nélkül) és a pillanatkép-tároló APFS-klónja a `dest` alá; a klónban a `core.worktree` a
     vault-klónra mutat (L21). → (vault-klón, git-klón)."""
     vault, git = dest / cfg.path("vault").name, dest / "vault.git"
-    apfs_clone(cfg.path("vault"), vault)
+    apfs_clone_vault(cfg.path("vault"), vault)
     apfs_clone(snapshot.repos(cfg)["vault"].git_dir, git)
     subprocess.run(["git", "--git-dir", str(git), "config", "core.worktree", str(vault)], check=True)
     # a klón jelölése (A2-iras-7): a `mentes.ment` kihagyja — a klónra mutató core kilépési mentése a valódi

@@ -1,12 +1,93 @@
-# v2-kompat preset: a Manifold-OS 2.0 fejlesztői saját konvenciói, amelyeket a termék már NEM szállít alapértékként.
+# v2-kompat preset: a Manifold-OS 2.0 fejlesztői saját konvenciói, amelyeket a termék már NEM szállít alapértékként (F3-DESIGN §7.2).
 #
-# Alak: egy `workspace.toml`-töredék (a `config/os.toml` kulcsait írja felül). Ez a v2-import eszköz (PLAN [H]) adatforrása; amíg a rétegzett
-# konfig nincs meg (F3), kézzel illeszthető egy saját konfigba (`MOS_CONFIG`). A fájl `export-ignore`: kiadási csomagba nem kerül.
+# Alak: egy `workspace.toml`-töredék (a `config/os.toml` W-szakaszait írja felül). A telepítési réteg `[telepites] presetek` listája
+# (`bin/mos portable init --preset v2-kompat`) vagy a munkatér `[workspace] presetek` kulcsa nevezi meg; a séma-párja a
+# `v2-kompat.schema.json`. Ezzel a presettel a rétegzett konfiguráció minden F2-értéket visszaad (`tests/test_konfig_egyenertek.py`).
+# A fájl `export-ignore`: kiadási csomagba nem kerül; a v2-import eszköz (PLAN [H]) adatforrása.
+
+[sema]
+mod = "szigoru"                      # a v2 sémaellenőrzése: sértés → megerősítés, a gépi írás elutasítja
+
+[vault]
+kisero_elotag = "ATTCHMNTS - "
+
+[naplo]
+ut = "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+
+# a kísérőmappák v2-nevei (a `kisero_elotag`-ból képzett alap `Cards`/`Quizzes`/… utótagjától eltérnek)
+[kartya]
+mappa = "ATTCHMNTS - cards"
+
+[kviz]
+mappa = "ATTCHMNTS - quizes"
+
+[osszefoglalas]
+mappa = "ATTCHMNTS - summaries"
+
+[media]
+video_mappa = "ATTCHMNTS - Videos"
+
+[video]
+vault_mappa = "ATTCHMNTS - Videos"
+kizart_mappak = ["AI01", "AI02", "AI03", "_Template", "X01", "Prjct01", "Napló", "ATTCHMNTS - quizes"]
+tema_minta = '^([A-Z]{1,3})(\d{2}) - \S.*$'
 
 [fuzet]
+cel_mappa = "ATTCHMNTS - photos"
 # a v2-ben figyelt további fotómappák (vaulton kívül)
 mappak = ["{work}/Notebooks - digitalized", "{work}/Rendezetlen"]
+
+# a tantárgy-betűk: a PDF-kiemelés Tags-e, a tracker tantárgya, az automatikus kártya-szűrő
+[pdf.tags]
+M = "Mathematics"
+F = "Physics"
+T = "History"
+I = "Literature"
+D = "Informatics"
+N = "Grammar"
+E = "English"
+
+# betű → a tantárgy nevei (az első a kanonikus; a füzetlánc a modell válaszából, a videó-bevitel a forrás `targy` mezőjéből ismeri fel)
+[pdf.nevek]
+M = ["Matematika"]
+F = ["Fizika"]
+T = ["Történelem"]
+I = ["Irodalom"]
+N = ["Magyar nyelvtan", "Magyar nyelv", "Nyelvtan"]
+D = ["Digitális kultúra"]
+E = ["Angol nyelv", "Angol"]
+
+[asszisztens]
+higienia_arva_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]
+emlites_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]
+kartya_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]
+
+[asszisztens.tantargy_nevek]
+History = "történelem"
+Literature = "irodalom"
+Mathematics = "matematika"
+Physics = "fizika"
+Informatics = "informatika"
+Grammar = "nyelvtan"
+English = "angol"
 
 [naptar.szotar]
 # a számonkérés felismerő szavai a v2-ben (a termék alapértéke ezek nélkül áll: `ropdolgozat`, `ropi` iskolai szleng)
 dolgozat = ["dolgozat", "dolgozatot", "dolgozatir", "temazaro", "tz", "ropdolgozat", "ropi", "zh", "vizsga", "exam", "test", "teszt", "felmeres", "szamonkeres", "kisdolgozat", "felelés", "feleles", "quiz"]
+
+[naptar.szotar.targyak]
+Matematika = ["matematika", "matek", "mat", "math", "maths"]
+Fizika = ["fizika", "fizik", "fiz", "physics"]
+"Történelem" = ["tortenelem", "tori", "history"]
+Irodalom = ["irodalom", "iro", "literature"]
+Nyelvtan = ["nyelvtan", "magyar nyelv", "magyar nyelvtan"]
+"Német" = ["nemet", "german", "deutsch"]
+Angol = ["angol", "english"]
+"Digitális kultúra" = ["digitalis kultura", "digkult", "dig kult", "informatika", "info", "digi"]
+"Biológia" = ["biologia", "bio", "biology"]
+"Kémia" = ["kemia", "chemistry"]
+"Földrajz" = ["foldrajz", "geography"]
+"Programozás" = ["programozas", "c++", "cpp", "coding"]
+
+[naptar.szotar.csoportok]
+magyar = ["Irodalom", "Nyelvtan"]

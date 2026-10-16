@@ -1,6 +1,6 @@
 """A kvízjegyzet formátuma (`docs/C22-TERV.md` 2. fejezet): elemző, író, a fájlnév és a `## Kitöltések` szakasz.
 
-A legacy `ATTCHMNTS - quizes` formátuma (L47) marad; a `Source` a vault konvenciója szerint lista (az elemző a legacy
+A legacy kvíz-formátum (L47; kísérőmappa: `[kviz] mappa`, alapból `<kisero_elotag>Quizzes`) marad; a `Source` a vault konvenciója szerint lista (az elemző a legacy
 sztring alakot is olvassa):
 
 ```markdown
@@ -54,6 +54,7 @@ from datetime import datetime, timezone, tzinfo
 
 import yaml
 
+from core import kiserok
 from core.index.maszk import FM_RE, mask_code
 
 BETUK = "ABCD"
@@ -61,7 +62,7 @@ AZON_RE = re.compile(r"^KVIZ-\d{8}-\d{6}(?:-[0-9a-z]{1,12})*$")
 KITOLTES_CIM = "## Kitöltések"
 KITOLTES_MEGJ = "%% A Manifold írja minden kitöltés után — kézi szerkesztés ebben a szakaszban felülíródik. %%"
 UTOTAG = " — Kvíz "
-ALAP_MAPPA = "ATTCHMNTS - quizes"       # a kvízjegyzetek mappája, ha a `[kviz] mappa` hiányzik
+ALAP_MAPPA = kiserok.alap_mappa("kviz")      # a kvízjegyzetek mappája, ha a `[kviz] mappa` hiányzik (a forrás: core/kiserok.py)
 
 _CALLOUT = re.compile(r">[ \t]?\[!(question|success)\]([+-]?)[ \t]*(.*?)[ \t]*$", re.I)
 _SORELO = re.compile(r"^>[ \t]?")

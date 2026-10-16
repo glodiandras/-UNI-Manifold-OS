@@ -70,6 +70,61 @@ class DarabolasTest(unittest.TestCase):
         self.assertNotEqual(a.hash, c.hash)
 
 
+class KihagyottSzakaszKonfigbolTest(unittest.TestCase):
+    """F3-DESIGN §8: a darabolás kihagyott szakaszai a `[kapuk] kihagyott_szakaszok` listából jönnek (a munkatér konvenciója),
+    a `kereso.beallitas`-on és a `frissites.jegyzet_darabjai`-n át; a lista hiányában a kapu alapja él."""
+    TARTALOM = "# Cím\nTartalmi sor\n## Titok\nrejtett sor\n## Gyakorlás\ngyakorlás sor\n"
+    FEJEZETEK = [(1, "Cím", 1), (2, "Titok", 3), (2, "Gyakorlás", 5)]
+
+    class _Eredmeny:
+        def __init__(self, egy=None, mind=()):
+            self._egy, self._mind = egy, list(mind)
+
+        def fetchone(self):
+            return self._egy
+
+        def fetchall(self):
+            return self._mind
+
+    class _Kapcsolat:
+        def __init__(self, tartalom, fejezetek):
+            self.tartalom, self.fejezetek = tartalom, fejezetek
+
+        def execute(self, sql, par=()):
+            R = KihagyottSzakaszKonfigbolTest._Eredmeny
+            if "JOIN fts" in sql:
+                return R(egy=(1, self.tartalom))
+            return R(mind=self.fejezetek if "FROM fejezet" in sql else [])
+
+    @staticmethod
+    def _cfg(kapuk: dict):
+        return SimpleNamespace(section=lambda *k: {("kapuk",): kapuk}.get(k, {}))
+
+    def _szovegek(self, kihagyott):
+        c = self._Kapcsolat(self.TARTALOM, self.FEJEZETEK)
+        return " ".join(d.szoveg for d in frissites.jegyzet_darabjai(c, "M/a.md", kihagyott=kihagyott))
+
+    def test_a_konfig_listaja_dont(self):
+        b = KR.beallitas(self._cfg({"kihagyott_szakaszok": ["Titok"]}))
+        self.assertEqual(b.kihagyott, ("Titok",))
+        szoveg = self._szovegek(b.kihagyott)
+        self.assertIn("gyakorlás sor", szoveg)                                         # a munkatér nem tartja kihagyottnak
+        self.assertNotIn("rejtett sor", szoveg)
+        self.assertIn("Tartalmi sor", szoveg)
+
+    def test_alapbol_a_kapu_listaja(self):
+        b = KR.beallitas(self._cfg({}))
+        self.assertEqual(b.kihagyott, KR.kihagyott_szakaszok(self._cfg({})))
+        szoveg = self._szovegek(b.kihagyott)
+        self.assertNotIn("gyakorlás sor", szoveg)                                      # a kapu alapja a Gyakorlás szakaszt kihagyja
+        self.assertIn("rejtett sor", szoveg)
+
+    def test_az_ures_lista_semmit_nem_hagy_ki(self):
+        szoveg = self._szovegek(KR.beallitas(self._cfg({"kihagyott_szakaszok": []})).kihagyott)
+        self.assertIn("rejtett sor", szoveg)
+        self.assertIn("gyakorlás sor", szoveg)
+
+
 class RangsorTest(unittest.TestCase):
     def test_rrf(self):
         r = rangsor.rrf({"lex": ["a", "b", "c"], "vek": ["b", "d", "b"]}, k=60)

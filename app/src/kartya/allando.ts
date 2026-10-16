@@ -1,8 +1,14 @@
-// A kártyák felületi állandói (C23b). A kísérőjegyzetek mappája a core `[kartya] mappa` (os.toml) tükre: a
-// `tests/test_kartya_api.py` és az `app/tests/kartya.test.ts` őrzi az egyezést. A felület nem olvassa a konfigurációt.
+// A kártyák felületi állandói (C23b). A kísérőjegyzetek mappája a core `[kartya] mappa` (os.toml) szállított alapjának tükre
+// (`core/kiserok.py`: `<kisero_elotag>Cards`): a `tests/test_kartya_api.py` és az `app/tests/kartya.test.ts` őrzi az egyezést.
+// A munkatér saját mappáját a core adja (`GET /api/vault/sema` → `kisero.kartya`): a kapcsolat felépülésekor a felület
+// `beallitKiserok`-ot (osszefoglalas/allando.ts) hívja, ami ide is átírja.
 
-// mirror of config — F3 replaces with /api/workspace
-export const KARTYA_MAPPA = 'ATTCHMNTS - cards';
+export let KARTYA_MAPPA = 'Manifold - Cards';
+
+/** A munkatér kártyamappája (üres vagy hiányzó érték: marad az alap). */
+export function beallitKartyaMappa(mappa: string | null | undefined): void {
+  if (mappa) KARTYA_MAPPA = mappa.normalize('NFC');
+}
 
 /** A vault-relatív út a kártyamappa alatti `.md`-e (a beágyazott jegyzet kártyapakli-e). */
 export function kartyaUt(ut: string | undefined | null): boolean {

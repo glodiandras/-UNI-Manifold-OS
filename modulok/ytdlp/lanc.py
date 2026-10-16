@@ -41,11 +41,21 @@ def msp():
     return konfig, letolto, folyamat, archivum
 
 
+def _kod_konfig(cfg) -> Path | None:
+    """A kóddal szállított `{modulok}/ytdlp/config/config.yaml`, ha a `{ytdlp}` munkafa nem tartalmaz sajátot: a termékben a `{ytdlp}` a
+    `{var}/ytdlp` (adat, kód nélkül), a hordozható elrendezésben a kettő ugyanaz a mappa (ott `None`: a `msp` maga megtalálja)."""
+    if os.environ.get("MSP_CONFIG"):
+        return None
+    sajat = cfg.path("ytdlp") / "config" / "config.yaml"
+    kod = cfg.path("modulok") / "ytdlp" / "config" / "config.yaml"
+    return kod if not sajat.exists() and kod.is_file() else None
+
+
 def msp_konfig(cfg, staging: Path | None = None):
     """Az `msp` konfigurációja a 2.0 útjaival: a staging a `[utak] staging`, az archívum a `[utak] ytdlp_archivum`, az ffmpeg a `[utak] ffmpeg`
     (az `msp` maga semmit nem keres: A3-17), a node a `[utak] node`, ha megvan (A3-18). Az ffmpeg hash-ellenőrzése a `letoltes` dolga."""
     konfig, *_ = msp()
-    kiindulo = konfig.Config.load(project_root=cfg.path("ytdlp"), output_root=staging or cfg.path("staging"))
+    kiindulo = konfig.Config.load(config_path=_kod_konfig(cfg), project_root=cfg.path("ytdlp"), output_root=staging or cfg.path("staging"))
     node = cfg.path("node")
     yt = dataclasses.replace(kiindulo.ytdlp, ffmpeg_location=str(cfg.path("ffmpeg")),
                              node_location=str(node) if node.is_file() and os.access(node, os.X_OK) else "auto")

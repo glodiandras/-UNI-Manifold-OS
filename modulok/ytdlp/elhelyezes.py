@@ -14,13 +14,13 @@ import re
 import unicodedata
 from pathlib import Path
 
-from core import mediatipus
+from core import kiserok, mediatipus, rejtett
 
-ALAP_VIDEO_MAPPA = "ATTCHMNTS - Videos"
+ALAP_VIDEO_MAPPA = kiserok.alap_mappa("video")      # a szállított alap; a munkatér mappáját a `kiserok.kisero_mappa(cfg, "video")` adja
 ALAP_RETEG = "Média"
 SENTINEL_HIANY = "(nem a media.py írta)"
 _ROSSZ = '/\\:*?"<>|'
-KIHAGY_MAPPAK = {".obsidian", ".git", ".trash"}
+KIHAGY_MAPPAK = set(rejtett.MEDIA_KIHAGYOTT_MAPPAK)      # a vault-bejárások közös kihagyási szabálya (`core/rejtett.py`), a `node_modules` nélkül (v2)
 
 
 def nfc(s: str) -> str:
@@ -51,6 +51,7 @@ def media_index(vault: str | Path) -> dict[str, str]:
     vault = Path(vault)
     ki: dict[str, str] = {}
     for d, almappak, fajlok in os.walk(vault):
+        rejtett.media_metsz(almappak)                                   # I6: a `.manifold` és a többi rejtett mappa kimarad
         almappak[:] = [a for a in almappak if a not in KIHAGY_MAPPAK]
         for f in fajlok:
             if media_e(f):

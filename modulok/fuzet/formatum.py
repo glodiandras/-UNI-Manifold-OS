@@ -16,6 +16,8 @@ from __future__ import annotations
 import os
 import re
 
+from core import kiserok
+
 CALLOUT_FEJ = "> [!info]- Képletek a fotóról"
 _BEAGY = re.compile(r"^!\[\[([^\]]+)\]\]\s*$")
 _FEJEZET = re.compile(r"^#{1,2}\s")
@@ -62,7 +64,7 @@ def blokk(link: str, kepletek_: list[str] | tuple = ()) -> list[str]:
 
 ALAP_SZAKASZ_NEV = "Füzet"                  # a `[fuzet] szakasz` alapja: a cél jegyzet szakaszának címe
 ALAP_SZAKASZ = "## " + ALAP_SZAKASZ_NEV
-ALAP_CEL_MAPPA = "ATTCHMNTS - photos"       # a `[fuzet] cel_mappa` alapja: a fotók helye a vaultban
+ALAP_CEL_MAPPA = kiserok.alap_mappa("fuzet")   # a `[fuzet] cel_mappa` alapja: a fotók helye a vaultban (a forrás: core/kiserok.py)
 
 
 def szakasz_fejlec(nev: str | None = None) -> str:

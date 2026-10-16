@@ -13,14 +13,36 @@ def backup() -> int:
     return 0
 
 
+KONFIG_HIBA_KILEPES = 78     # EX_CONFIG: a konfiguráció nem tölthető be (a héj a `{"hiba": kod}` sort mutatja)
+
+
+def start() -> int:
+    """A core indítása: egyetlen feloldás, rögzítve (F3-DESIGN §2.6). A `config.load()` után minden feloldott `[utak]` kulcs
+    abszolút `MOS_<KULCS>`-ként a környezetbe kerül, a mappák elkészülnek, és a gyermekek környezete (HF offline, gyorsítótár,
+    `TMPDIR`) a feloldott utakra áll: a lépések (`MOS_*` engedélylista), a worker, a CLI-gyermekek és a D9-próbaklón ugyanazokat
+    az utakat látják. Betöltési hibánál az első stdout-sor `{"hiba": kod, "param": …}`, a kilépési kód 78."""
+    import json
+    import os
+    from . import config, gyokerek, server
+    # 35./54./56. döntés: a felületi API-titok csak a core-é — olvasás után kikerül a környezetből, így a gyermekfolyamatok
+    # (modell-worker, EventKit-segéd, ffmpeg, git, lépések) nem öröklik
+    titok = os.environ.pop("MOS_API_TITOK", None)
+    try:
+        cfg = config.load()
+    except config.ConfigError as e:
+        print(json.dumps({"hiba": e.kod, "param": e.param, "uzenet": str(e)}, ensure_ascii=False), flush=True)
+        print(f"[core] a konfiguráció nem tölthető be ({e.kod}): {e}", file=sys.stderr, flush=True)
+        return KONFIG_HIBA_KILEPES
+    gyokerek.rogzit(cfg, os.environ)
+    gyokerek.biztosit_mappak(cfg)
+    os.environ.update(gyokerek.folyamat_env(cfg))
+    return server.start(cfg=cfg, api_titok=titok)
+
+
 def main(argv: list[str]) -> int:
     parancs = argv[0] if argv else ""
     if parancs == "start":
-        import os
-        from . import server
-        # 35./54./56. döntés: a felületi API-titok csak a core-é — olvasás után kikerül a környezetből, így a gyermekfolyamatok
-        # (modell-worker, EventKit-segéd, ffmpeg, git, lépések) nem öröklik
-        return server.start(api_titok=os.environ.pop("MOS_API_TITOK", None))
+        return start()
     if parancs == "doctor":
         from . import doctor
         return doctor.main(argv[1:])

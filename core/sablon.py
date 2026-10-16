@@ -28,6 +28,7 @@ import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 
+from . import rejtett
 from .index.maszk import FM_RE
 from .utvonalak import HttpError
 
@@ -213,6 +214,7 @@ def lista(vault) -> dict:
     sablonok = []
     if gyoker.is_dir():
         for sor, almappak, fajlok in os.walk(gyoker):
+            rejtett.metsz_munkater(almappak)
             almappak[:] = [d for d in almappak if not d.startswith(".")]
             for f in fajlok:
                 if f.startswith(".") or not f.lower().endswith(".md"):

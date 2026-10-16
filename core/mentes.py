@@ -3,6 +3,13 @@
   - a **2.0 kódtárának** bundle-je (`mos-kodtar-<idő>.bundle`; a `{os}` git-tára, minden ref; 33. döntés),
   - a kis állapotfájlok **másolata** (`mos-allapot-<idő>/`: az SQLite-ok `VACUUM INTO`-val, a `{state}` JSON/JSONL-fájljai
     — köztük a bináris mozgásnapló (L19) —, a füzetlánc munkamappája, a videó-feladatok és a bejárások állapota; 33. döntés).
+A mappa tulajdonosa a `{backup}/.manifold-mentes.json` jelölő (F3-DESIGN §5): üres mappába az első író beírja; a saját mappában
+a rotáció a mai, az idegen jelölőjű mappában nincs rotáció (és a `mentes-hiba.json` figyelmeztet), a jelölő nélküli, nem üres
+(„örökölt”, pl. a v2-vel közös `~/Manifold-backup`) mappában a régi bundle csak akkor törlődik, ha minden feje megvan ebben a
+tárban, az állapotmásolatok (`mos-allapot-*`) és a migráció előtti másolatok (`mos-migracio-*`) rotációja ki van kapcsolva, és a
+másik író félkész `*.tmp` fájlját csak a több órás maradékként takarítjuk. Ugyanígy „örökölt” az a mappa, amelynek a jelölője
+ennek a munkatér-azonosítónak, de egy MÁSIK, még meglévő vaultnak a jelölője (másolat, amely az azonosítót megtartotta).
+A vaultban lévő mentési mappába nem írunk.
 A bundle-ökből `[mentes].megtartott_bundle` marad; az állapotmásolatból a legújabb `allapot_megtartott` és az utolsó
 `allapot_napi` nap mindegyikéből a nap utolsó másolata (a változatlan fájl az előző másolatból hard linkkel jön, így egy
 újabb másolat csak a változást foglalja). A média (fotó, PDF, videó, hang) az SSD-n marad (1. / 14. döntés).
@@ -26,6 +33,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -35,7 +43,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from . import frame, osszeomlas, snapshot, tartos
+from . import frame, osszeomlas, snapshot, tartos, vaultkivul
 
 HIBA_FAJL = "mentes-hiba.json"          # a {state} alatt: az utolsó kilépési/időzített mentés hibái (siker törli)
 KODTAR_NEV = "mos-kodtar"
@@ -43,6 +51,12 @@ ALLAPOT_NEV = "mos-allapot"
 MIGRACIO_NEV = "mos-migracio"       # a migráció ELŐTTI egyfájlos SQLite-másolat (33. döntés, C29.7b)
 GIT_OLVAS_MP = 60.0                 # egy csak olvasó git-hívás (rev-parse, status, list-heads) időkorlátja
 GIT_BUNDLE_MP = 600.0               # a kódtár `git bundle create`-jének időkorlátja
+JEL_NEV = ".manifold-mentes.json"   # a `{backup}` tulajdonosjelölője: {formatum, munkater_id, vault, letrehozva}
+JEL_MAX_BAJT = 64 * 1024            # ennél nagyobb jelölő nem a miénk (olvasatlanul „idegen”)
+JEL_VAULTOK_MAX = 8                 # a jelölő `vaultok` listája: a már látott vault-utak (a másolat-őr nem engedi el őket)
+IDEGEN_TMP_KOR_MP = 6 * 3600        # nem saját mappában a másik író félkész `*.tmp`-je csak ennél öregebben takarítható
+IDEGEN_KULCS = "mentes_idegen_mappa"   # a `mentes-hiba.json` figyelmeztetése (a Health `kod`-ja is): a mappa más munkatéré
+UT_KULCS = "mentes_ut"              # a `mentes-hiba.json` hibája: a mentési mappa a vaultban van
 # Az állapotmásolatba kerülő mappák a {state} alatt (a `{state}`-hez mért név): a `fuzet`/`video_jobs` kulcs útja
 # és ezek. Kimarad belőlük a `tmp/` almappa, a média (az előnézeti képek a fotókból újra elkészülnek) és a rejtett fájl.
 # A mappanevek az állapot-kompatibilitás miatt rögzítettek (a meglévő {state} ezeken a neveken tárolja a médiaállapotot).
@@ -52,6 +66,11 @@ ALLAPOT_STATE_MAPPAK = ("video-bejaras", "Manifold-media/itelet", "Manifold-medi
 
 class MentesHiba(snapshot.SnapshotError):
     """A belső lemezes mentés hibája (pl. a git időkorlátja); a `SnapshotError` alosztálya, így a hívók meglévő ága fogja."""
+
+
+class BackupUtHiba(MentesHiba, OSError):
+    """A mentési mappa a vaultban van: oda nem írunk. `OSError` is, mert a migráció előtti másolat hívói (`szemelyes_db`,
+    `tanulas_db`, `automatika`, `kalibracio`) az `OSError`-t már most úgy kezelik, mint egy nem írható mentési mappát."""
 
 
 def _naplo_stderr(s: str) -> None:
@@ -130,6 +149,211 @@ def probaklon(repo: snapshot.Repo) -> bool:
     return _olvas(repo, "config", "--get", frame.KLON_JEL).stdout.strip() == "1"
 
 
+# ------------------------------------------------------------------ a mentési mappa tulajdonosa (F3-DESIGN §5)
+
+def _vaultban(ut: Path, vault: Path) -> bool:
+    """A `ut` a vault mappa vagy a belseje (szöveg és fájlrendszer-azonosság szerint). A `.manifold/var` kivétel (a
+    `vaultkivul`-é, a kártya-exporthoz) itt nem érvényes: a mentés oda sem kerülhet — a vaulttal egy lemezen élne, és a külső
+    teljes mentés a `{var}`-ral együtt újra bejárná."""
+    try:
+        v = Path(vault).resolve(strict=True)
+        p = Path(ut).resolve()
+    except (OSError, RuntimeError):
+        return False                                       # nincs vault, amit védeni kellene
+    return p == v or v in p.parents or vaultkivul.vaultban_van(p, v)
+
+
+def _backup_ut(cfg) -> Path:
+    """A `{backup}`; `BackupUtHiba`, ha a vaultban van (a vault saját mentése nem lehet a vaultban: a bundle bekerülne a
+    vault pillanatképébe és a külső mentésbe)."""
+    backup = cfg.path("backup")
+    vault = cfg.utak.get("vault")
+    if vault is not None and _vaultban(backup, vault):
+        raise BackupUtHiba(f"a mentési mappa a vaultban van ({backup}): válassz a vaulton kívüli mappát a mentéshez")
+    return backup
+
+
+def _azonossag(cfg) -> dict:
+    """Ki ír most: a munkatér azonosítója (hordozható módban `workspace.toml` nélkül nincs) és a vault kanonikus útja."""
+    vault = cfg.utak.get("vault")
+    try:
+        v = str(vault.resolve()) if vault is not None else None
+    except (OSError, RuntimeError):
+        v = str(vault)
+    return {"munkater_id": cfg.workspace_id or None, "vault": v}
+
+
+def _jel_olvas(backup: Path) -> dict | None:
+    """A tulajdonosjelölő: None, ha nincs; `{}`, ha van, de olvashatatlan vagy nem a mi formánk (akkor nem bizonyítható, hogy a
+    miénk)."""
+    ut = Path(backup) / JEL_NEV
+    try:
+        if not os.path.lexists(ut):
+            return None
+        if ut.is_symlink() or not ut.is_file() or ut.stat().st_size > JEL_MAX_BAJT:
+            return {}
+        d = json.loads(ut.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    ok = (isinstance(d, dict) and "munkater_id" in d and "vault" in d
+          and (d["munkater_id"] is None or isinstance(d["munkater_id"], str))
+          and (d["vault"] is None or isinstance(d["vault"], str))
+          and (d.get("vaultok") is None or (isinstance(d["vaultok"], list) and len(d["vaultok"]) <= 4 * JEL_VAULTOK_MAX
+                                            and all(isinstance(x, str) for x in d["vaultok"]))))
+    return d if ok else {}
+
+
+def _mas_mappa_letezik(ut: str | None, vault: str | None) -> bool:
+    """Az `ut` (egy korábban látott vault) ma is létező MÁSIK mappa-e, mint a `vault` (kanonikus alak vagy fájlrendszer-azonosság)."""
+    if not ut or ut == vault:
+        return False
+    try:
+        if not os.path.isdir(ut):
+            return False
+        return not (vault and os.path.samefile(ut, vault))
+    except OSError:
+        return False
+
+
+def _jel_viszony(jel: dict, az: dict) -> str:
+    """A jelölő és ez a munkatér viszonya: `"sajat"` | `"orokolt"` | `"idegen"`.
+    - más azonosító (vagy a másik azonosító nélkül más vault): `"idegen"`;
+    - azonos azonosító: a jelölőben látott vault-utak (`vault` és `vaultok`) közül egy MÁSIK, ma is létező mappa azt jelenti, hogy két
+      mappa viseli ugyanazt az azonosítót (másolat, letöltött vault, amely az azonosítót megtartotta; a `workspace.nyit` még nem
+      cserélte): a másik mappa mentéseit nem forgathatjuk — `"orokolt"` (csak ismert fejű bundle törölhető, nincs állapotforgatás,
+      a jelölőt sem írjuk át). Ha az összes korábbi hely eltűnt, a vault áthelyezett: `"sajat"` (a jelölő követi, a régi hely a
+      `vaultok`-ba kerül, hogy az őr a későbbi ütközésnél is megmaradjon)."""
+    if jel["munkater_id"] is not None:
+        if jel["munkater_id"] != az["munkater_id"]:
+            return "idegen"
+        korabbi = [x for x in [jel.get("vault"), *(jel.get("vaultok") or [])] if isinstance(x, str)]
+        return "orokolt" if any(_mas_mappa_letezik(x, az["vault"]) for x in korabbi) else "sajat"
+    return "sajat" if jel["vault"] == az["vault"] else "idegen"   # azonosító nélküli jel: ugyanaz a vault (a munkatér azóta kaphatott id-t)
+
+
+def _felkesz_maradek(nev: str) -> bool:
+    """A saját írók félkész, még át nem nevezett fájlja (`<tár>-*.bundle.tmp`, `mos-allapot-*.tmp`, `mos-migracio-*.sqlite.tmp`): nem
+    adat. A jelölő minden írás ELŐTT készül, ezért jelölő nélküli mappában csak egy a jelölő korából (F3 előtti telepítésből)
+    megszakadt mentés hagyhat ilyet."""
+    return nev.endswith(".bundle.tmp") or (nev.startswith(f"{ALLAPOT_NEV}-") and nev.endswith(".tmp")) \
+        or (nev.startswith(f"{MIGRACIO_NEV}-") and nev.endswith(".sqlite.tmp"))
+
+
+def _ures_mappa(backup: Path) -> bool:
+    """Nincs benne semmi, ami adat: a Finder `.DS_Store`-ja, egy másik író félkész jelölője (`*.manifold-tmp`) és a félbemaradt mentés
+    félkész maradéka (`_felkesz_maradek`) nem számít."""
+    try:
+        return not any(p.name != ".DS_Store" and not p.name.endswith(tartos.TMP_UTOTAG) and not _felkesz_maradek(p.name)
+                       for p in Path(backup).iterdir())
+    except OSError:
+        return False                                       # nem olvasható: nem „üres”
+
+
+def _tulajdonos(cfg) -> str:
+    """A mentési mappa és ez a munkatér viszonya (csak olvas): `"sajat"` (a jelölő a miénk), `"ures"` (nincs benne semmi: az
+    első író beírja a jelölőt), `"idegen"` (más munkatér jelölője, vagy olvashatatlan jelölő), `"orokolt"` (nincs jelölő, de
+    van benne tartalom: pl. a v2-vel közös `~/Manifold-backup`)."""
+    backup = cfg.path("backup")
+    if not backup.is_dir():
+        return "ures"
+    jel = _jel_olvas(backup)
+    if jel is None:
+        return "ures" if _ures_mappa(backup) else "orokolt"
+    if not jel:
+        return "idegen"
+    return _jel_viszony(jel, _azonossag(cfg))
+
+
+tulajdonos = _tulajdonos                         # a doctor/Health olvasása (csak olvas, nem ír jelölőt)
+
+
+def _jel_ir(cfg, backup: Path) -> None:
+    """A jelölő létrehozása (`FileExistsError`, ha közben más megelőzött): egy üres mappa első írója hívja."""
+    Path(backup).mkdir(parents=True, exist_ok=True)
+    tartos.kizaro_ir(Path(backup) / JEL_NEV, json.dumps(
+        {"formatum": 1, **_azonossag(cfg), "letrehozva": _dt.datetime.now().astimezone().isoformat(timespec="seconds")},
+        ensure_ascii=False, indent=1).encode("utf-8"))
+
+
+def _jel_frissit(cfg, backup: Path) -> None:
+    """A saját jelölő adatai (azonosító, vault) naprakészen: egy áthelyezett vault vagy a később kapott munkatér-azonosító után
+    átírja. A hiba nem akaszthatja a mentést."""
+    jel, az = _jel_olvas(backup), _azonossag(cfg)
+    if not jel or (jel["munkater_id"], jel["vault"]) == (az["munkater_id"], az["vault"]):
+        return
+    # a régi hely a `vaultok`-ba kerül (legfeljebb `JEL_VAULTOK_MAX`): ha később ugyanaz az azonosító két létező mappán jelenik meg,
+    # a `_jel_viszony` megtalálja a másikat
+    korabbi = [x for x in [jel.get("vault"), *(jel.get("vaultok") or [])] if isinstance(x, str) and x != az["vault"]]
+    vaultok = list(dict.fromkeys(korabbi))[:JEL_VAULTOK_MAX]
+    try:
+        tartos.atomi_ir(Path(backup) / JEL_NEV, json.dumps(
+            {**jel, **az, "formatum": jel.get("formatum", 1), "vaultok": vaultok}, ensure_ascii=False, indent=1).encode("utf-8"))
+    except OSError:
+        pass
+
+
+def _tulajdonos_biztosit(cfg) -> str:
+    """Az író belépője (`ment`, `allapot_masolat`, `migracio_elott`): üres mappába beírja a jelölőt (→ `"sajat"`), a saját jelölő
+    adatait frissíti; egyébként a `_tulajdonos` eredménye."""
+    allapot = _tulajdonos(cfg)
+    backup = cfg.path("backup")
+    if allapot == "ures":
+        try:
+            _jel_ir(cfg, backup)
+            return "sajat"
+        except FileExistsError:
+            return _tulajdonos(cfg)                        # egy másik író megelőzött: az ő jelölője dönt
+    if allapot == "sajat":
+        _jel_frissit(cfg, backup)
+    return allapot
+
+
+def _tmp_kor_mp(tulaj: str) -> float:
+    """A félkész `*.tmp` maradék takaríthatóságához kért kor (s): saját (vagy még üres) mappában 0 (minden maradék a miénk: egy
+    író van), másikban `IDEGEN_TMP_KOR_MP` — egy másik író (v2, másik munkatér) éppen készülő másolatát vagy bundle-jét nem töröljük."""
+    return 0.0 if tulaj in ("sajat", "ures") else float(IDEGEN_TMP_KOR_MP)
+
+
+def _tmp_oreg(ut: Path, most: float, kor: float) -> bool:
+    try:
+        return most - ut.stat().st_mtime >= kor
+    except OSError:
+        return False
+
+
+def _idegen_uzenet(cfg) -> str:
+    return (f"a mentési mappa ({cfg.path('backup')}) másik munkatéré: a régi mentések nem törlődnek; "
+            "válassz ennek a munkatérnek külön mentési mappát")
+
+
+def _fejek_ismertek(olvas, bundle: Path) -> bool:
+    """Igaz, ha a bundle minden feje megvan a tárban (`git bundle list-heads` + `git cat-file -e`). Minden kétség (olvashatatlan
+    bundle, üres fejlista, időkorlát) „nem”: ismeretlen fejű bundle-t nem törlünk (az örökölt mappa szabálya)."""
+    try:
+        lista = olvas("bundle", "list-heads", str(bundle))
+        if lista.returncode != 0:
+            return False
+        shak = [ln.split()[0] for ln in lista.stdout.splitlines() if ln.strip()]
+        if not shak:
+            return False
+        for sha in shak:
+            if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha) or olvas("cat-file", "-e", sha).returncode != 0:
+                return False
+    except (MentesHiba, OSError, subprocess.SubprocessError):
+        return False
+    return True
+
+
+def _torolheto(tulaj: str, olvas):
+    """A `snapshot.bundle_keszit` `torolheto` szabálya a mappa tulajdonosa szerint: saját → `None` (a mai rotáció); örökölt →
+    csak az a régi bundle törölhető, amelynek minden feje megvan a tárban (`olvas`); idegen → semmi sem."""
+    if tulaj == "sajat":
+        return None
+    if tulaj == "orokolt":
+        return lambda bundle: _fejek_ismertek(olvas, bundle)
+    return lambda bundle: False
+
+
 # ------------------------------------------------------------------ a kódtár (33. döntés)
 
 def kodtar_munkafa(cfg) -> Path | None:
@@ -163,7 +387,7 @@ def kodtar_friss(cfg, backup: Path) -> bool | None:
     return refek <= {ln.split()[0] for ln in fejek.splitlines() if ln.strip()}
 
 
-def _kodtar_bundle(cfg, backup: Path, keep: int) -> Path | None:
+def _kodtar_bundle(cfg, backup: Path, keep: int, tulaj: str = "sajat") -> Path | None:
     munkafa = kodtar_munkafa(cfg)
     if munkafa is None or not _kodtar_git(munkafa, "rev-parse", "--verify", "-q", "HEAD").stdout.strip():
         return None
@@ -179,7 +403,8 @@ def _kodtar_bundle(cfg, backup: Path, keep: int) -> Path | None:
             tmp.unlink(missing_ok=True)
             raise snapshot.SnapshotError(f"[kódtár] git bundle: {p.stderr.strip() or p.stdout.strip()}")
 
-    return snapshot.bundle_keszit(KODTAR_NEV, keszit, backup, keep)
+    return snapshot.bundle_keszit(KODTAR_NEV, keszit, backup, keep,
+                                  _torolheto(tulaj, lambda *a: _kodtar_git(munkafa, *a)), maradek_kor_mp=_tmp_kor_mp(tulaj))
 
 
 # ------------------------------------------------------------------ az állapotfájlok (33. döntés)
@@ -202,8 +427,8 @@ def _mappa_fajljai(mappa: Path, nev: str) -> list[tuple[str, Path]]:
 
 def allapot_forrasok(cfg) -> list[tuple[str, Path]]:
     """A mentendő kis állapotfájlok: (név a másolatban, forrás). A router-, feladat-, tanulás-, automatika- és
-    személyes-SQLite-ok, a `{state}` JSON- és JSONL-fájljai (köztük a `binaris-naplo.jsonl`: a média-mozgásnapló, amelyen a
-    visszavonás áll, L19), a füzetlánc munkamappája (a kötések, 68(c)), a videó-feladatok és a bejárások állapota
+    személyes-SQLite-ok, a munkatér `workspace.toml`-ja és `schema.json`-ja (`workspace/…`), a `{state}` JSON- és JSONL-fájljai
+    (köztük a `binaris-naplo.jsonl`: a média-mozgásnapló, amelyen a visszavonás áll, L19), a füzetlánc munkamappája (a kötések, 68(c)), a videó-feladatok és a bejárások állapota
     (`ALLAPOT_MAPPA_KULCSOK`, `ALLAPOT_STATE_MAPPAK`); ami nincs meg, kimarad. (A média, a modellek, az indexek
     újraépíthetők vagy nagyok: nincsenek benne.)"""
     f = [("router.sqlite", cfg.path("router_db")), ("feladatok.sqlite", cfg.path("feladatok_db")),
@@ -216,6 +441,9 @@ def allapot_forrasok(cfg) -> list[tuple[str, Path]]:
         bn = cfg.path("binaris_naplo")
         if bn.parent != st:                                              # a {state}-en kívül beállítva: külön név
             f.append((f"binaris_naplo/{bn.name}", bn))
+    if "workspace" in cfg.utak:                                          # F3: a munkatér két kis fájlja (a `.manifold/` alatt; ami nincs meg, kimarad)
+        ws = cfg.path("workspace")
+        f += [(f"workspace/{n}", ws / n) for n in ("workspace.toml", "schema.json") if not (ws / n).is_symlink()]
     mappak = [(k, cfg.path(k)) for k in ALLAPOT_MAPPA_KULCSOK if k in cfg.utak]
     mappak += [(n, st / n) for n in ALLAPOT_STATE_MAPPAK]
     latott: set[Path] = set()
@@ -338,11 +566,14 @@ def allapot_masolat(cfg, csak_ha_valtozott: bool = False, log=lambda s: None) ->
     forrás sem újabb az utolsó másolatnál, kimarad. Egy fájl hibája nem viszi el a többit; a hibákat a végén `OSError`
     jelzi; a félkész `.tmp` mappa egy váratlan hibánál sem marad meg. → a másolat mappája, vagy None."""
     beall = cfg.section("mentes")
-    backup = cfg.path("backup")
+    backup = _backup_ut(cfg)
     megtartott, napi = int(beall.get("allapot_megtartott", 5)), int(beall.get("allapot_napi", 14))
     if backup.is_dir():
+        kor = _tmp_kor_mp(_tulajdonos(cfg))                     # (csak olvas) nem saját mappában a másik író készülő másolata nem a miénk
+        most = time.time()
         for maradek in backup.glob(f"{ALLAPOT_NEV}-*.tmp"):
-            shutil.rmtree(maradek, ignore_errors=True)          # egy megszakadt másolat félkész mappája
+            if kor <= 0 or _tmp_oreg(maradek, most, kor):
+                shutil.rmtree(maradek, ignore_errors=True)      # egy megszakadt másolat félkész mappája
     forrasok = allapot_forrasok(cfg)
     if not forrasok:
         return None
@@ -350,6 +581,7 @@ def allapot_masolat(cfg, csak_ha_valtozott: bool = False, log=lambda s: None) ->
     if csak_ha_valtozott and legutolso is not None and not _forras_ujabb(forrasok, legutolso):
         log("[mentés] állapotfájlok: a legutóbbi másolat friss")
         return None
+    tulaj = _tulajdonos_biztosit(cfg)
     backup.mkdir(parents=True, exist_ok=True)
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     cel, tmp = backup / f"{ALLAPOT_NEV}-{stamp}", backup / f"{ALLAPOT_NEV}-{stamp}.tmp"
@@ -375,7 +607,10 @@ def allapot_masolat(cfg, csak_ha_valtozott: bool = False, log=lambda s: None) ->
         if tmp.exists():
             shutil.rmtree(tmp, ignore_errors=True)      # a félkész másolat ne maradjon (pl. betelt a belső lemez)
     tartos.fsync_mappa(backup)
-    allapot_ritkit(backup, megtartott, napi)
+    if tulaj == "sajat":
+        allapot_ritkit(backup, megtartott, napi)
+    else:                                   # közös (örökölt) vagy idegen mappa: nem bizonyítható, hogy a régi másolat a miénk
+        log(f"[mentés] állapotfájlok: a rotáció kimarad (a mentési mappa nem ennek a munkatérnek a saját mappája: {tulaj})")
     log(f"[mentés] állapotfájlok: {cel}")
     if hibak:
         raise OSError("az állapotfájlok egy része nem másolható: " + "; ".join(hibak))
@@ -390,7 +625,8 @@ def migracio_elott(cfg, forras: Path, regi_verzio: int, log=lambda s: None) -> P
     vagy a naptár, kör-zár nélkül) egy másik szál (kilépési mentés, ütemező) készülő másolatát tenné tönkre —, (b) a közös
     rotációja gyorsan kiforgatná a migráció előtti állapotot, (c) minden állapotfájlt másolna egy tábla léptetése miatt.
     A rotáció fájlonként a legújabb `[mentes] megtartott_migracio` (alap 5) másolatot tartja."""
-    backup, keep = cfg.path("backup"), int(cfg.section("mentes").get("megtartott_migracio", 5))
+    backup, keep = _backup_ut(cfg), int(cfg.section("mentes").get("megtartott_migracio", 5))
+    tulaj = _tulajdonos_biztosit(cfg)
     backup.mkdir(parents=True, exist_ok=True)
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     cel = backup / f"{MIGRACIO_NEV}-{forras.stem}-v{regi_verzio}-{stamp}.sqlite"
@@ -405,7 +641,9 @@ def migracio_elott(cfg, forras: Path, regi_verzio: int, log=lambda s: None) -> P
         tmp.unlink(missing_ok=True)
     tartos.fsync_mappa(backup)
     mind = sorted(backup.glob(f"{MIGRACIO_NEV}-{forras.stem}-v*.sqlite"))
-    for regi in mind[:-keep] if keep > 0 else []:
+    # csak a saját mappában forgatunk: az örökölt (v2-vel közös) mappában ugyanezek a fájlnevek a másik telepítés biztonsági
+    # másolatai is — a legújabb `keep` a kettő közül maradna, a másik telepítés régi másolatai törlődnének
+    for regi in mind[:-keep] if keep > 0 and tulaj == "sajat" else []:
         regi.unlink(missing_ok=True)
     log(f"[mentés] migráció előtti másolat: {cel}")
     return cel
@@ -419,12 +657,37 @@ def ment(cfg, csak_ha_valtozott: bool = False, log=lambda s: None, hibak: dict |
     kimarad; a próbaklón tárolója mindig kimarad (A2-iras-7: a valódi `{backup}` rotációját nem érheti — ilyenkor a kódtár
     és az állapotfájlok sem mentődnek). `allapot=False`: csak a bundle-ök (az időzítő a két állapotmásolat között).
     Minden elem külön próbálkozás (T023): `hibak` megadásakor a hiba oda kerül (név → üzenet), és a többi elem mentése
-    folytatódik; nélküle az első hiba kivétel. → a megírt bundle-ök/mappák."""
+    folytatódik; nélküle az első hiba kivétel. A mentési mappa a vaultban: `BackupUtHiba` (`hibak`-kal a `mentes_ut` hiba, nincs írás);
+    a mappa tulajdonosa (`_tulajdonos`) szabja a rotációt: saját → a mai, örökölt → csak ismert fejű bundle törlődik, az állapotmásolat
+    rotációja ki, idegen → nincs rotáció és a `mentes_idegen_mappa` figyelmeztetés a `hibak`-ban. → a megírt bundle-ök/mappák."""
     log = _biztos(log)
-    backup = cfg.path("backup")
+    try:
+        backup = _backup_ut(cfg)
+    except BackupUtHiba as e:
+        if hibak is None:
+            raise
+        hibak[UT_KULCS] = str(e)
+        log(f"[mentés] {e}")
+        return []
     keep = int(cfg.section("mentes").get("megtartott_bundle", 10))
     out: list[Path] = []
     klon = False
+    tulaj_ertek: list[str] = []
+
+    def tulaj() -> str:
+        """A mappa tulajdonosa (egyszer számolva, az első valódi írás előtt — a próbaklón ide nem ér el): üres mappába beírja a
+        jelölőt; az idegen mappa figyelmeztetést kap (`hibak`), az örökölt naplót."""
+        if not tulaj_ertek:
+            t = _tulajdonos_biztosit(cfg)
+            tulaj_ertek.append(t)
+            if t == "idegen":
+                uzenet = _idegen_uzenet(cfg)
+                log(f"[mentés] {uzenet}")
+                if hibak is not None:
+                    hibak[IDEGEN_KULCS] = uzenet
+            elif t == "orokolt":
+                log("[mentés] közös mentési mappa (nincs tulajdonosjelölő): régi bundle csak ismert fejekkel törlődik")
+        return tulaj_ertek[0]
 
     def probal(nev: str, fn) -> None:
         try:
@@ -442,10 +705,17 @@ def ment(cfg, csak_ha_valtozott: bool = False, log=lambda s: None, hibak: dict |
                 klon = True
                 log(f"[mentés] {name}: próbaklón — a mentése kimarad (a valódi mentés rotációját nem érheti)")
                 return
+            t = tulaj()
             if csak_ha_valtozott and friss(repo, backup, dirty=False):
                 log(f"[mentés] {name}: a legutóbbi bundle friss")
                 return
-            p = repo.bundle(backup, keep)
+            torolheto = _torolheto(t, lambda *a, r=repo: _olvas(r, *a))
+            kw: dict = {}
+            if torolheto is not None:
+                kw["torolheto"] = torolheto
+            if _tmp_kor_mp(t) > 0:
+                kw["maradek_kor_mp"] = _tmp_kor_mp(t)
+            p = repo.bundle(backup, keep, **kw)
             log(f"[mentés] {name}: {p or 'nincs még commit'}")
             if p:
                 out.append(p)
@@ -456,15 +726,17 @@ def ment(cfg, csak_ha_valtozott: bool = False, log=lambda s: None, hibak: dict |
     def kodtar():
         if kodtar_munkafa(cfg) is None:
             return
+        t = tulaj()
         if csak_ha_valtozott and kodtar_friss(cfg, backup):
             log("[mentés] kódtár: a legutóbbi bundle friss")
             return
-        p = _kodtar_bundle(cfg, backup, keep)
+        p = _kodtar_bundle(cfg, backup, keep, t)
         log(f"[mentés] kódtár: {p or 'nincs még commit'}")
         if p:
             out.append(p)
 
     def allapot_resz():
+        tulaj()
         p = allapot_masolat(cfg, csak_ha_valtozott, log)
         if p:
             out.append(p)

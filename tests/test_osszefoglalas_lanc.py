@@ -169,13 +169,6 @@ class Alap(unittest.TestCase):
         with self.assertRaises(L.Megall):
             L.osszefoglal(bemenet(), lambda p, m: "", "m", "cím", szint="ismeretlen")
 
-    def test_beallitas_az_os_tomlbol(self):
-        from core import config
-        cfg = config.load()
-        b = L.beallitas(cfg)
-        self.assertEqual(b.mappa, "ATTCHMNTS - summaries")
-        self.assertEqual(L.profil(cfg).idezet_max_szo, 45)
-
 
 class MappaTest(unittest.TestCase):
     def jegyzetek(self):

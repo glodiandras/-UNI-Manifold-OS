@@ -3,6 +3,10 @@
 `calibration.json → helyi_modell` értékei (L31). Felülírás: `MANIFOLD_MODELL_KERET_GB` (a keret,
 L24), `MANIFOLD_MODELL_ZAR` (a zár útja, L23).
 
+A modellréteg gépszintű (F3-DESIGN §4): a `run` a `{install_run}` (a worker zárja és pidfájlja, az aktivitásjel — a worker és
+minden core ugyanazt olvassa), a modellzár a `{install_state}` alatt; hordozható elrendezésben mindkettő a v2-út (`var/run`,
+`var/state`).
+
 A mérés kérés-beállításai (C18.1) a modell szakaszában (`gondolkodas`, `gondolkodas_token`, …) és a
 `[modellek.<m>.meres.<feladat>]` alszakaszban élnek; a feloldás a `core/modell/eval.py` dolga."""
 from __future__ import annotations
@@ -15,7 +19,7 @@ from pathlib import Path
 from ..config import Config
 
 ALAP_GAZDA = {"port": 0, "cache_gb": 0.25, "prefill_lepes": 256, "min_szabad_szazalek": 20,
-              "tartalek_szazalek": 5, "helyreallas_mp": 30, "zar": "{state}/modell.lock", "probalkozas": 3,
+              "tartalek_szazalek": 5, "helyreallas_mp": 30, "zar": "{install_state}/modell.lock", "probalkozas": 3,
               "tetlen_urites_perc": 10}
 ALAP_KERET = {"munka": 5.0, "tavol": 9.0}
 ALAP_AKTIVITAS = {"aktiv_mp": 120, "tavol_perc": 15, "rendszer_tetlenseg": True}
@@ -68,7 +72,7 @@ class Beallitas:
     router: dict
     modellek: dict[str, Modell]
     zar: Path
-    run: Path
+    run: Path                              # a gépszintű `{install_run}` (worker.pid, aktivitásjel)
     models: Path
     router_db: Path
     keret_felulirva: float | None = None
@@ -150,7 +154,7 @@ def betolt(cfg: Config, environ: dict | None = None) -> Beallitas:
     keret_env = env.get("MANIFOLD_MODELL_KERET_GB")
     return Beallitas(gazda=gazda, keretek={**ALAP_KERET, **cfg.section("keret")},
                      aktivitas={**ALAP_AKTIVITAS, **cfg.section("aktivitas")}, ho={**ALAP_HO, **cfg.section("ho")},
-                     router=dict(cfg.section("router")), modellek=modellek, zar=Path(zar), run=cfg.path("run"),
+                     router=dict(cfg.section("router")), modellek=modellek, zar=Path(zar), run=cfg.path("install_run"),
                      models=cfg.path("models"), router_db=cfg.path("router_db"),
                      keret_felulirva=ervenyes_keret({}, keret_env) if keret_env else None,
                      meres={**ALAP_MERES, **cfg.section("meres")})

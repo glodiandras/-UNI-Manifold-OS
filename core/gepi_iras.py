@@ -67,7 +67,7 @@ from .index.maszk import FM_RE, mask_code
 from .modell import kalibracio
 from .modell.halmaz import Verziok
 from .tulajdonsagok import Tulajdonsagok
-from . import utkapu
+from . import kiserok, utkapu
 from .utvonalak import HttpError
 from .vaultio import Conflict, Invalid, NotFound, nfc, sha1
 
@@ -76,9 +76,9 @@ MAX_MUVELET = 50
 MAX_BEHOZ = 2000                         # a `behoz` műveletek egy tételben (az `.apkg` egy paklijának médiája): a szöveges írások mellett
 BEHOZ_FORRASOK = ("mos-kartya",)         # a `behoz` csak az `.apkg`-import forrásával kérhető
 ZAR_VARAKOZAS_MP = 10.0                  # ennyit vár a kör-zárra, utána 409 `foglalt`
-# a `mozgat` célmappái, ha a config nem adja meg (`[video] vault_mappa`, `[fuzet] cel_mappa`; os.toml ugyanezeket írja)
-VIDEO_MAPPA_ALAP = "ATTCHMNTS - Videos"
-FUZET_MAPPA_ALAP = "ATTCHMNTS - photos"
+# a `mozgat` célmappái a `core/kiserok.py`-ból (`[video] vault_mappa`, `[fuzet] cel_mappa`, hiányukban `<kisero_elotag>Videos|Photos`)
+VIDEO_MAPPA_ALAP = kiserok.alap_mappa("video")
+FUZET_MAPPA_ALAP = kiserok.alap_mappa("fuzet")
 # a gépi írás forrása (`Mos-Forras`, L09) mindig `mos-<lánc>` (C29.8, T135): így a `kezi`, `pult`, `pult-…` (a felhasználó munkájának
 # forrásai) és minden idegen alak kizárt, és a tracker a „gépi funkciót” egyértelműen felismeri
 _FORRAS = re.compile(r"mos-[a-z0-9-]{1,36}")
@@ -532,11 +532,16 @@ class GepiIras:
                         frame.proba_jelol(d, kor)        # a doctor látja, a takarítás csak jelölt klónt töröl
                     except (RuntimeError, OSError) as e:
                         raise HttpError(503, f"A próbaklón nem készült el: {e}") from e
-                utak = self.cfg.data.get("utak", {})
+                # F3 (§2.6): a klón a FELOLDOTT utakat kapja (nem a sablonokat), így a `{vault}`-ból számolt kulcsok (termékben a
+                # `{workspace}`, a `{var}` és családja) a valódi helyükön maradnak; csak a négy klón-kulcs mutat a próbamappába.
+                # Az egyesített adatból épül (a rétegek nem olvasódnak újra), az elrendezés és a munkatér-azonosító marad.
                 env = {"HOME": self.cfg.table["home"],
-                       **{f"MOS_{n.upper()}": v for n, v in self.cfg.table.items() if n in utak},
+                       **{f"MOS_{n.upper()}": str(p) for n, p in self.cfg.utak.items()},
                        "MOS_VAULT": str(vault), "MOS_VAULT_GIT": str(git), "MOS_RUN": str(d / "run"),
-                       "MOS_YTDLP_GIT": str(d / "ytdlp.git")}       # a klónban más tároló nem él
+                       "MOS_YTDLP_GIT": str(d / "ytdlp.git"),       # a klónban más tároló nem él
+                       "MOS_ELRENDEZES": self.cfg.elrendezes}
+                if self.cfg.workspace_id:
+                    env["MOS_WORKSPACE_ID"] = self.cfg.workspace_id
                 kcfg = config.Config(self.cfg.root, self.cfg.data, env, self.cfg.source)
                 self._klonok[kor] = GepiIras(kcfg, vaultio.Vault(kcfg), self.tul, publish=self.publish,
                                              varakozas_mp=self.varakozas_mp, proba=True)
@@ -808,7 +813,8 @@ class GepiIras:
             if uj_p:
                 raise HttpError(400, f"a csere sérti a vault sémáját ({rp}): " + " ".join(x["uzenet"] for x in uj_p),
                                 sema=True, problemak=uj_p)
-            if self.tul.sema.status_gazdai and self._status(elotte) != self._status(utana):
+            van_status = any(t["kulcs"].casefold() == "status" for t in elotte["tulajdonsagok"])
+            if self.tul.sema.status_vedett(van_status) and self._status(elotte) != self._status(utana):
                 raise HttpError(400, "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.", sema=True)
         return _Fajl(rp, p, regi, b)
 
@@ -818,10 +824,10 @@ class GepiIras:
         rp = m["ut"]
         video = _video_e(rp)
         if video:
-            cel_mappa = vaultio.norm_path(str(self.cfg.section("video").get("vault_mappa") or VIDEO_MAPPA_ALAP))
+            cel_mappa = vaultio.norm_path(kiserok.kisero_mappa(self.cfg, "video"))
             hiba_hely = f"a videó helye a `{cel_mappa}` mappa, nem: {rp}"
         else:
-            cel_mappa = vaultio.norm_path(str(self.cfg.section("fuzet").get("cel_mappa") or FUZET_MAPPA_ALAP))
+            cel_mappa = vaultio.norm_path(kiserok.kisero_mappa(self.cfg, "fuzet"))
             hiba_hely = f"a füzetfotó helye a `{cel_mappa}` mappa, nem: {rp}"
         reszek = rp.split("/")
         if "/".join(reszek[:-1]) != cel_mappa:

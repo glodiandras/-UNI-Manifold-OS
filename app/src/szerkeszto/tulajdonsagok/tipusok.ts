@@ -57,6 +57,11 @@ export interface Sema {
   status_ertekkeszlet: string[];
   status_gazdai: boolean;
   osztaly: { nev: string; mezosorrend: string[]; ertekek: boolean; sema_nelkul: boolean } | null;
+  /** a munkatér kísérőmappái (`core/kiserok.py`) és közös előtagjuk; a felület állandói ebből igazodnak (`beallitKiserok`) */
+  kisero?: Record<string, string>;
+  kisero_elotag?: string;
+  /** a séma szigora: `ki` | `tanacsado` | `szigoru` */
+  mod?: string;
 }
 
 export type Muvelet =

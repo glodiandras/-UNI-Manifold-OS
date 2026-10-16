@@ -3,7 +3,7 @@
 `GET /api/media/atirat?ut=<média>` → `{ut, vtt, nyelv, gepi, leiro, cuek: [{k, v, szoveg}], figyelmeztetes}`.
 
 A melléklet-mappa a legacy `vaultlib.sidecar_dir` olvasó szabálya (LEGACY-SZERZODESEK L44): a
-videómappán (`ATTCHMNTS - Videos`) kívül álló médiánál a fájl saját mappája; a videómappában állónál a
+videómappán (`<kisero_elotag>Videos`, `[media] video_mappa`) kívül álló médiánál a fájl saját mappája; a videómappában állónál a
 `<Téma>/Média/` rétegek közül az, amelyben a törzs `.info.json`-ja vagy forrásleíró `.md`-je áll (a témák
 ábécérendjében az első). Nincs találat: üres átirat, hiány és nem tévedés. A felirat `<törzs>.<nyelv>.vtt`
 vagy `<törzs>.vtt`; több nyelvnél a beállított elsőbbség (`[media] nyelvek`), utána ábécé. Gépi a felirat, ha
@@ -17,11 +17,11 @@ import os
 import re
 import unicodedata
 
-from . import mediatipus, utkapu
+from . import kiserok, mediatipus, utkapu
 from .utvonalak import HttpError
 from .vaultio import Invalid, NotFound, norm_path
 
-ALAP_VIDEO_MAPPA = "ATTCHMNTS - Videos"
+ALAP_VIDEO_MAPPA = kiserok.alap_mappa("video")
 ALAP_RETEG = "Média"
 ALAP_NYELVEK = ("hu", "en")
 # Az átiratot adó médiatípusok: a videó és a hang a `mediatipus` egyetlen listájából (C20a, T142).
@@ -41,7 +41,7 @@ def nfc(s: str) -> str:
 def beallitasok(cfg) -> dict:
     s = cfg.section("media") if cfg is not None else {}
     nyelvek = s.get("nyelvek", list(ALAP_NYELVEK))
-    return {"video_mappa": nfc(s.get("video_mappa", ALAP_VIDEO_MAPPA)), "reteg": nfc(s.get("reteg_mappa", ALAP_RETEG)),
+    return {"video_mappa": kiserok.kisero_mappa(cfg, "video"), "reteg": nfc(s.get("reteg_mappa", ALAP_RETEG)),
             "nyelvek": [str(x) for x in nyelvek] if isinstance(nyelvek, list) else list(ALAP_NYELVEK)}
 
 

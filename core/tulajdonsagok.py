@@ -10,11 +10,18 @@ kulcs sorai cserélődnek; a többi bájt (kulcssorrend, megjegyzések, idézőj
 próba: az új szöveg ugyanazzal az elemzővel olvasva a nem érintett kulcsok értéke azonos, az érintetté a várt;
 különben a művelet elutasítva (`belso_hiba`).
 
-**Séma** (`config/vault-sema.json`, `os.toml` `[sema]`). Két szint: `hiba` (nem írható: a Status gépi
+**Séma** (`os.toml` `[sema]`; a fájl feloldása: `core/kiserok.sema_fajl` — a `[sema] vault` fájl, ha van → a megnevezett preset
+`<nev>.schema.json`-ja → a szállított `[sema] alap`). Két szint: `hiba` (nem írható: a Status gépi
 kitöltése, formai hiba, érvénytelen érték) és `sertes` (a séma sérül — ismeretlen kulcs, köztük az `icon` és
 a `cover`; kulcssorrend; értékkészleten kívüli címke vagy Status): ez csak kifejezett megerősítéssel
 (`megerosit: true`) kerül be — nem csendben. Csak az **új** sértések számítanak: ami már a módosítás előtt is
 sértett, azt a módosítás nem teszi megerősítés-köteles.
+
+**Mód** (`[sema] mod`, F3-DESIGN §8): `ki` (alap: nincs sémaellenőrzés — csak az ismétlődő kulcs, mint formai hiba; nincs H1-szabály,
+nincs gazdai Status), `tanacsado` (a sértések `tanacsok`-ként látszanak az `elemez` válaszában, `szint: tanacs`; semmit nem tiltanak,
+megerősítést sem kérnek, a gépi írás sem utasítja el), `szigoru` (a fenti: sértés → megerősítés, a gépi írás elutasítja).
+A séma fájlban `null` értékkészlet = nincs korlát; üres `mezosorrend` = a normál jegyzet kulcsai nyitottak. A kísérő-osztályok
+(`kisero: <fajta>`) előtagja a `core/kiserok.py`-ból származik, külön lista nincs.
 """
 from __future__ import annotations
 
@@ -27,12 +34,14 @@ from pathlib import Path
 
 import yaml
 
+from . import kiserok
 from .index import elemzo
 from .index.indexelo import NemKesz
 from .index.maszk import FM_RE
 from .utvonalak import HttpError
 
-HIBA, SERTES = "hiba", "sertes"
+HIBA, SERTES, TANACS = "hiba", "sertes", "tanacs"
+MODOK = ("ki", "tanacsado", "szigoru")
 _KULCS_SOR = re.compile(r"^([^\s#:\-][^:]*?)\s*:(?=\s|$)")
 _KULCS_NEV = re.compile(r"^[^\W\d][\w .-]*$")
 _DATUM = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -72,25 +81,56 @@ UGYNOK_FAJLNEVEK = frozenset({"claude.md", "agents.md", "memory.md"})
 
 
 class Sema:
-    """A vault-séma (L33/L34) a konfigból; `osztaly(ut)` adja az útra érvényes szabályt."""
+    """A vault-séma (L33/L34) a konfigból; `osztaly(ut)` adja az útra érvényes szabályt. `mod`: `ki` | `tanacsado` | `szigoru`
+    (`cfg` nélkül a v2 szigorú viselkedése; `cfg`-vel a `[sema] mod`, hiányában `ki`)."""
 
-    def __init__(self, adat: dict):
-        self.mezosorrend: list[str] = list(adat["mezosorrend"])
-        self.extra: list[str] = list(adat.get("extra_kulcsok", []))
-        self.tags: list[str] = list(adat.get("tags_ertekkeszlet", []))
-        self.status: list[str] = list(adat.get("status_ertekkeszlet", []))
+    def __init__(self, adat: dict, cfg=None, mod: str | None = None):
+        if mod is None:
+            mod = (cfg.section("sema").get("mod") or "ki") if cfg is not None else "szigoru"
+        self.mod: str = mod if mod in MODOK else "ki"
+        self.mezosorrend: list[str] = list(adat["mezosorrend"] or [])
+        self.extra: list[str] = list(adat.get("extra_kulcsok") or [])
+        tags, status = adat.get("tags_ertekkeszlet"), adat.get("status_ertekkeszlet")
+        self.tags: list[str] | None = None if tags is None else list(tags)        # None: nincs értékkészlet (nincs korlát)
+        self.status: list[str] | None = None if status is None else list(status)
+        # T127: a Status a felhasználóé — a séma MÓDJÁTÓL függetlenül (a `ki` mód csak az érték- és kulcsellenőrzést kapcsolja ki, a gépi
+        # írás tilalmát nem), alapból igaz (`status_vedett`: a megbízhatatlan `schema.json` ott sem kapcsolhatja ki, ahol van Status)
         self.status_gazdai: bool = bool(adat.get("status_gazdai", True))
-        self.osztalyok: list[dict] = list(adat.get("kivetel_osztalyok", []))
+        self.osztalyok: list[dict] = [self._osztaly_feloldas(o, cfg) for o in adat.get("kivetel_osztalyok", [])]
         self.sema_nelkul: set[str] = {nfc(u) for u in adat.get("sema_nelkuli_utak", [])}
         self.sema_nelkuli_nevek: frozenset[str] = UGYNOK_FAJLNEVEK | {nfc(n).casefold() for n in adat.get("sema_nelkuli_nevek", [])}
         self.h1: dict = dict(adat.get("h1") or {})            # a H1-szabály (legacy kalibráció, C29.8 T044)
+        self.kisero: dict[str, str] = kiserok.kisero_mappak(cfg)    # fajta → mappa (a felületnek: `leiras`)
+        self.kisero_elotag: str = kiserok.kisero_elotag(cfg)
+
+    @staticmethod
+    def _osztaly_feloldas(o: dict, cfg) -> dict:
+        """A `kisero: <fajta>` osztály útvonal-előtagja a `core/kiserok.py`-ból (a literális `utvonal_elotag` mellett)."""
+        o = dict(o)
+        if o.get("kisero"):
+            o["utvonal_elotag"] = [*o.get("utvonal_elotag", []), kiserok.kisero_mappa(cfg, o["kisero"]) + "/"]
+        return o
 
     @classmethod
     def betolt(cls, cfg) -> "Sema":
-        ut = cfg.section("sema").get("vault")
-        if not ut:
-            raise FileNotFoundError("a config/os.toml [sema] vault kulcsa hiányzik")
-        return cls(json.loads(Path(cfg.expand(ut)).read_text(encoding="utf-8")))
+        """A séma a feloldási lánc első ÉRVÉNYES fájljából (`kiserok.sema_fajlok`: munkatér-fájl → preset(ek) → szállított alap). A
+        munkatér `schema.json`-ja megbízhatatlan (a vault utazik): a hibás (rossz típus, túl nagy, fordíthatatlan vagy veszélyes
+        reguláris kifejezés) fájl nem kivételt dob és nem írja a szabályokat — a lánc következő jelöltje él (a doctor jelzi)."""
+        fajlok = kiserok.sema_fajlok(cfg)
+        if not fajlok:
+            raise FileNotFoundError("nincs vault-séma: sem a [sema] vault fájl, sem a preset sémája, sem a [sema] alap nem létezik")
+        hibak: list[str] = []
+        for ut in fajlok:
+            try:
+                return cls(kiserok.sema_olvas(ut), cfg)
+            except kiserok.SemaHiba as e:
+                hibak.append(str(e))
+        raise ValueError("egyik vault-séma sem érvényes: " + " | ".join(hibak))
+
+    def status_vedett(self, van_status_kulcs: bool) -> bool:
+        """Gépi írás ellen védett-e a jegyzet Status-a (T127): a séma `status_gazdai`-ja szerint, és — a séma szavától (a munkatér
+        `schema.json`-ja megbízhatatlan fájl) függetlenül — mindig, ha a jegyzetnek már van `Status` kulcsa."""
+        return self.status_gazdai or van_status_kulcs
 
     def osztaly(self, ut: str) -> dict:
         """`{nev, mezosorrend, ertekek, sema_nelkul}`: a normál jegyzet, egy kivételosztály vagy a séma nélküli fájl."""
@@ -107,8 +147,9 @@ class Sema:
                 "h1": True, "h1_minta": None, "h1_egyezzen_fajlnevvel": False}
 
     def leiras(self, ut: str | None = None) -> dict:
-        return {"mezosorrend": self.mezosorrend, "extra_kulcsok": self.extra, "tags_ertekkeszlet": self.tags,
-                "status_ertekkeszlet": self.status, "status_gazdai": self.status_gazdai,
+        return {"mezosorrend": self.mezosorrend, "extra_kulcsok": self.extra, "tags_ertekkeszlet": self.tags or [],
+                "status_ertekkeszlet": self.status or [], "status_gazdai": self.status_gazdai,
+                "mod": self.mod, "kisero": self.kisero, "kisero_elotag": self.kisero_elotag,
                 "osztaly": self.osztaly(ut) if ut is not None else None}
 
 
@@ -306,10 +347,27 @@ class Tulajdonsagok:
         return tul, hiba, {t.kulcs: t.ertek for t in tul}
 
     def problemak(self, ut: str, kulcsok: list[str], ertekek: dict, van_fm: bool = True) -> list[dict]:
-        """A séma szerinti sértések. `kulcsok`: a frontmatter kulcsai a fájl sorrendjében (az ismétlődéssel)."""
+        """A tiltó vagy megerősítést kérő sértések (`hiba`, `sertes`). `kulcsok`: a frontmatter kulcsai a fájl sorrendjében
+        (az ismétlődéssel). Módonként: `szigoru` a teljes séma-ellenőrzés; `tanacsado` és `ki` csak a formai hibát (ismétlődő kulcs)
+        adja — a séma sértései `tanacsado` módban a `tanacsok`-ban látszanak."""
         o = self.sema.osztaly(ut)
         if o["sema_nelkul"]:
             return []
+        teljes = self._ellenoriz(ut, o, kulcsok, ertekek, van_fm)
+        if self.sema.mod == "szigoru":
+            return teljes
+        return [p for p in teljes if p["kod"] == "duplikalt_kulcs"]
+
+    def tanacsok(self, ut: str, kulcsok: list[str], ertekek: dict, van_fm: bool = True) -> list[dict]:
+        """`tanacsado` módban a séma sértései tanácsként (`szint: tanacs`): nem tiltanak, megerősítést nem kérnek, a gépi írást nem
+        állítják meg. Más módban üres."""
+        o = self.sema.osztaly(ut)
+        if self.sema.mod != "tanacsado" or o["sema_nelkul"]:
+            return []
+        return [{**p, "szint": TANACS} for p in self._ellenoriz(ut, o, kulcsok, ertekek, van_fm) if p["kod"] != "duplikalt_kulcs"]
+
+    def _ellenoriz(self, ut: str, o: dict, kulcsok: list[str], ertekek: dict, van_fm: bool) -> list[dict]:
+        """A teljes séma-ellenőrzés a mód nélkül (az `o` az útra érvényes osztály)."""
         out: list[dict] = []
 
         def p(kod, szint, uzenet, kulcs=None, ertek=None):
@@ -320,8 +378,9 @@ class Tulajdonsagok:
         for k in dict.fromkeys(kulcsok):
             if kulcsok.count(k) > 1:
                 p("duplikalt_kulcs", HIBA, f"A(z) „{k}” kulcs többször szerepel.", k)
+        nyitott = not kanon                       # üres `mezosorrend`: a kulcsok nyitottak (nincs ismeretlen kulcs, nincs sorrend)
         for k in dict.fromkeys(kulcsok):
-            if k in ismert:
+            if k in ismert or nyitott:
                 continue
             nagy = next((c for c in kanon if c.lower() == k.lower()), None)
             if nagy:
@@ -331,7 +390,7 @@ class Tulajdonsagok:
         # A legacy próba az ismeretlen kulcsot is sorrend-sértésnek veszi; itt az ismeretlen kulcs külön problémát ad
         # (`ismeretlen_kulcs`), a `mezosorrend` csak a séma kulcsainak hiányát vagy felcserélődését jelzi.
         mag = [k for k in kulcsok if k in kanon]
-        if mag != kanon:
+        if mag != kanon and not nyitott:
             if not van_fm or not kulcsok:
                 p("mezosorrend", SERTES, "A jegyzetnek nincs frontmattere; a séma kulcsai: " + ", ".join(kanon))
                 out[-1]["hianyzo"] = list(kanon)
@@ -350,18 +409,18 @@ class Tulajdonsagok:
                 h = (hasznalat or {}).get(fajta, {}).get(kulcs)
                 return bool(h) and (h["db"] >= 2 or any(u != ut for u in h["utak"]))
             nem_kesz = "" if hasznalat is not None else " (Az index még épül: most csak a séma értékkészlete számít.)"
-            tags = set(self.sema.tags)
-            statusok = set(self.sema.status)
-            for t in self._lista(ertekek.get("Tags")):
+            tags = None if self.sema.tags is None else set(self.sema.tags)           # None: nincs értékkészlet-korlát
+            statusok = None if self.sema.status is None else set(self.sema.status)
+            for t in self._lista(ertekek.get("Tags")) if tags is not None else ():
                 if t not in tags and not hasznalt("tags", nfc(t).removeprefix("#").strip().casefold()):
                     p("ertekkeszlet", SERTES, f"A(z) „{t}” címke nincs az értékkészletben.{nem_kesz}", "Tags", t)
             st = ertekek.get("Status")
             ures = st is None or st == [] or (isinstance(st, str) and not st.strip())
-            if not ures and (not isinstance(st, str) or (st not in statusok and not hasznalt("status", nfc(st).strip()))):
+            if statusok is not None and not ures and (not isinstance(st, str) or (st not in statusok and not hasznalt("status", nfc(st).strip()))):
                 # T042: a nem szöveges érték (true, 5, lista, map) is értékkészleten kívüli; az `ertek` szöveg (az azonosító-halmaz hash-elhető)
                 szoveg = st if isinstance(st, str) else json.dumps(st, ensure_ascii=False)
                 p("ertekkeszlet", SERTES,
-                  f"A Status értéke ({', '.join(self.sema.status)}) közül való szöveg lehet, nem „{szoveg}”.{nem_kesz}",
+                  f"A Status értéke ({', '.join(self.sema.status or [])}) közül való szöveg lehet, nem „{szoveg}”.{nem_kesz}",
                   "Status", szoveg)
         return out
 
@@ -376,18 +435,21 @@ class Tulajdonsagok:
         if f is None:
             return {"van": False, "tulajdonsagok": [], "hiba": None, "kulcsok": [],
                     "problemak": self.problemak(nfc(ut or ""), [], {}, van_fm=False),
+                    "tanacsok": self.tanacsok(nfc(ut or ""), [], {}, van_fm=False),
                     "osztaly": self.sema.osztaly(ut or "")["nev"]}
         tul, hiba, ertekek = self._tulajdonsagok(f)
         kulcsok = f.kulcsok()
         # T129: a duplikált kulcs a YAML-szintű kulcslistából is látszik (az escape-es idézett és a `? ` komplex kulcsot a soronkénti
         # bontás nem ismeri fel); a válasz `kulcsok` mezője a soronkénti marad (a panel sorrendje)
-        prob = self.problemak(nfc(ut or ""), _yaml_kulcsok(f.belso()) or kulcsok, ertekek)
+        yk = _yaml_kulcsok(f.belso()) or kulcsok
+        prob = self.problemak(nfc(ut or ""), yk, ertekek)
+        tan = self.tanacsok(nfc(ut or ""), yk, ertekek)
         if hiba:
             prob.insert(0, {"kod": "yaml_hiba", "szint": HIBA, "kulcs": None, "ertek": None,
                             "uzenet": f"A frontmatter formai hibás: {hiba}"})
         return {"van": True, "tulajdonsagok": [{"kulcs": t.kulcs, "tipus": t.tipus, "ertek": t.ertek,
                                                  "ervenyes": t.ervenyes} for t in tul],
-                "hiba": hiba, "kulcsok": kulcsok, "problemak": prob,
+                "hiba": hiba, "kulcsok": kulcsok, "problemak": prob, "tanacsok": tan,
                 "osztaly": self.sema.osztaly(ut or "")["nev"]}
 
     def uj_jegyzet_ellenorzes(self, ut: str, szoveg: str | None) -> dict:
@@ -446,10 +508,10 @@ class Tulajdonsagok:
         Séma nélküli fájl és nem `.md` nincs ellenőrizve."""
         ut = nfc(ut or "")
         h = self.sema.h1
-        if not h or not ut.lower().endswith(".md"):
+        if self.sema.mod != "szigoru" or not ut.lower().endswith(".md"):
             return []
         o = self.sema.osztaly(ut)
-        if o["sema_nelkul"] or o.get("h1") is False:
+        if (not h and not o.get("h1_minta")) or o["sema_nelkul"] or o.get("h1") is False:
             return []
         stem = nfc(ut.rsplit("/", 1)[-1][:-3])
         h1 = self._elso_h1(szoveg)
@@ -510,7 +572,8 @@ class Tulajdonsagok:
         regi_tul, regi_hiba, regi_ertek = self._tulajdonsagok(regi)
         if regi_hiba:
             return self._elutasit([self._hiba("yaml_hiba", f"A frontmatter formai hibás ({regi_hiba}); előbb javítsd forrásmódban.")])
-        if forras == "gep" and kulcs.casefold() == "status" and self.sema.status_gazdai:
+        if forras == "gep" and kulcs.casefold() == "status" \
+                and self.sema.status_vedett(any(x.kulcs.casefold() == "status" for x in regi_tul)):
             # T127: a tilalom kis-nagybetűtől független és a törlésre is vonatkozik (a `status` kulcs a Status kijátszása lett volna)
             return self._elutasit([self._hiba("status_gep", "A Status mezőt csak a felhasználó tölti és változtatja, gép nem.",
                                               "Status")])
@@ -617,7 +680,7 @@ class Tulajdonsagok:
         o = self.sema.osztaly(nfc(ut or ""))
         keszlet: list[str] = []
         if o["ertekek"] and not o["sema_nelkul"]:
-            keszlet = self.sema.tags if kulcs == "Tags" else self.sema.status if kulcs == "Status" else []
+            keszlet = (self.sema.tags if kulcs == "Tags" else self.sema.status if kulcs == "Status" else None) or []
         if kulcs.casefold() == "tags":
             c = self._index_hiv("cimkek")
             hasznalt = None if c is None else [{"ertek": x["cimke"], "db": x["db"]} for x in c["cimkek"] if x["db"]]

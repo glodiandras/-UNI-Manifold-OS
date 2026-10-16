@@ -70,7 +70,7 @@ class MentesTest(unittest.TestCase):
     def test_media_nem_kerul_mentesbe(self):
         (self.v / "kep.jpg").write_bytes(b"\xff\xd8" * 100)
         mentes.ment(self.cfg, csak_ha_valtozott=False)
-        self.assertEqual([p.suffix for p in self.backup.iterdir()], [".bundle"])
+        self.assertEqual([p.suffix for p in self.backup.iterdir() if p.name != mentes.JEL_NEV], [".bundle"])      # az üres mappa tulajdonosjelet kap
         # C31 (2. audit T065, A2-visszaallitas1-8): a bundle kiklónozva — a `.jpg` hiányzik, a `.md` bájtra egyezik
         klon = Path(self._t.name) / "klon"
         p = subprocess.run(["git", "clone", "-q", str(next(self.backup.glob("vault-*.bundle"))), str(klon)],
@@ -137,8 +137,8 @@ class KodtarEsAllapotTest(Alap):
 
     def test_kodtar_bundle_es_rotacio(self):
         git_init(self.root)
+        mentes._jel_ir(self.cfg, self.backup)                               # a mappa a miénk (tulajdonosjel): a rotáció a régi módon megy
         for i in range(3):                                                  # régi bundle-ök: a rotáció a `keep` fölöttieket törli
-            self.backup.mkdir(parents=True, exist_ok=True)
             (self.backup / f"mos-kodtar-2026010{i}-000000.bundle").write_bytes(b"regi")
         cfg = self._cfg(megtartott_bundle=2)
         ki = mentes.ment(cfg)
@@ -217,7 +217,7 @@ class KodtarEsAllapotTest(Alap):
     def test_allapot_csak_ha_valtozott_es_rotacio(self):
         self._sqlite(self.cfg.path("router_db"), "egy").close()
         cfg = self._cfg(allapot_megtartott=2)
-        self.backup.mkdir(parents=True, exist_ok=True)
+        mentes._jel_ir(self.cfg, self.backup)                               # ugyanezért: a mappa a miénk
         for i in range(3):
             (self.backup / f"mos-allapot-2026010{i}-000000").mkdir()
         elso = mentes.allapot_masolat(cfg)

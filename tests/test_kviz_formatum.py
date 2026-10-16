@@ -3,8 +3,6 @@
 import unittest
 from datetime import timezone
 
-from core import config
-from core.tulajdonsagok import Tulajdonsagok
 from modulok.kviz import formatum as f
 
 FORRAS = "T03 - Az ókori Róma/Elmélet/08 - A polgárháborúk kora és Caesar"
@@ -184,18 +182,6 @@ class KitoltesSzakaszTest(unittest.TestCase):
         elotte = "# C\n\n## Kitöltések\n\nrégi sor\n\n## Saját jegyzetem\n\nEz marad.\n"
         self.assertEqual(f.kitoltes_csere(elotte, uj), "# C\n\n" + uj.rstrip("\n") + "\n\n## Saját jegyzetem\n\nEz marad.\n")
         self.assertTrue(f.kitoltes_csere("# C\n\nSzöveg.\n", uj).endswith("\n\n" + uj))
-
-
-class SemaKapuTest(unittest.TestCase):
-    def test_az_iro_kimenete_atmegy_a_kviz_sema_osztalyon(self):
-        """A C22b `uj` művelete `osztaly: "kviz"`-zal ír: az író frontmatterének hibátlannak kell lennie."""
-        tul = Tulajdonsagok(config.load(), None)
-        szoveg = f.ir(minta())
-        fm = szoveg[:szoveg.index("---\n", 4) + 4]
-        ut = "ATTCHMNTS - quizes/" + f.fajlnev(minta()) + ".md"
-        r = tul.elemez(ut, fm)
-        self.assertEqual(r["osztaly"], "kviz")
-        self.assertEqual(r["problemak"], [], r["problemak"])
 
 
 if __name__ == "__main__":

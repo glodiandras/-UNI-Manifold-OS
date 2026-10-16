@@ -98,12 +98,13 @@ def fogyaszto(cfg, b: Beallitas | None = None):
 
 def jegyzetek(vault: Path, elotag: str | None = None):
     """A vault tartalmi `.md` jegyzetei `(vault-relatív út, fájl)` — rejtett és kísérő-mappák (`[vault] kisero_elotag`) nélkül; csak
-    olvas. `elotag` hiányában a core alapja (`core.automatika.KISERO_ELOTAG`)."""
+    olvas. `elotag` hiányában a core alapja (`core.kiserok.ALAP_ELOTAG`)."""
     OA = _kozos()
+    from core import rejtett as _rejtett                       # lusta import, mint a `_kozos`
     elotag = OA.KISERO_ELOTAG if elotag is None else elotag
     kizart = (".", elotag) if elotag else (".",)
     for d, mappak, fajlok in os.walk(vault):
-        mappak[:] = sorted(m for m in mappak if not m.startswith(kizart))
+        mappak[:] = sorted(m for m in mappak if not m.startswith(kizart) and not _rejtett.kihagyott(m))
         for f in sorted(fajlok):
             p = Path(d) / f
             rp = p.relative_to(vault).as_posix()

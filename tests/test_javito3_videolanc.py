@@ -833,5 +833,42 @@ class LepesTokenVaz(unittest.TestCase):
             self.assertNotIn("MOS_CORE_PORT", env)
 
 
+class KodKonfigTest(unittest.TestCase):
+    """F3-DESIGN §11 K14: a termékben a `{ytdlp}` adat (`{var}/ytdlp`, kód nélkül), ezért az `msp` a kóddal szállított
+    `{modulok}/ytdlp/config/config.yaml`-t kapja; hordozható elrendezésben a kettő ugyanaz a mappa, nincs teendő."""
+
+    @staticmethod
+    def _config_yaml(gyoker: Path) -> Path:
+        d = gyoker / "modulok" / "ytdlp" / "config"
+        d.mkdir(parents=True)
+        (d / "config.yaml").write_text("archive:\n  dir: archive\n", encoding="utf-8")
+        return d / "config.yaml"
+
+    def test_termekben_a_kodban_szallitott_konfig(self):
+        from tests.multi_user import munkater, termek_cfg, termek_telepites
+        with tmpdir() as t:
+            root, home = termek_telepites(t)
+            v, _ = munkater(t, "Jegyzetek")
+            kod = self._config_yaml(root)
+            cfg = termek_cfg(root, home, v)
+            self.assertNotEqual(cfg.path("ytdlp"), root / "modulok" / "ytdlp")
+            self.assertEqual(lanc._kod_konfig(cfg), kod)
+            self.assertEqual(lanc.msp_konfig(cfg).config_path, kod)
+            with mock.patch.dict(os.environ, {"MSP_CONFIG": str(kod)}):
+                self.assertIsNone(lanc._kod_konfig(cfg), "a kifejezett MSP_CONFIG elsőbbsége megmarad")
+
+    def test_hordozhatoban_nincs_teendo(self):
+        cfg, root, _ = alg_core(self._tmp())
+        kod = self._config_yaml(root)
+        self.assertEqual(cfg.path("ytdlp"), root / "modulok" / "ytdlp")
+        self.assertIsNone(lanc._kod_konfig(cfg))
+        self.assertEqual(lanc.msp_konfig(cfg).config_path, kod, "az `msp` maga megtalálja a `{ytdlp}/config/config.yaml`-t")
+
+    def _tmp(self) -> str:
+        t = tmpdir()
+        self.addCleanup(t.cleanup)
+        return t.name
+
+
 if __name__ == "__main__":
     unittest.main()

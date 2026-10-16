@@ -23,8 +23,7 @@ from . import kep  # noqa: E402
 CIM_SULY, CIMSOR_SULY = 4, 2
 FAGYASZTOTT = MODULOK / "eval" / "ocr_kezi" / "katalogus.json"
 ALAP_ELMELET_MAPPA = "Elmélet"          # a `[fuzet] elmelet_mappa` alapja: a tárgyi fejezetmappa tananyag-almappája
-TANTARGYAK = {"M": "Matematika", "F": "Fizika", "T": "Történelem", "I": "Irodalom", "N": "Magyar nyelvtan",
-              "D": "Digitális kultúra", "E": "Angol nyelv"}
+# a tantárgy-betűk nevei nem a kódban élnek: a `[pdf.nevek]` (betű → nevek, az első a kanonikus) és a `[pdf.tags]` adja őket
 _epito = None
 
 
@@ -46,6 +45,7 @@ class Katalogus:
     def __init__(self, adat: dict):
         self.fejezetek: list[dict] = adat["fejezetek"]
         self.jegyzetek: list[dict] = adat["jegyzetek"]
+        self.nevek: dict = {}                       # `[pdf.nevek]` (a `vaultbol` tölti): a modszer a tantárgy betűjét ebből ismeri fel
         self.fej = {f["kod"]: f for f in self.fejezetek}
         self.cim = {j["ut"]: j["cim"] for j in self.jegyzetek}
         self._biro = None
@@ -57,15 +57,18 @@ class Katalogus:
 
     @classmethod
     def vaultbol(cls, vault: str | Path, elmelet_mappa: str | None = None, szakasz: str | None = None,
-                 cimkek: dict | None = None) -> "Katalogus":
-        """Az élő vaultból; `cimkek` (`[pdf.tags]`): a betűk, amelyek az alap tantárgy-listán kívül is fejezetet adnak."""
+                 cimkek: dict | None = None, nevek: dict | None = None) -> "Katalogus":
+        """Az élő vaultból. A fejezetet adó betűk: a `nevek` (`[pdf.nevek]`: betű → nevek, az első a kanonikus név), majd a `cimkek`
+        (`[pdf.tags]`: betű → címke) azon betűi, amelyeknek nincs neve."""
         em = _epit_modul()
-        targyak = dict(em.TANTARGYAK)
+        targyak = {str(b): l[0].strip() for b, l in (nevek or {}).items()
+                   if len(str(b)) == 1 and isinstance(l, (list, tuple)) and l and isinstance(l[0], str) and l[0].strip()}
         for b, c in (cimkek or {}).items():
             if isinstance(c, str) and c.strip() and len(str(b)) == 1 and str(b) not in targyak:
                 targyak[str(b)] = c.strip()
-        return cls(em.epit(Path(vault), elmelet_mappa=elmelet_mappa or ALAP_ELMELET_MAPPA, szakasz=szakasz or "Füzet",
-                           targyak=targyak))
+        k = cls(em.epit(Path(vault), elmelet_mappa=elmelet_mappa or ALAP_ELMELET_MAPPA, szakasz=szakasz or "Füzet", targyak=targyak))
+        k.nevek = dict(nevek or {})
+        return k
 
     def biro(self) -> bm25.Bm25:
         if self._biro is None:

@@ -131,12 +131,12 @@ register(TaskType("mentes", "Mentés a belső lemezre", _mentes_terv))
 
 
 def _teljes_mentes_terv(cfg: Config, p: dict, stop: str):
-    from .teljes_mentes import forrasok
+    from .teljes_mentes import forrasok, kulso_kotet
     ertek = p.get('cel')
     if not isinstance(ertek, str) or not ertek.strip():
         raise Invalid('Add meg a külső lemez célmappáját.')
     cel = Path(ertek).expanduser().resolve()
-    if not cel.is_dir() or cel.stat().st_dev == cfg.root.stat().st_dev:
+    if not cel.is_dir() or not kulso_kotet(cfg, cel):          # F3 §5: a vault és a `{var}` kötetéhez mér, nem a kódfáéhoz
         raise Invalid('A teljes mentés célja egy csatlakoztatott, külön kötet mappája legyen.')
     if any(cel == f or f in cel.parents for f in forrasok(cfg).values()):
         raise Invalid('A célmappa a mentendő rendszerben van.')

@@ -10,19 +10,16 @@ import { fajlNev } from '../lib/vault/fajlok.svelte';
 import { irhato } from '../szerkeszto/beallitas';
 import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
 import { vagolapra } from '../szerkeszto/vagolap';
-import { mediaUt, osszefoglaloUt } from './allando';
+import { kiseroUt, mediaUt, osszefoglaloUt } from './allando';
 import { osszefoglalasApi } from './api';
 import { kulsoAi } from './kulsoAllapot.svelte';
 
 const uzenet = (e: unknown) => (e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e));
-// mirror of config — F3 replaces with /api/workspace
-const KISERO_ELOTAG = 'ATTCHMNTS - ';
 
 /** Tartalmi jegyzet-e (a core `automatika.tartalmi_ut` tükre): nem gépi kísérőjegyzet, nem rejtett mappa. */
 export function tartalmiJegyzet(ut: string | undefined | null): ut is string {
   if (!ut || !ut.toLowerCase().endsWith('.md')) return false;
-  const u = ut.normalize('NFC');
-  return !u.startsWith(KISERO_ELOTAG) && !u.split('/').some((r) => r.startsWith('.'));
+  return !kiseroUt(ut) && !ut.normalize('NFC').split('/').some((r) => r.startsWith('.'));
 }
 
 function mentesElotte(ut: string): Promise<void> {

@@ -3,23 +3,32 @@ import Foundation
 /// A Python-core gyermekfolyamata. Életciklus (ARCHITECTURE 2.): a core kiírja a portját (egy JSON-sor a
 /// stdoutra); a stdin lezárása = leállás a folyamatban lévő feladat végén.
 ///
-/// Egypéldányos zár (C29.6, T027): ha ugyanazon a vaulton már fut egy core, a kézfogás sora
+/// Egypéldányos zár (C29.6, T027; F3-DESIGN §4): ha ugyanazon a vaulton már fut egy core, a kézfogás sora
 /// `{"foglalt": true, "pid": N, "vault": "…"}`, a core 75-tel kilép — ilyenkor a héj nem indít második ablakot.
+/// Konfigurációs hiba (nincs vault, nem munkatér, hibás beállításfájl, újabb formátumú munkatér): a sor
+/// `{"hiba": "<kod>", "param": …, "uzenet": "…"}`, a kilépési kód 78 — a héj a `kod`-hoz tartozó üzenetet mutatja.
 final class CoreProcess {
     /// A sikeres kézfogás tartalma: a core portja és API-titka (35. döntés, T071): a héj a titkot a lap betöltése előtt injektálja
     /// a felületbe, és újraindításkor ugyanazt adja vissza a core-nak (`MOS_API_TITOK`), hogy a lap titka érvényes maradjon.
+    /// F3 (additív): a vault kanonikus útja (ennek a kötetét figyeli a lecsatolás), a munkatér azonosítója és az elrendezés.
     struct Kezfogas: Equatable {
         let port: Int
         let titok: String?
+        var vault: String? = nil
+        var munkaterId: String? = nil
+        var elrendezes: String? = nil
     }
 
     enum StartError: Error {
         case failed(String)
         case foglalt(pid: Int?, vault: String?)
+        case konfig(kod: String, uzenet: String)
     }
 
     /// A core kilépési kódja, ha másik core fut ugyanazon a vaulton (`CORE_ZAR_KILEPES` a `core/server.py`-ban).
     static let foglaltKilepesiKod: Int32 = 75
+    /// A core kilépési kódja konfigurációs hibánál (`KONFIG_HIBA_KILEPES`, EX_CONFIG).
+    static let konfigKilepesiKod: Int32 = 78
 
     private let process = Process()
     private let stdinPipe = Pipe()
@@ -51,18 +60,35 @@ final class CoreProcess {
     /// `port`: a core ezen a porton induljon (`MOS_CORE_PORT`) — újraindításkor a régi porton, így a lap origin-je és a benne lévő
     /// szöveg megmarad (C29.7b, T031). Nil: szabad port. `titok`: a core ezt az API-titkot használja (`MOS_API_TITOK`) — újraindításkor
     /// a régi, hogy a lapba injektált titok érvényes maradjon; nil: a core újat sorsol.
-    init(root: URL, port: Int? = nil, titok: String? = nil) {
+    /// `vault`: a megnyitandó vault (`MOS_VAULT`; termékben a regiszterből). `termek` (F3-DESIGN §2.6): `MOS_ELRENDEZES=termek`, és a
+    /// héj futtathatója a naptár-segéd és a CLI-mód (`MOS_NAPTAR_SEGED`, `MOS_HEJ_CLI`), ha a környezet nem adja meg.
+    init(root: URL, vault: String? = nil, termek: Bool = false, port: Int? = nil, titok: String? = nil) {
         process.executableURL = root.appendingPathComponent("bin/mos")
         process.arguments = ["core", "start"]
         process.currentDirectoryURL = root
-        var env = ProcessInfo.processInfo.environment
-        env["MOS_ROOT"] = root.path
-        if let port { env["MOS_CORE_PORT"] = String(port) }
-        if let titok { env["MOS_API_TITOK"] = titok }
-        process.environment = env
+        process.environment = CoreProcess.kornyezet(alap: ProcessInfo.processInfo.environment, root: root, vault: vault,
+                                                    termek: termek, port: port, titok: titok,
+                                                    futtathato: Bundle.main.executablePath)
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
+    }
+
+    /// A core környezete (tiszta függvény, a `--selftest` táblázata ellenőrzi).
+    static func kornyezet(alap: [String: String], root: URL, vault: String?, termek: Bool, port: Int?, titok: String?,
+                          futtathato: String?) -> [String: String] {
+        var env = alap
+        env["MOS_ROOT"] = root.path
+        if let vault, !vault.isEmpty { env["MOS_VAULT"] = vault }
+        if termek {
+            env["MOS_ELRENDEZES"] = "termek"
+            if let futtathato {
+                for kulcs in ["MOS_HEJ_CLI", "MOS_NAPTAR_SEGED"] where (env[kulcs] ?? "").isEmpty { env[kulcs] = futtathato }
+            }
+        }
+        if let port { env["MOS_CORE_PORT"] = String(port) }
+        if let titok { env["MOS_API_TITOK"] = titok }
+        return env
     }
 
     func start(_ completion: @escaping (Result<Kezfogas, StartError>) -> Void) {
@@ -87,6 +113,10 @@ final class CoreProcess {
             let pending = self.handshake; self.handshake = nil; let err = self.errorText; let foglalt = self.foglaltJel
             self.lock.unlock()
             if foglalt { pending?(.failure(.foglalt(pid: nil, vault: nil))) }
+            else if p.terminationStatus == CoreProcess.konfigKilepesiKod {
+                // a `{"hiba"}` sor a kilépés után is beérkezhet a stdout kezelőjébe: a stderr `(kod)`-ja ugyanazt mondja
+                pending?(.failure(.konfig(kod: CoreProcess.stderrKod(err) ?? "konfig_hiba", uzenet: Eletciklus.farok(err))))
+            }
             else { pending?(.failure(.failed(err.isEmpty ? "a core kilépett az indulás előtt" : Eletciklus.farok(err)))) }
             DispatchQueue.main.async { self.onExit?() }
         }
@@ -109,8 +139,9 @@ final class CoreProcess {
         done?(eredmeny)
     }
 
-    /// A kézfogás sorának értelmezése (tiszta függvény, a `--selftest` táblázata ellenőrzi): port (és a `titok`) → siker,
-    /// `foglalt: true` → másik példány fut, minden más → hiba.
+    /// A kézfogás sorának értelmezése (tiszta függvény, a `--selftest` táblázata ellenőrzi): port (és a `titok`, `vault`,
+    /// `munkater_id`, `elrendezes`) → siker, `foglalt: true` → másik példány fut, `hiba: "<kod>"` → konfigurációs hiba,
+    /// minden más → hiba.
     static func kezfogas(_ sor: Data) -> Result<Kezfogas, StartError> {
         guard let obj = try? JSONSerialization.jsonObject(with: sor) as? [String: Any] else {
             return .failure(.failed("érvénytelen kézfogás: \(String(decoding: sor, as: UTF8.self))"))
@@ -118,8 +149,51 @@ final class CoreProcess {
         if obj["foglalt"] as? Bool == true {
             return .failure(.foglalt(pid: obj["pid"] as? Int, vault: obj["vault"] as? String))
         }
-        if let port = obj["port"] as? Int { return .success(Kezfogas(port: port, titok: obj["titok"] as? String)) }
+        if let kod = obj["hiba"] as? String, !kod.isEmpty {
+            return .failure(.konfig(kod: kod, uzenet: obj["uzenet"] as? String ?? ""))
+        }
+        if let port = obj["port"] as? Int {
+            let vault = (obj["vault"] as? String).flatMap { $0.hasPrefix("/") ? $0 : nil }
+            return .success(Kezfogas(port: port, titok: obj["titok"] as? String, vault: vault,
+                                     munkaterId: obj["munkater_id"] as? String, elrendezes: obj["elrendezes"] as? String))
+        }
         return .failure(.failed("érvénytelen kézfogás: \(String(decoding: sor, as: UTF8.self))"))
+    }
+
+    /// A stderr `[core] … (<kod>): …` sorából a hibakód (a 78-as kilépésnél, ha a kézfogás-sor nem ért be).
+    static func stderrKod(_ szoveg: String) -> String? {
+        for sor in szoveg.split(separator: "\n").reversed() where sor.hasPrefix("[core]") {
+            guard let nyit = sor.firstIndex(of: "("), let zar = sor[nyit...].firstIndex(of: ")") else { continue }
+            let kod = sor[sor.index(after: nyit)..<zar]
+            if !kod.isEmpty, kod.allSatisfy({ $0.isASCII && ($0.isLowercase || $0.isNumber || $0 == "_") }) { return String(kod) }
+        }
+        return nil
+    }
+
+    /// A konfigurációs hiba szövege a felhasználónak (a `kod` szerint; tiszta függvény).
+    static func konfigSzoveg(kod: String, uzenet: String) -> String {
+        let reszlet = uzenet.isEmpty ? "" : "\n\n\(uzenet)"
+        switch kod {
+        case "nincs_vault":
+            return "Nincs megadva a vault (a jegyzetek mappája). Fejlesztői checkoutban: bin/mos portable init --vault <mappa>." + reszlet
+        case "nem_workspace", "nincs_workspace":
+            return "A mappa még nem Manifold-munkatér. Létrehozása: mos workspace letrehoz <mappa>." + reszlet
+        case "vault_nem_elerheto":
+            return "A munkatér mappája nem érhető el. Csatlakoztatva van a kötet?" + reszlet
+        case "workspace_ujabb":
+            return "Ezt a munkateret a Manifold egy újabb változata hozta létre. Frissítsd az alkalmazást." + reszlet
+        case "settings_toml_hibas", "workspace_toml_hibas", "config_toml_hibas":
+            return "Egy beállításfájl hibás, ezért a Manifold nem indul (\(kod))." + reszlet
+        case "iras_a_kodba":
+            return "A beállítások az alkalmazás csak olvasható mappájába írnának (\(kod))." + reszlet
+        default:
+            return "A konfiguráció nem tölthető be (\(kod))." + reszlet
+        }
+    }
+
+    /// A kötet lecsatolásának értesítése a figyelt utak (a vault a kézfogásból, és a kódfa) bármelyikét érinti-e.
+    static func barmelyiketErinti(devicePath: String?, utak: [String]) -> Bool {
+        utak.contains { gyokertErint(devicePath: devicePath, gyoker: $0) }
     }
 
     /// A kötet lecsatolásának értesítése (`NSWorkspace.willUnmountNotification`, `NSDevicePath`) a Manifold-OS
@@ -143,16 +217,41 @@ final class CoreProcess {
             ("{\"foglalt\": true}", "foglalt:-:-"),
             ("{\"foglalt\": false, \"port\": 7}", "port:7:-"),
             ("{}", "hiba"), ("{\"port\": \"5000\"}", "hiba"), ("nem json", "hiba"), ("", "hiba"), ("[1]", "hiba"),
+            ("{\"port\": 5000, \"titok\": \"t\", \"vault\": \"/V/N\", \"munkater_id\": \"ab\", \"elrendezes\": \"termek\"}",
+             "port:5000:t:/V/N:ab:termek"),
+            ("{\"port\": 5000, \"vault\": \"rel\"}", "port:5000:-"),
+            ("{\"hiba\": \"nem_workspace\", \"param\": {}, \"uzenet\": \"x\"}", "konfig:nem_workspace:x"),
+            ("{\"hiba\": \"\"}", "hiba"),
         ]
         for (sor, vart) in kezfogasok {
             let mai: String
             switch kezfogas(Data(sor.utf8)) {
-            case .success(let k): mai = "port:\(k.port):\(k.titok ?? "-")"
+            case .success(let k):
+                let extra = [k.vault, k.munkaterId, k.elrendezes].compactMap { $0 }
+                mai = (["port:\(k.port):\(k.titok ?? "-")"] + extra).joined(separator: ":")
             case .failure(.foglalt(let pid, let vault)): mai = "foglalt:\(pid.map(String.init) ?? "-"):\(vault ?? "-")"
+            case .failure(.konfig(let kod, let uzenet)): mai = "konfig:\(kod):\(uzenet)"
             case .failure: mai = "hiba"
             }
             if mai != vart { hibak.append("kézfogás \(sor.debugDescription): \(mai) (várt: \(vart))") }
         }
+        let stderrek: [(String, String?)] = [
+            ("[core] a core nem indul (nincs_vault): x\n", "nincs_vault"),
+            ("zaj\n[core] a konfiguráció nem tölthető be (settings_toml_hibas): y", "settings_toml_hibas"),
+            ("[core] valami (Nem Kod)", nil), ("Traceback (most recent call last)", nil),
+        ]
+        for (szoveg, vart) in stderrek where stderrKod(szoveg) != vart {
+            hibak.append("stderr-kód \(szoveg.debugDescription): \(stderrKod(szoveg) ?? "-") (várt: \(vart ?? "-"))")
+        }
+        if !konfigSzoveg(kod: "ismeretlen_x", uzenet: "").contains("ismeretlen_x") { hibak.append("konfigSzoveg: a kód hiányzik") }
+        let r = URL(fileURLWithPath: "/R")
+        let e1 = kornyezet(alap: ["MOS_NAPTAR_SEGED": "/al"], root: r, vault: "/V", termek: true, port: 7, titok: "t",
+                           futtathato: "/A.app/Contents/MacOS/Manifold")
+        let e1vart = ["MOS_NAPTAR_SEGED": "/al", "MOS_ROOT": "/R", "MOS_VAULT": "/V", "MOS_ELRENDEZES": "termek",
+                      "MOS_HEJ_CLI": "/A.app/Contents/MacOS/Manifold", "MOS_CORE_PORT": "7", "MOS_API_TITOK": "t"]
+        if e1 != e1vart { hibak.append("termék-környezet: \(e1)") }
+        let e2 = kornyezet(alap: ["MOS_VAULT": "/E"], root: r, vault: nil, termek: false, port: nil, titok: nil, futtathato: "/x")
+        if e2 != ["MOS_VAULT": "/E", "MOS_ROOT": "/R"] { hibak.append("hordozható környezet: \(e2)") }
         let lecsatolas: [(String?, String, Bool)] = [
             ("/Volumes/Disk", "/Volumes/Disk/Manifold", true), ("/Volumes/Disk/", "/Volumes/Disk/Manifold", true),
             ("/Volumes/Disk/Manifold", "/Volumes/Disk/Manifold", true),
@@ -163,6 +262,10 @@ final class CoreProcess {
         for (dev, gyoker, vart) in lecsatolas {
             let mai = gyokertErint(devicePath: dev, gyoker: gyoker)
             if mai != vart { hibak.append("lecsatolás \(dev.debugDescription) / \(gyoker): \(mai) (várt: \(vart))") }
+        }
+        if !barmelyiketErinti(devicePath: "/Volumes/Jegyzet", utak: ["/Volumes/Jegyzet/Notes", "/Applications/M.app/x"])
+            || barmelyiketErinti(devicePath: "/Volumes/Mas", utak: ["/Volumes/Jegyzet/Notes", "/Applications/M.app/x"]) {
+            hibak.append("lecsatolás: a vault kötete")
         }
         return hibak
     }

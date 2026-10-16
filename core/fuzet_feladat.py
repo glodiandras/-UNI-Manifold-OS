@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 import sys
 
-from . import tasks
+from . import kiserok, tasks
 from .config import Config
 
 LANC, AUTOMATIKUS, ELLENORIZ = "fuzet_lanc", "fuzet_automatikus", "fuzet_ellenoriz"
@@ -60,7 +60,7 @@ def _lanc_terv(cfg: Config, p: dict, stop: str, automatikus: bool = False):
     figyelm = ["Próbamód: az írás a vault APFS-klónjára megy, a fotók a helyükön maradnak."] if p.get("proba") else []
     cim = "Füzetfotók az aktív jegyzetbe" if cel else "Füzetfotók bekötése"
     fz = cfg.section("fuzet")
-    szakasz, cel_mappa = fz.get("szakasz") or "Füzet", fz.get("cel_mappa") or "ATTCHMNTS - photos"
+    szakasz, cel_mappa = fz.get("szakasz") or "Füzet", kiserok.kisero_mappa(cfg, "fuzet")
     osszeg = (f"A fotók a megadott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek (gépi írás, visszavonható)."
               if cel else
               f"Az új füzetfotók a választott jegyzet „## {szakasz}” szakaszába kerülnek, alattuk a képletek; a fotó a "

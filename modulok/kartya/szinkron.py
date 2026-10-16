@@ -11,7 +11,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core import tanulas_db, utkapu
+from core import kiserok, rejtett, tanulas_db, utkapu
 
 from . import formatum
 
@@ -37,7 +37,7 @@ def beallitas(cfg) -> dict:
 
 
 def mappa(cfg) -> str:
-    return beallitas(cfg).get("mappa", formatum.ALAP_MAPPA)
+    return kiserok.kisero_mappa(cfg, "kartya")
 
 
 def olvas_mappa(cfg) -> dict[str, formatum.Elemzes]:
@@ -49,7 +49,7 @@ def olvas_mappa(cfg) -> dict[str, formatum.Elemzes]:
     if not gyoker.is_dir():
         return ki
     for dp, dn, fn in os.walk(gyoker):
-        dn[:] = sorted(d for d in dn if not d.startswith("."))
+        dn[:] = sorted(d for d in rejtett.metsz(dn) if not d.startswith("."))     # I6: minden pontos mappa kimarad
         for f in sorted(fn):
             p = Path(dp) / f
             if f.startswith(".") or not f.endswith(".md") or not utkapu.belul(str(vault), str(p)):

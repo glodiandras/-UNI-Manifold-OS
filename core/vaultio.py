@@ -68,7 +68,12 @@ class NotFound(Invalid):
 
 
 class NemElerheto(Invalid):
-    """A vault nem érhető el (503, `lemez_hiba`): a kötet leválasztva, kihúzva, vagy a mappa átnevezve (C33, T175)."""
+    """A vault nem érhető el (503, `lemez_hiba`): a kötet leválasztva, kihúzva, vagy a mappa átnevezve (C33, T175). `kod`:
+    `vault_nem_elerheto`, vagy `workspace_csere` (F3: a vault helyén egy másik munkatér áll — azonos nevű, cserélt lemez)."""
+
+    def __init__(self, uzenet: str = "", *, kod: str = "vault_nem_elerheto"):
+        super().__init__(uzenet)
+        self.kod = kod
 
 
 # C33 (T175): az I/O-hiba (errno) → HTTP-kód és magyar üzenet. Az adat ilyenkor biztonságban van (a tmp + csere nem ír félig),
@@ -184,8 +189,20 @@ class Vault:
         if not (v / ".obsidian").is_dir():
             self._elerheto_jelez(False)
             raise NemElerheto(f"a vault nem érhető el ({v.name}): a kötet le van választva, vagy a mappa átnevezve")
+        if self._elerheto is not True and not self._munkater_azonos():
+            self._elerheto_jelez(False)
+            raise NemElerheto(f"a vault helyén egy másik munkatér áll ({v.name}): a megnyitott munkatér nem érhető el",
+                              kod="workspace_csere")
         self._elerheto_jelez(True)
         return v
+
+    def _munkater_azonos(self) -> bool:
+        """Termékben (F3, §3.4) a nem elérhető → elérhető váltáskor (és az első használatkor): a `workspace.toml` azonosítója
+        a megnyitotté-e. Egy azonos nevű, cserélt lemez így „nem elérhető” marad. Hordozható elrendezésben mindig igaz."""
+        if self.cfg.elrendezes != "termek" or not self.cfg.workspace_id or "workspace" not in self.cfg.utak:
+            return True
+        from .workspace import WS_TOML, toml_azonosito
+        return toml_azonosito(self.cfg.path("workspace") / WS_TOML) == self.cfg.workspace_id
 
     def _elerheto_jelez(self, ok: bool) -> None:
         """A vault elérhetőségének VÁLTÁSA egyetlen `vault_elerheto {elerheto}` WS-esemény (M5, C29.6): polling nélkül, a

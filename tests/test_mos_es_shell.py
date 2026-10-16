@@ -145,6 +145,43 @@ class MunkafaModTeszt(unittest.TestCase):
             self.assertEqual(p.stdout.strip(), "[][]")
 
 
+class CsakOlvashatoCsomagTeszt(unittest.TestCase):
+    """F3 (F3-DESIGN §2.6, I1): termék-alakú, írásvédett (`chmod -R a-w`) csomagból futó `bin/mos` semmit nem ír a csomagba:
+    a gyökerek a rétegzett konfigból jönnek (`core.gyokerek shell`), az állapot a munkatérben és az `{install}` alatt él."""
+
+    def test_irasvedett_csomagban_nincs_iras(self):
+        from tests.helpers import alg_bundle
+        t = tmpdir()
+        self.addCleanup(t.cleanup)
+        tmp = Path(t.name)
+        root = alg_bundle(t.name)
+        (root / "bin").mkdir()
+        shutil.copy(REPO / "bin" / "mos", root / "bin" / "mos")
+        vault = tmp / "Jegyzetek"
+        (vault / ".manifold").mkdir(parents=True)
+        (vault / ".manifold" / "workspace.toml").write_text('[workspace]\nid = "0123456789abcdef0123456789abcdef"\n')
+        csomag = tmp / "X.app"
+
+        def jog(irhato: bool):
+            for d, mappak, fajlok in os.walk(csomag):
+                for n in [*mappak, *fajlok]:
+                    p = Path(d) / n
+                    if not p.is_symlink():
+                        p.chmod(p.stat().st_mode | 0o200 if irhato else p.stat().st_mode & ~0o222)
+            csomag.chmod(0o755 if irhato else 0o555)
+        jog(False)
+        self.addCleanup(jog, True)
+        elotte = sorted((str(p.relative_to(csomag)), p.stat().st_mtime_ns) for p in csomag.rglob("*"))
+        e = env(MOS_PYTHON=sys.executable, PYTHONPATH=str(REPO), HOME=str(tmp / "home"), MOS_VAULT=str(vault))
+        p = subprocess.run([str(root / "bin" / "mos"), "models", "list"], capture_output=True, text=True, env=e, timeout=300)
+        self.assertEqual(p.returncode, 0, p.stderr[-1500:])
+        self.assertNotRegex(p.stderr, r"(?i)permission denied|read-only|operation not permitted")
+        self.assertEqual(sorted((str(p.relative_to(csomag)), p.stat().st_mtime_ns) for p in csomag.rglob("*")), elotte)
+        install = tmp / "home" / "Library" / "Application Support" / "Manifold"
+        self.assertTrue((vault / ".manifold" / "var" / "tmp").is_dir())                  # a TMPDIR a munkatérben
+        self.assertTrue((install / ".metadata_never_index").is_file())
+
+
 @csak_darwin("a Mach-O Manifold.app héj Linuxon nem fut")
 @unittest.skipUnless(APP.exists(), "nincs lefordított Manifold.app")
 class ShellTeszt(unittest.TestCase):

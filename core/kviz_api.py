@@ -1,6 +1,6 @@
 """A kvíz végpontjai (C22a; `docs/C22-TERV.md` 5. fejezet): a beágyazott kvíz kitöltése a szerkesztőben.
 
-A kvíz a vaultban él (`[kviz] mappa`, a legacy `ATTCHMNTS - quizes` formátuma); a végpontok **csak olvassák**, és a
+A kvíz a vaultban él (`[kviz] mappa`, alapból `<kisero_elotag>Quizzes`; a legacy kvíz formátuma); a végpontok **csak olvassák**, és a
 kitöltés eredményét a `{tanulas_db}`-be (2-es migráció) írják — a vaultba nem. Az értékelést a core végzi (egyetlen
 elemző a Pythonban, a felület csak mutat); az **API a kulcsot, az idézetet és a magyarázatot a válasz előtt nem adja ki** (48(b),
 A3-03): a `GET /api/kviz/kviz` **kitöltés-tokent** ad; a `megoldas` a kérdésre adott választ **rögzíti** (az első válasz
@@ -30,10 +30,11 @@ import time
 from types import SimpleNamespace
 
 from . import frame
+from . import kiserok
 from .utvonalak import HttpError
 from .vaultio import Conflict, Invalid, NotFound, nfc, norm_path
 
-MAPPA_ALAP = "ATTCHMNTS - quizes"
+MAPPA_ALAP = kiserok.alap_mappa("kviz")             # a szállított alap; a mappát a `kiserok.kisero_mappa` adja
 KULCS_MINTA = re.compile(r"[A-Za-z0-9_-]{8,80}")
 MODOK = ("teljes", "hibasak")
 TOKEN_MAX = 64                                  # egyszerre nyitott kitöltések száma (a legrégebben használt esik ki)
@@ -55,7 +56,7 @@ def _m() -> SimpleNamespace:
 
 
 def mappa(cfg) -> str:
-    return nfc(cfg.section("kviz").get("mappa", MAPPA_ALAP)).strip("/")
+    return kiserok.kisero_mappa(cfg, "kviz")
 
 
 class Kitoltes:

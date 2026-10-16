@@ -3,7 +3,7 @@
 A bemenet egy `Forras` (a médiafájl NEVE, a szövegréteg cue-i és a mért hossza); a még el nem helyezett forrással is dolgozik. A vaultot
 a `NoteIndex` egyszer olvassa végig, csak olvasva.
 
-    temak(vault)                 a témamappák (alap: `^[A-Z]{1,3}\\d{2} - `, a `*00 - ` és a kizárt mappák nélkül; `[video] tema_minta`, `kizart_mappak`)
+    temak(vault)                 a témamappák (alap: minden látható gyökérmappa, a kísérő- és sablonmappák nélkül; `[video] tema_minta`, `kizart_mappak`; ha a minta 2. csoportja csupa nulla, az nem téma)
     NoteIndex(vault)             az `<Téma>/Elmélet/` jegyzetek szótő-indexe (jegyzetenkénti és témánkénti gyakoriság, évszámok)
     windows(f, idx)              a jelöltállás 60 s-os ablakai 10 s lépéssel (a 25 hosszú szónál szegényebb ablak kimarad)
     rank_text / rank_topics      a lift (a véletlen feletti többlet) témánként
@@ -24,6 +24,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from core import kiserok, rejtett
 from .szovegreteg import (K, longwords, mask_code, media_anchors, nfc, parse_fm, split_note, stem_list, ablak_szoveg)
 
 # tema_besorolas
@@ -34,12 +35,14 @@ LEPES_S, MIN_NEVEZO = 10, 25
 EROS_B, KOZEPES_B = 0.193, 0.150
 MASODIK_ABLAK_S, MAX_HORGONY_JEGYZETENKENT = 60, 2
 
-# A téma-mappa felismerése és a kizárt mappák: a `[video] tema_minta` / `kizart_mappak` (os.toml) adja; ezek az alapértékek, ha a kulcs hiányzik.
-# A minta alapja egyezik az os.toml-éval (és a `core/videolanc.TEMA_MINTA_ALAP`-éval); a kizárt mappák alapja semleges: csak a sablonmappa.
-TEMA_MINTA = re.compile(r"^[A-Z]{1,3}\d{2} - \S.*$")
-KIZART_MAPPAK = ("_Template",)
+# A téma-mappa felismerése és a kizárt mappák: a `[video] tema_minta` / `kizart_mappak` (os.toml) adja; ezek az alapértékek, ha a kulcs hiányzik
+# vagy üres. A minta alapja semleges (`core/kiserok.tema_minta_alap`: minden látható gyökérmappa, kísérő- és sablonmappa nélkül); a
+# kizárt mappák alapja üres, a `index_beallitas` a sablonmappát és a kísérő-előtagot mindig hozzáteszi. A fejlesztő konvenciója a
+# `config/presets/v2-kompat.toml`-ban van.
+TEMA_MINTA = re.compile(kiserok.tema_minta_alap(None))
+KIZART_MAPPAK: tuple[str, ...] = ()
 ELMELET_MAPPA = "Elmélet"                   # `[fuzet] elmelet_mappa`: a téma-mappa tananyag-jegyzeteinek almappája
-SKIP_DIRS = {".obsidian", ".trash", ".git", "node_modules"}
+SKIP_DIRS = set(rejtett.KIHAGYOTT_MAPPAK)           # a vault-bejárások közös kihagyási szabálya (`core/rejtett.py`)
 
 
 def index_beallitas(cfg) -> dict:
@@ -47,13 +50,16 @@ def index_beallitas(cfg) -> dict:
     v = cfg.section("video")
     minta = v.get("tema_minta")
     kizart = v.get("kizart_mappak")
+    alap = re.compile(kiserok.tema_minta_alap(cfg))
     try:
-        minta_re = re.compile(str(minta)) if minta else TEMA_MINTA
+        minta_re = re.compile(str(minta)) if minta else alap
     except re.error as e:                       # hibás `[video] tema_minta`: az alapminta (a Bevitel `videolanc.tema_minta` úgyis jelzi a hibát)
         print(f"[egyezés] FIGYELEM: a [video] tema_minta nem érvényes reguláris kifejezés ({e}); az alapminta marad", file=sys.stderr, flush=True)
-        minta_re = TEMA_MINTA
-    return {"tema_minta": minta_re,
-            "kizart_mappak": tuple(str(k) for k in kizart) if isinstance(kizart, (list, tuple)) else KIZART_MAPPAK,
+        minta_re = alap
+    sablon = str(cfg.section("sablon").get("mappa") or "_Template").strip("/")
+    kizartak = tuple(str(k) for k in kizart) if isinstance(kizart, (list, tuple)) else KIZART_MAPPAK
+    kizartak = (*kizartak, *(x for x in (nfc(sablon), kiserok.kisero_elotag(cfg)) if x not in kizartak))     # a sablon- és a kísérőmappa sosem téma
+    return {"tema_minta": minta_re, "kizart_mappak": kizartak,
             "elmelet_mappa": str(cfg.section("fuzet").get("elmelet_mappa") or ELMELET_MAPPA)}
 
 
@@ -77,6 +83,11 @@ class Forras:
         return ablak_szoveg(self.cuek, t)
 
 
+def _vizualis(m: re.Match) -> bool:
+    """A minta 2. csoportja (a kétjegyű sorszám) csupa nulla: a tárgy vizuális mappája, nem téma. Csoport nélküli mintánál soha."""
+    return m.re.groups >= 2 and bool(m.group(2)) and m.group(2).strip("0") == ""
+
+
 def temak(vault: str | Path, tema_minta=None, kizart_mappak=None) -> list[str]:
     tema_minta = tema_minta or TEMA_MINTA
     kizart_mappak = tuple(KIZART_MAPPAK if kizart_mappak is None else kizart_mappak)
@@ -85,7 +96,8 @@ def temak(vault: str | Path, tema_minta=None, kizart_mappak=None) -> list[str]:
         if not os.path.isdir(os.path.join(vault, d)) or d.startswith("."):
             continue
         n = nfc(d)
-        if not tema_minta.match(n) or re.match(r"^[A-Z]{1,3}00 - ", n) or n.startswith(kizart_mappak):
+        m = tema_minta.match(n)
+        if not m or _vizualis(m) or n.startswith(kizart_mappak):
             continue
         out.append(n)
     return out

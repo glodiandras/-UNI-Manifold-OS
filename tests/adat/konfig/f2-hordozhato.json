@@ -1,0 +1,1404 @@
+{
+ "_leiras": "F2 golden (generated from the F2 tree before any F3 edit): resolved [utak] of an alg_gyoker() fake root and every other section; strings with placeholders are stored expanded ({\"$kifejtve\": ...}); <TMP> = the test temp dir.",
+ "szakaszok": {
+  "aktivitas": {
+   "aktiv_mp": 120,
+   "rendszer_tetlenseg": true,
+   "tavol_perc": 15
+  },
+  "asszisztens": {
+   "emlites_cim_alak": true,
+   "emlites_cim_egyszavas_max_db": 10,
+   "emlites_cim_min_szo": 2,
+   "emlites_hasonlosag_kuszob": 0.55,
+   "emlites_kizart": [
+    "X01 - Napló & To-Do/",
+    "AI02 - Log/",
+    "_Template/",
+    "ATTCHMNTS - "
+   ],
+   "emlites_max": 50,
+   "emlites_min_hossz": 4,
+   "emlites_szotar_frissites_mp": 2,
+   "hangolas_felezes_nap": 21.0,
+   "hangolas_nema_arany": 0.15,
+   "hangolas_nema_db": 5,
+   "higienia_arva_canvas": true,
+   "higienia_arva_kizart": [
+    "X01 - Napló & To-Do/",
+    "AI02 - Log/",
+    "_Template/",
+    "ATTCHMNTS - "
+   ],
+   "higienia_arva_tulajdonsag_kizart": [
+    "Canvas",
+    "Source"
+   ],
+   "higienia_min_koz_mp": 60,
+   "higienia_tick_mp": 10,
+   "higienia_uj_max": 20,
+   "kartya_alap_mp": 90.0,
+   "kartya_elutasitott_nap": 30,
+   "kartya_kizart": [
+    "X01 - Napló & To-Do/",
+    "AI02 - Log/",
+    "_Template/",
+    "ATTCHMNTS - "
+   ],
+   "kartya_min_testver": 3,
+   "kartya_muvelet_min_db": 3,
+   "kartya_szerkezet_arany": 0.6,
+   "kartya_tartalom_kuszob": 0.75,
+   "kiegeszites": {
+    "modell": false,
+    "proba_modell": ""
+   },
+   "kuszob_ablak_nap": 30,
+   "kuszob_alacsony": 0.15,
+   "kuszob_min_db": 10,
+   "kuszob_nema": 0.05,
+   "kuszob_nema_db": 20,
+   "kuszob_szigoru_szorzo": 1.5,
+   "szokas_ablak_het": 8,
+   "szokas_min_het": 4,
+   "szokas_min_perc": 20,
+   "szokas_napszak": true,
+   "tantargy_nevek": {
+    "English": "angol",
+    "Grammar": "nyelvtan",
+    "History": "történelem",
+    "Informatics": "informatika",
+    "Literature": "irodalom",
+    "Mathematics": "matematika",
+    "Physics": "fizika"
+   }
+  },
+  "core": {
+   "kezelo_idokorlat_mp": 30,
+   "kor_zar_turelem_mp": 3.0,
+   "leallas_fokozas_mp": 20,
+   "mentetlen_turelem_mp": 15,
+   "naplo_max_mb": 20,
+   "port": 0
+  },
+  "cpp": {
+   "fordit_idokorlat_s": 30.0,
+   "fordit_memoria_mb": 2048,
+   "fordit_munka_max_fajl": 1024,
+   "fordit_munka_max_mb": 256,
+   "formazas": "{BasedOnStyle: LLVM, IndentWidth: 4, ColumnLimit: 100, AllowShortFunctionsOnASingleLine: Inline}",
+   "gyors": [
+    "-O2",
+    "-Wall",
+    "-Wextra"
+   ],
+   "hibakereso": [
+    "-O1",
+    "-g",
+    "-fno-omit-frame-pointer",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=all",
+    "-Wall",
+    "-Wextra"
+   ],
+   "hibakereso_idoszorzo": 3.0,
+   "hibakereso_memoria_mb": 1024,
+   "kimenet_max_kb": 1024,
+   "lebego_eps": 1e-06,
+   "linker": "lld",
+   "memoria_mb": 256,
+   "mintavetel_ms": 20,
+   "munka_max_fajl": 256,
+   "munka_max_mb": 16,
+   "sablon": "C++ feladat",
+   "std": "c++17",
+   "stderr_max_kb": 64,
+   "teszt_idokorlat_max_s": 10.0,
+   "teszt_idokorlat_s": 2.0,
+   "teszt_memoria_max_mb": 1024
+  },
+  "emlekezteto": {
+   "be": true,
+   "forras": "",
+   "huzas_perc": 5,
+   "jovo_nap": 180,
+   "kesz_datum": true,
+   "lejart_nap": 14,
+   "lista": "Manifold",
+   "ora": "09:00",
+   "riasztas": true,
+   "torles_max": 25
+  },
+  "feladatsor": {
+   "indulasi_szunet_mp": 180,
+   "max_futas_mp": 21600,
+   "max_futas_tipus_mp": {
+    "mentes": 3600,
+    "teljes_mentes": 43200,
+    "video_bejaras": 7200,
+    "video_integralas": 43200,
+    "video_letoltes": 43200
+   },
+   "max_parhuzamos": 2,
+   "naplo_max_db": 500,
+   "naplo_max_nap": 60
+  },
+  "felkeszultseg": {
+   "ablak_nap": 21,
+   "atnevezes_kovetes": true,
+   "cel": 0.85,
+   "cel_perc": 60,
+   "elore_nap": 60,
+   "felezes_nap": 10,
+   "gyenge": 0.6,
+   "gyenge_kartya_db": 5,
+   "jo": 0.8,
+   "kalibracio_elotte_nap": 3,
+   "kalibracio_min": 8,
+   "kalibracio_ridge": 0.1,
+   "kalibracio_vissza_nap": 400,
+   "kalibralt": false,
+   "kartya_n0": 5,
+   "kviz_felezes_nap": 14,
+   "kviz_n0": 10,
+   "max_terv_nap": 21,
+   "min_bizonyitek": 0.15,
+   "min_tanulas_mp": 60,
+   "mult_nap": 3,
+   "napi_perc": 45,
+   "suly_frissesseg": 0.1,
+   "suly_ido": 0.15,
+   "suly_kartya": 0.4,
+   "suly_kviz": 0.35,
+   "szelet_perc": 15
+  },
+  "fuzet": {
+   "cel_mappa": "ATTCHMNTS - photos",
+   "elmelet_mappa": "Elmélet",
+   "figyelo_be": false,
+   "figyelo_indulasi_szunet_mp": 300,
+   "figyelo_nyugalom_mp": 30,
+   "figyelo_periodus_mp": 60,
+   "kepletek_max": 20,
+   "mappak": [],
+   "max_foto": 40,
+   "szakasz": "Füzet"
+  },
+  "grafikon": {
+   "automatika": {
+    "be": false,
+    "csend_perc": 10,
+    "kuszob": 0.3,
+    "max_jegyzet": 5,
+    "min_hossz": 40,
+    "modell_ag": false,
+    "uj_karakter": 600,
+    "ujraproba_ora": 1.0,
+    "varakozas_mp": 5.0
+   },
+   "elemzes_idokorlat_s": 30.0,
+   "gyorsitotar_db": 256,
+   "varakozas_s": 20.0
+  },
+  "ho": {
+   "ablak": 5,
+   "alap_minta": 5,
+   "bekapcsolva": true,
+   "hutes_mp": 120,
+   "kuszob": 0.7,
+   "min_token": 32
+  },
+  "homokozo": {
+   "idokorlat_s": 10.0,
+   "indulas_s": 20.0,
+   "kimenet_max_kb": 256,
+   "lepes_idokorlat_s": 3.0,
+   "max_ujrainditas": 50,
+   "memoria_mb": 768,
+   "mintavetel_ms": 20
+  },
+  "index": {
+   "bazis_idokeret_mp": 2,
+   "figyelo": "fsevents",
+   "latencia_mp": 0.03,
+   "lekerdezes_mp": 2,
+   "max_talalat": 200,
+   "pdf_idokorlat_mp": 300,
+   "regex_idokorlat_mp": 2
+  },
+  "javaslat": {
+   "be": true,
+   "elorenezes_nap": 10,
+   "max_darab": 6,
+   "perc": 60,
+   "sav_kezd": "16:00",
+   "sav_veg": "20:30"
+  },
+  "kapuk": {
+   "bizonyitek": "mondat+cim",
+   "idezet_kuszob": 0.85,
+   "kartya": {
+    "idezet_max_szo": 60,
+    "idezet_min_szo": 3
+   },
+   "kenyes": true,
+   "kihagyott_szakaszok": [
+    "Füzet",
+    "Gyakorlás",
+    "Kitöltések"
+   ],
+   "kviz": {
+    "idezet_max_szo": 60,
+    "idezet_min_szo": 4
+   },
+   "osszefoglalo": {
+    "idezet_max_szo": 45,
+    "idezet_min_szo": 4
+   },
+   "tagadas": "bevezetett",
+   "tamogatas_kuszob": 0.5,
+   "valasz": {
+    "idezet_max_szo": 120,
+    "idezet_min_szo": 4
+   }
+  },
+  "kartya": {
+   "automatika": {
+    "be": false,
+    "csend_perc": 10,
+    "koteg": 3,
+    "kuszob": 0.2,
+    "min_hossz": 400,
+    "uj_karakter": 600
+   },
+   "fuzz": true,
+   "generalas": {
+    "auto_max_kartya": 10,
+    "duplikat_jaccard": 0.8,
+    "max_kartya": 30,
+    "suruseg": 0.5,
+    "vak_kuszob": 0.5
+   },
+   "mappa": "ATTCHMNTS - cards",
+   "max_intervallum_nap": 36500,
+   "megtartas": 0.9,
+   "nap_kezdete_ora": 4,
+   "tanulasi_lepesek": [
+    "1m",
+    "10m"
+   ],
+   "torles_max": 50,
+   "uj_naponta": 20,
+   "ujratanulasi_lepesek": [
+    "10m"
+   ],
+   "utotag": " — kártyák"
+  },
+  "kereses": {
+   "hibrid": {
+    "darab_n": 200,
+    "jelolt_n": 100,
+    "lexikai_jegyzet_darab": 10,
+    "lexikai_suly": 1.0,
+    "rerank": true,
+    "rerank_n": 20,
+    "rrf_k": 60,
+    "vektor": true,
+    "vektor_suly": 1.0
+   },
+   "kerdezz": {
+    "darab_n": 6,
+    "forras_max_karakter": 1600,
+    "max_mondat": 8,
+    "max_tokens": 700,
+    "min_fedes": 0.34,
+    "min_hasonlosag": 0.5
+   }
+  },
+  "keret": {
+   "munka": 5.0,
+   "tavol": 9.0
+  },
+  "kviz": {
+   "darab_max_karakter": 2200,
+   "duplikat_jaccard": 0.6,
+   "engedett_jelek": [
+    "✓",
+    "✗",
+    "▸"
+   ],
+   "hivas_max_kerdes": 5,
+   "idezet_max_karakter": 420,
+   "karakter_per_kerdes": 150,
+   "kerdes_alap": 10,
+   "kerdes_max": 30,
+   "kerdes_min": 3,
+   "kerulendo_max": 12,
+   "mappa": "ATTCHMNTS - quizes",
+   "szakasz_min_karakter": 20,
+   "token_per_kerdes": 230,
+   "tulgeneralas": 1.6
+  },
+  "matek": {
+   "levezetes_idokorlat_s": 90.0,
+   "varakozas_s": 20.0
+  },
+  "media": {
+   "kepek_max_mb": 500,
+   "kepek_max_nap": 90,
+   "nyelvek": [
+    "hu",
+    "en"
+   ],
+   "reteg_mappa": "Média",
+   "video_mappa": "ATTCHMNTS - Videos"
+  },
+  "mentes": {
+   "allapot_ido_perc": 60,
+   "allapot_megtartott": 5,
+   "allapot_napi": 14,
+   "ido_perc": 30,
+   "kilepes_turelem_mp": 20,
+   "kodtar": {
+    "$kifejtve": "<TMP>/work/os"
+   },
+   "megtartott_bundle": 10,
+   "megtartott_migracio": 5
+  },
+  "meres": {
+   "ervenyes_kuszob": 0.1,
+   "feladat": {
+    "fuzet_fejezet": {
+     "repetition_context_size": 64,
+     "repetition_penalty": 1.1
+    },
+    "fuzet_forgatas": {
+     "repetition_context_size": 64,
+     "repetition_penalty": 1.1
+    },
+    "kifejtes": {
+     "gondolkodas": false
+    },
+    "kviz": {
+     "gondolkodas": false
+    },
+    "ocr_kezi": {
+     "repetition_context_size": 64,
+     "repetition_penalty": 1.1
+    },
+    "osszefoglal_kijeloles": {
+     "gondolkodas": false
+    },
+    "szoveg": {
+     "max_tokens_szorzo": 1.5
+    }
+   }
+  },
+  "modellek": {
+   "bge_m3": {
+    "csucs_gb": 3.3,
+    "feladat": [
+     "beagyazas",
+     "osztalyozas"
+    ],
+    "futtato": "sentence-transformers",
+    "kepessegek": [
+     "beagyazas"
+    ],
+    "minta": [
+     "*.json",
+     "pytorch_model.bin",
+     "sentencepiece.bpe.model",
+     "tokenizer*",
+     "1_Pooling/*"
+    ],
+    "repo": "BAAI/bge-m3",
+    "revizio": "5617a9f61b028005a4858fdac845db406aefb181"
+   },
+   "bge_reranker_v2_m3": {
+    "csucs_gb": 3.3,
+    "feladat": [
+     "rerank"
+    ],
+    "futtato": "sentence-transformers",
+    "kepessegek": [
+     "rerank"
+    ],
+    "minta": [
+     "model.safetensors",
+     "*.json",
+     "sentencepiece.bpe.model"
+    ],
+    "repo": "BAAI/bge-reranker-v2-m3",
+    "revizio": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e"
+   },
+   "chandra_ocr2": {
+    "csalad": "qwen",
+    "csucs_gb": 4.1,
+    "feladat": [
+     "ocr_kezi",
+     "ocr_keplet"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": {
+     "ocr_kezi": "Mérés: a modell natív kimenete HTML-elrendezés, a tokenek fele jelölés, ezért a kimenet sokszor levágódik; a pontszám a sor leggyengébbje, az újramérés nem érné meg. A kulcs törlése visszahozza"
+    },
+    "repo": "1qh/chandra-ocr-2-4bit-mlx",
+    "revizio": "f2439e222c625376876e26564aeddde1a23cf0b7"
+   },
+   "dots_mocr": {
+    "csalad": "qwen",
+    "csucs_gb": 4.7,
+    "feladat": [
+     "ocr_kezi",
+     "ocr_keplet"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": {
+     "ocr_kezi": "Mérés: a hibás tételek a prompt visszhangja és hallucináció, a modell saját elrendezés-promptot vár; az ismétlés-büntetés nem segít, a pontszám a többi modell mögött marad; a többi feladata marad. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/dots.mocr-4bit",
+    "revizio": "708b576de556b0cdba615ecd211db3b951ec09ef"
+   },
+   "embeddinggemma_300m": {
+    "csucs_gb": 1.2,
+    "feladat": [
+     "beagyazas"
+    ],
+    "futtato": "mlx-embeddings",
+    "kepessegek": [
+     "beagyazas"
+    ],
+    "repo": "mlx-community/embeddinggemma-300m-8bit",
+    "revizio": "c8316c9e35cf8830541b04d315398c67faa6e497"
+   },
+   "gemma4_12b": {
+    "csalad": "gemma",
+    "csucs_gb": 8.5,
+    "csucs_mert": true,
+    "feladat": [
+     "ocr_kezi",
+     "szoveg",
+     "kviz",
+     "matek_ellenorzo",
+     "atirat",
+     "kod"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep",
+     "hang"
+    ],
+    "meres_kihagy": {
+     "ocr_kezi": "Előpróba: a fekvő fotóknál LaTeX-sorokat hurkol, a kimenet levágódik (a sorok többsége érvénytelen); a többi feladata érvényes, az marad. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/gemma-4-12B-it-4bit",
+    "revizio": "73bcf09092aa277861d5a191b989b666f7f32e8f"
+   },
+   "gemma4_e2b": {
+    "csalad": "gemma",
+    "csucs_gb": 4.7,
+    "feladat": [
+     "szoveg",
+     "kviz",
+     "osztalyozas",
+     "atirat"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep",
+     "hang"
+    ],
+    "repo": "mlx-community/gemma-4-e2b-it-4bit",
+    "revizio": "238767527555cb75a05732a84dff5d6ba0dd6809"
+   },
+   "gemma4_e4b": {
+    "csalad": "gemma",
+    "csucs_gb": 6.5,
+    "feladat": [
+     "szoveg",
+     "kviz",
+     "atirat",
+     "matek_ellenorzo"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep",
+     "hang"
+    ],
+    "meres_kihagy": {
+     "matek_ellenorzo": "Előpróba: a tételek többségén rossz ítéletet ad (a helyes levezetésre is hibát mond), az egyiken ismétli magát. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/gemma-4-e4b-it-4bit",
+    "revizio": "475b9088d29754a3379866cf5aeb6b41acd313c2"
+   },
+   "glm_ocr": {
+    "csalad": "glm",
+    "csucs_gb": 2.2,
+    "feladat": [
+     "ocr_kezi",
+     "ocr_keplet"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "repo": "mlx-community/GLM-OCR-4bit",
+    "revizio": "97f587506984cc92fa69b2694b4128e53db6b081"
+   },
+   "ministral3_3b": {
+    "csalad": "mistral",
+    "csucs_gb": 3.8,
+    "feladat": [
+     "szoveg",
+     "kviz"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": {
+     "kviz": "Mérés: a sor érvénytelen (levágott tételek, szó-hurok), a lezárt kérdések gyengék; a keretemelés csak hosszabb ismétlést adna. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/Ministral-3-3B-Instruct-2512-4bit",
+    "revizio": "a962dcb09eee4169c890e544c9eb938f1113fdee"
+   },
+   "ministral3_3b_reasoning": {
+    "csalad": "mistral",
+    "csucs_gb": 3.8,
+    "feladat": [
+     "kod"
+    ],
+    "futtato": "mlx-lm",
+    "gondolkodas_token": 3000,
+    "gondolkodo": true,
+    "kepessegek": [
+     "szoveg"
+    ],
+    "repo": "mlx-community/Ministral-3-3B-Reasoning-2512-4bit",
+    "revizio": "2cd2087aad40c28747f8ede17851de6035f12b16"
+   },
+   "ministral3_8b_reasoning": {
+    "csalad": "mistral",
+    "csucs_gb": 7.9,
+    "feladat": [
+     "matek_ellenorzo",
+     "matek",
+     "matek_cas",
+     "kod"
+    ],
+    "futtato": "mlx-vlm",
+    "gondolkodas_token": 6000,
+    "gondolkodo": true,
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres": {
+     "kod": {
+      "gondolkodas_token": 3000
+     },
+     "matek_ellenorzo": {
+      "gondolkodas_token": 12000
+     }
+    },
+    "repo": "mlx-community/Ministral-3-8B-Reasoning-2512-4bit",
+    "revizio": "0b6f067915514745478c14fd55698fbb2d2863cc"
+   },
+   "nanonets_ocr2": {
+    "csalad": "qwen",
+    "csucs_gb": 4.2,
+    "feladat": [
+     "ocr_kezi",
+     "ocr_keplet"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": {
+     "ocr_kezi": "Mérés: a tételek ~10%-a levágódik vagy hurkol, az ismétlés-ablak növelése máshol új hurkokat hozott; a pontszám a feladat leggyengébbje, más modellek érvényes sora lefedi a feladatot; a többi feladata marad. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/Nanonets-OCR2-3B-4bit",
+    "revizio": "fe1396cbeb46cc71cba355907b5d6e11f3553f45"
+   },
+   "nemotron3_nano_4b": {
+    "csalad": "nemotron",
+    "csucs_gb": 4.1,
+    "feladat": [
+     "kod"
+    ],
+    "futtato": "mlx-lm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg"
+    ],
+    "repo": "mlx-community/NVIDIA-Nemotron-3-Nano-4B-4bit",
+    "revizio": "c4d79ba1901d99806ef757642a552acebb851a35"
+   },
+   "nemotron_nano_9b_v2": {
+    "csalad": "nemotron",
+    "csucs_gb": 6.3,
+    "feladat": [
+     "kod"
+    ],
+    "futtato": "mlx-lm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg"
+    ],
+    "repo": "mlx-community/NVIDIA-Nemotron-Nano-9B-v2-4bits",
+    "revizio": "863ab70142ead81e0776777baf1225bfcea77816"
+   },
+   "paddleocr_vl_16": {
+    "csalad": "ernie",
+    "csucs_gb": 1.6,
+    "feladat": [
+     "ocr_keplet"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "repo": "mlx-community/PaddleOCR-VL-1.6-4bit",
+    "revizio": "c8987b277bdd8aaec8bd265d154f391bd03ad165"
+   },
+   "parakeet_v3": {
+    "csucs_gb": 3.6,
+    "feladat": [
+     "atirat"
+    ],
+    "futtato": "mlx-audio",
+    "kepessegek": [
+     "hang"
+    ],
+    "repo": "mlx-community/parakeet-tdt-0.6b-v3",
+    "revizio": "ed2b7e8c15f9aaa0b5772e2efb986255eaef7e15"
+   },
+   "qwen35_08b": {
+    "csalad": "qwen",
+    "csucs_gb": 1.5,
+    "feladat": [
+     "osztalyozas"
+    ],
+    "futtato": "mlx-vlm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "repo": "mlx-community/Qwen3.5-0.8B-MLX-4bit",
+    "revizio": "5d894f8cc4ef3e6c88537bf3746ed262f549da6a"
+   },
+   "qwen35_2b": {
+    "csalad": "qwen",
+    "csucs_gb": 2.7,
+    "feladat": [
+     "osztalyozas",
+     "szoveg",
+     "kviz"
+    ],
+    "futtato": "mlx-vlm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": "Előpróba: a szoveg tételei levágódnak vagy formátumhibásak, a kártya-kérés ismétli magát a JSON-ban; két próba sem segített, és a modellnek más mérhető feladata nincs. A kulcs törlése visszahozza",
+    "repo": "mlx-community/Qwen3.5-2B-MLX-4bit",
+    "revizio": "93760be4f1f69842a46bc13dbdc0f19e291392a3"
+   },
+   "qwen35_4b": {
+    "csalad": "qwen",
+    "csucs_gb": 4.1,
+    "feladat": [
+     "szoveg",
+     "kviz",
+     "matek",
+     "ocr_kezi",
+     "matek_cas",
+     "kod",
+     "kifejtes",
+     "osszefoglal_kijeloles"
+    ],
+    "futtato": "mlx-vlm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres": {
+     "kviz": {
+      "max_tokens_szorzo": 1.6
+     }
+    },
+    "meres_kihagy": {
+     "fuzet_fejezet": "Előpróba: a kért sorok helyett hosszú prózát ír, a kimenet levágódik; a keret emelése nem segített. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/Qwen3.5-4B-MLX-4bit",
+    "revizio": "32f3e8ecf65426fc3306969496342d504bfa13f3"
+   },
+   "qwen35_9b": {
+    "csalad": "qwen",
+    "csucs_gb": 7.3,
+    "csucs_mert": true,
+    "feladat": [
+     "ocr_kezi",
+     "szoveg",
+     "kviz",
+     "matek",
+     "matek_cas",
+     "kod"
+    ],
+    "futtato": "mlx-vlm",
+    "gondolkodas": false,
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres": {
+     "kviz": {
+      "max_tokens_szorzo": 1.6
+     }
+    },
+    "repo": "mlx-community/Qwen3.5-9B-MLX-4bit",
+    "revizio": "938d8919941c6e7efd3c7150eff7fe9d12afa631"
+   },
+   "qwen3_4b_thinking_2507": {
+    "csalad": "qwen",
+    "csucs_gb": 3.3,
+    "feladat": [
+     "kod"
+    ],
+    "futtato": "mlx-lm",
+    "gondolkodas_token": 3000,
+    "gondolkodo": true,
+    "kepessegek": [
+     "szoveg"
+    ],
+    "repo": "mlx-community/Qwen3-4B-Thinking-2507-4bit",
+    "revizio": "627b019c66f22d4de0a641d289b41497651a55c9"
+   },
+   "qwen3_embedding_06b": {
+    "csucs_gb": 2.1,
+    "feladat": [
+     "beagyazas",
+     "osztalyozas"
+    ],
+    "futtato": "sentence-transformers",
+    "kepessegek": [
+     "beagyazas"
+    ],
+    "minta": [
+     "model.safetensors",
+     "*.json",
+     "merges.txt",
+     "vocab.json",
+     "1_Pooling/*"
+    ],
+    "repo": "Qwen/Qwen3-Embedding-0.6B",
+    "revizio": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+   },
+   "qwen3_embedding_4b": {
+    "csucs_gb": 3.3,
+    "feladat": [
+     "beagyazas"
+    ],
+    "futtato": "mlx-embeddings",
+    "kepessegek": [
+     "beagyazas"
+    ],
+    "repo": "mlx-community/Qwen3-Embedding-4B-4bit-DWQ",
+    "revizio": "b5d88f1fe49b50d2ac01b4692ca2d387f14f9c72"
+   },
+   "qwen3_reranker_06b": {
+    "csucs_gb": 2.1,
+    "feladat": [
+     "rerank"
+    ],
+    "futtato": "transformers",
+    "kepessegek": [
+     "rerank"
+    ],
+    "repo": "Qwen/Qwen3-Reranker-0.6B",
+    "revizio": "e61197ed45024b0ed8a2d74b80b4d909f1255473"
+   },
+   "qwen3_vl_4b": {
+    "csalad": "qwen",
+    "csucs_gb": 4.6,
+    "csucs_mert": true,
+    "feladat": [
+     "ocr_kezi",
+     "ocr_keplet",
+     "szoveg",
+     "kviz",
+     "kiegeszites",
+     "kifejtes",
+     "osszefoglal_kijeloles"
+    ],
+    "futtato": "mlx-vlm",
+    "kepessegek": [
+     "szoveg",
+     "kep"
+    ],
+    "meres_kihagy": {
+     "kviz": "Mérés: a kimenet többször levágódik a kereten, a lezárt kérdések gyengék; a keretemelés a pontszámon nem segítene. A kulcs törlése visszahozza",
+     "ocr_kezi": "Mérés: a kézírás-átirat tételei sokszor levágódnak vagy blokk-ismétlésbe esnek (a tételek negyede érvénytelen); az ismétlés-ablak növelése nem segített, más modellek érvényes sora lefedi a feladatot; a többi feladata marad. A kulcs törlése visszahozza"
+    },
+    "repo": "mlx-community/Qwen3-VL-4B-Instruct-4bit",
+    "revizio": "2fd8dacbdb8f1e54b8c005f081ec5bf79c56376b"
+   },
+   "seed_coder_8b_reasoning": {
+    "csalad": "seed",
+    "csucs_gb": 5.9,
+    "feladat": [
+     "kod"
+    ],
+    "futtato": "mlx-lm",
+    "gondolkodas_token": 3000,
+    "gondolkodo": true,
+    "kepessegek": [
+     "szoveg"
+    ],
+    "repo": "mlx-community/Seed-Coder-8B-Reasoning-bf16-mlx-4Bit",
+    "revizio": "30dd89e431c95db36d839b55ba82e29f423b82d5"
+   },
+   "whisper_hu_turbo": {
+    "csucs_gb": 2.6,
+    "feladat": [
+     "atirat"
+    ],
+    "futtato": "mlx-whisper",
+    "kepessegek": [
+     "hang"
+    ],
+    "konvertalas": true,
+    "minta": [
+     "model.safetensors",
+     "*.json",
+     "merges.txt",
+     "vocab.json"
+    ],
+    "repo": "sarpba/whisper-hu-large-v3-turbo-finetuned",
+    "revizio": "9d63092bd80b66729b86f2c6d044a964afb39f7f"
+   },
+   "whisper_large_v3": {
+    "csucs_gb": 4.2,
+    "feladat": [
+     "atirat"
+    ],
+    "futtato": "mlx-whisper",
+    "kepessegek": [
+     "hang"
+    ],
+    "repo": "mlx-community/whisper-large-v3-mlx",
+    "revizio": "49e6aa286ad60c14352c404340ded53710378a11"
+   },
+   "whisper_large_v3_hu": {
+    "csucs_gb": 4.2,
+    "feladat": [
+     "atirat"
+    ],
+    "futtato": "mlx-whisper",
+    "kepessegek": [
+     "hang"
+    ],
+    "konvertalas": true,
+    "minta": [
+     "*.safetensors",
+     "*.json",
+     "merges.txt",
+     "vocab.json"
+    ],
+    "repo": "Trendency/whisper-large-v3-hu",
+    "revizio": "9635aaee7c4a83dc09ea2f420602eb550b44dc8e"
+   },
+   "whisper_turbo_mlx": {
+    "csucs_gb": 2.6,
+    "feladat": [
+     "atirat"
+    ],
+    "futtato": "mlx-whisper",
+    "kepessegek": [
+     "hang"
+    ],
+    "repo": "mlx-community/whisper-large-v3-turbo",
+    "revizio": "a4aaeec0636e6fef84abdcbe3544cb2bf7e9f6fb"
+   }
+  },
+  "modellgazda": {
+   "cache_gb": 0.25,
+   "chat_idokorlat_auto_mp": 7200,
+   "chat_idokorlat_mp": 900,
+   "helyreallas_mp": 30,
+   "min_szabad_szazalek": 20,
+   "port": 0,
+   "prefill_lepes": 256,
+   "probalkozas": 3,
+   "tartalek_szazalek": 5,
+   "tetlen_urites_perc": 10,
+   "zar": {
+    "$kifejtve": "<TMP>/work/os/var/state/modell.lock"
+   }
+  },
+  "naplo": {
+   "canvas": "YYYY-MM",
+   "dolgozat_mappa": "Dolgozatok",
+   "kiertekelo_nevek": [
+    "Dolgozat kiértékelő",
+    "Dolgozat Napló"
+   ],
+   "naptar_regi_ora": 36,
+   "sablon": "Napi jegyzet",
+   "ut": "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+  },
+  "naptar": {
+   "automatikus": true,
+   "indulasi_kesleltetes_mp": 60,
+   "jovo_nap": 180,
+   "mult_nap": 120,
+   "szinkron_perc": 15,
+   "szotar": {
+    "csoportok": {
+     "magyar": [
+      "Irodalom",
+      "Nyelvtan"
+     ]
+    },
+    "dolgozat": [
+     "dolgozat",
+     "dolgozatot",
+     "dolgozatir",
+     "temazaro",
+     "tz",
+     "zh",
+     "vizsga",
+     "exam",
+     "test",
+     "teszt",
+     "felmeres",
+     "szamonkeres",
+     "kisdolgozat",
+     "felelés",
+     "feleles",
+     "quiz"
+    ],
+    "hatarido": [
+     "hatarido",
+     "deadline",
+     "beadando",
+     "beadas",
+     "leadas",
+     "leadni",
+     "beadni",
+     "due"
+    ],
+    "kategoriak": {
+     "edzes": [
+      "edzes",
+      "gym",
+      "workout",
+      "workouts",
+      "training",
+      "sport",
+      "futas",
+      "fitness",
+      "konditerem",
+      "kondi",
+      "run",
+      "running"
+     ],
+     "egyeb": [],
+     "hatarido": [
+      "hatarido",
+      "hataridok",
+      "deadline",
+      "deadlines",
+      "dolgozat",
+      "dolgozatok",
+      "exam",
+      "exams",
+      "vizsga",
+      "vizsgak",
+      "zh",
+      "temazaro",
+      "beadando",
+      "teszt",
+      "felmeres",
+      "szamonkeres"
+     ],
+     "kizart": [
+      "unnep",
+      "unnepnap",
+      "unnepek",
+      "holiday",
+      "holidays",
+      "szuletesnap",
+      "birthday",
+      "birthdays",
+      "nevnap",
+      "siri",
+      "suggestions",
+      "javaslatok",
+      "scheduled reminders"
+     ],
+     "orarend": [
+      "orarend",
+      "iskola",
+      "suli",
+      "tanora",
+      "timetable",
+      "school",
+      "classes",
+      "lessons"
+     ],
+     "szabadido": [
+      "me-time",
+      "me time",
+      "metime",
+      "program",
+      "programok",
+      "szabadido",
+      "szabad ido",
+      "szemelyes",
+      "personal",
+      "fun",
+      "social",
+      "barat",
+      "baratok",
+      "hobbi",
+      "hobby",
+      "csalad"
+     ],
+     "tanulas": [
+      "tanulas",
+      "tanul",
+      "study",
+      "studying",
+      "learning",
+      "felkeszules",
+      "gyakorlas",
+      "hazi",
+      "homework"
+     ]
+    },
+    "targyak": {
+     "Angol": [
+      "angol",
+      "english"
+     ],
+     "Biológia": [
+      "biologia",
+      "bio",
+      "biology"
+     ],
+     "Digitális kultúra": [
+      "digitalis kultura",
+      "digkult",
+      "dig kult",
+      "informatika",
+      "info",
+      "digi"
+     ],
+     "Fizika": [
+      "fizika",
+      "fizik",
+      "fiz",
+      "physics"
+     ],
+     "Földrajz": [
+      "foldrajz",
+      "geography"
+     ],
+     "Irodalom": [
+      "irodalom",
+      "iro",
+      "literature"
+     ],
+     "Kémia": [
+      "kemia",
+      "chemistry"
+     ],
+     "Matematika": [
+      "matematika",
+      "matek",
+      "mat",
+      "math",
+      "maths"
+     ],
+     "Nyelvtan": [
+      "nyelvtan",
+      "magyar nyelv",
+      "magyar nyelvtan"
+     ],
+     "Német": [
+      "nemet",
+      "german",
+      "deutsch"
+     ],
+     "Programozás": [
+      "programozas",
+      "c++",
+      "cpp",
+      "coding"
+     ],
+     "Történelem": [
+      "tortenelem",
+      "tori",
+      "history"
+     ]
+    }
+   },
+   "tanulas_naptar": ""
+  },
+  "osszefoglalas": {
+   "ablak_mp": 60,
+   "allitas_max": 12,
+   "allitas_max_szo": 45,
+   "allitas_min": 3,
+   "allitas_per_darab_max": 6,
+   "automatika": {
+    "be": false,
+    "csend_perc": 10,
+    "koteg": 2,
+    "kuszob": 0.3,
+    "min_hossz": 400,
+    "uj_karakter": 600,
+    "ujraproba_ora": 1
+   },
+   "darab_max_karakter": 2200,
+   "duplikat_jaccard": 0.6,
+   "gyorsitotar_ora": 12,
+   "idezet_max_karakter": 420,
+   "karakter_per_allitas": 350,
+   "kontextus_max_karakter": 24000,
+   "mappa": "ATTCHMNTS - summaries",
+   "mappa_allitas_max": 10,
+   "mappa_max_jegyzet": 40,
+   "mappa_max_per_jegyzet": 3,
+   "mappa_max_uj": 4,
+   "szakasz_min_karakter": 20,
+   "token_per_allitas": 140,
+   "utotag": " — összefoglaló"
+  },
+  "pdf": {
+   "tags": {
+    "D": "Informatics",
+    "E": "English",
+    "F": "Physics",
+    "I": "Literature",
+    "M": "Mathematics",
+    "N": "Grammar",
+    "T": "History"
+   }
+  },
+  "pillanat": {
+   "vault": {
+    "git_dir": {
+     "$kifejtve": "<TMP>/work/os/var/vault.git"
+    },
+    "kivetelek": {
+     "$kifejtve": "<TMP>/work/os/config/pillanat-kivetelek-vault.json"
+    },
+    "kizar": [
+     ".DS_Store",
+     "._*",
+     ".trash/",
+     ".obsidian/workspace*.json",
+     ".obsidian/cache",
+     "__pycache__/",
+     "*.pyc",
+     "*.manifold-tmp"
+    ],
+    "munkafa": {
+     "$kifejtve": "<TMP>/work/Manifold"
+    }
+   },
+   "ytdlp": {
+    "git_dir": {
+     "$kifejtve": "<TMP>/work/os/var/ytdlp.git"
+    },
+    "kizar": [
+     ".DS_Store",
+     "._*",
+     "__pycache__/",
+     "*.pyc",
+     ".pytest_cache/",
+     ".venv.nosync/"
+    ],
+    "munkafa": {
+     "$kifejtve": "<TMP>/work/os/modulok/ytdlp"
+    }
+   }
+  },
+  "router": {
+   "feladat": {
+    "ocr_kezi": {
+     "tavolra_var": true
+    }
+   },
+   "feladatok": [
+    "ocr_kezi",
+    "ocr_keplet",
+    "atirat",
+    "szoveg",
+    "kviz",
+    "matek",
+    "matek_ellenorzo",
+    "beagyazas",
+    "rerank",
+    "osztalyozas",
+    "fuzet_fejezet",
+    "fuzet_valaszto",
+    "matek_cas",
+    "kod",
+    "grafikon",
+    "tema",
+    "kotes",
+    "kiegeszites",
+    "kifejtes",
+    "osszefoglal_kijeloles"
+   ]
+  },
+  "sablon": {
+   "datum": "YYYY-MM-DD",
+   "ido": "HH:mm",
+   "mappa": "_Template",
+   "nyelv": "hu"
+  },
+  "sema": {
+   "vault": {
+    "$kifejtve": "<TMP>/work/os/config/vault-sema.json"
+   }
+  },
+  "teljes_mentes": {
+   "cel": "",
+   "figyelo_be": false,
+   "figyelo_ora": 24,
+   "kihagy": [
+    "staging",
+    "archive"
+   ],
+   "megtartott": 10
+  },
+  "vault": {
+   "kisero_elotag": "ATTCHMNTS - ",
+   "kor_zar_varakozas_mp": 2.0,
+   "proba_klon_max_nap": 7
+  },
+  "video": {
+   "bejaras_max": 50,
+   "bejaras_plafon": 200,
+   "bejovo_max_gb": 20,
+   "bizonytalan_tema": "ir",
+   "eredeti_megtart": true,
+   "integralas_max": 50,
+   "kizart_mappak": [
+    "AI01",
+    "AI02",
+    "AI03",
+    "_Template",
+    "X01",
+    "Prjct01",
+    "Napló",
+    "ATTCHMNTS - quizes"
+   ],
+   "konvertalas_crf": 20,
+   "konvertalas_szal": 2,
+   "kozvetlen": {
+    "alap_nyelv": "en",
+    "be": true,
+    "felirat": [
+     ".srt",
+     ".vtt"
+    ],
+    "kiterjesztes": [
+     ".mp4",
+     ".mov",
+     ".m4v"
+    ],
+    "kizar": [
+     "hdr"
+    ],
+    "minoseg": [
+     "1080p",
+     "720p"
+    ],
+    "nyelv_szegmens": "^[a-z]{2}(?:[-_][a-z]{2})?$",
+    "valtozat_minta": "[-_.](?:\\d{3,4}p|[248]k|hdr|sdr)(?=[-_.]|$)"
+   },
+   "max_link": 20,
+   "nativ_hang": [
+    "aac",
+    "mp3",
+    "alac"
+   ],
+   "nativ_video": [
+    "h264",
+    "hevc"
+   ],
+   "tema_minta": "^([A-Z]{1,3})(\\d{2}) - \\S.*$",
+   "vault_mappa": "ATTCHMNTS - Videos"
+  }
+ },
+ "utak": {
+  "apkg_visszavont": "<TMP>/work/os/archive/apkg-visszavont",
+  "app_dist": "<TMP>/work/os/app/dist",
+  "archive": "<TMP>/work/os/archive",
+  "automatika_db": "<TMP>/work/os/var/automatika.sqlite",
+  "backup": "<TMP>/home/Manifold-backup",
+  "binaris_naplo": "<TMP>/work/os/var/state/binaris-naplo.jsonl",
+  "cache": "<TMP>/work/os/var/cache",
+  "feladatok_db": "<TMP>/work/os/var/feladatok.sqlite",
+  "felulet": "<TMP>/work/os/var/state/felulet.json",
+  "ffmpeg": "<TMP>/work/os/runtime/ffmpeg/ffmpeg",
+  "fuzet": "<TMP>/work/os/var/state/Manifold-fuzet",
+  "fuzet_bejovo": "<TMP>/work/os/var/fuzet/bejovo",
+  "hej_cli": "<TMP>/work/os/Manifold.app/Contents/MacOS/Manifold",
+  "index": "<TMP>/work/os/var/index",
+  "llvm": "<TMP>/work/os/runtime/llvm",
+  "models": "<TMP>/work/os/var/models",
+  "modulok": "<TMP>/work/os/modulok",
+  "naptar_seged": "<TMP>/work/os/Manifold.app/Contents/MacOS/Manifold",
+  "node": "<TMP>/work/os/runtime/node/bin/node",
+  "router_db": "<TMP>/work/os/var/router.sqlite",
+  "run": "<TMP>/work/os/var/run",
+  "runs": "<TMP>/work/os/var/runs",
+  "runtime": "<TMP>/work/os/runtime",
+  "sandbox_exec": "/usr/bin/sandbox-exec",
+  "sdk": "<TMP>/work/os/runtime/sdk",
+  "staging": "<TMP>/work/os/modulok/ytdlp/staging",
+  "state": "<TMP>/work/os/var/state",
+  "szemelyes": "<TMP>/work/os/var/szemelyes",
+  "tanulas_db": "<TMP>/work/os/var/tanulas.sqlite",
+  "tmp": "<TMP>/work/os/var/tmp",
+  "var": "<TMP>/work/os/var",
+  "vault": "<TMP>/work/Manifold",
+  "vault_git": "<TMP>/work/os/var/vault.git",
+  "vault_kepek": "<TMP>/work/os/var/cache/vault-kepek",
+  "venv": "<TMP>/work/os/var/venv",
+  "video_bejovo": "<TMP>/work/os/var/video/bejovo",
+  "video_eredeti": "<TMP>/work/os/archive/video-eredeti",
+  "video_jobs": "<TMP>/work/os/var/state/Manifold-media/jobs",
+  "video_visszavont": "<TMP>/work/os/archive/video-visszavont",
+  "work": "<TMP>/work",
+  "ytdlp": "<TMP>/work/os/modulok/ytdlp",
+  "ytdlp_archivum": "<TMP>/work/os/modulok/ytdlp/archive",
+  "ytdlp_git": "<TMP>/work/os/var/ytdlp.git"
+ }
+}

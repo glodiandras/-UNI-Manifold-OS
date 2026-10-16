@@ -2,6 +2,8 @@
 docs/plan/** export-ignore
 docs/dev/DECISIONS-v2.md export-ignore
 config/presets/** export-ignore
+tests/adat/konfig/f2-hordozhato.json export-ignore
+tests/preset_v2/** export-ignore
 # Text normalisation
 * text=auto eol=lf
 *.icns binary

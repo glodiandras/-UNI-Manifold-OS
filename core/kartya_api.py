@@ -32,6 +32,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
+from . import kiserok, rejtett
 from .utvonalak import HttpError
 from .vaultio import Invalid, nfc, norm_path
 
@@ -49,7 +50,7 @@ def _m() -> SimpleNamespace:
 
 
 def mappa(cfg) -> str:
-    return nfc(cfg.section("kartya").get("mappa", "ATTCHMNTS - cards")).strip("/")
+    return kiserok.kisero_mappa(cfg, "kartya")
 
 
 # ------------------------------------------------------------------ összesítő (Ma oldal, vezérlő)
@@ -381,6 +382,7 @@ def _vault_nevek(root: Path) -> dict[str, list[str]]:
     `![[név]]` a név szerint old fel (L42), ezért az ütközést a vault egészén nézzük, nem csak a célmappában."""
     ki: dict[str, list[str]] = {}
     for d, almappak, fajlok in os.walk(root):
+        rejtett.metsz_munkater(almappak)         # a `.manifold` kimarad; a többi pontos mappát a következő sor, a `node_modules`-t semmi (v2)
         almappak[:] = [a for a in almappak if not a.startswith(".")]
         for f in fajlok:
             if not f.startswith("."):

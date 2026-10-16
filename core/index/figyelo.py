@@ -7,6 +7,10 @@ Obsidian, a Finder vagy egy lánc írása egyformán látszik, és a saját ír�
 `teljes=True`: a kernel eldobott eseményeket (`MustScanSubDirs`, `UserDropped`, `KernelDropped`), vagy a
 gyökér megváltozott (`RootChanged`, pl. kihúzott SSD): a hívó a megadott alfát (vagy a teljes vaultot)
 újra bejárja.
+
+A munkatér mappája (`<vault>/.manifold`: állapot, próbaklónok — F3, I6) a folyamból ki van zárva
+(`FSEventStreamSetExclusionPaths`), és ami mégis átjön alóla, azt a callback eldobja; a lekérdező tartalék a
+`feloldas.bejaras`-sal jár be, amely a `rejtett` mappákat metszi.
 """
 from __future__ import annotations
 
@@ -23,6 +27,7 @@ _NO_DEFER, _WATCH_ROOT, _FILE_EVENTS = 0x02, 0x04, 0x10
 # FSEventStreamEventFlags
 _MUST_SCAN, _USER_DROPPED, _KERNEL_DROPPED, _ROOT_CHANGED = 0x01, 0x02, 0x04, 0x20
 _SINCE_NOW = 0xFFFFFFFFFFFFFFFF
+KIZART = (".manifold",)          # a vault gyökerében: ezek eseményei nem jutnak a hívóhoz (az FSEvents ki is zárja őket)
 _UTF8 = 0x08000100
 
 
@@ -68,6 +73,8 @@ class FSEvents:
         cs.FSEventStreamCreate.restype = vp
         cs.FSEventStreamCreate.argtypes = [vp, self._CB, vp, vp, ctypes.c_uint64, ctypes.c_double, ctypes.c_uint32]
         cs.FSEventStreamSetDispatchQueue.argtypes = [vp, vp]
+        cs.FSEventStreamSetExclusionPaths.argtypes = [vp, vp]
+        cs.FSEventStreamSetExclusionPaths.restype = ctypes.c_bool
         cs.FSEventStreamStart.restype = ctypes.c_bool
         cs.FSEventStreamStart.argtypes = [vp]
         for f in ("FSEventStreamStop", "FSEventStreamInvalidate", "FSEventStreamRelease"):
@@ -95,6 +102,8 @@ class FSEvents:
             if p != self._root_nfc and not p.startswith(self._root_nfc + "/"):
                 continue
             rel = p[len(self._root_nfc) + 1:] if p != self._root_nfc else ""
+            if rel.split("/", 1)[0] in KIZART:
+                continue
             if fl & (_MUST_SCAN | _USER_DROPPED | _KERNEL_DROPPED):
                 teljes.append(rel)
             elif rel:
@@ -122,6 +131,7 @@ class FSEvents:
             cf.CFRelease(s)
             if not stream:
                 raise FigyeloHiba("az FSEventStreamCreate nem adott folyamot")
+            self._kizar(stream)
             q = self._sys.dispatch_queue_create(f"{BUNDLE_ID}.index.fsevents".encode(), None)
             cs.FSEventStreamSetDispatchQueue(stream, q)
             if not cs.FSEventStreamStart(stream):
@@ -131,6 +141,27 @@ class FSEvents:
                 self._sys.dispatch_release(q)
                 raise FigyeloHiba("az FSEventStreamStart nem indult")
             self._stream, self._queue = stream, q
+
+    def _kizar(self, stream) -> None:
+        """A `KIZART` mappák kizárása a folyamból (az indítás előtt; legfeljebb 8 út). Hiba nem állít meg semmit: a callback
+        szűrője akkor is eldobja az eseményeiket."""
+        cf = self._cf
+        nevek = [n for n in (cf.CFStringCreateWithCString(None, os.path.join(self.root, k).encode("utf-8"), _UTF8)
+                             for k in KIZART) if n]
+        try:
+            if not nevek:
+                return
+            arr = (ctypes.c_void_p * len(nevek))(*nevek)
+            paths = cf.CFArrayCreate(None, arr, len(nevek), ctypes.addressof(self._array_cb))
+            if not paths:
+                return
+            try:
+                self._cs.FSEventStreamSetExclusionPaths(stream, paths)
+            finally:
+                cf.CFRelease(paths)
+        finally:
+            for n in nevek:
+                cf.CFRelease(n)
 
     def leallit(self) -> None:
         # A hívó az index kezelőszála, soha nem az FSEvents saját callbackje.

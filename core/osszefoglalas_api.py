@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from . import kiserok
 from .utvonalak import HttpError
 from .vaultio import Invalid, NotFound, nfc, norm_path
 
@@ -40,7 +41,7 @@ def _m() -> SimpleNamespace:
 
 
 def mappa(cfg) -> str:
-    return nfc(cfg.section("osszefoglalas").get("mappa", "ATTCHMNTS - summaries")).strip("/")
+    return kiserok.kisero_mappa(cfg, "osszefoglalas")
 
 
 class OsszefoglalasApi:
@@ -144,8 +145,7 @@ class OsszefoglalasApi:
         if not isinstance(ut, str) or not ut.strip() or ut.lower().endswith(".md"):
             raise Invalid("Az `ut` a vault egy mappájának relatív útja legyen.")
         rp = norm_path(ut.strip().rstrip("/"))
-        from .automatika import kisero_elotag                     # lusta import: az automatika nem függ az API-tól
-        if nfc(rp).startswith(nfc(kisero_elotag(self.cfg))):
+        if nfc(rp).startswith(kiserok.kisero_elotag(self.cfg)):
             raise Invalid("Gépi kísérőjegyzet-mappából nem készül mappa-összefoglaló.")
         try:
             terv = m.futtat.mappa_terv(self.cfg, rp, q.get("kiegeszit", "1") not in ("0", "false", "nem"))

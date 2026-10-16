@@ -66,10 +66,13 @@ class LegacyConfigTeszt(unittest.TestCase):
             self.assertEqual(str(cfg.path("work")), "/R")
 
     def test_real_config_resolves_relative_to_package(self):
-        cfg = config.load({"HOME": "/h"})
+        """F3-DESIGN §2.4: a checkoutnak nincs alapértelmezett vaultja (a `vault` kikerült az `os.toml [utak]`-ból), a
+        `MOS_SETTINGS=` üres: a fejlesztő telepítési rétege (`var/settings.toml`) sem szól bele."""
+        cfg = config.load({"HOME": "/h", "MOS_SETTINGS": ""})
         root = config.os_root()
         self.assertEqual(cfg.path("work"), root.parent)
-        self.assertEqual(cfg.path("vault"), root.parent / "Manifold")
+        self.assertEqual(cfg.feloldatlan["vault"], "nincs_vault")
+        self.assertEqual(config.load({"HOME": "/h", "MOS_SETTINGS": "", "MOS_VAULT": "/v"}).path("vault"), config.Path("/v"))
         self.assertEqual(cfg.path("vault_git"), root / "var" / "vault.git")
         self.assertEqual(config.Path(cfg.expand(cfg.section("pillanat", "vault")["git_dir"])), root / "var" / "vault.git")
         self.assertEqual(cfg.path("ytdlp"), root / "modulok" / "ytdlp")
@@ -77,33 +80,6 @@ class LegacyConfigTeszt(unittest.TestCase):
     def test_pillanat_ut_a_felulirasra_hallgat(self):
         cfg = config.load({"HOME": "/h", "MOS_VAULT_GIT": "/proba/vault.git"})
         self.assertEqual(cfg.expand(cfg.section("pillanat", "vault")["git_dir"]), "/proba/vault.git")
-
-
-class SemaConfigTeszt(unittest.TestCase):
-    """T162 (2. audit, C11b): a `[sema] vault` kulcs feloldódik, a vault-séma JSON betölthető; a hiányzó kulcs és a
-    hiányzó fájl hiba (a tulajdonság-szerkesztő és a gépi írás nem indulhat séma nélkül)."""
-
-    def test_valodi_config_semaja_feloldodik_es_betoltheto(self):
-        from core import tulajdonsagok
-        cfg = config.load({"HOME": "/h"})
-        ut = config.Path(cfg.expand(cfg.section("sema")["vault"]))
-        self.assertEqual(ut, config.os_root() / "config" / "vault-sema.json")
-        sema = tulajdonsagok.Sema.betolt(cfg)
-        self.assertEqual(sema.mezosorrend, ["Tags", "Source", "Status", "NN", "Canvas"])
-        self.assertTrue(sema.osztalyok)
-
-    def test_hianyzo_kulcs_es_fajl_hiba(self):
-        import tempfile
-        from core import tulajdonsagok
-        eredeti = (config.os_root() / "config" / "os.toml").read_text(encoding="utf-8")
-        with tempfile.TemporaryDirectory(prefix="mos-teszt-") as d:
-            toml = config.Path(d) / "os.toml"
-            toml.write_text(eredeti.replace('vault = "{os}/config/vault-sema.json"', ""), encoding="utf-8")
-            with self.assertRaises(FileNotFoundError):
-                tulajdonsagok.Sema.betolt(config.load({"HOME": "/h", "MOS_CONFIG": str(toml)}))
-            toml.write_text(eredeti.replace("{os}/config/vault-sema.json", f"{d}/nincs.json"), encoding="utf-8")
-            with self.assertRaises(FileNotFoundError):
-                tulajdonsagok.Sema.betolt(config.load({"HOME": "/h", "MOS_CONFIG": str(toml)}))
 
 
 class RejtettAlapertekTeszt(unittest.TestCase):

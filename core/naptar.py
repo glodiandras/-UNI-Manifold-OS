@@ -61,23 +61,11 @@ HATARIDO_SZAVAK = ["hatarido", "deadline", "beadando", "beadas", "leadas", "lead
 NEM_SZAMONKERES = ("tanulas", "edzes", "szabadido", "kizart")
 
 # tantárgyak: a kanonikus név (ahogy a dolgozat-jegyzetek fájlneve írja) → rokon szavak (ékezet nélkül, kisbetűvel).
-# Forrás: `[naptar.szotar.targyak]`; az os.toml [naptar.targyak] szakasza kiegészítheti (név = ["szó", …]).
-TARGYAK = {
-    "Matematika": ["matematika", "matek", "mat", "math", "maths"],
-    "Fizika": ["fizika", "fizik", "fiz", "physics"],
-    "Történelem": ["tortenelem", "tori", "history"],
-    "Irodalom": ["irodalom", "iro", "literature"],
-    "Nyelvtan": ["nyelvtan", "magyar nyelv", "magyar nyelvtan"],
-    "Német": ["nemet", "german", "deutsch"],
-    "Angol": ["angol", "english"],
-    "Digitális kultúra": ["digitalis kultura", "digkult", "dig kult", "informatika", "info", "digi"],
-    "Biológia": ["biologia", "bio", "biology"],
-    "Kémia": ["kemia", "chemistry"],
-    "Földrajz": ["foldrajz", "geography"],
-    "Programozás": ["programozas", "c++", "cpp", "coding"],
-}
-# gyűjtőnév: ha a naptár csak ennyit ír, mindegyik tagja jöhet (gyengébb egyezés)
-CSOPORTOK = {"magyar": ["Irodalom", "Nyelvtan"]}
+# Forrás: `[naptar.szotar.targyak]`; az os.toml [naptar.targyak] szakasza kiegészítheti (név = ["szó", …]). Beépített szótár nincs:
+# a tantárgyak a munkatér sajátjai (a fejlesztő szótára a `config/presets/v2-kompat.toml`-ban van).
+TARGYAK: dict[str, list[str]] = {}
+# gyűjtőnév: ha a naptár csak ennyit ír, mindegyik tagja jöhet (gyengébb egyezés); forrás: `[naptar.szotar.csoportok]`
+CSOPORTOK: dict[str, list[str]] = {}
 
 
 def norm(s: str | None) -> str:

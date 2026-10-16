@@ -1,22 +1,32 @@
-# Manifold-OS 2.0 konfiguráció.
+# Manifold-OS 2.0 konfiguráció — a szállított (S) réteg (F3-DESIGN §2).
 #
 # Semmi nincs beégetve: minden út helyőrzős, a feloldás futásidőben történik (LEGACY-SZERZODESEK L49).
 #   {os}   a Manifold-OS gyökere — a csomag saját helyéből számolva (a MOS_ROOT felülírja)
 #   {home} a felhasználó saját mappája
+#   {workspace_id} a munkatér azonosítója (a `workspace.toml`-ból; nem [utak] kulcs)
 #   bármely [utak] kulcs, pl. {work}, {var}
 # Minden [utak] kulcs felülírható környezeti változóval: MOS_<KULCS> (pl. MOS_VAULT);
 # a konfigfájlt a MOS_CONFIG jelöli ki.
+# Az alábbi alapértékek a hordozható (v2) elrendezésé; a termék különbségei az [elrendezes.termek] alatt. Fölöttük a
+# telepítési réteg ({install}/settings.toml, presetekkel) és a munkatér rétege ({workspace}/workspace.toml) — mindkettő csak a
+# `core/config.RETEG_JOG` engedélylistáján szereplő kulcsokat állíthatja.
 
 [utak]
 work    = "{os}/.."                  # az SSD gyökere (Work)
-vault   = "{work}/Manifold"          # a vault — csak a core ír bele
+# vault: nincs alapértéke — a MOS_VAULT vagy a telepítési réteg [utak] vault kulcsa adja (`bin/mos portable init --vault …`);
+# csak a core ír bele. Nélküle a vaultra épülő kulcsok halasztottak (első használatkor ConfigError, kod: nincs_vault).
+workspace = "{vault}/.manifold"      # a vault saját beállításai (workspace.toml); hordozható módban csak olvasva, ha létezik
 modulok = "{os}/modulok"
 runtime = "{os}/runtime"             # hordozható Python, uv, Node, wheelhouse (gitignore)
 var     = "{os}/var"                 # állapot, modellek, indexek (gitignore, Spotlight-kizárt)
+install = "{var}"                    # gépenként egy (modellek, kalibráció, zárak, regiszter, mentések gyökere); hordozható módban = {var}
+install_run = "{install}/run"        # a gépszintű zárak és pidfájlok (worker)
+install_state = "{install}/state"    # a gépszintű állapot (modellzár)
+install_logs = "{install}/runs"      # a gépszintű naplók (worker)
 state   = "{var}/state"
-models  = "{var}/models"             # HF_HOME
-venv    = "{var}/venv"
-cache   = "{var}/cache"              # minden gyorsítótár (uv, pip) — a home alatt soha
+models  = "{install}/models"         # HF_HOME
+venv    = "{install}/venv"
+cache   = "{install}/cache"          # minden gyorsítótár (uv, pip) — a home alatt soha
 tmp     = "{var}/tmp"                # a vault kötetén (APFS) → atomi os.replace
 runs    = "{var}/runs"               # kör-riportok, feladatnaplók (L52–L53)
 run     = "{var}/run"                # zárfájlok (kor.lock, L17)
@@ -37,12 +47,12 @@ fuzet_bejovo = "{var}/fuzet/bejovo"  # a felületen behúzott füzetfotók beér
 ffmpeg = "{runtime}/ffmpeg/ffmpeg"   # a pinelt statikus build (bin/mos runtime fetch ffmpeg); a home-beli (~/.local/bin) és a PATH-os tiltott
 node = "{runtime}/node/bin/node"     # a yt-dlp JS-kihívás megoldójának futtatója (yt-dlp-ejs)
 feladatok_db = "{var}/feladatok.sqlite"   # a tartós feladatsor (C03)
-router_db = "{var}/router.sqlite"         # kalibrációs tábla és hő-alapszintek (C05)
+router_db = "{install}/router.sqlite"     # kalibrációs tábla és hő-alapszintek (C05)
 tanulas_db = "{var}/tanulas.sqlite"     # kártyák FSRS-állapota és válasznaplója, később a kvíz (C23a, C22); a belső mentésben
 automatika_db = "{var}/automatika.sqlite"   # a közös automatika-ütemező állapota (C23b, T149); a belső mentésben
 index   = "{var}/index"               # a vault-index (C06): vault.sqlite — újraépíthető a vaultból
 app_dist = "{os}/app/dist"           # a felület lefordított csomagja; a core szolgálja ki (egy origin)
-vault_kepek = "{cache}/vault-kepek"  # kicsinyített vault-képek (C11a, L55): a `/media?w=` gyorsítótára, bármikor törölhető
+vault_kepek = "{var}/cache/vault-kepek"   # kicsinyített vault-képek (C11a, L55): a `/media?w=` gyorsítótára, bármikor törölhető
 felulet = "{state}/felulet.json"     # a felület tartós állapota (C07): téma, elrendezés, legutóbbiak
 naptar_seged = "{os}/Manifold.app/Contents/MacOS/Manifold"   # az EventKit-segéd (C29): a héj CLI-módja, a `--naptar` kapcsolóval
 hej_cli = "{os}/Manifold.app/Contents/MacOS/Manifold"   # a héj futtathatójának CLI-módja a nem naptári parancsokhoz (`--kuka`, CX-004); ugyanaz a bináris, mint a `naptar_seged` (32(a)), de külön kulcs, hogy a `MOS_NAPTAR_SEGED` ál-segédje (tesztek) ne vigye magával a Kukát; a `MOS_HEJ_CLI` felülírja
@@ -50,7 +60,31 @@ sandbox_exec = "/usr/bin/sandbox-exec"   # a CAS-homokozó elzárása (C24a): a 
 llvm    = "{runtime}/llvm"           # a hordozható LLVM (clang++, clangd, clang-format): a C++ munkafelület eszközlánca (C36a); bin/mos cpp telepit
 sdk     = "{runtime}/sdk"            # a macOS SDK egyszeri másolata (C36a): a sysroot; a rendszer fordítója és SDK-ja nem használt
 archive = "{os}/archive"
+backup_gyoker = "{install}/backups"  # a mentések gépszintű gyökere (termékben munkaterenként {backup_gyoker}/{workspace_id})
 backup  = "{home}/Manifold-backup"   # a BELSŐ lemezen: szövegmentés SSD-hiba ellen
+
+# ------------------------------------------------------------------ elrendezés (F3)
+# A termék (`*.app/Contents/Resources/manifold`) különbségei a fenti, hordozható alapértékekhez képest: betöltéskor
+# mélyegyesítéssel, a rétegek előtt. A kódfa ({os}) a termékben csak olvasható (I1: írható út nem mutathat bele).
+[elrendezes.termek.utak]
+work    = "{vault}/.."
+var     = "{workspace}/var"          # a regiszter `allapot = "telepites"`-e: {install}/workspaces/{workspace_id}/var
+install = "{home}/Library/Application Support/Manifold"
+install_logs = "{install}/logs"
+venv    = "{os}/runtime/venv"
+backup  = "{backup_gyoker}/{workspace_id}"
+ytdlp   = "{var}/ytdlp"
+archive = "{var}/archive"
+naptar_seged = "{os}/../../MacOS/Manifold"
+hej_cli = "{os}/../../MacOS/Manifold"
+llvm    = "{install}/toolchains/llvm"
+sdk     = "{install}/toolchains/sdk"
+
+[elrendezes.termek.pillanat.vault]
+kivetelek = "{workspace}/pillanat-kivetelek.json"   # hiányzó fájl = nincs kivétel
+
+[elrendezes.termek.sema]
+vault = "{workspace}/schema.json"
 
 [core]
 port = 0                             # 0 = szabad port; a héj a kézfogásból tudja meg (a `MOS_CORE_PORT` felülírja)
@@ -62,7 +96,7 @@ leallas_fokozas_mp = 20              # a héj kilépése (stdin-zárás) után e
 
 [vault]
 kor_zar_varakozas_mp = 2.0           # az ütközés-felülírás (`felulir`) ennyit vár a kör-zárra, utána 423 (C29.7b, T116)
-kisero_elotag = "ATTCHMNTS - "        # a kísérőjegyzet-mappák (kártya, kvíz, összefoglaló, fotó, videó) névelőtagja: az ilyen mappák jegyzetei nem tartalmi jegyzetek (automatika, hasonló jegyzetek)
+kisero_elotag = "Manifold - "        # a kísérőjegyzet-mappák (kártya, kvíz, összefoglaló, fotó, videó) névelőtagja (`Manifold - Cards`, `Manifold - Quizzes`, …): az ilyen mappák jegyzetei nem tartalmi jegyzetek. EGYETLEN FORRÁS: `core/kiserok.py`; az alábbi `mappa` kulcsok szállított alapértéke ebből képződik (az alap értékű kulcs követi az előtagot)
 proba_klon_max_nap = 7               # a gépi írás D9-próbaklónjai ({tmp}/proba/<kör>/, a vault APFS-klónja) ennyi nap után törlődnek egy új próbakör előtt (0: soha)
 
 # ------------------------------------------------------------------ pillanatképek (L01–L18)
@@ -74,7 +108,7 @@ munkafa = "{vault}"
 git_dir = "{vault_git}"
 kivetelek = "{os}/config/pillanat-kivetelek-vault.json"   # korábbi kevert commitok védett gazdai útjai (L16)
 kizar = [
-  ".DS_Store", "._*", ".trash/",
+  ".DS_Store", "._*", ".trash/", ".manifold/",
   ".obsidian/workspace*.json", ".obsidian/cache",
   "__pycache__/", "*.pyc",
   "*.manifold-tmp",
@@ -91,7 +125,9 @@ kizar = [".DS_Store", "._*", "__pycache__/", "*.pyc", ".pytest_cache/", ".venv.n
 
 # ------------------------------------------------------------------ vault-séma (C11b, L33–L34)
 [sema]
-vault = "{os}/config/vault-sema.json"   # mezősorrend, értékkészletek, kivételosztályok; a tulajdonság-szerkesztő és a gépi írók tartják
+vault = "{os}/config/vault-sema.json"   # EGY VÁLASZTHATÓ helyi sémafájl (mezősorrend, értékkészletek, kivételosztályok); a szállított fában nincs. A feloldási lánc (`core/kiserok.sema_fajl`): ez a fájl, ha létezik → az első megnevezett preset `<nev>.schema.json`-ja → `alap`
+alap = "{os}/config/schema-default.json"  # a szállított semleges séma (a lánc vége)
+mod = "ki"                           # ki | tanacsado | szigoru: ki = nincs sémaellenőrzés; tanacsado = a sértések tanácsként látszanak (`tanacsok`), semmit nem tiltanak; szigoru = a sértés megerősítést kér, a gépi írás elutasítja
 
 [mentes]
 megtartott_bundle = 10               # tárolónként ennyi bundle marad a {backup} alatt (L18); a kódtárból is
@@ -178,8 +214,9 @@ ido = "HH:mm"                        # a {{time}} alapformátuma
 nyelv = "hu"                         # a hónap- és napnevek nyelve: hu | en
 
 [naplo]
-# A napi jegyzet vault-relatív útja (kiterjesztés nélkül), a vault konvenciója szerint: X01/ÉÉÉÉ-HH/Napló/ÉÉÉÉ-HH-NN.
-ut = "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+# A napi jegyzet vault-relatív útja (kiterjesztés nélkül; moment.js-részhalmaz, a `[szó]` szó szerinti: a `D` és az `a` betű formátum-jel,
+# ezért a mappanév zárójelben áll): semleges alap `Daily/ÉÉÉÉ-HH-NN`.
+ut = "[Daily]/YYYY-MM-DD"
 sablon = "Napi jegyzet"              # ha a sablonmappában van ilyen nevű .md, az a napi jegyzet váza (a beépített helyett)
 canvas = "YYYY-MM"                   # a havi canvas neve (L59 szomszédja): a `Canvas:` mező csak létező canvasra mutat
 dolgozat_mappa = "Dolgozatok"        # a felkészülési jegyzet mappaneve (L59): <hónap>/Dolgozatok/ÉÉÉÉ-HH-NN - Tantárgy.md
@@ -198,8 +235,9 @@ mult_nap = 120                       # a szinkron ablaka: ma − mult_nap … ma
 jovo_nap = 180
 tanulas_naptar = ""                  # a jóváhagyott tanulási blokk naptára (azonosító vagy név); üres: az első írható „tanulás” kategóriájú
 
-# A naptár kulcsszavas szótára (ékezet nélkül, kisbetűvel; a `core/naptar.py` beépített értékei ugyanezek, csak a hiányzó
-# kulcsot pótolják). A kategóriák azonosítója, neve és színe a kódé; itt csak a felismerő szavak állnak.
+# A naptár kulcsszavas szótára (ékezet nélkül, kisbetűvel; a `core/naptar.py` beépített kategória-, dolgozat- és határidő-szavai
+# ugyanezek, csak a hiányzó kulcsot pótolják). A kategóriák azonosítója, neve és színe a kódé; itt csak a felismerő szavak állnak.
+# A tantárgy-szótár (`targyak`, `csoportok`) a munkatér sajátja: a termék üresen szállítja.
 [naptar.szotar]
 dolgozat = ["dolgozat", "dolgozatot", "dolgozatir", "temazaro", "tz", "zh", "vizsga", "exam", "test", "teszt", "felmeres", "szamonkeres", "kisdolgozat", "felelés", "feleles", "quiz"]   # az esemény címében: dolgozat (számonkérés)
 hatarido = ["hatarido", "deadline", "beadando", "beadas", "leadas", "leadni", "beadni", "due"]   # az esemény címében: határidő
@@ -213,22 +251,9 @@ hatarido = ["hatarido", "hataridok", "deadline", "deadlines", "dolgozat", "dolgo
 egyeb = []
 kizart = ["unnep", "unnepnap", "unnepek", "holiday", "holidays", "szuletesnap", "birthday", "birthdays", "nevnap", "siri", "suggestions", "javaslatok", "scheduled reminders"]
 
-[naptar.szotar.targyak]              # a tantárgy kanonikus neve (ahogy a dolgozat-jegyzetek fájlneve írja) → rokon szavak
-Matematika = ["matematika", "matek", "mat", "math", "maths"]
-Fizika = ["fizika", "fizik", "fiz", "physics"]
-"Történelem" = ["tortenelem", "tori", "history"]
-Irodalom = ["irodalom", "iro", "literature"]
-Nyelvtan = ["nyelvtan", "magyar nyelv", "magyar nyelvtan"]
-"Német" = ["nemet", "german", "deutsch"]
-Angol = ["angol", "english"]
-"Digitális kultúra" = ["digitalis kultura", "digkult", "dig kult", "informatika", "info", "digi"]
-"Biológia" = ["biologia", "bio", "biology"]
-"Kémia" = ["kemia", "chemistry"]
-"Földrajz" = ["foldrajz", "geography"]
-"Programozás" = ["programozas", "c++", "cpp", "coding"]
+[naptar.szotar.targyak]              # a tantárgy kanonikus neve (ahogy a dolgozat-jegyzetek fájlneve írja) → rokon szavak; a termék üresen szállítja (a munkatér/preset adja)
 
-[naptar.szotar.csoportok]            # gyűjtőnév: ha az esemény csak ennyit ír, mindegyik tagja jöhet (gyengébb egyezés)
-magyar = ["Irodalom", "Nyelvtan"]
+[naptar.szotar.csoportok]            # gyűjtőnév: ha az esemény csak ennyit ír, mindegyik tagja jöhet (gyengébb egyezés); alapból üres
 
 [emlekezteto]
 be = true                            # a nyitott `📅` feladatok tükrözése az Emlékeztetőkbe
@@ -286,7 +311,7 @@ kalibracio_ridge = 0.1               # az illesztés húzása az induló súlyok
 # A kártya a vaultban él (kísérőjegyzet, `> [!card]` callout, `^c-…` azonosító), az ütemezés állapota a {tanulas_db}-ben,
 # az azonosítóhoz kötve. Az FSRS a py-fsrs (D3: jóváhagyva), a paraméterei az alapértékek.
 [kartya]
-mappa = "ATTCHMNTS - cards"          # a kísérőjegyzetek lapos mappája (45. döntés, T058): a sémaosztály előtag-illesztéssel
+mappa = "Manifold - Cards"           # a kísérőjegyzetek lapos mappája; a szállított alap (`<kisero_elotag>Cards`) a `[vault] kisero_elotag`-ot követi, bármi más kifejezett felülírás (core/kiserok.py); a sémaosztály ebből származik
 utotag = " — kártyák"                # a kísérőjegyzet neve: <forrás alapneve><utotag>.md
 megtartas = 0.9                      # desired_retention
 max_intervallum_nap = 36500
@@ -344,10 +369,10 @@ idezet_min_szo = 4
 idezet_max_szo = 120
 
 # ------------------------------------------------------------------ kvíz (C22a; docs/C22-TERV.md)
-# A kvíz a vaultban él (a legacy `ATTCHMNTS - quizes` formátuma, L47), az eredménye a {tanulas_db}-ben. A kérdésszám- és
+# A kvíz a vaultban él (kísérőjegyzet a `[kviz] mappa` / `<kisero_elotag>Quizzes` mappában, L47), az eredménye a {tanulas_db}-ben. A kérdésszám- és
 # kapuparaméterek a legacy `calibration.json` `kviz` blokkjából; az éles generálás és a mérés a C22b.
 [kviz]
-mappa = "ATTCHMNTS - quizes"         # a kvízjegyzetek lapos mappája; a felület `kviz/allando.ts` előtagja ennek tükre (teszt őrzi)
+mappa = "Manifold - Quizzes"         # a kvízjegyzetek lapos mappája; a szállított alap (`<kisero_elotag>Quizzes`) a `[vault] kisero_elotag`-ot követi (core/kiserok.py); a felület `kviz/allando.ts` alapja ennek tükre (teszt őrzi)
 kerdes_alap = 10
 kerdes_min = 3
 kerdes_max = 30
@@ -363,10 +388,10 @@ kerulendo_max = 12
 engedett_jelek = ["✓", "✗", "▸"]     # a vault stílus-szabályának engedett szimbólumai
 
 # ------------------------------------------------------------------ összefoglalás (C26a; docs/C26-TERV.md)
-# Az összefoglaló kísérőjegyzet saját `ATTCHMNTS - …` mappában él (45. döntés, T058); minden állítása mellett forrás-link és a
+# Az összefoglaló kísérőjegyzet saját kísérőmappában él (`<kisero_elotag>Summaries`, 45. döntés, T058); minden állítása mellett forrás-link és a
 # jegyzet szó szerinti mondata áll (a forráshűség-kapu a `[kapuk.osszefoglalo]` profillal). Az éles generálás a C26b.
 [osszefoglalas]
-mappa = "ATTCHMNTS - summaries"      # a kísérőjegyzetek lapos mappája; a sémaosztály előtag-illesztéssel (C26b írja a vault-sema.json-ba)
+mappa = "Manifold - Summaries"       # a kísérőjegyzetek lapos mappája; a szállított alap (`<kisero_elotag>Summaries`) a `[vault] kisero_elotag`-ot követi (core/kiserok.py); a sémaosztály ebből származik
 utotag = " — összefoglaló"           # a kísérőjegyzet neve: <forrás alapneve><utótag>.md
 darab_max_karakter = 2200            # egy modellhívás egysége
 szakasz_min_karakter = 20
@@ -402,7 +427,7 @@ ujraproba_ora = 1                    # (C26b) a beküldött, de nem befejezett j
 # vaulton KÍVÜLI mappák (abszolút út, `~` vagy `{work}`-szerű kulcs; pl. a telefonról érkező fotók mappája); a vaulton belüli tilos.
 [fuzet]
 mappak = []                            # további figyelt fotómappák a vaulton kívül (abszolút út, `~` vagy `{work}`-szerű kulcs); üres: csak a `fuzet_bejovo` (a v2 két mappája: config/presets/v2-kompat.toml)
-cel_mappa = "ATTCHMNTS - photos"       # L36: a fotók helye a vaultban
+cel_mappa = "Manifold - Photos"        # a fotók helye a vaultban; a szállított alap (`<kisero_elotag>Photos`) a `[vault] kisero_elotag`-ot követi (core/kiserok.py)
 elmelet_mappa = "Elmélet"              # a téma-mappa tananyag-jegyzeteinek almappája (a videó-párosítás és a füzetlánc ezt keresi)
 szakasz = "Füzet"                      # L36: a cél jegyzet `## Füzet` szakasza
 kepletek_max = 20                      # a képlet-callout legfeljebb ennyi képletet visz (az átirat $…$-aiból)
@@ -413,7 +438,7 @@ figyelo_periodus_mp = 60               # történeti kulcs, a core nem olvassa: 
 figyelo_nyugalom_mp = 30               # történeti kulcs, a core nem olvassa: a legutóbb módosult fotó ennyi ideig állt volna (a másolás befejeződjön)
 
 [media]
-video_mappa = "ATTCHMNTS - Videos"   # a videók lapos mappája; a mellékletek a <Téma>/<reteg_mappa>/ rétegben
+video_mappa = "Manifold - Videos"    # a videók lapos mappája; a szállított alap (`<kisero_elotag>Videos`) a `[vault] kisero_elotag`-ot követi (core/kiserok.py); a mellékletek a <Téma>/<reteg_mappa>/ rétegben
 reteg_mappa = "Média"                # a melléklet-réteg mappaneve (felirat, info.json, forrásleíró jegyzet; L44)
 nyelvek = ["hu", "en"]               # a felirat nyelvi elsőbbsége, ha egy médiához több .vtt van
 kepek_max_mb = 500                   # C33 (T177): a kicsinyített képek gyorsítótára ({vault_kepek}) e fölött LRU-ban takarul
@@ -422,14 +447,11 @@ kepek_max_nap = 90                   # az ennél régebben használt kicsinyíte
 [pdf.tags]
 # A kiemelés-fájl (`<PDF> – kiemelések.md`) tárgy-címkéje a PDF legfelső mappájának első betűjéből; más betű: üres Tags.
 # WORKSPACE-FÜGGŐ: a betű → címke térkép a vault saját mappaszerkezetét írja le (a kód nem tartalmaz beépített térképet; e szakasz
-# nélkül nincs tárgy-címke). A tracker tantárgya és az automatikus kártya-szűrő is ebből a térképből dolgozik.
-M = "Mathematics"
-F = "Physics"
-T = "History"
-I = "Literature"
-D = "Informatics"
-N = "Grammar"
-E = "English"
+# üresen szállítódik, nélküle nincs tárgy-címke). A tracker tantárgya és az automatikus kártya-szűrő is ebből a térképből dolgozik.
+
+[pdf.nevek]
+# betű → a tantárgy nevei (a jegyzetfüzetben / a videóforrásban írt alak; az első a kanonikus név). A füzetlánc a modell válaszából,
+# a videó-bevitel a forrás `targy` mezőjéből ismeri fel a betűt. WORKSPACE-FÜGGŐ, üresen szállítódik.
 
 # ------------------------------------------------------------------ modellgazda (C05)
 # A worker-folyamat az EGYETLEN betöltési pont (L22). A négy szabály (L22–L28) értékei a legacy
@@ -442,7 +464,7 @@ prefill_lepes = 256                  # darabolt beolvasás (prefill_step_size)
 min_szabad_szazalek = 20             # memóriaőr: ez alatt kiürít és vár (kern.memorystatus_level)
 tartalek_szazalek = 5                # a visszatöltéshez a küszöb + tartalék + a modell saját része kell
 helyreallas_mp = 30                  # ennyi ideig folyamatosan legyen elég szabad memória
-zar = "{state}/modell.lock"          # gépszintű modellzár (L23)
+zar = "{install_state}/modell.lock"  # gépszintű modellzár (L23); hordozható módban = {state}/modell.lock
 probalkozas = 3                      # GPU-memóriahibánál ennyiszer próbálja (L26)
 tetlen_urites_perc = 10              # ennyi tétlenség után a modell kiürül
 chat_idokorlat_mp = 900              # a chat-kérés válaszának felső korlátja (a kliens; a gondolkodó modell egy tétele ~600 s)
@@ -906,9 +928,9 @@ konvertalas_crf = 20                 # a libx264 minőség (alacsonyabb = jobb);
 konvertalas_szal = 2                 # a kódolás szálai: az app használata mellett is használható marad
 nativ_video = ["h264", "hevc"]       # a WKWebView natív lejátszója ezeket a videókodekeket játssza (mp4/mov/m4v konténerben)
 nativ_hang = ["aac", "mp3", "alac"]
-kizart_mappak = ["AI01", "AI02", "AI03", "_Template", "X01", "Prjct01", "Napló", "ATTCHMNTS - quizes"]   # a téma-felismerésből kizárt vault-mappák (névelőtag; a `tema_minta` ellenére sem téma)
-vault_mappa = "ATTCHMNTS - Videos"   # C20b: a gépi írás `mozgat` videó-profiljának egyetlen célmappája (elhelyezes.ALAP_VIDEO_MAPPA)
-tema_minta = '^([A-Z]{1,3})(\d{2}) - \S.*$'   # a téma-mappa neve (a Bevitel „Célmappa (téma)” mezője és javaslatai): 1. csoport a tárgy-betű ([pdf.tags] kulcsa), 2. a kétjegyű sorszám (00 = a tárgy vizuális mappája, nem téma)
+kizart_mappak = []                   # a téma-felismerésből kizárt vault-mappák (névelőtag; a `tema_minta` ellenére sem téma); a sablonmappát és a kísérőmappákat a kód mindig kizárja
+vault_mappa = "Manifold - Videos"    # C20b: a gépi írás `mozgat` videó-profiljának egyetlen célmappája; a szállított alap a `[vault] kisero_elotag`-ot követi (core/kiserok.py)
+tema_minta = ''                      # a téma-mappa neve (regex; a Bevitel „Célmappa (téma)” mezője és javaslatai). Üres: nincs téma-konvenció, a videó-bevitel témához kötése ki van kapcsolva. Ha van 2. csoport (kétjegyű sorszám), a `00` nem téma; az 1. csoport a tárgy-betű ([pdf.tags] kulcsa)
 bizonytalan_tema = "ir"              # C20b (D1): a bizonytalan témájú videó is beíródik és visszavonható ("ir"); "kihagy": `nincs_tema` végállapot
 integralas_max = 50                  # C20b: egy bevitel-feladat legfeljebb ennyi staging-forrást dolgoz fel
 bejovo_max_gb = 20                   # C20b: egy behúzott videó legfeljebb ekkora (a feltöltés darabolva, POST /api/video/bejovo)
@@ -955,7 +977,7 @@ ujraproba_ora = 1.0                  # a feldolgozatlanul maradt (modellre vár�
 # heti szokásminta-javaslat, elfogadási statisztika és küszöb. A hiányzó kulcs az alapot adja (`beallitasok.py`).
 [asszisztens]
 higienia_arva_canvas = true          # a canvas-ból érkező link „bejövő linknek” számít-e (igen: a canvas szerkezeti kapcsolat; a napló-canvas jegyzeteit a `higienia_arva_kizart` előtagjai zárják ki)
-higienia_arva_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]   # útelőtagok: nem árva-jelöltek
+higienia_arva_kizart = []   # útelőtagok: nem árva-jelöltek (a sablonmappát és a kísérőmappákat a kód mindig kizárja)
 higienia_arva_tulajdonsag_kizart = ["Canvas", "Source"]   # ezek a frontmatter-linkek nem jegyzet-kapcsolatok
 higienia_min_koz_mp = 60             # két teljes számítás között legalább ennyi idő
 higienia_tick_mp = 10                # a háttérszál ellenőrzési üteme
@@ -965,7 +987,7 @@ emlites_max = 50
 emlites_cim_alak = true              # K177: a szótár a címrészt is tartalmazza (az `NN - ` előtag és a ` — Feladattár` nélkül): a prózai „ciklusok” a `05 - Ciklusok`-ra egyezik
 emlites_cim_min_szo = 2              # címrész-egyezés bárhol ennyi (névelő nélküli) szótól; kevesebb szónál csak ugyanabban a tantárgy-mappában (az első útszegmens)…
 emlites_cim_egyszavas_max_db = 10    # …és csak ha a szót legfeljebb ennyi jegyzet tartalmazza (ritka a vaultban); mérés: tests/kezi/emlites_meres.py
-emlites_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]     # erre a jegyzetre nem javasol linket
+emlites_kizart = []     # erre a jegyzetre nem javasol linket
 emlites_szotar_frissites_mp = 2      # a névszótár legfeljebb ennyi időnként épül újra
 emlites_hasonlosag_kuszob = 0.55     # C30b (K205 (b)): a linkjavaslat szűrője — a jegyzet és a cél C25c-hasonlósága (`POST /api/kereses/hasonlosag`) ennél kisebb → nincs javaslat; a küszöb-szorzóval nő (szigorúbb: ×1,5). Mérés: tests/kezi/hasonlosag_meres.py
 szokas_ablak_het = 8
@@ -989,7 +1011,7 @@ kartya_szerkezet_arany = 0.6         # a testvérek ekkora részében álló `##
 kartya_muvelet_min_db = 3            # címke, sablon, link: ennyi ismétlés után tanult minta
 kartya_tartalom_kuszob = 0.75        # a kapcsolódó jegyzet hasonlósága (C25c vektortár) legalább ennyi
 kartya_elutasitott_nap = 30          # az elutasított javaslat ennyi napig nem tér vissza
-kartya_kizart = ["X01 - Napló & To-Do/", "AI02 - Log/", "_Template/", "ATTCHMNTS - "]     # útelőtagok: ezekben nincs javaslat-kártya
+kartya_kizart = []     # útelőtagok: ezekben nincs javaslat-kártya
 
 [asszisztens.kiegeszites]
 modell = false                     # CX-011: csak a kézzel elfogadott helyi minták; a kalibráció ezt nem kapcsolja be (Audit 4, 2026-10-14: a ⌘J
@@ -999,14 +1021,7 @@ modell = false                     # CX-011: csak a kézzel elfogadott helyi min
                                    # (a `folytat` kérése a mért kérés; a kifejtés és az összefoglalás „próba”, D9)
 proba_modell = ""                  # J2: kalibrált sor nélkül ez a regiszterbeli modell futhat, mindig „próba” jelöléssel (üres: nincs)
 
-[asszisztens.tantargy_nevek]         # a `tr_aktiv` tantárgy-címkéi (a `[pdf.tags]` szótára) → a javaslat szövegében látszó név
-History = "történelem"
-Literature = "irodalom"
-Mathematics = "matematika"
-Physics = "fizika"
-Informatics = "informatika"
-Grammar = "nyelvtan"
-English = "angol"
+[asszisztens.tantargy_nevek]         # a `tr_aktiv` tantárgy-címkéi (a `[pdf.tags]` szótára) → a javaslat szövegében látszó név; alapból üres (a címke látszik)
 
 # ------------------------------------------------------------------ C++ munkafelület (C36a; modulok/cpp, modulok/homokozo/program.py)
 # A fordítás és a futtatás külön `sandbox-exec` profil alatt fut (profil_fordit.sb, profil_futtat.sb): a lefordított program

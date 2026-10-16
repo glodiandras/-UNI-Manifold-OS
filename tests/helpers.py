@@ -12,20 +12,50 @@ from tests import API_TITOK  # noqa: F401  (a tesztek innen is importálhatják)
 REPO = Path(__file__).resolve().parent.parent
 
 
-def alg_gyoker(tmp: str, mos_szkript: str | None = None) -> Path:
-    """Álgyökér: `{tmp}/work/os` a gyökér, `{tmp}/work/Manifold` az álvault."""
+def _konfig_masol(root: Path) -> None:
+    """A szállított konfiguráció az álgyökérbe: `os.toml`, a sémafájlok (`config/*.json`) és a presetek."""
+    (root / "config").mkdir(parents=True, exist_ok=True)
+    shutil.copy(REPO / "config" / "os.toml", root / "config" / "os.toml")
+    for f in (REPO / "config").glob("*.json"):                                # C11b: a vault-séma (és a semleges alap)
+        shutil.copy(f, root / "config" / f.name)
+    if (REPO / "config" / "presets").is_dir():
+        shutil.copytree(REPO / "config" / "presets", root / "config" / "presets", dirs_exist_ok=True)
+
+
+def alg_gyoker(tmp: str, mos_szkript: str | None = None, *, preset: str | None = "v2-kompat", vault: bool = True) -> Path:
+    """Álgyökér: `{tmp}/work/os` a gyökér, `{tmp}/work/Manifold` az álvault (hordozható elrendezés, F3-DESIGN §7.1).
+
+    A vaultot (a `{work}/Manifold`-ot) és a presetet az ál-telepítési réteg (`var/settings.toml`) adja, mint egy
+    `bin/mos portable init` után: alapból a `v2-kompat` preset (a fejlesztő v2-konvenciói), így a tesztek a v2-értékeket
+    látják akkor is, ha az `os.toml` semleges. `preset=None`: preset nélkül; `vault=False`: nincs megadott vault."""
     work = Path(tmp) / "work"
     root = work / "os"
     (root / "bin").mkdir(parents=True)
-    (root / "config").mkdir()
     (work / "Manifold").mkdir()
     for d in ("var/state", "var/tmp", "var/cache", "runtime"):
         (root / d).mkdir(parents=True, exist_ok=True)
-    shutil.copy(REPO / "config" / "os.toml", root / "config" / "os.toml")
-    shutil.copy(REPO / "config" / "vault-sema.json", root / "config" / "vault-sema.json")     # C11b: a vault-séma
+    _konfig_masol(root)
+    sorok = []
+    if vault:
+        sorok += ["[utak]", 'vault = "{work}/Manifold"', ""]
+    if preset:
+        sorok += ["[telepites]", f"presetek = [{json.dumps(preset)}]", ""]
+    if sorok:
+        (root / "var" / "settings.toml").write_text("\n".join(sorok), encoding="utf-8")
     mos = root / "bin" / "mos"
     mos.write_text(mos_szkript or "#!/bin/sh\nexit 0\n")
     mos.chmod(mos.stat().st_mode | stat.S_IXUSR)
+    return root
+
+
+def alg_bundle(tmp: str) -> Path:
+    """Termék-alakú álgyökér: `{tmp}/X.app/Contents/Resources/manifold` (a `config/` szállított tartalmával, `bin/mos`
+    nélkül), az ál-HOME a `{tmp}/home` (a `{install}` ez alatt: `Library/Application Support/Manifold`). Nincs `var/`."""
+    root = Path(tmp) / "X.app" / "Contents" / "Resources" / "manifold"
+    root.mkdir(parents=True)
+    (Path(tmp) / "X.app" / "Contents" / "MacOS").mkdir()
+    _konfig_masol(root)
+    (Path(tmp) / "home").mkdir(exist_ok=True)
     return root
 
 
@@ -35,9 +65,9 @@ def core_indito_szkript() -> str:
 
 
 def vault_sema() -> dict:
-    """A szállított `config/vault-sema.json` (a séma-motor alap-beállítása): a tesztek a kivételútvonalakat, a sémán kívüli
-    fájlokat és a kivételosztályokat innen veszik, nem beégetett mappanevekből."""
-    return json.loads((REPO / "config" / "vault-sema.json").read_text(encoding="utf-8"))
+    """A `v2-kompat` preset sémája (`config/presets/v2-kompat.schema.json`; F3-ban ez a régi `config/vault-sema.json`): a tesztek a
+    kivételútvonalakat, a sémán kívüli fájlokat és a kivételosztályokat innen veszik, nem beégetett mappanevekből."""
+    return json.loads((REPO / "config" / "presets" / "v2-kompat.schema.json").read_text(encoding="utf-8"))
 
 
 def tmpdir():
@@ -54,6 +84,8 @@ def env(*, home: bool = True, **extra):
     a valódi `~/Manifold-backup` rotációját és tartalmát nem érintheti."""
     e = {k: v for k, v in os.environ.items() if not k.startswith(("MOS_", "UV_", "PIP_", "XDG_", "MANIFOLD_"))}
     e["MOS_FEJLESZTO"] = "1"          # a tesztek Developer módban futnak (a teszt-horgok csak így élnek: core/fejleszto.py)
+    e["MOS_SETTINGS"] = ""            # a valódi checkout telepítési rétege (a fejlesztő `var/settings.toml`-ja) nem látszik;
+    # az álgyökerek a sajátjukat olvassák (az üres érték csak a kódot hordozó checkoutra hat: core/config._settings_ut)
     gyoker = extra.get("MOS_ROOT")
     if home and "HOME" not in extra:   # a kifejezett HOME= nyer: ál-HOME-ot sem hoz létre (a fő checkoutban a
         # `MOS_ROOT` két szülője a `/Volumes`, oda nem írhat)

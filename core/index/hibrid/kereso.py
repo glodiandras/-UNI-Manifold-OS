@@ -15,7 +15,7 @@ jegyzetek darabjai, a darabokon számolt BM25-tel és RRF-fel; darabonként a k�
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, field, fields
 
 from ...vaultio import Invalid
 from .. import kereses
@@ -37,9 +37,19 @@ class Beallitas:
     vektor: bool = False             # a vektor-ág (és a vektorindex automatikus építése); M12, C25b mérés
     rerank: bool = False             # M12: csak ha a C18 halmazán mérhetően javít (K160)
     rerank_n: int = 20
+    kihagyott: tuple[str, ...] | None = field(default=None, compare=False)   # nem a `[kereses.hibrid]` kulcsa: a `[kapuk] kihagyott_szakaszok` (None: az alap)
 
 
-_MEZOK = {f.name for f in fields(Beallitas)}
+_MEZOK = {f.name for f in fields(Beallitas)} - {"kihagyott"}
+
+
+def kihagyott_szakaszok(cfg) -> tuple[str, ...] | None:
+    """A darabolás kihagyott szakaszai (`[kapuk] kihagyott_szakaszok`); a kapumodul nélkül `None` (a darabolás alapja)."""
+    try:
+        from modulok.kapuk.forras import kihagyott_szakaszok as lista          # lusta import: a core nem esik el rajta
+    except ImportError:
+        return None
+    return lista(cfg)
 
 
 def beallitas(cfg) -> Beallitas:
@@ -47,7 +57,7 @@ def beallitas(cfg) -> Beallitas:
     ismeretlen = sorted(set(adat) - _MEZOK)
     if ismeretlen:
         raise ValueError(f"[kereses.hibrid]: ismeretlen kulcs: {', '.join(ismeretlen)}")
-    return Beallitas(**adat)
+    return Beallitas(**adat, kihagyott=kihagyott_szakaszok(cfg))
 
 
 @dataclass(frozen=True)
@@ -198,7 +208,7 @@ class HibridKereso:
         darabok = self.tar.darabok(ut=ut) if self.tar is not None else []
         if not darabok:
             with self.index_olvaso() as c:
-                darabok = [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut)]
+                darabok = [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut, kihagyott=self.b.kihagyott)]
         if not darabok:
             return ut.rsplit("/", 1)[-1]
         q_tovek = normal.tovek(q)
@@ -229,7 +239,7 @@ class HibridKereso:
             lex = self._lexikai(c, kerdes)
             for ut in lex["utak"][:self.b.lexikai_jegyzet_darab]:
                 tarbeli = self.tar.darabok(ut=ut) if self.tar is not None else []
-                for d in tarbeli or [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut)]:
+                for d in tarbeli or [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut, kihagyott=self.b.kihagyott)]:
                     jeloltek.setdefault((d.ut, d.sorszam), d)
         if not jeloltek:
             return []

@@ -1,7 +1,12 @@
 """A modell-worker kliense (stdlib urllib) a core-nak, a CLI-nek és a láncoknak. Gépi tanulás nélkül.
 
-A worker címe: `MOS_WORKER_URL` (a feladatsor adja a lépéseknek), különben a `{run}/worker.pid`. Workert
-csak a core és a CLI indít (`Folyamat`), a lánc nem: a worker a core gyermeke, és vele áll le (D4).
+A worker címe: `MOS_WORKER_URL` (a feladatsor adja a lépéseknek), különben a gépszintű `{install_run}/worker.pid` (F3-DESIGN
+§4: egy telepítésen egy worker, a munkaterek core-jai közösen használják). Workert csak a core és a CLI indít (`Folyamat`), a
+lánc nem: a worker a core gyermeke, és vele áll le (D4); a többi core a pidfájlon át veszi át.
+
+Átvett worker eltűnése (F3, K11): ha egy másik core-tól átvett worker egy kérés közben megszűnik (kapcsolathiba, és a
+pidfájl szerint már nem él), a kliens EGYSZER újraindítja (vagy átveszi az időközben indultat), és a kérést EGYSZER
+megismétli. A worker halott, a kérése nem fut tovább: az ismétlés nem duplázódik. Közös bérlet (lease) az F5/F6-ban.
 A lánc kéréseinek módja a `MOS_MODELL_MOD` (a feladatsor `auto`-t ad az automatikus feladatnak).
 
 C33 (T182): a worker munkamenet-titkot kér (`X-Manifold: <titok>`). A titok forrása: a saját indítású workernél a
@@ -14,6 +19,7 @@ import json
 import os
 import secrets
 import select
+import socket
 import subprocess
 import sys
 import threading
@@ -32,7 +38,8 @@ class KliensHiba(RuntimeError):
 
 
 def pidfajl(cfg: Config) -> Path:
-    return cfg.path("run") / "worker.pid"
+    """A worker pidfájlja: `{install_run}/worker.pid` (hordozható elrendezésben a v2-beli `var/run/worker.pid`)."""
+    return cfg.path("install_run") / "worker.pid"
 
 
 _titkok: dict[str, str] = {}            # worker-cím → munkamenet-titok (a pidfájlból vagy a saját indításból)
@@ -77,7 +84,57 @@ def url(cfg: Config | None = None) -> str:
     return u
 
 
+# Az átvett worker eltűnésekor egyszer megismételhető kérések (a modellmunka; a `health`, `unload`, `megszakit` és
+# `automatikus` nem: azok nem indíthatnak workert mellékhatásként)
+UJRAPROBALHATO = frozenset({"/v1/chat/completions", "/v1/embeddings", "/v1/rerank", "/v1/audio/transcriptions",
+                            "/router/valaszt"})
+_atvevok: dict[str, "Folyamat"] = {}    # átvett (idegen) worker címe → az átvevő `Folyamat` (csak a saját folyamatban)
+
+
+def _atvevo_jegyez(u: str | None, f: "Folyamat | None") -> None:
+    if not u:
+        return
+    with _titkok_zar:
+        if f is None:
+            _atvevok.pop(u.rstrip("/"), None)
+        else:
+            _atvevok[u.rstrip("/")] = f
+
+
+def _atvevo(u: str) -> "Folyamat | None":
+    with _titkok_zar:
+        return _atvevok.get(u.rstrip("/"))
+
+
 def keres(u: str, ut: str, body: dict | None = None, timeout: float | None = None) -> dict:
+    """Egy kérés a workernek. Ha a cím egy átvett workeré, és az a kérés közben eltűnt (kapcsolathiba, a pidfájl szerint
+    nem él), a kérés átvevő `Folyamat`-a egyszer újraindítja, és a kérés egyszer megismétlődik (F3-DESIGN §4)."""
+    try:
+        return _keres(u, ut, body, timeout)
+    except KliensHiba as e:
+        f = _atvevo(u) if e.adat.get("kapcsolat") and ut in UJRAPROBALHATO else None
+        u2 = f.atvett_eltunt(u) if f is not None else None
+        if not u2:
+            raise
+        print(f"[modell-kliens] az átvett modell-worker eltűnt ({e}); újraindítva ({u2}), a kérést egyszer megismétlem",
+              file=sys.stderr, flush=True)
+        return _keres(u2, ut, body, timeout)
+
+
+def _hallgat(u: str, timeout: float = 1.0) -> bool:
+    """Fogad-e kapcsolatot a cím portja. A kilépett worker portja visszautasít — akkor is, ha a folyamata még be nem gyűjtött
+    (zombi), és a pidfájl szerinti `kill(pid, 0)` még élőnek mutatja. Nem eldönthető esetben (időtúllépés): él."""
+    try:
+        port = int(u.rstrip("/").rsplit(":", 1)[1])
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout):
+            return True
+    except ConnectionRefusedError:
+        return False
+    except (OSError, ValueError, IndexError):
+        return True
+
+
+def _keres(u: str, ut: str, body: dict | None = None, timeout: float | None = None) -> dict:
     data = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(u.rstrip("/") + ut, data=data, method="POST" if body is not None else "GET",
                                  headers={"X-Manifold": _titok(u), "Content-Type": "application/json"})
@@ -232,9 +289,29 @@ class Folyamat:
         if self.proc is not None:
             return self.proc.poll() is None
         if fut_url(self.cfg) != self.url:
+            _atvevo_jegyez(self.url, None)
             self.url = None
             return False
         return True
+
+    def atvett_eltunt(self, u: str) -> str | None:
+        """Egy kérés kapcsolathibát kapott az `u` címen. Ha ez a mi ÁTVETT workerünk volt, és a pidfájl szerint már nem él
+        (nem csak lassú: egy élő worker időtúllépése nem ok az újraindításra), a worker egyszer újraindul (`biztosit`: egy
+        időközben indult másikat átvesz, különben sajátot indít) → az új cím; egyébként None (a hívó a hibát továbbadja)."""
+        with self._lock:
+            if self.url and self.url.rstrip("/") != u.rstrip("/"):
+                return self.url                       # egy másik szál már újraindította: az új címen ismétlünk
+            if self.proc is not None or self.url is None:
+                return None                           # saját worker (a core kezeli a halálát), vagy már leállítva
+            if fut_url(self.cfg) == self.url and _hallgat(self.url):
+                return None                           # él: nem tűnt el (pl. időtúllépés) — nincs újraindítás
+            _atvevo_jegyez(self.url, None)
+            self.url = None
+        try:
+            return self.biztosit()
+        except KliensHiba as e:
+            print(f"[modell-kliens] az átvett worker újraindítása nem sikerült: {e}", file=sys.stderr, flush=True)
+            return None
 
     def _elso_sor(self, hatarido: float) -> bytes:
         """A worker kézfogás-sora határidővel (T183): `select` a csövön; lejáratkor b"" (a hívó leállítja a workert)."""
@@ -265,6 +342,7 @@ class Folyamat:
                 try:
                     health(u)
                     self.url = u
+                    _atvevo_jegyez(u, self)             # átvett (idegen) worker: eltűnésekor egyszer újraindítunk
                     return u
                 except KliensHiba:
                     pass
@@ -274,7 +352,7 @@ class Folyamat:
             env["MOS_WORKER_TITOK"] = sajat_titok
             kod = str(Path(__file__).resolve().parents[2])    # a futó core kódja (a config gyökere lehet más)
             env["PYTHONPATH"] = kod + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
-            naplo = self.cfg.path("runs") / "worker.log"
+            naplo = self.cfg.path("install_logs") / "worker.log"     # gépszintű (F3-DESIGN §4); hordozhatóban var/runs
             naplo.parent.mkdir(parents=True, exist_ok=True)
             with open(naplo, "a", encoding="utf-8") as err:
                 self.proc = subprocess.Popen(self.argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err,
@@ -301,6 +379,8 @@ class Folyamat:
         SIGKILL). `azonnal` (a core kényszerága, második ⌘Q): rögtön SIGTERM, 2 s múlva SIGKILL — a `KENYSZER_MP`-es keretbe
         a kilépési bundle-próbának is bele kell férnie."""
         with self._lock:
+            if self.proc is None:
+                _atvevo_jegyez(self.url, None)
             p, self.proc, self.url = self.proc, None, None
         if p is None:
             return

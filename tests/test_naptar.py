@@ -52,18 +52,27 @@ class SzabalyTest(unittest.TestCase):
             self.assertEqual(naptar.javasol(nev), vart, nev)
         self.assertEqual(naptar.javasol("Bárki", "szuletesnap"), ("kizart", True))
 
+    # a tantárgy-szótár a munkatér sajátja (a termék üresen szállítja): a szóhatár-szabályt semleges szótár viszi; a fejlesztő szótára
+    # (`Matek`, `Német`, …) a `tests/preset_v2/test_naptar_v2.py`-ban van
+    TARGYAK = {"Alpha": ["alpha", "alf"], "Beta": ["beta"]}
+    CSOPORTOK = {"greek": ["Alpha", "Beta"]}
+
     def test_tantargy_szohatar(self):
-        self.assertEqual(naptar.targy("Matek röpdolgozat"), ["Matematika"])
-        self.assertEqual(naptar.targy("Materiál beszerzés"), [])            # a „mat” nem a „materiál”-ban
-        self.assertEqual(naptar.targy("Magyar"), ["Irodalom", "Nyelvtan"])
-        self.assertEqual(naptar.targy("Német - Röpdolgozat"), ["Német"])
+        t = naptar.Targyak(self.TARGYAK, self.CSOPORTOK)
+        self.assertEqual(naptar.targy("Alf röpdolgozat", t), ["Alpha"])
+        self.assertEqual(naptar.targy("Alfabéta beszerzés", t), [])            # az „alf” (legfeljebb 4 betű) nem az „alfabéta”-ban
+        self.assertEqual(naptar.targy("Greek", t), ["Alpha", "Beta"])
+        self.assertEqual(naptar.targy("Beta - Röpdolgozat", t), ["Beta"])
+        self.assertEqual(naptar.targy("Matek röpdolgozat"), [])                # beépített szótár nincs: a munkatér adja
 
     def test_esemeny_fajta(self):
-        self.assertEqual(naptar.esemeny_fajta("Német - Röpdolgozat", "hatarido"), "dolgozat")
+        t = naptar.Targyak(self.TARGYAK, self.CSOPORTOK)
+        self.assertEqual(naptar.esemeny_fajta("Beta - Röpdolgozat", "hatarido", t), "dolgozat")
         self.assertEqual(naptar.esemeny_fajta("Bánk bán beadandó", "hatarido"), "hatarido")
         self.assertIsNone(naptar.esemeny_fajta("Dolgozatra készülés", "tanulas"))        # a tanulás nem számonkérés
         self.assertIsNone(naptar.esemeny_fajta("Dolgozat", "edzes"))
-        self.assertEqual(naptar.esemeny_fajta("Matek", "hatarido"), "dolgozat")          # tantárgy, határidő-szó nélkül
+        self.assertEqual(naptar.esemeny_fajta("Alpha", "hatarido", t), "dolgozat")        # tantárgy, határidő-szó nélkül
+        self.assertEqual(naptar.esemeny_fajta("Alpha", "hatarido"), "hatarido")           # szótár nélkül nincs tantárgy
 
 
 class SzinkronTest(Alap):

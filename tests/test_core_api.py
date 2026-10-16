@@ -113,7 +113,7 @@ class CoreApiTest(_Szerver):
     def test_kezfogas_titokkal(self):
         """A kézfogás-sor a titkot is hordozza: a héj ebből injektálja a felületbe (a `/` lap titok nélkül is elérhető)."""
         self.assertEqual(self.kezfogas["titok"], API_TITOK)
-        self.assertEqual(set(self.kezfogas), {"port", "pid", "titok"})
+        self.assertEqual(set(self.kezfogas), {"port", "pid", "titok", "vault", "munkater_id", "elrendezes"})     # F3: additív mezők (§2.6)
 
     @unittest.skipIf(ws_connect is None, "nincs websockets (a venvben van)")
     def test_ws_titok(self):

@@ -44,7 +44,7 @@ def frissit(argv: list[str]) -> int:
     from ... import config
     from ...kereses_modell import WorkerBeagyazo, router_modell
     from ...modell import kliens
-    from . import frissites
+    from . import frissites, kereso
     from .vektortar import Vektortar
     ap = argparse.ArgumentParser(prog="mos kereses frissit", description="A vektorindex frissítése (a feladatsor lépése).")
     ap.add_argument("--stop-fajl", default=os.environ.get("MANIFOLD_STOP_FAJL"))
@@ -64,7 +64,7 @@ def frissit(argv: list[str]) -> int:
     tar = Vektortar(Path(cfg.path("index")) / "vektor.sqlite")
     try:
         e = frissites.frissit(_olvaso(cfg), tar, b, folytathat=lambda: not (a.stop_fajl and os.path.exists(a.stop_fajl)),
-                              max_jegyzet=a.max)
+                              max_jegyzet=a.max, kihagyott=kereso.kihagyott_szakaszok(cfg))
     finally:
         tar.close()
     print(json.dumps(e.to_dict(), ensure_ascii=False))

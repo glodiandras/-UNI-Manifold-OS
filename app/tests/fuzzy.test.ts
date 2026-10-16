@@ -120,5 +120,7 @@ describe('keresés', () => {
     const kicsi = mer(1000);
     const nagy = mer(4000);
     expect(nagy / kicsi).toBeLessThan(10); // lineáris ≈ 4, négyzetes ≈ 16
-  });
+    // Terhelés alatt (a teljes, 150 fájlos vitest-futás) a két mérés 9 s volt, és az alap 5 s-os időkorlát lejárt; az arány
+    // nem függ a falióra hosszától, ezért az időkorlát bővebb
+  }, 30_000);
 });

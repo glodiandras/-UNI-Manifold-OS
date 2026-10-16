@@ -121,5 +121,75 @@ class KapuCliTest(unittest.TestCase):
         ex.assert_not_called()
 
 
+
+class ManifoldAllapotTest(unittest.TestCase):
+    """F3 (§3.6): a munkatér állapota (`<vault>/.manifold/var`, a termék `{var}`-ja) nem vault-tartalom — a kártya-export
+    alapcélja (`{szemelyes}/export`) írható; minden más (a `.manifold` többi része, symlinkelt állapot, eltűnt vault) tiltott."""
+
+    def setUp(self):
+        self._t = tmpdir()
+        self.addCleanup(self._t.cleanup)
+        self.t = Path(self._t.name)
+        self.vault = self.t / "Vault"
+        (self.vault / ".manifold" / "var" / "szemelyes").mkdir(parents=True)
+        (self.vault / "Jegyzetek").mkdir()
+
+    def test_az_allapot_alatt_kivul_mashol_belul(self):
+        from core.vaultkivul import vaultban_van
+        allapot = self.vault / ".manifold" / "var"
+        self.assertFalse(vaultban_van(allapot / "szemelyes" / "export" / "k.apkg", self.vault))   # még nem létező mappák
+        self.assertFalse(vaultban_van(allapot, self.vault))
+        self.assertTrue(vaultban_van(self.vault / ".manifold" / "workspace.toml", self.vault))
+        self.assertTrue(vaultban_van(self.vault / ".manifold" / "varx" / "k.apkg", self.vault))
+        self.assertTrue(vaultban_van(allapot / ".." / "workspace.toml", self.vault))
+        self.assertTrue(vaultban_van(self.vault / "Jegyzetek" / "k.apkg", self.vault))
+        self.assertTrue(vaultban_van(allapot / "k.apkg", self.t / "nincs"))                    # zárva hibázik
+        (self.vault / ".manifold" / "var" / "szemelyes").rmdir()
+        (self.vault / ".manifold" / "var").rmdir()                         # munkatér-állapot nélkül (hordozható): nincs kivétel
+        self.assertTrue(vaultban_van(allapot / "szemelyes" / "export" / "k.apkg", self.vault))
+
+    def test_kis_nagybetus_iras_az_allapotra_is_kivul(self):
+        from core import vaultkivul
+        with mock.patch.object(vaultkivul.os.path, "samefile", _apfs_samefile):
+            self.assertFalse(vaultkivul.vaultban_van(self.vault / ".MANIFOLD" / "VAR" / "szemelyes" / "k.apkg", self.vault))
+            self.assertTrue(vaultkivul.vaultban_van(self.vault / ".MANIFOLD" / "k.apkg", self.vault))
+
+    def test_symlinkelt_allapot_nem_kivetel(self):
+        from core.vaultkivul import vaultban_van
+        v = self.t / "Idegen"
+        (v / "Jegyzetek").mkdir(parents=True)
+        (v / ".manifold").mkdir()
+        (v / ".manifold" / "var").symlink_to(v / "Jegyzetek")             # egy letöltött vault a jegyzetei közé irányítana
+        self.assertTrue(vaultban_van(v / ".manifold" / "var" / "k.apkg", v))
+        (v / ".manifold" / "var").unlink()
+        kint = self.t / "kint"
+        kint.mkdir()
+        (v / ".manifold" / "var").symlink_to(kint)
+        self.assertFalse(vaultban_van(v / ".manifold" / "var" / "k.apkg", v))   # a feloldott cél a vaulton kívül van
+
+    def test_termekben_a_kartya_export_alapcelja_engedett(self):
+        from core import workspace
+        from modulok.kartya import __main__ as m
+        from tests.fresh_install import termek_alap, termek_cfg
+        root, home, alap = termek_alap(str(self.t / "t"))
+        v = self.t / "Munkater"
+        (v / ".obsidian").mkdir(parents=True)
+        workspace.letrehoz(v, alap)
+        cfg = termek_cfg(root, home, v)
+        self.assertTrue(str(cfg.path("szemelyes")).startswith(str(v / ".manifold" / "var")))
+        with mock.patch.object(m.apkg, "gyujt", return_value=[]), \
+                mock.patch.object(m.apkg, "export", return_value={"kartya": 0}) as ex, \
+                mock.patch.object(m, "_kiir"):
+            self.assertEqual(m.exportal(cfg, mock.Mock(cel=None)), 0)
+        cel = ex.call_args.args[0]
+        self.assertEqual(cel.parent, cfg.path("szemelyes") / "export")
+        # a teljes mentés célja a `.manifold` alatt továbbra is tiltott (a saját gyökér-ellenőrzése)
+        from core import teljes_mentes
+        cel = v / ".manifold" / "var" / "mentes"
+        cel.mkdir()
+        with self.assertRaisesRegex(teljes_mentes.MentesHiba, "nem lehet"):     # a cél-szabály, nem a kötet-szabály
+            teljes_mentes.ment(cfg, cel, log=lambda *a, **k: None)
+
+
 if __name__ == "__main__":
     unittest.main()

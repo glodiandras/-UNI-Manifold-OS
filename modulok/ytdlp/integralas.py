@@ -42,7 +42,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from core import gepi_kliens, videolanc
+from core import gepi_kliens, kiserok, videolanc
 
 from . import egyezes as X
 from . import elhelyezes, horgony, itelet, konvertalas, kotes as KT, staging, vaultoldal as VO
@@ -55,10 +55,8 @@ LEPESEK = ("probe", "duplikatum", "letoltes", "nyelv", "szovegreteg", "tema", "e
            "beiras", "verifikacio", "naplo", "visszajelzes")
 VEGALLAPOTOK = ("integralva", "mar_megvan", "utkozes", "nincs_tema", "atirat_kalibralatlan", "hiba", "kihagyva")
 STAGING_ALLAPOT = {"integralva": "integrated", "mar_megvan": "integrated", "utkozes": "in_review", "nincs_tema": "in_review"}
-# A staging forrás `targy` mezője (a letöltő tantárgy-nevei) → a tantárgy betűje. Az igazság a core `[pdf.tags]` táblázata (betű → címke):
-# a `targy_terkep` annak a fordítottját veszi, és erre az alapra írja rá; ez az alap, ha a táblázat hiányzik vagy nem nevezi meg a tárgyat.
-TARGY_TERKEP = {"Történelem": "T", "Irodalom": "I", "Magyar nyelv": "N", "Nyelvtan": "N", "Matematika": "M", "Fizika": "F",
-                "Digitális kultúra": "D", "Angol": "E"}
+# A staging forrás `targy` mezője (a letöltő tantárgy-nevei) → a tantárgy betűje. Az igazság a core `[pdf.tags]` (betű → címke) és
+# `[pdf.nevek]` (betű → a tantárgy nevei) táblázata; beépített térkép nincs (a munkatér adja: `config/presets/v2-kompat.toml`).
 MAX_KOTES_OLVASAS = 20          # videónként legfeljebb ennyi kötési javaslatot olvas el a modell
 ASR_HANGFEDETTSEG_MIN = 0.75    # media.atirat.gepi.degeneralt_kuszob
 
@@ -72,9 +70,14 @@ def job_key(meta: dict) -> str:
     return f"{ex or 'media'}-{vid}"
 
 
-def targy_terkep(cimkek: dict | None = None) -> dict[str, str]:
-    """`{tantárgy-név: betű}`: a `[pdf.tags]` (`{betű: címke}`) fordítottja az alap (`TARGY_TERKEP`) fölött; azonos címkénél az első betű."""
-    ki = dict(TARGY_TERKEP)
+def targy_terkep(cimkek: dict | None = None, nevek: dict | None = None) -> dict[str, str]:
+    """`{tantárgy-név: betű}`: a `[pdf.nevek]` (`{betű: [nevek]}`) fordítottja, erre írva rá a `[pdf.tags]` (`{betű: címke}`) fordítottja;
+    azonos névnél az első betű."""
+    ki: dict[str, str] = {}
+    for betu, lista in (nevek or {}).items():
+        for nev in (lista if isinstance(lista, (list, tuple)) else [lista]):
+            if isinstance(nev, str) and nev.strip() and str(betu).strip():
+                ki.setdefault(nfc(nev.strip()), str(betu).strip())
     forditott: dict[str, str] = {}
     for betu, cimke in (cimkek or {}).items():
         if isinstance(cimke, str) and cimke.strip() and str(betu).strip():
@@ -83,8 +86,8 @@ def targy_terkep(cimkek: dict | None = None) -> dict[str, str]:
     return ki
 
 
-def targy_betu(src: dict, cimkek: dict | None = None) -> str | None:
-    return targy_terkep(cimkek).get(nfc(src.get("targy") or ""))
+def targy_betu(src: dict, cimkek: dict | None = None, nevek: dict | None = None) -> str | None:
+    return targy_terkep(cimkek, nevek).get(nfc(src.get("targy") or ""))
 
 
 def vault_videok(vault: Path, tema_minta=None, kizart_mappak=None) -> dict[str, str]:
@@ -144,17 +147,19 @@ class Integralas:
         self.gepi = gepi
         self.vault = cfg.path("vault")
         v = cfg.section("video")
-        self.video_mappa = str(v.get("vault_mappa") or elhelyezes.ALAP_VIDEO_MAPPA)
+        self.video_mappa = kiserok.kisero_mappa(cfg, "video")
         self.bizonytalan_ir = str(v.get("bizonytalan_tema", "ir")) == "ir"
         self.max_db = max_db or int(v.get("integralas_max", 50))
         self.ffmpeg = ffmpeg or str(cfg.path("ffmpeg"))
         self.felmeres = felmeres or konvertalas.felmeres
         self.temak_felulir = dict(temak or {})     # kulcs → téma: a `--tema-felulir` (gazdai döntés) megfelelője, a próbakörnek
         self.cimkek = dict(cfg.section("pdf").get("tags") or {})
+        self.nevek = dict(cfg.section("pdf").get("nevek") or {})            # `[pdf.nevek]`: betű → a tantárgy nevei
         self.index_kw = X.index_beallitas(cfg)      # `[video] tema_minta`, `kizart_mappak`, `[fuzet] elmelet_mappa`
         # 86. döntés (javasolt): a kényszerített célmappa — a téma determinisztikus (a téma-modell és a lexikai besorolás nem fut, a
         # staging tárgya nem számít), a kötés csak a mappa saját jegyzeteihez; az ellenőrzés egyetlen helye a `core/videolanc.py`
-        self.tema_mappa = (videolanc.temamappa_ellenoriz(self.vault, tema_mappa, self.cimkek) if tema_mappa is not None else None)
+        self.tema_mappa = (videolanc.temamappa_ellenoriz(self.vault, tema_mappa, self.cimkek, videolanc.tema_minta(cfg))
+                           if tema_mappa is not None else None)
         self.kor: str | None = None
         self._idx: X.NoteIndex | None = None
         self._korp: KT.Korpusz | None = None
@@ -273,7 +278,7 @@ class Integralas:
         vtt_nev = f"{torzs}.{nyelv}.vtt"
         f = X.Forras(video_nev, vtt_cuek(vtt), hossz or -1.0)
         # 6. tema
-        targy = targy_betu(src, self.cimkek)
+        targy = targy_betu(src, self.cimkek, self.nevek)
         if self.tema_mappa:
             targy = X.targy(self.tema_mappa)
             v = {"tema": self.tema_mappa, "forras": "célmappa", "biztossag": "biztos",

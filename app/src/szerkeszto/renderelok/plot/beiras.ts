@@ -6,15 +6,14 @@
 import { kerdez } from '../../../lib/core/api';
 import { ertesitesek } from '../../../lib/ertesites/ertesites.svelte';
 import type { Parancs } from '../../../lib/parancsok/regiszter';
+import { kiseroUt } from '../../../osszefoglalas/allando';
 
 export const GRAFIKON_PARANCS_ID = 'grafikon.beiras';
 
 /** Tartalmi Markdown-jegyzet-e (a core `automatika.tartalmi_ut` tükre): nem gépi kísérőjegyzet, nem rejtett mappa. */
 export function grafikonJegyzet(ut: string | null | undefined): ut is string {
   if (!ut || !ut.toLowerCase().endsWith('.md')) return false;
-  const u = ut.normalize('NFC');
-  // mirror of config — F3 replaces with /api/workspace
-  return !u.startsWith('ATTCHMNTS - ') && !u.split('/').some((r) => r.startsWith('.'));
+  return !kiseroUt(ut) && !ut.normalize('NFC').split('/').some((r) => r.startsWith('.'));
 }
 
 export async function grafikonokBeirasa(ut: string, mentes: () => Promise<void>, keres = kerdez): Promise<boolean> {

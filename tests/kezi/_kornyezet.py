@@ -126,7 +126,8 @@ def valodi_modell_zar(cfg, alap: dict | None = None) -> Path:
 
 
 def _kulcsok(cfg) -> list[str]:
-    return list(cfg.data.get("utak", {}))
+    """Minden `[utak]` kulcs (az alapérték nélküli `vault` is, ha a réteg vagy a környezet adja)."""
+    return config.utak_kulcsok(cfg.data)
 
 
 def elkulonit(proba: Path, cfg, *, vault: Path | None = None, vault_git: Path | None = None, home: bool = False,
@@ -138,7 +139,11 @@ def elkulonit(proba: Path, cfg, *, vault: Path | None = None, vault_git: Path | 
     valódi. `home`: ál-HOME a `proba/home` alatt (csak core-indításnál; a `Manifold.app` valódi HOME-ot kér: WebKit,
     engedélyek). `masolat`: kulcsok, amelyek a valódi fájlból/mappából induló másolatot kapnak (pl. `router_db`: a
     D9-kapu paritása). `cfg`: a HÍVÓ valódi configja (a kulcslista és a modellzár innen); `alap`: a kiinduló
-    környezet (alap: `os.environ`)."""
+    környezet (alap: `os.environ`).
+    F3: az `install*`, a `workspace` és a `backup_gyoker` is elkülönül (a gépszintű zárak, naplók, a regiszter és a mentések
+    gyökere a próbáé), a modellzár viszont a `MANIFOLD_MODELL_ZAR`-on át a valódi marad (K17). A `VALODI_MARAD` kulcsai a hívó
+    FELOLDOTT útját kapják (a próba `{install}`-ja alól nem csúszhatnak el, pl. `models = {install}/models`), és a gyermek a
+    hívó telepítési rétegét olvassa (`MOS_SETTINGS`: a vault, a presetek ugyanazok)."""
     proba = Path(proba)
     env = dict(os.environ if alap is None else alap)
     kulcsok = _kulcsok(cfg)
@@ -148,6 +153,8 @@ def elkulonit(proba: Path, cfg, *, vault: Path | None = None, vault_git: Path | 
             env.pop(f"MOS_{k.upper()}", None)               # a hívó shellének felülírása se szivároghat át
     for k in kulcsok:
         if k in VALODI_MARAD:
+            if k in cfg.utak:
+                env[f"MOS_{k.upper()}"] = str(cfg.path(k))
             continue
         if k == "vault":
             ut = Path(vault) if vault is not None else cfg.path("vault")
@@ -172,6 +179,9 @@ def elkulonit(proba: Path, cfg, *, vault: Path | None = None, vault_git: Path | 
             shutil.copy2(forras, cel)
     env["MANIFOLD_MODELL_ZAR"] = str(zar)
     env["MOS_API_TITOK"] = TITOK
+    settings = (cfg.data.get("_meta") or {}).get("settings") or ""
+    if settings:
+        env["MOS_SETTINGS"] = settings                      # a hívó telepítési rétege (csak olvasva): ugyanaz a vault és preset
     if home:
         (proba / "home").mkdir(parents=True, exist_ok=True)
         env["HOME"] = str(proba / "home")

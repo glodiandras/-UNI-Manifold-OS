@@ -155,7 +155,9 @@ class MigracioElottTest(Alap):
         self.assertIn("tele a lemez", ki.getvalue())
 
     def test_rotacio_a_legujabb_n_masolatot_tartja(self):
-        self.backup.mkdir(parents=True)
+        # F3-DESIGN §5: a rotáció a saját (tulajdonosjelű) mappában megy; a jel nélküli, nem üres mappa örökölt, ott a másolat nem forog
+        # (azt a tests/test_mentes_munkater.py rögzíti) — ez a teszt a saját mappa rotációját méri
+        mentes._jel_ir(self.cfg, self.backup)
         for i in range(7):
             (self.backup / f"mos-migracio-pos-v1-2025010{i + 1}-000000.sqlite").write_bytes(b"regi")
         self._v1()

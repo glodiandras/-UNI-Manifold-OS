@@ -1,9 +1,13 @@
 """Az `[asszisztens]` beállítások (a `config/os.toml`-ból, alapértékekkel): a hiányzó vagy hibás típusú kulcs az alapot adja."""
 from __future__ import annotations
 
-# A kizárt útelőtagok kód-alapja semleges (sablonmappa + a gépi kísérőmappák); a vault saját mappáit (napló, log) az os.toml `[asszisztens]`
-# listái adják — a v2-konvenció a `config/presets/v2-kompat.toml`-ban.
-_KIZART_ALAP = ["_Template/", "ATTCHMNTS - "]
+from .. import kiserok
+
+# A kizárt útelőtagok kód-alapja semleges: a sablonmappa és a gépi kísérőmappák (`beallitasok(cfg)` a `[sablon] mappa`-t és a
+# `[vault] kisero_elotag`-ot mindig hozzáteszi); a vault saját mappáit (napló, log) az os.toml `[asszisztens]` listái adják —
+# a v2-konvenció a `config/presets/v2-kompat.toml`-ban.
+_KIZART_ALAP = ["_Template/", kiserok.ALAP_ELOTAG]
+_KIZART_KULCSOK = ("higienia_arva_kizart", "emlites_kizart", "kartya_kizart")
 
 ALAP: dict = {
     # --- jegyzethigiénia
@@ -46,8 +50,7 @@ ALAP: dict = {
     "kartya_tartalom_kuszob": 0.75,       # a kapcsolódó jegyzet hasonlósága (C25c vektortár) legalább ennyi
     "kartya_elutasitott_nap": 30,         # az elutasított javaslat ennyi napig nem tér vissza
     "kartya_kizart": _KIZART_ALAP,     # ezekben nincs kártya
-    "tantargy_nevek": {"History": "történelem", "Literature": "irodalom", "Mathematics": "matematika",
-                       "Physics": "fizika", "Informatics": "informatika", "Grammar": "nyelvtan", "English": "angol"},
+    "tantargy_nevek": {},                 # `[pdf.tags]` címke → a javaslat szövegében látszó név (a munkatér adja; üres: a címke látszik)
 }
 
 
@@ -70,4 +73,8 @@ def beallitasok(cfg) -> dict:
         elif isinstance(alap, dict):
             if isinstance(v, dict):
                 ki[k] = {str(a): str(b) for a, b in v.items()}
+    # a sablonmappa és a gépi kísérőmappák sosem javaslat-források (a konfigurált lista mögé, ha még nincsenek benne)
+    sablon = str((cfg.section("sablon") or {}).get("mappa") or "_Template").strip("/") + "/"
+    for k in _KIZART_KULCSOK:
+        ki[k] = [*ki[k], *(x for x in (sablon, kiserok.kisero_elotag(cfg)) if x not in ki[k])]
     return ki

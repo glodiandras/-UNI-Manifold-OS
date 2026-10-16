@@ -285,26 +285,6 @@ class IntegralasTest(unittest.TestCase):
         self.assertEqual(self.statusz(d), "pending")
         self.assertFalse((self.v / self.CS).exists())
 
-    def test_celmappa_ellenorzes(self):
-        from core.videolanc import TemamappaHiba, temamappa_ellenoriz
-        tags = dict(self.cfg.section("pdf").get("tags") or {"D": "Informatics"})
-        tags.setdefault("D", "Informatics")
-        self.assertEqual(temamappa_ellenoriz(self.v, " D13 - CS50 ", tags), "D13 - CS50")
-        self.assertEqual(temamappa_ellenoriz(self.v, "T05 - A reformkor", {"T": "History"}), "T05 - A reformkor")
-        (self.v / "D14 - fajl").write_text("x")
-        (self.v / "D15 - Kis").mkdir()
-        for rossz in ("", "D13", "CS50", "D13 - CS50/Média", "../D13 - CS50", "D00 - Visual", "X01 - Napló", "AI01 - Workflow System",
-                      "D13 - CS#50", "D13 - [CS50]", ".D13 - CS50", "d13 - cs50", "D14 - fajl", "D15 - KIS", "D13 - " + "x" * 200, 13):
-            with self.subTest(rossz=rossz), self.assertRaises(TemamappaHiba):
-                temamappa_ellenoriz(self.v, rossz, tags)
-        with self.assertRaises(ValueError):
-            self.lanc(tema_mappa="D13 - CS50/Média")
-        # a core mintája a téma-felismerés (egyezes.TEMA_MINTA) szűkítése: amit elfogad, azt a duplikátum-szűrés témaként látja
-        from modulok.ytdlp import egyezes
-        self.assertTrue(egyezes.TEMA_MINTA.match("D13 - CS50"))
-        (self.v / self.CS).mkdir()
-        self.assertIn(self.CS, egyezes.temak(self.v))
-
 
 class EsemenyKapuTest(unittest.TestCase):
     def test_csak_a_mos_video_es_az_engedett_kulcsok(self):

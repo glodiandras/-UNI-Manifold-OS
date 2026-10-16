@@ -50,9 +50,9 @@ import time
 import unicodedata
 from pathlib import Path
 
-from . import mediatipus, tartos, utkapu
+from . import mediatipus, rejtett, tartos, utkapu
 
-KIHAGY = {".obsidian", ".trash", ".git"}
+KIHAGY = rejtett.MEDIA_KIHAGYOTT_MAPPAK     # I6 (F3): a `.manifold` (próbaklónok, állapot) sem leltározott; a `node_modules` igen (v2)
 TIPUSOK = (None, "media", "fuzet", "atnevezes", "apkg")
 MIN_SHA = 7
 _HEX = re.compile(r"[0-9a-f]+")
@@ -73,7 +73,7 @@ def leltar(vault: str | Path) -> dict[str, tuple[int, int]]:
     vault = Path(vault)
     ki: dict[str, tuple[int, int]] = {}
     for d, almappak, fajlok in os.walk(vault):
-        almappak[:] = [a for a in almappak if a not in KIHAGY]
+        rejtett.media_metsz(almappak)
         for f in fajlok:
             if mediatipus.binaris_e(f):
                 p = Path(d) / f

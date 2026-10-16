@@ -130,7 +130,9 @@ class AllapotVaultonKivulTeszt(unittest.TestCase):
                 self.assertFalse(ut.startswith(os.path.abspath(vault) + os.sep), f"{kulcs}: {ut} a vaultban van")
 
     def test_t22_az_alapertelmezett_utak_a_valodi_configban(self):
-        cfg = config.load({"MOS_ROOT": str(REPO)})
+        # F3-DESIGN §2.4: a checkoutnak nincs alapértelmezett vaultja; a vizsgálathoz egy kifejezett (nem létező) vault kell,
+        # a telepítési réteg (`var/settings.toml`) nélkül (`MOS_SETTINGS=`), hogy a fejlesztő gépe ne szóljon bele
+        cfg = config.load({"MOS_ROOT": str(REPO), "MOS_SETTINGS": "", "MOS_VAULT": "/nincs/vault"})
         vault = os.path.abspath(cfg.path("vault"))
         for kulcs in ("video_jobs", "staging", "ytdlp_archivum", "video_eredeti", "binaris_naplo"):
             self.assertFalse(os.path.abspath(cfg.path(kulcs)).startswith(vault + os.sep), kulcs)

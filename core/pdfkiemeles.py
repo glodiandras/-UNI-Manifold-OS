@@ -24,6 +24,7 @@ import math
 import re
 import secrets
 
+from . import kiserok
 from .index.maszk import FM_RE
 from .utvonalak import HttpError
 from .vaultio import _H1_ELOTAG, Conflict, Invalid, NotFound, nfc, norm_path
@@ -50,10 +51,8 @@ def fajl_ut(pdf: str) -> str:
 
 
 def cimke(cfg, pdf: str) -> str | None:
-    """A tárgy-címke a PDF legfelső mappájának első betűjéből (`[pdf.tags]`, az egyetlen forrás), vagy None."""
-    terkep = {str(k): str(v) for k, v in (cfg.section("pdf").get("tags") or {}).items()} if cfg is not None else {}
-    elso = pdf.split("/", 1)[0] if "/" in pdf else ""
-    return terkep.get(elso[:1].upper()) if elso else None
+    """A tárgy-címke a PDF legfelső mappájának első betűjéből (`[pdf.tags]`, az egyetlen forrás: `kiserok.subject_of`), vagy None."""
+    return kiserok.subject_of(cfg, pdf)
 
 
 def h1(pdf: str) -> str:
@@ -64,7 +63,7 @@ def h1(pdf: str) -> str:
 
 def vaz(pdf: str, tag: str | None) -> str:
     """Az új kiemelés-fájl váza (frontmatter + H1); a `Source` a beszúrás után töltődik."""
-    tags = f"Tags:\n  - {tag}\n" if tag else "Tags:\n"
+    tags = f"Tags:\n  - {kiserok.yaml_cimke(tag)}\n" if tag else "Tags:\n"      # a címke a munkatér beállításából jön: nyersen nem írjuk
     return f"---\n{tags}Source:\nStatus:\nNN:\nCanvas:\n---\n\n# {h1(pdf)}\n"
 
 

@@ -5,7 +5,7 @@ legközelebbié (koszinusz, `Vektortar.jegyzet_hasonlosag`). A beágyazás már 
 modell, sem worker nem kell. Ha a jegyzetnek még nincs vektora, az `allapot` ezt mondja ki (`nincs_vektor`), és modell nem
 töltődik; ha a vektor a jegyzet egy korábbi változatáé, a válasz `elavult: true`.
 
-Kimarad: maga a jegyzet, a gépi kísérőjegyzetek (`ATTCHMNTS - …` mappa: a kártya, a kvíz, az összefoglaló — a forrásuk
+Kimarad: maga a jegyzet, a gépi kísérőjegyzetek (a `[vault] kisero_elotag` szerinti mappa: a kártya, a kvíz, az összefoglaló — a forrásuk
 másolatai volnának az élen), a törölt és a nem `.md` fájl. Találatonként a link-helyzet is (a C30b linkjavaslata a még nem
 linkelteket keresi): `kimeno` (a jegyzet már linkeli), `bejovo` (az linkeli ezt a jegyzetet). A link-feloldás az indexé (L42).
 
@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from ...automatika import KISERO_ELOTAG
+from ... import kiserok
 from ...vaultio import Invalid, NotFound
 
 MAX_CEL = 500
@@ -28,9 +28,9 @@ def _nfc(s: str) -> str:
     return unicodedata.normalize("NFC", s)
 
 
-def kisero(ut: str, elotag: str = KISERO_ELOTAG) -> bool:
+def kisero(ut: str, elotag: str = kiserok.ALAP_ELOTAG) -> bool:
     """Kísérőjegyzet-e (egy útvonal-eleme az `elotag`-gal kezdődik; a core a `[vault] kisero_elotag` értékét adja)."""
-    return any(r.startswith(elotag) for r in ut.split("/"))
+    return kiserok.kisero_ut(ut, elotag)
 
 
 def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | None]:
@@ -56,7 +56,7 @@ def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | Non
     return alap, pontok, elo, fid
 
 
-def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = KISERO_ELOTAG) -> dict:
+def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = kiserok.ALAP_ELOTAG) -> dict:
     alap, pontok, elo, fid = _alap(index_olvaso, tar, ut)
     if pontok is None:
         return {**alap, "talalatok": []}

@@ -120,15 +120,6 @@ class HorgonyNev(unittest.TestCase):
         self.assertEqual(FM.cim_of("T03/08 - Caesar.md"), "Caesar")
         self.assertEqual(FM.keszult(datetime(2026, 10, 5, 10, 15)), "2026-10-05 1015")
 
-    def test_kisero_nev_utkozes(self):
-        utak = ["A/Mértani sorozat.md", "B/Más.md"]
-        self.assertEqual(FM.kisero_nev("A/Mértani sorozat.md", utak), "Mértani sorozat — összefoglaló")
-        self.assertEqual(FM.kisero_ut("A/Mértani sorozat.md", utak), "ATTCHMNTS - summaries/Mértani sorozat — összefoglaló.md")
-        dupla = utak + ["C/Mértani sorozat.md"]
-        self.assertEqual(FM.kisero_nev("A/Mértani sorozat.md", dupla), "Mértani sorozat (A) — összefoglaló")
-        # a mappa-szint: a mappa útja `.md`-vel
-        self.assertEqual(FM.kisero_nev("T03/Elmélet.md", utak), "Elmélet — összefoglaló")
-
 
 if __name__ == "__main__":
     unittest.main()

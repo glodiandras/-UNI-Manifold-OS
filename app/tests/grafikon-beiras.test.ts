@@ -1,5 +1,6 @@
 // 80(a): a grafikon csak gombra készül — a ⌘P „Grafikonok beírása ebbe a jegyzetbe” parancs a `grafikon_beiras` (kézi) feladatot indítja.
 import { describe, expect, it, vi } from 'vitest';
+import { KARTYA_MAPPA } from '../src/kartya/allando';
 import { grafikonJegyzet, grafikonokBeirasa, grafikonParancsok } from '../src/szerkeszto/renderelok/plot/beiras';
 
 describe('grafikonok beírása (80(a))', () => {
@@ -24,7 +25,7 @@ describe('grafikonok beírása (80(a))', () => {
 
   it('a parancs csak tartalmi jegyzetnél érhető el', () => {
     expect(grafikonJegyzet('M10/a.md')).toBe(true);
-    expect(grafikonJegyzet('ATTCHMNTS - cards/x.md')).toBe(false);
+    expect(grafikonJegyzet(`${KARTYA_MAPPA}/x.md`)).toBe(false);
     expect(grafikonJegyzet('M10/.rejtett/x.md')).toBe(false);
     expect(grafikonJegyzet('M10/k.pdf')).toBe(false);
     let aktiv: { ut: string; mentes: () => Promise<void> } | null = null;

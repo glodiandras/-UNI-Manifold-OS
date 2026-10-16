@@ -10,9 +10,16 @@ az `os._exit` előtt a kör-zárat legfeljebb 15 s-ig várjuk, hogy egy futó á
 `[core] leallas_fokozas_mp` (20 s) múlva a még futó feladat azonnal leáll (A-javító, 2026-10-14). A kézfogás-sor előtt csak
 olcsó munka fut (D8): az indulási helyreállítás, az index és a forrásujjlenyomat a kézfogás után, háttérben.
 
-Egypéldányos zár (T027): a core a `{run}/core.lock`-ot (`fcntl.flock`, pid + vault-út) a teljes élettartamára
-fogja; ha foglalt, az első stdout-sor `{"foglalt": true, "pid": N, "vault": "…"}`, a kilépési kód 75 — a héj ebből
-tudja, hogy másik példány fut, és nem indít második ablakot.
+Egypéldányos zár (T027; F3-DESIGN §4): a core a teljes élettartamára fogja a `{run}/core.lock`-ot (`fcntl.flock`; tartalma
+`pid <pid> · <munkatér-azonosító | -> · <vault>`; termékben `<vault>/.manifold/var/run` alatt, így minden útírásra és két
+macOS-fióknak is ugyanaz az inode) és a vault-őrt (`{install_run}/vaults/<k>.lock`, `k = sha256(F_GETPATH(vault))[:32]`: a
+telepítés alatti állapotú, szinkronizált mappás munkatér is ugyanarra a vaultra fut össze), majd csak olvasva megpróbálja a
+`[hordozhato] idegen_zarak` zárait (más telepítések `core.lock`-ja, pl. a v2-checkouté). Ha bármelyik foglalt, a már
+fogottakat elengedi, az első stdout-sor `{"foglalt": true, "pid": N, "vault": "…"}`, a kilépési kód 75 — a héj ebből tudja,
+hogy másik példány fut, és nem indít második ablakot. Utána, termékben, a `workspace.nyit` (formátum, áthelyezés, másolat).
+Konfigurációs hibánál (`config.ConfigError`) az első sor `{"hiba": <kod>, "param": …, "uzenet": …}`, a kilépési kód 78 (nem
+traceback). A sikeres kézfogás a `port`, `pid`, `titok` mellett a `vault` (kanonikus út), `munkater_id` és `elrendezes` mezőt
+is hordozza: a héj a vault kötetének lecsatolását figyeli.
 
 Biztonság (a legacy mintája, L29): a `Host` csak helyi cím lehet; minden `/api/*` kérésben
 `X-Manifold: <API-titok>` (a core induláskor sorsolja, T071); a `/ws` `Origin`-je csak a saját origin lehet (vagy hiányzik), és a titkot
@@ -23,6 +30,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import hashlib
 import hmac
 import json
 import mimetypes
@@ -76,6 +84,7 @@ KENYSZER_MENTES_MP = 1.0           # K44: a második ⌘Q ágán a belső lemeze
 LEALLAS_FOKOZAS_MP = 20.0          # a stdin-zárás (rendezett leállás) után ennyi múlva a még futó feladat azonnal leáll
 INDULAS_VARAKOZAS_MP = 10.0        # a leállás legfeljebb ennyit vár a még futó indulási háttérmunkára (kör-zár, index)
 CORE_ZAR_KILEPES = 75              # EX_TEMPFAIL: másik core fut ugyanezen a vaulton (T027)
+KONFIG_HIBA_KILEPES = 78           # EX_CONFIG: a konfiguráció vagy a munkatér nem nyitható meg (`{"hiba": kod}` sor)
 
 
 HttpError = utvonalak.HttpError      # a kezelők kivétele; a regiszterben (utvonalak.py) él, itt a régi név marad
@@ -942,29 +951,204 @@ class Szerver(ThreadingHTTPServer):
             return self._fcond.wait_for(lambda: self._folyamatban == 0, timeout)
 
 
-def _core_zar(cfg: config.Config):
-    """Az egypéldányos zár (T027): a `{run}/core.lock` `fcntl.flock`-ja a core teljes élettartamára. → (fájl, None) vagy
-    (None, a zárat tartó core adatai). A fájl tartalma `pid <pid> · <vault-út>`."""
-    zar = cfg.path("run") / "core.lock"
-    zar.parent.mkdir(parents=True, exist_ok=True)
-    fh = open(zar, "a+")
+def vault_kanonikus(vault: Path) -> str | None:
+    """A vault kanonikus útja (`fcntl F_GETPATH` a mappa leíróján: valódi kis-nagybetű, feloldott symlink és `..`); None, ha a
+    mappa nem nyitható vagy a rendszer nem adja meg."""
+    try:
+        fd = os.open(vault, os.O_RDONLY)
+    except OSError:
+        return None
+    try:
+        nyers = fcntl.fcntl(fd, fcntl.F_GETPATH, bytes(1024)).split(b"\0", 1)[0]
+        return os.fsdecode(nyers) or None
+    except (OSError, AttributeError, ValueError):
+        return None
+    finally:
+        os.close(fd)
+
+
+def vault_kulcs(vault: Path) -> str:
+    """A vault-őr kulcsa (F3-DESIGN §4): `sha256(F_GETPATH(vault))[:32]` — ugyanaz minden útírásra; tartalék a mappa
+    `st_dev:st_ino`-ja, végül (nem létező mappa) a normalizált abszolút út."""
+    kanonikus = vault_kanonikus(vault)
+    if kanonikus:
+        alap = kanonikus
+    else:
+        try:
+            st = os.stat(vault)
+            alap = f"{st.st_dev}:{st.st_ino}"
+        except OSError:
+            alap = os.path.normpath(os.path.abspath(vault))
+    return hashlib.sha256(alap.encode("utf-8", "surrogateescape")).hexdigest()[:32]
+
+
+def vault_or_ut(cfg: config.Config) -> Path:
+    """A vault-őr zárfájlja: `{install_run}/vaults/<k>.lock` (gépenként, telepítésenként egy; a `visszaallitas` is vizsgálja)."""
+    return cfg.path("install_run") / "vaults" / f"{vault_kulcs(cfg.path('vault'))}.lock"
+
+
+def _zar_tartalom(cfg: config.Config) -> str:
+    return f"pid {os.getpid()} · {cfg.workspace_id or '-'} · {cfg.path('vault')}"
+
+
+def _zar_tulajdonos(tartalom: str) -> dict:
+    """A zárfájl tartalmából a `foglalt` kézfogás: `pid <pid> · <id | -> · <vault>` (F3), vagy a v2-alak `pid <pid> · <vault>`."""
+    pid_s, _, maradek = tartalom.strip().partition(" · ")
+    kozep, _, vault = maradek.partition(" · ")
+    if not (kozep == "-" or config.ID_MINTA.match(kozep)):
+        vault = maradek                                   # a v2-alak: a vault-út maga is tartalmazhat ` · `-t
+    try:
+        pid = int(pid_s.removeprefix("pid ").strip())
+    except ValueError:
+        pid = None
+    return {"foglalt": True, "pid": pid, "vault": vault or None}
+
+
+def _zar_fog(ut: Path, tartalom: str):
+    """Kizáró, nem váró `flock` egy zárfájlon. → (nyitott fájl, None), vagy (None, a zárat tartó core adatai)."""
+    ut.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(ut, "a+")
     try:
         fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         fh.seek(0)
-        tartalom = fh.read().strip()
+        szoveg = fh.read()
         fh.close()
-        pid_s, _, vault = tartalom.partition(" · ")
-        try:
-            pid = int(pid_s.removeprefix("pid ").strip())
-        except ValueError:
-            pid = None
-        return None, {"foglalt": True, "pid": pid, "vault": vault or None}
+        return None, _zar_tulajdonos(szoveg)
     fh.seek(0)
     fh.truncate()
-    fh.write(f"pid {os.getpid()} · {cfg.path('vault')}")
+    fh.write(tartalom)
     fh.flush()
     return fh, None
+
+
+def zar_foglalt(ut: Path) -> dict | None:
+    """Egy zárfájl vizsgálata CSAK OLVASVA (`O_RDONLY`, `LOCK_SH|LOCK_NB`, azonnal elengedve): a tartó core adatai, ha foglalt;
+    None, ha szabad vagy nem létezik. Idegen telepítés zárára (`idegen_zarak`) és a `visszaallitas`-ra: semmit nem hoz létre."""
+    try:
+        fd = os.open(ut, os.O_RDONLY)
+    except OSError:
+        return None
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            try:
+                szoveg = os.read(fd, 8192).decode("utf-8", "replace")
+            except OSError:
+                szoveg = ""
+            return _zar_tulajdonos(szoveg)
+        except OSError:
+            return None
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return None
+    finally:
+        os.close(fd)
+
+
+def _core_zar(cfg: config.Config):
+    """Az egypéldányos zár (T027): a `{run}/core.lock` a core teljes élettartamára. → (fájl, None) vagy (None, a zárat tartó
+    core adatai). Termékben a `{run}` a vault `.manifold/var`-ja alatt van: egy nem csatolt kötet helyére (`/Volumes/X`) nem
+    készül mappa (`vault_nem_elerheto`)."""
+    vault = cfg.path("vault")
+    if cfg.elrendezes == "termek" and not vault.is_dir():
+        raise config.ConfigError(f"a munkatér mappája nem érhető el: {vault}", kod="vault_nem_elerheto",
+                                 param={"vault": str(vault)})
+    return _zar_fog(cfg.path("run") / "core.lock", _zar_tartalom(cfg))
+
+
+def _vault_or(cfg: config.Config):
+    """A vault-őr (F3-DESIGN §4): telepítésenként egy core egy vaulton, az állapot helyétől (`{run}`) függetlenül."""
+    return _zar_fog(vault_or_ut(cfg), _zar_tartalom(cfg))
+
+
+def _idegen_zarak(cfg: config.Config, sajat: list[Path]) -> dict | None:
+    """A `[hordozhato] idegen_zarak` (más telepítések `core.lock`-jai) csak olvasva: az első foglalt tulajdonosa, vagy None.
+    A saját zárfájl (ha a lista véletlenül megnevezi) kimarad."""
+    for z in cfg.section("hordozhato").get("idegen_zarak") or []:
+        ut = Path(os.path.expanduser(str(z)))
+        if not ut.is_absolute():
+            print(f"[core] idegen_zarak: nem abszolút út, kihagyva: {z}", file=sys.stderr, flush=True)
+            continue
+        if any(_azonos_fajl(ut, s) for s in sajat):
+            continue
+        foglalt = zar_foglalt(ut)
+        if foglalt:
+            return foglalt
+    return None
+
+
+def _azonos_fajl(a: Path, b: Path) -> bool:
+    try:
+        return os.path.samefile(a, b)
+    except OSError:
+        return False
+
+
+def _zarak(cfg: config.Config):
+    """`core.lock` → vault-őr → idegen zárak (F3-DESIGN §4). → (a fogott zárfájlok, None), vagy ([], a tartó adatai): foglaltnál
+    a már fogottak elengedve. Konfigurációs hibánál (`ConfigError`) is elenged, és továbbdobja."""
+    fogott: list = []
+    try:
+        for fog in (_core_zar, _vault_or):
+            fh, foglalt = fog(cfg)
+            if fh is None:
+                _elenged(fogott)
+                return [], foglalt
+            fogott.append(fh)
+        foglalt = _idegen_zarak(cfg, [Path(fh.name) for fh in fogott])
+        if foglalt:
+            _elenged(fogott)
+            return [], foglalt
+    except BaseException:
+        _elenged(fogott)
+        raise
+    return fogott, None
+
+
+def _elenged(zarak: list) -> None:
+    for fh in reversed(zarak):
+        try:
+            fh.close()                  # a `flock` a fájl lezárásával szabadul
+        except OSError:
+            pass
+    zarak.clear()
+
+
+def _munkater_nyit(cfg: config.Config) -> tuple[config.Config, list[str]]:
+    """Termékben a `workspace.nyit` (formátum, áthelyezés, másolat; a zárak UTÁN és az `App()` helyreállítása ELŐTT, §3.4).
+    Ha a munkatér új azonosítót kapott (másolat), a konfiguráció a `workspace.ujratolt`-tal újratöltődik, és a gyökerek az új
+    feloldásra rögzülnek (a `python -m core start` rögzítése szerint). Hordozható elrendezésben nincs teendő."""
+    if cfg.elrendezes != "termek":
+        return cfg, []
+    from . import gyokerek, workspace       # lusta: a munkatér-modul csak termékben kell
+    uzenetek = [str(u) for u in (workspace.nyit(cfg) or [])]
+    uj = workspace.ujratolt(cfg, os.environ)
+    if uj is not None:
+        gyokerek.rogzit(uj, os.environ)
+        gyokerek.biztosit_mappak(uj)
+        os.environ.update(gyokerek.folyamat_env(uj))
+        cfg = uj
+    return cfg, uzenetek
+
+
+def _foglalt_kezfogas(out, foglalt: dict) -> int:
+    """A `foglalt` kézfogás-sor (T027, változatlan alak) és a 75-ös kilépési kód."""
+    out.write(json.dumps(foglalt) + "\n")
+    out.flush()
+    print(f"[core] másik core fut ugyanezen a vaulton (pid {foglalt['pid']}, {foglalt['vault']}): ez a példány kilép",
+          file=sys.stderr, flush=True)
+    return CORE_ZAR_KILEPES
+
+
+def _hiba_kezfogas(out, e: Exception) -> int:
+    """A konfigurációs hiba első stdout-sora (`{"hiba": kod, "param": …, "uzenet": …}`) és a 78-as kilépési kód."""
+    kod = getattr(e, "kod", None) or "konfig_hiba"
+    param = getattr(e, "param", None) or {}
+    out.write(json.dumps({"hiba": kod, "param": param, "uzenet": str(e)}, ensure_ascii=False, default=str) + "\n")
+    out.flush()
+    print(f"[core] a core nem indul ({kod}): {e}", file=sys.stderr, flush=True)
+    return KONFIG_HIBA_KILEPES
 
 
 def _csendben(fn, *a, **k):
@@ -979,26 +1163,40 @@ def _csendben(fn, *a, **k):
 def start(cfg: config.Config | None = None, stdin=None, out=None, start_delay: float | None = None,
           api_titok: str | None = None) -> int:
     """A core futása a stdin lezárulásáig. `stdin`/`out`: a tesztek csöve (alapból a folyamat saját). Egypéldányos
-    (T027): a `{run}/core.lock` foglaltnál az első stdout-sor a `foglalt` kézfogás, a kilépési kód 75. `api_titok`: a
-    `python -m core start` a `MOS_API_TITOK`-ot kiveszi a környezetből (a gyermekfolyamatok ne örököljék), és így adja át."""
-    cfg = cfg or config.load()
+    (T027, F3-DESIGN §4): foglalt `core.lock`, vault-őr vagy idegen zár esetén az első stdout-sor a `foglalt` kézfogás, a
+    kilépési kód 75; konfigurációs hibánál a `{"hiba": kod}` sor, 78. `api_titok`: a `python -m core start` a
+    `MOS_API_TITOK`-ot kiveszi a környezetből (a gyermekfolyamatok ne örököljék), és így adja át."""
     out = out or sys.stdout
-    zar, foglalt = _core_zar(cfg)
-    if zar is None:
-        out.write(json.dumps(foglalt) + "\n")
-        out.flush()
-        print(f"[core] másik core fut ugyanezen a vaulton (pid {foglalt['pid']}, {foglalt['vault']}): ez a példány kilép",
-              file=sys.stderr, flush=True)
-        return CORE_ZAR_KILEPES
+    zarak: list = []
+    try:
+        cfg = cfg or config.load()
+        zarak, foglalt = _zarak(cfg)
+        if foglalt:
+            return _foglalt_kezfogas(out, foglalt)
+        regi_run = cfg.path("run")
+        cfg, uzenetek = _munkater_nyit(cfg)
+        if cfg.path("run") != regi_run:      # az új azonosító más állapot-helyet adott (regiszter): ott is egy core
+            fh, foglalt = _core_zar(cfg)
+            if fh is None:
+                _elenged(zarak)
+                return _foglalt_kezfogas(out, foglalt)
+            zarak.append(fh)
+    except Exception as e:  # noqa: BLE001 — csak a `kod`-ot hordozó (konfigurációs, munkatér-) hiba sora; a többi traceback
+        _elenged(zarak)
+        if not isinstance(e, config.ConfigError) and not isinstance(getattr(e, "kod", None), str):
+            raise
+        return _hiba_kezfogas(out, e)
     try:
         corenaplo.indit(cfg)    # C29.7b (T031): forgatott core.log + faulthandler — csak a core.lock birtokosa, fő szálon
-        return _fut(cfg, stdin or sys.stdin.buffer, out, start_delay, api_titok)
+        return _fut(cfg, stdin or sys.stdin.buffer, out, start_delay, api_titok, uzenetek=uzenetek)
     finally:
-        zar.close()             # a `flock` a fájl lezárásával szabadul
+        _elenged(zarak)
 
 
-def _fut(cfg: config.Config, stdin, out, start_delay: float | None, api_titok: str | None = None) -> int:
+def _fut(cfg: config.Config, stdin, out, start_delay: float | None, api_titok: str | None = None,
+         uzenetek: list[str] | None = None) -> int:
     app = App(cfg, start_delay=start_delay, api_titok=api_titok)
+    app.indulasi_uzenetek += list(uzenetek or [])     # a `workspace.nyit` üzenetei (áthelyezés, másolat): az első `hello` viszi
     # a `MOS_CORE_PORT` felülírja a konfigot: a héj a core újraindításakor a régi porton indítja (a lap origin-je marad, C29.7b)
     httpd = Szerver(("127.0.0.1", int(os.environ.get("MOS_CORE_PORT") or cfg.section("core").get("port", 0))), _handler(app))
     app.port = httpd.server_address[1]
@@ -1122,7 +1320,10 @@ def _fut(cfg: config.Config, stdin, out, start_delay: float | None, api_titok: s
 
     if threading.current_thread() is threading.main_thread():  # a tesztek szálon indítják: ott nincs jelkezelő
         signal.signal(signal.SIGTERM, sigterm)      # a kézfogás ELŐTT: a héj a kézfogás után bármikor küldhet SIGTERM-et
-    out.write(json.dumps({"port": app.port, "pid": os.getpid(), "titok": app.api_titok}) + "\n")
+    # F3-DESIGN §2.6: a kézfogás additív mezői — a héj a vault kötetének lecsatolását figyeli (nem a kódfáét)
+    out.write(json.dumps({"port": app.port, "pid": os.getpid(), "titok": app.api_titok,
+                          "vault": vault_kanonikus(cfg.path("vault")) or str(cfg.path("vault")),
+                          "munkater_id": cfg.workspace_id, "elrendezes": cfg.elrendezes}, ensure_ascii=False) + "\n")
     out.flush()
     app.indulasi_hatter()       # az ideiglenes fájlok takarítása; a futó mag ujjlenyomata (CX-001)
     threading.Thread(target=figyel, daemon=True).start()

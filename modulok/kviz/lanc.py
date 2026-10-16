@@ -25,6 +25,8 @@ import shutil
 import time
 from datetime import datetime
 
+from core import kiserok
+
 from . import formatum as FM
 from . import generalas as G
 from .promptok import PROMPT_VERZIO
@@ -168,7 +170,7 @@ def korabbi_kvizek(cfg, ut: str) -> tuple[list[str], set[str]]:
 
 
 def mappa_nev(cfg) -> str:
-    return FM.nfc(cfg.section("kviz").get("mappa", FM.ALAP_MAPPA)).strip("/")
+    return kiserok.kisero_mappa(cfg, "kviz")
 
 
 def futtat(cfg, ut: str, *, gepi, worker, proba: bool = False, modell: str | None = None, n: int | None = None,

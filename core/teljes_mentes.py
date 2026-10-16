@@ -16,6 +16,13 @@ a `config/letoltes.toml` rögzített revízióival), a `var/venv` (`bin/mos runt
 (alapból a videólánc staging-ja és az `archive/`). Soha nem kerül bele (átmeneti): a `{tmp}`, `{cache}`, `{run}`,
 `{runs}` (az élő naplók is) — a `{os}` alatt bármely mélységben (egy beágyazott `…/var/tmp` is) —, és a gyökér rejtett
 mappái (`.claude/`: a párhuzamos munkafák saját `var/`-ral és APFS-klónokkal; a `.git` a kódtár-bundle-ben megy).
+
+Termék-elrendezésben (`cfg.elrendezes == "termek"`, F3-DESIGN §5) a `{os}` (a csomag) nincs a mentésben — újratelepíthető —,
+a `{var}` a vaulttal együtt kerül be (a `.manifold/var/{tmp,run,runs,cache,index}` bárhol kimarad), a konfiguráció a
+`settings.toml` és a `workspace.toml` másolata (az `aktiv-os.toml` helyett), a változatok pedig munkaterenként külön
+mappába kerülnek: `<cél>/Manifold Backups/<munkater_id>/Manifold-<idő>/` (a ritkítás is munkaterenként). A külön kötet
+szabálya a vault és a `{var}` kötetéhez mér (`adat_kotet`), nem a kódfáéhez. A jegyzék `munkater_id` és `elrendezes`
+mezőt kap. A termék visszaállítása (kulcsok szerinti, a `workspace.nyit`-tal) az F8 dolga.
 """
 from __future__ import annotations
 import argparse
@@ -33,7 +40,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from . import config, frame, mediatipus, snapshot, tartos, vaultkivul
+from . import config, frame, kiserok, mediatipus, snapshot, tartos, vaultkivul
 from .utvonalak import HttpError  # noqa: F401 — az útvonal-modulok közös importja
 
 ALLAPOT = 'teljes-mentes.json'
@@ -62,6 +69,8 @@ VALTOZAT_MINTA = re.compile(r'^Manifold-\d{8}-\d{6}-\d{6}$')
 RESZ_MINTA = re.compile(r'^Manifold-\d{8}-\d{6}-\d{6}\.resz$')
 KESZ = 'kesz'
 CEL_ZAR = '.manifold-teljes-mentes.lock'
+TERMEK_MAPPA = 'Manifold Backups'      # termék-elrendezésben: a cél alatt munkaterenként egy almappa (`<cél>/Manifold Backups/<id>/`)
+VAR_ATMENETI = ('tmp', 'run', 'runs', 'cache', 'index')    # a `{var}` alatt soha nem kerül a mentésbe, akárhol is él a `{var}`
 
 
 class MentesHiba(ValueError):
@@ -80,9 +89,40 @@ def _json(p, d):
     tartos.atomi_ir(p, json.dumps(d, ensure_ascii=False, indent=2).encode())
 
 
+def _letezo(p):
+    try:
+        return Path(p).resolve(strict=True) if p is not None else None
+    except (OSError, RuntimeError):
+        return None
+
+
+def _kotet(p) -> int | None:
+    """Egy út kötet-azonosítója (`st_dev`); a tesztek ezt cserélik, ha külön kötetet kell hamisítani."""
+    try:
+        return Path(p).stat().st_dev
+    except OSError:
+        return None
+
+
+def adat_kotet(cfg) -> set[int]:
+    """A mentendő adat kötetei: a vaulté és a `{var}`-é (ha az a vaulton kívül van). A külső mentés célja csak ezektől különbözhet
+    (F3-DESIGN §5); a kódfa (`cfg.root`) kötete nem számít: a termékben csak olvasható, a hordozható `{var}` az övé alatt él."""
+    vault, var = _letezo(cfg.utak.get('vault')), _letezo(cfg.utak.get('var'))
+    utak = [vault] if vault is not None else []
+    if var is not None and not (vault is not None and (var == vault or vault in var.parents)):
+        utak.append(var)
+    return {d for d in (_kotet(p) for p in utak) if d is not None}
+
+
+def kulso_kotet(cfg, cel) -> bool:
+    """A `cel` az adat köteteitől különböző, ismert kötet-e. Ha az adat kötete nem állapítható meg, nem külső (zárva hibázás)."""
+    kotet, adat = _kotet(cel), adat_kotet(cfg)
+    return kotet is not None and bool(adat) and kotet not in adat
+
+
 def forrasok(cfg):
     kihagyott = list(_kihagyott_utak(cfg).values())
-    gyokerek = {'os': cfg.root.resolve()}
+    gyokerek = {} if cfg.elrendezes == 'termek' else {'os': cfg.root.resolve()}    # a termék csomagja újratelepíthető
     for kulcs in sorted((k for k in EXTRAK if k in cfg.utak), key=lambda k: len(cfg.path(k).resolve().parts)):
         p = cfg.path(kulcs).resolve()
         if p.exists() and not any(p == v or v in p.parents for v in gyokerek.values()) and not _alatta(p, kihagyott):
@@ -97,27 +137,37 @@ def kihagyott_kulcsok(cfg) -> dict[str, str]:
     for k in cfg.section('teljes_mentes').get('kihagy', []) or []:
         if k in cfg.utak and k not in ki:
             ki[k] = KIHAGY_MAGYARAZAT.get(k, f'nincs a mentésben ([teljes_mentes] kihagy: {k})').replace(
-                '{video_mappa}', str(cfg.section('video').get('vault_mappa') or 'ATTCHMNTS - Videos'))
+                '{video_mappa}', kiserok.kisero_mappa(cfg, 'video'))
     return ki
 
 
 def _kihagyott_utak(cfg):
-    return {k: cfg.path(k).resolve() for k in (*kihagyott_kulcsok(cfg), *ATMENETI) if k in cfg.utak}
+    ki = {k: cfg.path(k).resolve() for k in (*kihagyott_kulcsok(cfg), *ATMENETI) if k in cfg.utak}
+    if 'var' in cfg.utak:                               # a `{var}` átmeneti almappái akkor is, ha a kulcsuk máshová mutat
+        for n in VAR_ATMENETI:                          # (termékben a `cache` a `{install}` alatt van, a `{var}/cache` mégis a vaulttal jönne)
+            ki.setdefault(f'var/{n}', (cfg.path('var') / n).resolve())
+    return ki
 
 
-def _kizart_mintak(cfg) -> tuple[tuple[str, ...], ...]:
-    """A kihagyott utak `{os}`-hoz mért részsorozatai (pl. `var/tmp`, `var/runs`, `modulok/ytdlp/staging`): a `{os}` alatt
-    BÁRMELY mélységben kizárnak (egy beágyazott munkafa vagy másolat `…/var/tmp`-je is). Csak a legalább kéttagú minta
+def _kizart_mintak(cfg, gyokerek=None) -> dict[str, tuple[tuple[str, ...], ...]]:
+    """Gyökerenként a kihagyott utak az adott gyökérhez mért részsorozatai (pl. `var/tmp`, `var/runs`,
+    `modulok/ytdlp/staging`; termékben `.manifold/var/tmp`): a gyökér alatt BÁRMELY mélységben kizárnak (egy beágyazott munkafa
+    vagy másolat `…/var/tmp`-je, egy beágyazott vault `.manifold/var/tmp/proba/` klónja is). Csak a legalább kéttagú minta
     számít — egy egytagú név (`runtime`, `archive`) a gyökéren kívül egy ártatlan almappát is elvinne."""
-    gyoker, ki = cfg.root.resolve(), set()
-    for p in _kihagyott_utak(cfg).values():
-        try:
-            reszek = p.relative_to(gyoker).parts
-        except ValueError:
-            continue
-        if len(reszek) >= 2:
-            ki.add(reszek)
-    return tuple(sorted(ki))
+    gyokerek = forrasok(cfg) if gyokerek is None else gyokerek
+    kihagyott = list(_kihagyott_utak(cfg).values())
+    ki = {}
+    for kulcs, gyoker in gyokerek.items():
+        minta = set()
+        for p in kihagyott:
+            try:
+                reszek = p.relative_to(gyoker).parts
+            except ValueError:
+                continue
+            if len(reszek) >= 2:
+                minta.add(reszek)
+        ki[kulcs] = tuple(sorted(minta))
+    return ki
 
 
 def _alatta(p, gyokerek):
@@ -132,14 +182,16 @@ def _benne(reszek, minta) -> bool:
 def _kizar(rel, *, rendszer=False, mappa=False, mintak=()):
     """A `{os}` (rendszer) fájának kizárásai: a rendszer-nevek, a gyökér rejtett mappái (`.claude/`: a párhuzamos munkafák
     saját `var/`-ral és APFS-klónokkal, amelyek a külső kötetre valódi másolatként kerülnének), és a kihagyott utak
-    mintái bármely mélységben."""
+    mintái bármely mélységben. A kihagyott utak mintái (`mintak`) minden gyökérre érvényesek (termékben a vault a gyökér), a
+    rendszer-nevek és a rejtett mappák csak a `{os}` fájára."""
+    reszek = rel.parts
+    if any(_benne(reszek, m) for m in mintak):
+        return True
     if not rendszer:
         return False
-    reszek = rel.parts
     return (any(s in ('.git', 'node_modules', '__pycache__', '.DS_Store') for s in reszek)
             or rel.name.endswith('.pyc')
-            or (mappa and len(reszek) == 1 and rel.name.startswith('.'))
-            or any(_benne(reszek, m) for m in mintak))
+            or (mappa and len(reszek) == 1 and rel.name.startswith('.')))
 
 
 def _sqlite(p):
@@ -206,12 +258,25 @@ def kesz_valtozatok(cel: Path) -> list[Path]:
                   and (p / KESZ).is_file())
 
 
+def _termek_valtozatok(cel: Path) -> list[Path]:
+    """A termék-elrendezés mentései (`<cél>/Manifold Backups/<id>/`): ha a célban egyetlen munkatérnek van kész változata, az övé;
+    több munkatérnél a hívó a munkatér mappáját adja meg (a másikét nem találgatjuk)."""
+    gyoker = cel / TERMEK_MAPPA
+    if not gyoker.is_dir() or gyoker.is_symlink():
+        return []
+    mappak = [m for m in sorted(gyoker.iterdir()) if m.is_dir() and not m.is_symlink() and kesz_valtozatok(m)]
+    if len(mappak) > 1:
+        raise MentesHiba('A célban több munkatér mentése van; add meg a munkatér mappáját: '
+                         + ', '.join(m.name for m in mappak))
+    return kesz_valtozatok(mappak[0]) if mappak else []
+
+
 def _valtozat(ut: Path) -> Path:
-    """Egy változat útja; ha a célmappát kapjuk, a legutóbbi kész változat."""
+    """Egy változat útja; ha a célmappát (vagy termékben a munkatér mappáját) kapjuk, a legutóbbi kész változat."""
     ut = Path(ut).expanduser().resolve()
     if (ut / 'jegyzek.json').is_file() or ut.name.endswith('.resz'):
         return ut
-    lista = kesz_valtozatok(ut)
+    lista = kesz_valtozatok(ut) or _termek_valtozatok(ut)
     if not lista:
         raise MentesHiba('A célmappában nincs kész teljes mentés.')
     return lista[-1]
@@ -334,21 +399,27 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
         raise MentesHiba('A cél egy létező, csatlakoztatott mappa legyen.')
     if any(cel == p or p in cel.parents or vaultkivul.vaultban_van(cel, p) for p in gyokerek.values() if Path(p).exists()):
         raise MentesHiba('A mentés célja nem lehet a mentendő rendszerben vagy vaultban.')
-    kulso = cel.stat().st_dev != cfg.root.stat().st_dev
+    kulso = kulso_kotet(cfg, cel)
     if not kulso and not proba:
         raise MentesHiba('A teljes mentéshez külön kötet kell. Helyreállítási próbához használd a --proba kapcsolót.')
+    termek = cfg.elrendezes == 'termek'
+    munkater_id = cfg.workspace_id
+    if termek and not (munkater_id and config.ID_MINTA.match(munkater_id)):
+        raise MentesHiba('A mentéshez munkatér kell (a termék-elrendezésben a változatok munkaterenként külön mappába kerülnek).')
+    tarolo = cel / TERMEK_MAPPA / munkater_id if termek else cel     # ide kerülnek a változatok (a zár, a ritkítás is itt)
     beall = cfg.section('teljes_mentes')
     megtartott = int(beall.get('megtartott', 10))
     kihagyott_k = _kihagyott_utak(cfg)
     kihagyott = set(kihagyott_k.values())
     kihagyott_m = kihagyott_kulcsok(cfg)
-    mintak = _kizart_mintak(cfg)
+    mintak = _kizart_mintak(cfg, gyokerek)
     allapot_gyoker = cfg.path('state').resolve() if 'state' in cfg.utak else None
-    with _cel_zar(cel):
-        _takarit_reszeket(cel, log)
-        elozo, elozo_elemek = _elozo(cel)
+    tarolo.mkdir(parents=True, exist_ok=True)
+    with _cel_zar(tarolo):
+        _takarit_reszeket(tarolo, log)
+        elozo, elozo_elemek = _elozo(tarolo)
         nev = 'Manifold-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f')
-        resz, kesz = cel / (nev + '.resz'), cel / nev
+        resz, kesz = tarolo / (nev + '.resz'), tarolo / nev
         resz.mkdir()
         iro = _Iro(resz, elozo, elozo_elemek)
         elemek, halasztott, utak, kodtar = [], [], {}, None
@@ -373,7 +444,7 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
                 if forras.is_dir():
                     (resz / alap).mkdir(parents=True)
                     elemek.append({'ut': alap.as_posix(), 'tipus': 'mappa'})
-                for p, rel in _fajlok(forras, rendszer=kulcs == 'os', kihagyott=kihagyott, mintak=mintak):
+                for p, rel in _fajlok(forras, rendszer=kulcs == 'os', kihagyott=kihagyott, mintak=mintak.get(kulcs, ())):
                     rp = alap if str(rel) == '.' else alap / rel
                     if p.is_symlink():
                         elemek.append(link_elem(p, rp))
@@ -396,7 +467,7 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
                         utak[kulcs] = (Path('adat') / k / p.relative_to(g)).as_posix()
                         break
             # A forráskód története hordozható bundle; a munkafa nem commitolt forrásai fent már szerepelnek.
-            if (cfg.root / '.git').exists():
+            if not termek and (cfg.root / '.git').exists():     # a termék csomagja újratelepíthető: nincs kódtár-bundle
                 bundle = resz / 'kodtar.bundle'
                 h = subprocess.run(['git', '-C', str(cfg.root), 'bundle', 'create', str(bundle), '--all'],
                                    capture_output=True, text=True, env=snapshot.hermetikus_env())
@@ -406,11 +477,20 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
                 h = subprocess.run(['git', '-C', str(cfg.root), 'rev-parse', 'HEAD'], capture_output=True, text=True,
                                    check=True, env=snapshot.hermetikus_env())
                 kodtar = {'head': h.stdout.strip()}
-            # A ténylegesen használt konfiguráció (MOS_CONFIG esetén is) legyen a visszaállítás alapja.
-            if cfg.source:
-                ki = resz / 'aktiv-os.toml'
-                shutil.copy2(cfg.source, ki)
-                elemek.append({'ut': ki.name, 'tipus': 'fajl', 'meret': ki.stat().st_size, 'sha256': sha(ki), 'mod': 0o600})
+            # A ténylegesen használt konfiguráció (MOS_CONFIG esetén is) legyen a visszaállítás alapja. Termékben a csomag
+            # `os.toml`-ja újratelepíthető; a felhasználó konfigurációja a telepítési és a munkatér-réteg másolata.
+            if termek:
+                meta = cfg.data.get('_meta') or {}
+                munkater_toml = cfg.utak['workspace'] / 'workspace.toml' if 'workspace' in cfg.utak else None
+                masolandok = [('settings.toml', Path(meta['settings']) if meta.get('settings') else None),
+                              ('workspace.toml', munkater_toml)]
+            else:
+                masolandok = [('aktiv-os.toml', Path(cfg.source) if cfg.source else None)]
+            for nev_, forras_ in masolandok:
+                if forras_ is not None and forras_.is_file() and not forras_.is_symlink():
+                    ki = resz / nev_
+                    shutil.copy2(forras_, ki)
+                    elemek.append({'ut': ki.name, 'tipus': 'fajl', 'meret': ki.stat().st_size, 'sha256': sha(ki), 'mod': 0o600})
         # 2. A média és a nagy fájlok a zár nélkül (a média szinte csak bővül); a változás közbeni másolás hiba.
         log(f'{len(halasztott)} nagy vagy médiafájl a kör-zár nélkül…')
         for i, (p, rp) in enumerate(halasztott, 1):
@@ -418,7 +498,7 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
             if i % 200 == 0:
                 log(f'{i}/{len(halasztott)} nagy fájl…')
         jegyzek = {'verzio': FORMATUM, 'ido': datetime.now().astimezone().isoformat(), 'proba': bool(proba),
-                   'kulso_kotet': kulso, 'gyokerek': list(gyokerek),
+                   'kulso_kotet': kulso, 'munkater_id': munkater_id, 'elrendezes': cfg.elrendezes, 'gyokerek': list(gyokerek),
                    'eredeti_gyokerek': {k: str(v) for k, v in gyokerek.items()}, 'kodtar': kodtar, 'utak': utak,
                    'elozo': elozo.name if elozo else None,
                    'kihagyva': [{'kulcs': k, 'eredeti_ut': str(kihagyott_k[k]), 'visszaallitas': m}
@@ -430,8 +510,8 @@ def ment(cfg, cel: Path, *, proba=False, log=print):
         ellenoriz(resz, reszleges=True, csak_meret=iro.linkelt)
         tartos.atomi_ir(resz / KESZ, jegyzek['ido'].encode())      # a jelölő az utolsó írás
         tartos.rename_excl(resz, kesz)
-        torolt = _ritkit(cel, megtartott, {kesz}, log)
-    r = {'ut': str(kesz), 'cel': str(cel), 'ido': jegyzek['ido'], 'ellenorzott': True, 'kulso': kulso and not proba,
+        torolt = _ritkit(tarolo, megtartott, {kesz}, log)
+    r = {'ut': str(kesz), 'cel': str(cel), 'mappa': str(tarolo), 'ido': jegyzek['ido'], 'ellenorzott': True, 'kulso': kulso and not proba,
          'proba': bool(proba), 'elemek': len(elemek), 'bajt': sum(e.get('meret', 0) for e in elemek),
          'linkelt': len(iro.linkelt), 'masolt': iro.masolt, 'torolt_valtozatok': torolt,
          'kihagyva': [k['kulcs'] for k in jegyzek['kihagyva']]}
@@ -612,8 +692,8 @@ class LemezFigyelo:
             return False
         ut = Path(cel).expanduser()
         try:
-            if not ut.is_dir() or ut.stat().st_dev == self.cfg.root.stat().st_dev:
-                return False                     # a kötet nincs csatlakoztatva (vagy a cél nem külön kötet)
+            if not ut.is_dir() or not kulso_kotet(self.cfg, ut):
+                return False                     # a kötet nincs csatlakoztatva (vagy a cél nem külön kötet: nem a vaulté és a `{var}`-é)
         except OSError:
             return False
         a = allapot(self.cfg)

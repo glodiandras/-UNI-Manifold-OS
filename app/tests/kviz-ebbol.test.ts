@@ -6,6 +6,8 @@ import { Felulet } from '../src/lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../src/lib/ertesites/ertesites.svelte';
 import { szerkesztok, type SzerkesztoPeldany } from '../src/szerkeszto/szerkesztok.svelte';
 import { kvizEbbol, kvizTelepit } from '../src/kviz';
+import { KARTYA_MAPPA } from '../src/kartya/allando';
+import { KVIZ_MAPPA } from '../src/kviz/allando';
 import { HELYORZOK } from '../src/vezerlo/helyorzok';
 
 function peldany(ut: string, sorrend: string[]): SzerkesztoPeldany {
@@ -35,7 +37,7 @@ describe('Kvíz ebből', () => {
   });
 
   it('kvíz- és kártyajegyzetből nem indul', async () => {
-    for (const ut of ['ATTCHMNTS - quizes/X — Kvíz 2026-10-08 1200.md', 'ATTCHMNTS - cards/X — kártyák.md']) {
+    for (const ut of [`${KVIZ_MAPPA}/X — Kvíz 2026-10-08 1200.md`, `${KARTYA_MAPPA}/X — kártyák.md`]) {
       const sorrend: string[] = [];
       szerkesztok.aktiv = peldany(ut, sorrend);
       await kvizEbbol(alApi(sorrend));
