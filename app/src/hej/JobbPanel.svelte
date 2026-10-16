@@ -4,6 +4,7 @@
   (`lib/vault/kapcsolatok.svelte.ts`); a feloldás nem itt történik (L42).
 -->
 <script lang="ts">
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
   import { t } from '../lib/i18n';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -66,7 +67,7 @@
   onMount(() => k.figyel(kapcsolat, () => (lathato ? (felulet.munkaterulet.aktivFul?.ut ?? null) : undefined)));
 
   // a higiénia csak látható panelnél és bekapcsolt Asszisztensnél tölt; gépelés közben nem (a változásra 1,5 s csend után frissül)
-  const higieniaUt = () => (lathato && vezerloKapcsolok.ertek.asszisztens ? (felulet.munkaterulet.aktivFul?.ut ?? null) : null);
+  const higieniaUt = () => (lathato && modulEngedelyezett('asszisztens') && vezerloKapcsolok.ertek.asszisztens ? (felulet.munkaterulet.aktivFul?.ut ?? null) : null);
   $effect(() => {
     const ut = higieniaUt();
     untrack(() => void higienia.frissit(ut));
@@ -171,6 +172,7 @@
       <p class="ures">{t('Nincs megnyitott fájl.')}</p>
     {:else}
       {#if k.hiba}<p class="hiba" role="alert">{k.hiba}</p>{/if}
+      {#if modulEngedelyezett('hivatkozasok')}
       <Szakasz cim={t('Visszahivatkozások') + (darabVissza ? ` (${darabVissza})` : '')} ikon={Link2} bind:nyitva={felulet.jobbPanel.visszahivatkozasok}>
         <Visszahivatkozasok forrasok={k.visszahivatkozasok} onnyit={nyit} />
       </Szakasz>
@@ -180,13 +182,16 @@
       <Szakasz cim={t('Kimenő linkek')} ikon={ArrowRight} bind:nyitva={felulet.jobbPanel.kimeno}>
         <KimenoLinkek linkek={k.kimeno} info={(u) => fajlok.info(u)} onnyit={kimenoNyit} onletrehoz={letrehoz} />
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('vazlat')}
       <Szakasz cim={t('Vázlat')} ikon={ListTree} bind:nyitva={felulet.jobbPanel.vazlat}>
         <Vazlat />
       </Szakasz>
+      {/if}
       <Szakasz cim={t('Előzmények')} ikon={FileClock} bind:nyitva={felulet.jobbPanel.elozmenyek}>
         <Elozmenyek ut={ful.ut} nyitva={felulet.jobbPanel.elozmenyek && lathato} />
       </Szakasz>
-      {#if vezerloKapcsolok.ertek.asszisztens}
+      {#if modulEngedelyezett('asszisztens') && vezerloKapcsolok.ertek.asszisztens}
         <Szakasz cim={t('Higiénia') + (higieniaTetelek.length ? ` (${higieniaTetelek.length})` : '')} ikon={ListChecks} bind:nyitva={felulet.jobbPanel.higienia}>
           <Higienia tetelek={higieniaTetelek} hiba={higienia.hiba} onnyit={higieniaNyit} />
         </Szakasz>

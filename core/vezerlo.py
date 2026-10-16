@@ -42,11 +42,15 @@ def kapcsolok(cfg: Config) -> dict[str, bool]:
     try:
         d = json.loads(_kapcsolo_ut(cfg).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return ki
+        d = {}
     if isinstance(d, dict):
         for k in ki:
             if isinstance(d.get(k), bool):
                 ki[k] = d[k]
+    for k in ki:
+        if cfg.forras("beallitasok", "adatvedelem", k) != "os":
+            ki[k] = bool(cfg.section("beallitasok", "adatvedelem").get(k, ki[k]))
+        ki[k] = ki[k] and cfg.section("modulok").get(k, True) is not False
     return ki
 
 
@@ -59,6 +63,11 @@ def kapcsolo_ir(cfg: Config, uj: dict) -> dict[str, bool]:
             raise ValueError(f"ismeretlen kapcsoló: {k}")
         if not isinstance(v, bool):
             raise ValueError(f"a(z) {k} kapcsoló értéke igaz vagy hamis lehet")
+    if any(cfg.forras("beallitasok", "adatvedelem", k) != "os" for k in uj):
+        from . import termek_beallitasok
+        v = termek_beallitasok.olvas(cfg)
+        termek_beallitasok.ir(cfg, v["rev"], {"adatvedelem": uj})
+        return kapcsolok(cfg)
     with _zar:
         ki = {**kapcsolok(cfg), **uj}
         cel = _kapcsolo_ut(cfg)
@@ -77,7 +86,8 @@ def admit_lanc(cfg: Config, kapu):
     feladatsort; az egyetlen automatikus feladat, a vektorindex, a saját `[kereses.hibrid] vektor` kulcsán fut. A kapu (D8, aktív
     használat, memóriaőr) minden feladatra változatlan."""
     def admit(t) -> bool:
-        return kapu.admit(t)
+        from . import modulkapu
+        return modulkapu.engedett(cfg, modulkapu.feladat_modul(t.id)) and kapu.admit(t)
     return admit
 
 

@@ -9,6 +9,7 @@ import { domCel } from '../linkek/elonezet';
 import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
 import type { LinkAdat } from '../linkek/adat';
 import { beagyazasElem } from './rajzol';
+import { beallitasok } from '../../lib/beallitasok/allapot.svelte';
 
 /** A fájlszerkezet változott: a Live Preview blokkdíszítései újraszámolódnak. */
 export const linkVerzioValt = StateEffect.define<number>();
@@ -17,6 +18,7 @@ const SAJAT_VEZERLO = 'a, button, video, audio, iframe, input, select, textarea,
 
 export class BeagyazasWidget extends WidgetType {
   private megszakito: AbortController | null = null;
+  private readonly modulok = JSON.stringify(beallitasok.ertek.modulok);
 
   constructor(
     readonly link: LinkAdat,
@@ -32,6 +34,7 @@ export class BeagyazasWidget extends WidgetType {
       m.blokk === this.blokk &&
       m.forras === this.forras &&
       m.verzio === this.verzio &&
+      m.modulok === this.modulok &&
       m.link.cel === this.link.cel &&
       m.link.alcel === this.link.alcel &&
       m.link.alias === this.link.alias

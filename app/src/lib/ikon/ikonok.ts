@@ -55,6 +55,7 @@ export {
   Plus,
   Rows2,
   Search,
+  Settings,
   Sun,
   Table2,
   X,

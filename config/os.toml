@@ -1051,3 +1051,87 @@ munka_max_fajl = 256
 mintavetel_ms = 20
 formazas = "{BasedOnStyle: LLVM, IndentWidth: 4, ColumnLimit: 100, AllowShortFunctionsOnASingleLine: Inline}"
 sablon = "C++ feladat"                # ha a sablonmappában van ilyen nevű .md, az a feladat-jegyzet váza (a beépített helyett)
+
+# F5: product controls. Workspace preferences travel with the notes; pinned roots never change in a session.
+[beallitasok.altalanos]
+nyelv = "auto"
+inditas = "utolso"
+[beallitasok.szerkeszto]
+mod = "elo"
+olvashato_szelesseg = true
+helyesiras = true
+tab_meret = 2
+perjel = true
+[beallitasok.fajlok]
+uj_mappa = ""
+csatolmany_mappa = ""
+sablon_mappa = "_Template"
+napi_ut = "[Daily]/YYYY-MM-DD"
+link_formatum = "rovid"
+[beallitasok.megjelenes]
+tema = "rendszer"
+betumeret = 16
+csend = false
+[beallitasok.adatvedelem]
+asszisztens = true
+tracker = true
+ertesitesek = true
+naptar = false
+[beallitasok.billentyuk]
+[beallitasok.setup]
+kesz = false
+elmeny = "egyeni"
+[modulok]
+hivatkozasok = true
+vazlat = true
+tulajdonsagok = true
+gyorsvalto = true
+kereses = true
+perjel = true
+cimkek = true
+sablonok = true
+napi = true
+canvas = true
+bazis = true
+graf = true
+pdf = true
+media = true
+kartya = true
+kviz = true
+osszefoglalas = true
+matek = true
+kod = true
+fuzet = true
+video = true
+kerdezz = true
+asszisztens = true
+naptar = true
+felkeszultseg = true
+tracker = true
+[beallitasok.modulok]
+hivatkozasok = true
+vazlat = true
+tulajdonsagok = true
+gyorsvalto = true
+kereses = true
+perjel = true
+cimkek = true
+sablonok = true
+napi = true
+canvas = true
+bazis = true
+graf = true
+pdf = true
+media = true
+kartya = true
+kviz = true
+osszefoglalas = true
+matek = true
+kod = true
+fuzet = true
+video = true
+kerdezz = true
+asszisztens = true
+naptar = true
+felkeszultseg = true
+tracker = true

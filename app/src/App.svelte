@@ -1,6 +1,13 @@
 <!-- A felület gyökere: a környezet, a parancsok, a billentyűkezelő, a WS és a tartós állapot. -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
+  import Beallitasok from './beallitasok/Beallitasok.svelte';
+  import Setup from './setup/Setup.svelte';
+  import { alkalmaz } from './lib/elrendezes/tema';
+  import { tartalmiNyelv } from './lib/munkater/nyelv.svelte';
+  import { beallitasok } from './lib/beallitasok/allapot.svelte';
+  import { beallitasokTelepit } from './beallitasok';
+  import { beallitasAblak } from './beallitasok/allapot.svelte';
   import { alapParancsok } from './alapParancsok';
   import { aktivitasFigyelo } from './lib/core/aktivitas';
   import { CoreKapcsolat } from './lib/core/ws.svelte';
@@ -42,6 +49,8 @@
   const props: { felulet: Felulet } = $props();
   const felulet = untrack(() => props.felulet); // egyszer adódik át, nem változik
 
+  let setupNyitva = $state(false);
+  let setupElhalasztva = $state(false);
   const kapcsolat = new CoreKapcsolat();
   const fajlok = new VaultFajlok();
   const kornyezetObj = kornyezetBeallit({ felulet, fajlok, kapcsolat });
@@ -91,9 +100,45 @@
     mento.utemez(JSON.stringify(felulet.sorosit()));
   });
 
+  // A közös konfiguráció csak sikeres betöltés után írja felül a régi felület-állapotot.
+  let alkalmazottErtek = '';
+  $effect(() => {
+    const adat = beallitasok.adat;
+    if (!adat) return;
+    const jel = JSON.stringify(adat.ertek);
+    if (jel === alkalmazottErtek) return;
+    alkalmazottErtek = jel;
+    const b = adat.ertek;
+    untrack(() => {
+      felulet.tema = b.megjelenes.tema;
+      alkalmaz(b.megjelenes.tema);
+      document.documentElement.style.setProperty('--betu-torzs', `${b.megjelenes.betumeret}px`);
+      if (felulet.csend.be !== b.megjelenes.csend) felulet.csendKapcsol(b.megjelenes.csend);
+      felulet.rendszerErtesites = b.adatvedelem.ertesitesek;
+      felulet.szerkesztoMod = b.szerkeszto.mod;
+      tartalmiNyelv.beallit(b.altalanos.nyelv === 'auto' ? '' : b.altalanos.nyelv);
+      try { regiszter.billentyuketAlkalmaz(b.billentyuk); } catch { /* hibás külső kiosztás nem állítja le az editort */ }
+    });
+  });
+  $effect(() => {
+    if (beallitasAblak.nyitva) untrack(() => felulet.atfedes = null);
+  });
+  $effect(() => {
+    if (beallitasok.adat?.setup_szukseges && !setupElhalasztva) setupNyitva = true;
+  });
+  function rendszerMegnyit(szakasz: string) {
+    felulet.manifoldFeladat = null;
+    if (szakasz === 'elozmenyek') { regiszter.futtat('elozmenyek.megnyit', 'gomb'); return; }
+    const celok: Record<string, string> = { modellek: 'modellek', kalibracio: 'modellek', teljesitmeny: 'modellek', memoria: 'asszisztens', kartya: 'tanulas', kviz: 'tanulas', felkeszultseg: 'tanulas', pillanatkepek: 'rendszer', helyi_mentes: 'rendszer', kulso_mentes: 'rendszer', visszaallitas: 'rendszer' };
+    felulet.vezerlo.nyitott[celok[szakasz] ?? szakasz] = true;
+    felulet.manifoldMegnyit();
+  }
+
   onMount(() => {
     const le = [
       alapParancsok(regiszter, felulet),
+      beallitasokTelepit(regiszter),
+      beallitasok.figyel(kapcsolat),
       ...nezetekLe,
       telepit(regiszter),
       aktivitasFigyelo(),
@@ -145,3 +190,8 @@
 </script>
 
 <Hej />
+{#if beallitasAblak.nyitva}
+  <Beallitasok onbezar={() => beallitasAblak.nyitva = false} onsetup={() => setupNyitva = true} onrendszer={rendszerMegnyit} />
+{:else if setupNyitva}
+  <Setup onbezar={() => { setupNyitva = false; setupElhalasztva = true; }} onkesz={() => { setupNyitva = false; setupElhalasztva = true; }} onai={() => rendszerMegnyit('modellek')} />
+{/if}

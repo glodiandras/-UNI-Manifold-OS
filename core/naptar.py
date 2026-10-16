@@ -184,7 +184,10 @@ def _most() -> str:
 
 def beallitasok(cfg) -> dict:
     s = cfg.section("naptar")
-    return {"automatikus": bool(s.get("automatikus", True)), "szinkron_perc": float(s.get("szinkron_perc", 15)),
+    from . import modulkapu
+    valasztott = cfg.forras("beallitasok", "adatvedelem", "naptar") != "os" or cfg.elrendezes == "termek"
+    engedett = modulkapu.engedett(cfg, "naptar") and (not valasztott or cfg.section("beallitasok").get("adatvedelem", {}).get("naptar", False))
+    return {"automatikus": bool(s.get("automatikus", True)) and engedett, "szinkron_perc": float(s.get("szinkron_perc", 15)),
             "indulasi_kesleltetes_mp": float(s.get("indulasi_kesleltetes_mp", 60)),
             "mult_nap": int(s.get("mult_nap", 120)), "jovo_nap": int(s.get("jovo_nap", 180)),
             "tanulas_naptar": str(s.get("tanulas_naptar", "") or "")}

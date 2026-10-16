@@ -12,11 +12,12 @@
 // Dinamikus név (`3. fül`, `X bekapcsolása`) getterrel adható, amely maga hív `t()`-t (a regisztráció megőrzi a gettert):
 //   { id: 'ful.3', get nev() { return t('{n}. fül', { n: 3 }); }, … }
 
+import { parancsEngedelyezett } from '../beallitasok/modulok';
 import type { IconNode } from 'lucide';
 import { hibaUzenet } from '../core/api';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
 import { t } from '../i18n';
-import { normalizalLeiras } from './billentyuk';
+import { elemez, normalizalLeiras } from './billentyuk';
 
 export interface Parancs {
   /** Egyedi, pontokkal tagolt azonosító: `<modul>.<művelet>`. */
@@ -59,6 +60,8 @@ type Megfigyelo = (id: string, forras: ParancsForras) => void;
 export class Regiszter {
   private readonly parancsok = new Map<string, Parancs>();
   private readonly akkordok = new Map<string, string>();
+  private readonly alapBillentyuk = new Map<string, string>();
+  private felulirasok: Record<string, string> = {};
   private readonly figyelok = new Set<Figyelo>();
   /** Minden sikeres futás után (a legutóbbiak listájához). */
   futasUtan: ((id: string) => void) | null = null;
@@ -76,8 +79,10 @@ export class Regiszter {
     // i18n-ignore: programozói hiba (a fejlesztőnek szól, a felhasználó nem látja)
     if (this.parancsok.has(p.id)) throw new Error(`már regisztrált parancs: ${p.id}`);
     let akkord: string | undefined;
-    if (p.billentyu) {
-      akkord = normalizalLeiras(p.billentyu);
+    if (p.billentyu) this.alapBillentyuk.set(p.id, normalizalLeiras(p.billentyu));
+    const kert = Object.hasOwn(this.felulirasok, p.id) ? this.felulirasok[p.id] : p.billentyu;
+    if (kert) {
+      akkord = normalizalLeiras(kert);
       const masik = this.akkordok.get(akkord);
       // i18n-ignore: programozói hiba (a fejlesztőnek szól, a felhasználó nem látja)
       if (masik) throw new Error(`a(z) ${p.billentyu} billentyű már foglalt: ${masik}`);
@@ -85,7 +90,7 @@ export class Regiszter {
     // a getterek (dinamikus, `t()`-vel számolt név) megmaradnak: a leíró-másolat nem értékeli ki őket a regisztrációkor
     const leirok = Object.getOwnPropertyDescriptors(p);
     for (const l of Object.values(leirok)) if ('value' in l) l.writable = l.configurable = true; // mint a korábbi `{ ...p }`: módosítható másolat
-    if (akkord) leirok.billentyu = { value: akkord, enumerable: true, writable: true, configurable: true };
+    leirok.billentyu = { value: akkord, enumerable: true, writable: true, configurable: true };
     const tarolt = Object.defineProperties({}, leirok) as Parancs;
     this.parancsok.set(p.id, tarolt);
     if (akkord) this.akkordok.set(akkord, p.id);
@@ -93,7 +98,8 @@ export class Regiszter {
     return () => {
       if (this.parancsok.get(p.id) !== tarolt) return;
       this.parancsok.delete(p.id);
-      if (akkord) this.akkordok.delete(akkord);
+      this.alapBillentyuk.delete(p.id);
+      for (const [a, id] of this.akkordok) if (id === p.id) this.akkordok.delete(a);
       this.jelez();
     };
   }
@@ -110,10 +116,46 @@ export class Regiszter {
 
   elerheto(p: Parancs): boolean {
     try {
-      return p.elerheto ? p.elerheto() : true;
+      return parancsEngedelyezett(p.id) && (p.elerheto ? p.elerheto() : true);
     } catch {
       return false;
     }
+  }
+
+  /** A beállítások a rejtett és épp nem elérhető parancsokat is felsorolják. */
+  mind(): Parancs[] { return [...this.parancsok.values()]; }
+  alapBillentyu(id: string): string { return this.alapBillentyuk.get(id) ?? ''; }
+  /** Teljes csere: előbb ellenőriz, ütközésnél a működő kiosztás érintetlen. */
+  billentyuketEllenoriz(feluliras: Record<string, string>): void {
+    const latott = new Map<string, string>();
+    for (const [id, kert] of Object.entries(feluliras)) {
+      if (!kert) continue;
+      let a: ReturnType<typeof elemez>;
+      try { a = elemez(kert); } catch { throw new Error(t('beallitasok.hibas_billentyu')); }
+      if (!a.mod && !a.ctrl && !a.alt && !/^F\d+$/.test(a.kulcs)) throw new Error(t('beallitasok.modosito_kell'));
+      const kanonikus = normalizalLeiras(kert);
+      if ((kanonikus === 'Mod+,' && id !== 'beallitasok.megnyit') || kanonikus === 'Mod+Shift+o') throw new Error(t('beallitasok.foglalt_billentyu'));
+    }
+    for (const p of this.parancsok.values()) {
+      const kert = Object.hasOwn(feluliras, p.id) ? feluliras[p.id] : this.alapBillentyu(p.id);
+      if (p.id === 'beallitasok.megnyit' && kert !== 'Mod+,') throw new Error(t('beallitasok.foglalt_billentyu'));
+      if (!kert) continue;
+      const a = normalizalLeiras(kert);
+      if ((a === 'Mod+,' && p.id !== 'beallitasok.megnyit') || a === 'Mod+Shift+o') throw new Error(t('beallitasok.foglalt_billentyu'));
+      if (latott.has(a)) throw new Error(t('A gyorsbillentyű már foglalt: {nev}', { nev: parancsNev(this.parancsok.get(latott.get(a)!)!) }));
+      latott.set(a, p.id);
+    }
+  }
+  billentyuketAlkalmaz(feluliras: Record<string, string>): void {
+    this.billentyuketEllenoriz(feluliras);
+    this.felulirasok = { ...feluliras };
+    this.akkordok.clear();
+    for (const p of this.parancsok.values()) {
+      const kert = Object.hasOwn(feluliras, p.id) ? feluliras[p.id] : this.alapBillentyu(p.id);
+      p.billentyu = kert ? normalizalLeiras(kert) : undefined;
+      if (p.billentyu) this.akkordok.set(p.billentyu, p.id);
+    }
+    this.jelez();
   }
 
   /** A palettában látható, épp elérhető parancsok. */

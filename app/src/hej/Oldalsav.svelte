@@ -4,6 +4,7 @@
   állapotában).
 -->
 <script lang="ts">
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
   import { t, tk } from '../lib/i18n';
   import { onMount } from 'svelte';
   import { csend, kivul, regioMegjelenitKezel } from '../lib/elrendezes/csend.svelte';
@@ -16,7 +17,7 @@
   import Fa from './Fa.svelte';
 
   const { felulet } = kornyezet();
-  const nezet = $derived(felulet.oldalsav.nezet);
+  const nezet = $derived(modulEngedelyezett('cimkek') ? felulet.oldalsav.nezet : 'fajlok');
   // C38: a rejtett oldalsáv átfedésként jön elő (bal szél, F6); a DOM-ja rejtve is megmarad (nincs állapotvesztés)
   const atfedes = $derived(!felulet.oldalsav.nyitva && csend.oldalsavAtfedes);
   const rejtett = $derived(!felulet.oldalsav.nyitva && !atfedes);
@@ -35,10 +36,12 @@
     regioFokusz('munkaterulet');
   }
 
-  const NEZETEK = [
+  const ALAP_NEZETEK = [
     { id: 'fajlok', nev: tk('Fájlok') },
     { id: 'cimkek', nev: tk('Címkék') },
   ] as const;
+
+  const NEZETEK = $derived(ALAP_NEZETEK.filter(n => n.id !== 'cimkek' || modulEngedelyezett('cimkek')));
 
   /** A fülek léptetése nyilakkal (← →): a kijelölt fül kapja a fókuszt. */
   function fulBillentyu(e: KeyboardEvent) {

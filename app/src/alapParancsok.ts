@@ -1,6 +1,8 @@
 // A héj saját parancsai (C07). Minden gomb is ezeket futtatja, így a palettából és billentyűről ugyanaz
 // történik. A későbbi modulok a saját parancsaikat ugyanígy, a saját chatjükben regisztrálják.
 
+import { beallitasok } from './lib/beallitasok/allapot.svelte';
+import type { BeallitasokValtozas } from './lib/beallitasok/tipusok';
 import { ertesitesek } from './lib/ertesites/ertesites.svelte';
 import type { Felulet } from './lib/elrendezes/felulet.svelte';
 import { alkalmaz, type Tema } from './lib/elrendezes/tema';
@@ -14,6 +16,13 @@ import type { Parancs, Regiszter } from './lib/parancsok/regiszter';
 
 export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
   const m = f.munkaterulet;
+  const beallit = (valtozas: BeallitasokValtozas, alkalmazas: () => void): void | Promise<void> => {
+    if (!beallitasok.adat) { alkalmazas(); return; }
+    return beallitasok.ment(valtozas).then(ok => {
+      if (!ok) throw new Error(beallitasok.hiba ?? t('beallitasok.mentesi_hiba'));
+      alkalmazas();
+    });
+  };
   const atfedes = (cel: 'paletta' | 'valto') => {
     f.atfedes = f.atfedes === cel ? null : cel;
   };
@@ -22,11 +31,11 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
     nev,
     kategoria: tk('Téma'),
     ikon,
-    elerheto: () => f.tema !== id,
-    futtat: () => {
+    elerheto: () => f.tema !== id && !beallitasok.mentes,
+    futtat: () => beallit({ megjelenes: { tema: id } }, () => {
       f.tema = id;
       alkalmaz(id);
-    },
+    }),
   });
 
   const lista: Parancs[] = [
@@ -112,7 +121,13 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
       },
     },
     // csend és elérés (C38): a kapcsoló, és minden rejtett elem egy parancs
-    { id: 'hej.csend', nev: tk('Csend mód be/ki'), kategoria: tk('Nézet'), futtat: () => f.csendKapcsol() },
+    {
+      id: 'hej.csend', nev: tk('Csend mód be/ki'), kategoria: tk('Nézet'), elerheto: () => !beallitasok.mentes,
+      futtat: () => {
+        const be = !f.csend.be;
+        return beallit({ megjelenes: { csend: be } }, () => { if (f.csend.be !== be) f.csendKapcsol(be); });
+      },
+    },
     { id: 'hej.allapotsor', nev: tk('Állapotsor megjelenítése'), kategoria: tk('Nézet'), ikon: PanelBottom, futtat: () => void regioFokusz('allapotsor') },
     {
       id: 'fa.uj-jegyzet',
@@ -159,9 +174,13 @@ export function alapParancsok(reg: Regiszter, f: Felulet): () => void {
       id: 'ertesites.rendszer',
       nev: tk('Rendszerértesítések be/ki'),
       kategoria: tk('Értesítések'),
+      elerheto: () => !beallitasok.mentes,
       futtat: () => {
-        f.rendszerErtesites = !f.rendszerErtesites;
-        ertesitesek.ertesit({ szint: 'info', cim: f.rendszerErtesites ? t('Rendszerértesítések bekapcsolva') : t('Rendszerértesítések kikapcsolva'), szoveg: f.rendszerErtesites ? t('Hibáról, mentési gondról és a kézzel indított feladat végéről a macOS is szól, ha az app háttérben van.') : t('Csak az appon belüli értesítések maradnak.'), idotartam: 4000 });
+        const be = !f.rendszerErtesites;
+        return beallit({ adatvedelem: { ertesitesek: be } }, () => {
+          f.rendszerErtesites = be;
+          ertesitesek.ertesit({ szint: 'info', cim: f.rendszerErtesites ? t('Rendszerértesítések bekapcsolva') : t('Rendszerértesítések kikapcsolva'), szoveg: f.rendszerErtesites ? t('Hibáról, mentési gondról és a kézzel indított feladat végéről a macOS is szól, ha az app háttérben van.') : t('Csak az appon belüli értesítések maradnak.'), idotartam: 4000 });
+        });
       },
     },
     { id: 'ertesites.elvet', nev: tk('Látható értesítések bezárása'), kategoria: tk('Értesítések'), elerheto: () => ertesitesek.lista.length > 0, futtat: () => ertesitesek.mindElvet() },

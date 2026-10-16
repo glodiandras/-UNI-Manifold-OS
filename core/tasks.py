@@ -413,6 +413,11 @@ class Queue:
     # -------------------------------------------------------- műveletek
 
     def submit(self, type_id: str, params: dict | None = None, priority: int = 0) -> dict:
+        from . import modulkapu
+        modul = modulkapu.feladat_modul(type_id)
+        if not modulkapu.engedett(self.cfg, modul):
+            raise kodos(Invalid("This module is turned off. Enable it in Settings → Modules to use it."),
+                        "modul.kikapcsolva", modul=modul)
         t = REGISTRY.get(type_id)
         if not t:
             raise kodos(Invalid(f"ismeretlen feladattípus: {type_id}"), "feladat.ismeretlen_tipus", tipus=type_id)

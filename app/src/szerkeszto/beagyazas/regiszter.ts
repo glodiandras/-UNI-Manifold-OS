@@ -5,6 +5,7 @@
 
 import type { BeagyazasAdat, BeagyazasTipus } from '../../lib/vault/linkek.svelte';
 import type { LinkAdat } from '../linkek/adat';
+import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
 
 /** A beágyazás-lánc egy eleme (a körkörös beágyazás védelméhez). */
 export interface LancElem {
@@ -57,7 +58,8 @@ class JegyzetOsztalyRegiszter {
   }
 
   keres(adat: BeagyazasAdat, link: LinkAdat): JegyzetOsztalyRenderelo | undefined {
-    return this.lista.find((r) => r.illeszkedik(adat, link));
+    return this.lista.find((r) => (r.id !== 'kviz' || modulEngedelyezett('kviz')) &&
+      (r.id !== 'kartya' || modulEngedelyezett('kartya')) && r.illeszkedik(adat, link));
   }
 }
 

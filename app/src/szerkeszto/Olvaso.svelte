@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import { t } from '../lib/i18n';
+  import { beallitasok } from '../lib/beallitasok/allapot.svelte';
   import { ensureSyntaxTree } from '@codemirror/language';
   import type { EditorView } from '@codemirror/view';
   import { onDestroy, onMount } from 'svelte';
@@ -119,6 +120,7 @@
   // a dokumentum változása (jelölőnégyzet, külső változás) után újrarajzol, kicsit késleltetve
   $effect(() => {
     void valtozat;
+    void Object.values(beallitasok.ertek.modulok);
     if (kesleltetes) clearTimeout(kesleltetes);
     kesleltetes = setTimeout(rajzol, 120);
   });

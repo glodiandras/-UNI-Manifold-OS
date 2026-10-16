@@ -207,9 +207,11 @@ case "$cmd" in
 esac
 case "$cmd" in
   runtime|app|exec|"") var_env ;;
+  indito) PYTHON_KIVALASZTVA="$(python_kereses)" ;;
   *) PYTHON_KIVALASZTVA="$(python_kereses)"; gyokerek_env "$PYTHON_KIVALASZTVA" ;;
 esac
 case "$cmd" in
+  indito) exec "$PYTHON_KIVALASZTVA" -B -m core.indito "$@" ;;
   epites) exec "$(python_kereses)" -B -m core.epites "$@" ;;
   teljes-mentes) exec "$(python_kereses)" -B -m core.teljes_mentes "$@" ;;
   higienia) exec "$(python_kereses)" -B -m core.higienia "$@" ;;

@@ -10,6 +10,7 @@ CRLF és az érvénytelen UTF-8 (surrogateescape) bájtra megmarad.
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 from dataclasses import dataclass
 
@@ -38,6 +39,13 @@ def rovid_cel(feloldo: Feloldo, ut: str, forras: str) -> str:
         if feloldo.resolve(szoveg, forras)[0] == ut:
             return szoveg
     return ut
+
+
+def relativ_cel(feloldo: Feloldo, ut: str, forras: str) -> str:
+    cel = cel_szoveg(posixpath.relpath(ut, posixpath.dirname(forras) or "."))
+    if not cel.startswith("../"):
+        cel = "./" + cel
+    return cel if feloldo.resolve(cel, forras)[0] == ut else rovid_cel(feloldo, ut, forras)
 
 
 # ---------------------------------------------------------------- horgonyok

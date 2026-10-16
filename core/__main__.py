@@ -38,6 +38,8 @@ def start() -> int:
         print(f"[core] a konfiguráció nem tölthető be ({e.kod}): {e}", file=sys.stderr, flush=True)
         return KONFIG_HIBA_KILEPES
     gyokerek.rogzit(cfg, os.environ)
+    # A választó indítási jelzése egyszeri: a worker/próbaklón későbbi saját pinjei érvényesek maradnak.
+    os.environ.pop("MOS_MUNKATER_VALTAS", None)
     gyokerek.biztosit_mappak(cfg)
     os.environ.update(gyokerek.folyamat_env(cfg))
     return server.start(cfg=cfg, api_titok=titok)

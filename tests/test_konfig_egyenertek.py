@@ -23,6 +23,22 @@ UJ_UTAK = {"install", "install_run", "install_state", "install_logs", "workspace
 # Az F3 új szakaszai / levelei
 UJ_ELOTAGOK = ("_meta.", "elrendezes.", "telepites.", "pdf.nevek.")
 UJ_LEVELEK = {"sema.alap", "sema.mod"}
+# F5 public defaults are explicit additions; this gate still rejects any other
+# accidental key or change to the frozen F2-compatible configuration.
+F5_MODULOK = "hivatkozasok vazlat tulajdonsagok gyorsvalto kereses perjel cimkek sablonok napi canvas bazis graf pdf media kartya kviz osszefoglalas matek kod fuzet video kerdezz asszisztens naptar felkeszultseg tracker".split()
+F5_LEVELEK = {**{f"modulok.{m}": True for m in F5_MODULOK},
+              **{f"beallitasok.modulok.{m}": True for m in F5_MODULOK},
+              "beallitasok.altalanos.nyelv": "auto", "beallitasok.altalanos.inditas": "utolso",
+              "beallitasok.szerkeszto.mod": "elo", "beallitasok.szerkeszto.olvashato_szelesseg": True,
+              "beallitasok.szerkeszto.helyesiras": True, "beallitasok.szerkeszto.tab_meret": 2,
+              "beallitasok.szerkeszto.perjel": True, "beallitasok.fajlok.uj_mappa": "",
+              "beallitasok.fajlok.csatolmany_mappa": "", "beallitasok.fajlok.sablon_mappa": "_Template",
+              "beallitasok.fajlok.napi_ut": "[Daily]/YYYY-MM-DD", "beallitasok.fajlok.link_formatum": "rovid",
+              "beallitasok.megjelenes.tema": "rendszer", "beallitasok.megjelenes.betumeret": 16,
+              "beallitasok.megjelenes.csend": False, "beallitasok.adatvedelem.asszisztens": True,
+              "beallitasok.adatvedelem.tracker": True, "beallitasok.adatvedelem.ertesitesek": True,
+              "beallitasok.adatvedelem.naptar": False, "beallitasok.setup.kesz": False,
+              "beallitasok.setup.elmeny": "egyeni"}
 # Tervezett változás (F3-DESIGN §2.4): a `.manifold/` a vault pillanatkép-tárolójának kizárásában
 MANIFOLD_KIZARAS = ("pillanat.vault.kizar", ".manifold/")
 # A `v2-kompat` preset F3 előtti értékei (a presetből jönnek, és csak a preset értékével egyezhetnek)
@@ -116,8 +132,10 @@ class KonfigEgyenertekTeszt(unittest.TestCase):
             self.assertEqual(most[k], _bejar(self.cfg, self._t.name, nyers), k)
             self.assertEqual(self.cfg.forras(*k.split(".")), "preset:v2-kompat", k)
         uj = set(most) - set(arany)
-        self.assertEqual({k for k in uj if not k.startswith(UJ_ELOTAGOK) and k not in UJ_LEVELEK}, set(), "új kulcs a listán kívül")
+        self.assertEqual({k for k in uj if not k.startswith(UJ_ELOTAGOK) and k not in UJ_LEVELEK and k not in F5_LEVELEK}, set(), "új kulcs a listán kívül")
         self.assertTrue(UJ_LEVELEK <= uj)
+        self.assertTrue(F5_LEVELEK.keys() <= uj)
+        self.assertEqual({k: most[k] for k in F5_LEVELEK}, F5_LEVELEK)
 
     def test_a_vaultot_es_a_presetet_a_telepitesi_reteg_adja(self):
         self.assertEqual(self.cfg.forras("utak", "vault"), "telepites")

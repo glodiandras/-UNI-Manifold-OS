@@ -85,8 +85,7 @@ class Sema:
     (`cfg` nélkül a v2 szigorú viselkedése; `cfg`-vel a `[sema] mod`, hiányában `ki`)."""
 
     def __init__(self, adat: dict, cfg=None, mod: str | None = None):
-        self.nyelv: str = ((cfg.section("workspace").get("nyelv") or cfg.section("sablon").get("nyelv") or "")
-                           if cfg is not None else "")
+        self._cfg = cfg
         if mod is None:
             mod = (cfg.section("sema").get("mod") or "ki") if cfg is not None else "szigoru"
         self.mod: str = mod if mod in MODOK else "ki"
@@ -147,6 +146,13 @@ class Sema:
                         "h1_egyezzen_fajlnevvel": bool(o.get("h1_egyezzen_fajlnevvel"))}
         return {"nev": "normal", "mezosorrend": list(self.mezosorrend), "ertekek": True, "sema_nelkul": False,
                 "h1": True, "h1_minta": None, "h1_egyezzen_fajlnevvel": False}
+
+    @property
+    def nyelv(self) -> str:
+        # The schema remains cached, while Setup/Settings can change the content
+        # hint on the shared configuration without reopening the core.
+        return ((self._cfg.section("workspace").get("nyelv") or self._cfg.section("sablon").get("nyelv") or "")
+                if self._cfg is not None else "")
 
     def leiras(self, ut: str | None = None) -> dict:
         return {"mezosorrend": self.mezosorrend, "extra_kulcsok": self.extra, "tags_ertekkeszlet": self.tags or [],

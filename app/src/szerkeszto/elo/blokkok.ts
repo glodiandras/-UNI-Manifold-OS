@@ -152,6 +152,7 @@ export const blokkMezo = StateField.define<DecorationSet>({
   update(ertek, tr) {
     if (
       tr.docChanged ||
+      tr.reconfigured ||
       syntaxTree(tr.startState) !== syntaxTree(tr.state) ||
       // a módváltáskor (Forrás → Live Preview) az előző állapotban még nincs meg a mező
       tr.startState.field(aktivBlokkok, false) !== tr.state.field(aktivBlokkok) ||

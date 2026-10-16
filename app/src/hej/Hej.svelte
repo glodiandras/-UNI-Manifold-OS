@@ -3,6 +3,7 @@
   festéskor véglegesek (a mentett állapot a mount előtt megjön), így nincs elcsúszás.
 -->
 <script lang="ts">
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
   import { t } from '../lib/i18n';
   import Paletta from '../atfedes/Paletta.svelte';
   import Atnevezes from '../atfedes/Atnevezes.svelte';
@@ -68,7 +69,7 @@
 </div>
 
 <Ertesitesek />
-<JavaslatKartya />
+{#if modulEngedelyezett('asszisztens')}<JavaslatKartya />{/if}
 {#if felulet.atfedes === 'paletta'}
   <Paletta />
 {:else if felulet.atfedes === 'valto'}

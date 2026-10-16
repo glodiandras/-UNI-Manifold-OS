@@ -27,6 +27,7 @@
   import { ujJegyzetSablonbol } from '../ma/naplo';
   import { ujJegyzetSablonbolHiv } from '../ma/sablonUj';
   import type { SemaProblema } from '../szerkeszto/tulajdonsagok/tipusok';
+  import { beallitasok } from '../lib/beallitasok/allapot.svelte';
 
   const { felulet, fajlok } = kornyezet();
 
@@ -154,8 +155,14 @@
     return cs ? (cs.mappa ? cs.ut : szuloUt(cs.ut)) : '';
   }
 
-  async function ujJegyzetNyit(mappa = celMappa(), tipus: UjTipus = 'md', sablon?: string) {
-    if (mappa) valt(mappa, true);
+  function alapMappa(): string {
+    if (!beallitasok.adat) return celMappa();
+    const m = beallitasok.ertek.fajlok.uj_mappa;
+    return m === '.' ? szuloUt(aktivUt ?? '') : m;
+  }
+
+  async function ujJegyzetNyit(mappa = alapMappa(), tipus: UjTipus = 'md', sablon?: string) {
+    for (let p = mappa; p; p = szuloUt(p)) valt(p, true);
     ujJegyzet = { mappa, nev: '', hiba: null, folyamat: false, tipus, ...(sablon ? { sablon } : {}) };
     await tick();
     ujMezo?.focus();
@@ -185,7 +192,7 @@
         }
         d = e.valasz;
       } else {
-        d = await kerdez<{ ut: string; kurzor?: number | null }>('/api/vault/uj', { metodus: 'POST', torzs: { mappa: u.mappa, nev, ...(u.tipus !== 'md' ? { tipus: u.tipus } : {}) }, idokorlat: 10000 });
+        d = await kerdez<{ ut: string; kurzor?: number | null }>('/api/vault/uj', { metodus: 'POST', torzs: { mappa: u.mappa, nev, ...(u.mappa && !fajlok.mappak.includes(u.mappa) ? { mappa_keszit: true } : {}), ...(u.tipus !== 'md' ? { tipus: u.tipus } : {}) }, idokorlat: 10000 });
       }
       ujJegyzet = null;
       if (u.tipus === 'mappa') { await fajlok.frissit(); valt(d.ut, true); fokuszUt = d.ut; return; }
@@ -384,7 +391,7 @@
       if (!fa?.contains(e.relatedTarget as Node | null)) celUt = null;
     }}
   >
-    {#if ujJegyzet && ujJegyzet.mappa === ''}
+    {#if ujJegyzet && (ujJegyzet.mappa === '' || !sorok.some(s => s.cs.mappa && s.cs.ut === ujJegyzet?.mappa))}
       {@render ujSor(0)}
     {/if}
     {#each sorok as s (s.cs.ut)}
@@ -442,6 +449,7 @@
       class="uj-mezo"
       aria-label={t(UJ_NEV_ARIA[ujJegyzet?.tipus ?? 'md'])}
       placeholder={t(UJ_NEV_HELYORZO[ujJegyzet?.tipus ?? 'md'])}
+      title={ujJegyzet?.mappa || '/'}
       spellcheck="false"
       autocomplete="off"
       disabled={ujJegyzet?.folyamat}

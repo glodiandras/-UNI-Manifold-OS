@@ -920,3 +920,14 @@ ANGOL.update({
     "video.link_sok": "A task can contain at most {max} video links ({n} received).",
     "video.ffmpeg_hianyzik": "The bundled ffmpeg is missing. Install the runtime tools before downloading videos.",
 })
+
+ANGOL.update({
+    "beallitas.hibas": "This setting is not valid. Check its value and try again.",
+    "beallitas.utkozes": "Settings changed elsewhere. Reload them before saving again.",
+    "beallitas.symlink": "The settings location is not safe to write. Reopen this workspace.",
+    "beallitas.munkater_csere": "The workspace changed on disk. Reopen it before saving settings.",
+    "indito.hibas_keres": "The workspace request is not valid. Choose a folder and try again.",
+    "indito.megerosites": "Preview and confirm this folder before opening it as a workspace.",
+    "indito.lemez": "The folder could not be read or written. Check that its disk is connected and writable, then try again.",
+    "modul.kikapcsolva": "This module is turned off. Enable it in Settings → Modules to use it.",
+})

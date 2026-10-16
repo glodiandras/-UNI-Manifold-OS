@@ -114,9 +114,9 @@ def automatikus_tiltott(t: tasks.TaskType) -> str | None:
 
 
 # A végpontokat regisztráló modulok (mindegyiknek van `utvonalak(r)` függvénye); a sorrend a mintaillesztés sorrendje
-from . import epites, csatolmany, teljes_mentes
+from . import epites, csatolmany, teljes_mentes, termek_beallitasok, modulkapu, munkater_futo
 
-UTVONAL_MODULOK = (epites, csatolmany, teljes_mentes, vaultio, atnevezes, tulajdonsagok, elozmeny, felulet, tasks, media, index_api, bazis_api, modell_api,
+UTVONAL_MODULOK = (termek_beallitasok, epites, csatolmany, teljes_mentes, vaultio, atnevezes, tulajdonsagok, elozmeny, felulet, tasks, media, index_api, bazis_api, modell_api,
                    sablon, naplo, ma, atirat, pdfkiemeles, gepi_iras, tracker, naptar_api,
                    grafikon_api, higienia, asszisztens_api, kviz_api, felkeszultseg_api, cpp_utvonal, kereses_api,
                    matek_api, fuzet_api, kartya_api, osszefoglalas_api, video_api)
@@ -823,6 +823,7 @@ def _handler(app: App):
             if t is None:
                 return False
             kezelo, m = t
+            modulkapu.ellenoriz(app.cfg, ut)
             eredmeny = kezelo(utvonalak.Kerees(app, self, ut, q, m, torzs))
             if eredmeny is utvonalak.KESZ:
                 return True
@@ -1339,6 +1340,7 @@ def _fut(cfg: config.Config, stdin, out, start_delay: float | None, api_titok: s
     if threading.current_thread() is threading.main_thread():  # a tesztek szálon indítják: ott nincs jelkezelő
         signal.signal(signal.SIGTERM, sigterm)      # a kézfogás ELŐTT: a héj a kézfogás után bármikor küldhet SIGTERM-et
     # F3-DESIGN §2.6: a kézfogás additív mezői — a héj a vault kötetének lecsatolását figyeli (nem a kódfáét)
+    _csendben(munkater_futo.bejelent, cfg, app.port)
     out.write(json.dumps({"port": app.port, "pid": os.getpid(), "titok": app.api_titok,
                           "vault": vault_kanonikus(cfg.path("vault")) or str(cfg.path("vault")),
                           "munkater_id": cfg.workspace_id, "elrendezes": cfg.elrendezes}, ensure_ascii=False) + "\n")
@@ -1348,6 +1350,7 @@ def _fut(cfg: config.Config, stdin, out, start_delay: float | None, api_titok: s
     try:
         httpd.serve_forever()
     finally:
+        _csendben(munkater_futo.elfelejt, cfg)
         _csendben(httpd.server_close)   # a figyelő port zárul; a folyamatban lévő kéréseket KORLÁTOSAN várjuk meg (T003)
         _csendben(httpd.varj_kerelsekre, 5 if leallas["kenyszer"] else KEREL_VARAKOZAS_MP)
         _csendben(app.queue.close, timeout=2)

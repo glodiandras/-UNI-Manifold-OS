@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-VERZIO = 4
+VERZIO = 5
 # C33 (T171): a sérült adatbázis jele — SQLITE_CORRUPT (11) és SQLITE_NOTADB (26), a kiterjesztett kód alsó bájtja
 SERULT_KODOK = (11, 26)
 
@@ -217,6 +217,22 @@ def migral(c: sqlite3.Connection) -> None:
             c.execute(stmt)
         c.execute("UPDATE fajl SET hash = NULL, mtime_ns = NULL WHERE tipus IN ('pdf', 'felirat')")
         c.execute("PRAGMA user_version = 4")
+        c.execute("COMMIT")
+    if v < 5:
+        # F5: explicit ./ and ../ links now resolve from the source directory.
+        # Persisted v4 link rows may still say unresolved. Reparse only sources
+        # containing those links; all other cached notes and history stay intact.
+        from .feloldas import _elokeszit
+        c.execute("BEGIN")
+        forrasok = set()
+        for fid, cel in c.execute("SELECT forras_id, cel_nyers FROM link"):
+            if fid not in forrasok and _elokeszit(cel).startswith(("./", "../")):
+                forrasok.add(fid)
+        ids = sorted(forrasok)
+        for i in range(0, len(ids), 500):
+            resz = ids[i:i + 500]
+            c.execute(f"UPDATE fajl SET hash = NULL, mtime_ns = NULL WHERE id IN ({','.join('?' for _ in resz)})", resz)
+        c.execute("PRAGMA user_version = 5")
         c.execute("COMMIT")
 
 

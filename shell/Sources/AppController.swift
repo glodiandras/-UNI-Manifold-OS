@@ -47,9 +47,30 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     private var termek = false
     /// A core-nak átadott vault (`MOS_VAULT`; termékben a regiszter `utolso` munkaterének mappája), az újraindítás is ezt kapja.
     private var inditottVault: String?
+    private var inditottValasztas = false
     /// A kézfogás `vault`-ja (kanonikus út): ennek a kötetét figyeli a lecsatolás (F3).
     private var figyeltVault: String?
     private var shown = false
+    private var indito: InditoAblak?
+    private var inditoInditas = false
+    private var inditoVisszavon = false
+    private var inditoCoreHibas = false
+    private var inditoVarakozoVault: String?
+    /// A régi editor DOM-ja a váltás sikeréig megmarad; hiba esetén ugyanarra a portra állunk vissza.
+    private struct MunkaterValtas {
+        enum Lepes { case mentes, leall, indul, hibasLeall, visszaall }
+        let regiVault: String?
+        let regiTermek: Bool
+        let regiValasztas: Bool
+        let regiFigyelt: String?
+        let regiPort: Int?
+        let regiTitok: String?
+        let ujVault: String
+        var lepes: Lepes = .mentes
+        var hiba: String? = nil
+        var megsem = false
+    }
+    private var munkaterValtas: MunkaterValtas?
     private let naptarEngedely = NaptarEngedely()
     private var kezfogasMunka: DispatchWorkItem?
     private var coreHalalFolyamatban = false
@@ -121,20 +142,19 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         self.gyoker = hely.root
         self.termek = hely.termek
         if hely.termek {
-            // F3-DESIGN §2.6: a termék a vaultot a regiszterből kapja (az F5 indítóig az utoljára megnyitott munkatér)
+            // A csomag áthelyezését a workspace-helper előtt ellenőrizzük: a kódmappába nem írunk.
             if Telepites.athelyezett(Bundle.main.bundleURL) {
                 return fail(L("A Manifold egy ideiglenes, csak olvasható helyről fut (a macOS áthelyezte, mert még a letöltési helyén van). Húzd a Manifoldot az Alkalmazások mappába, majd indítsd onnan."))
             }
-            guard let vault = Telepites.termekVault(environment: kornyezet) else {
-                return fail(L("Még nincs Manifold-munkatér ezen a gépen. Hozz létre egyet egy jegyzetmappából: mos workspace letrehoz <mappa>."))
-            }
-            var mappa: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: vault, isDirectory: &mappa), mappa.boolValue else {
-                return fail(L("A munkatér mappája nem érhető el: %@. Csatlakoztatva van a kötet?", vault))
-            }
-            inditottVault = vault
         }
-        indit(CoreProcess(root: hely.root, vault: inditottVault, termek: hely.termek))
+        // Kifejezett MOS_VAULT és a fejlesztői/selftest-indulás változatlan. A termék többi indulása a helperen át
+        // ellenőrzi a regisztert és az indítási beállítást; hiányzó kötet esetén is használható választó marad.
+        if hely.termek && (kornyezet["MOS_VAULT"] ?? "").isEmpty && !selftest {
+            inditoMegjelenit(automatikus: true)
+        } else {
+            if hely.termek { inditottVault = kornyezet["MOS_VAULT"] }
+            indit(CoreProcess(root: hely.root, vault: inditottVault, termek: hely.termek))
+        }
         // C29.6 (M5): a kötet lecsatolása (Finder-kiadás, diskutil) előtt mentünk és leállunk
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(kotetLecsatol(_:)),
                                                           name: NSWorkspace.willUnmountNotification, object: nil)
@@ -150,24 +170,35 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// A core indítása és a kézfogás (időkorláttal, T123). Az első indulás és az újraindítás ugyanezt használja.
     private func indit(_ uj: CoreProcess) {
         self.core = uj
-        uj.onExit = { [weak self] in self?.coreExited() }
+        inditoCoreHibas = false
+        uj.onExit = { [weak self, weak uj] in
+            guard let self, let uj, self.core === uj else { return }
+            self.coreExited()
+        }
         uj.start { [weak self] result in
             DispatchQueue.main.async {
-                guard let self else { return }
+                guard let self, self.core === uj else { return }
                 self.kezfogasMunka?.cancel()
                 self.kezfogasMunka = nil
+                if self.inditoVisszavon { return }
                 switch result {
                 case .success(let k):
+                    if self.munkaterValtas?.lepes == .indul && self.munkaterValtas?.megsem == true {
+                        _ = self.inditoHiba(L("A munkatérváltás megszakadt. Az előző munkatér megmaradt.")); return
+                    }
                     if let v = k.vault { self.figyeltVault = v }
                     self.coreElindult(port: k.port, titok: k.titok)
                 case .failure(.failed(let msg)):
+                    if self.inditoHiba(msg) { return }
                     if self.coreHalalFolyamatban { self.ujraindulasHiba(L("A core nem indult el újra.\n\n%@", msg)) }
                     else { self.fail(L("A core nem indult el.\n\n%@", msg)) }
                 case .failure(.konfig(let kod, let uzenet)):
                     let szoveg = CoreProcess.konfigSzoveg(kod: kod, uzenet: uzenet)
+                    if self.inditoHiba(szoveg) { return }
                     if self.coreHalalFolyamatban { self.ujraindulasHiba(L("A core nem indult el újra.\n\n%@", szoveg)) }
                     else { self.fail(szoveg) }
                 case .failure(.foglalt(let pid, let vault)):
+                    if self.inditoHiba(L("A munkatér már nyitva van egy másik Manifold-ablakban.")) { return }
                     self.masikPeldany(pid: pid, vault: vault)
                 }
             }
@@ -177,9 +208,28 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
 
     private func coreElindult(port p: Int, titok ujTitok: String?) {
         guard Eletciklus.titokJs(ujTitok) != nil else {
+            if inditoHiba(L("A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el.")) { return }
             return fail(L("A core nem adott érvényes API-titkot a kézfogásban (régi core, vagy hibás `MOS_API_TITOK`?), a felület nem érné el."))
         }
         let ujOrigin = "http://127.0.0.1:\(p)"
+        let visszaall = munkaterValtas?.lepes == .visszaall
+        let valtasHiba = munkaterValtas?.hiba
+        let megszakadt = munkaterValtas?.megsem == true
+        if munkaterValtas?.lepes == .indul || visszaall {
+            munkaterValtas = nil
+            leallAllapot(nil)
+        }
+        if inditoInditas || (!visszaall && indito != nil) {
+            inditoInditas = false
+            indito?.bezar(); indito = nil
+            window?.makeKeyAndOrderFront(nil)
+        }
+        if visszaall && megszakadt {
+            indito?.bezar(); indito = nil
+            window?.makeKeyAndOrderFront(nil)
+        } else if visszaall {
+            indito?.hiba(valtasHiba ?? L("A munkatérváltás megszakadt. Az előző munkatér megmaradt."))
+        }
         let ujraindulas = coreHalalFolyamatban
         coreHalalFolyamatban = false
         if selftest, ujraindulas {                        // `--selftest=core-ujraindul`: az újraindítás a régi porton kell hogy menjen
@@ -219,6 +269,128 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         webView.load(URLRequest(url: URL(string: "\(ujOrigin)/")!))
         // tartalék: ha a felület nem jelez (pl. nincs app/dist), a töltésjelző így is eltűnik
         DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.toltesJelzoElrejt() }
+    }
+
+    // MARK: F5 munkatérválasztó és adatbiztos, soros váltás
+
+    @objc private func munkaterMegnyit(_ sender: Any?) { inditoMegjelenit() }
+
+    private func inditoMegjelenit(automatikus: Bool = false) {
+        guard !selftest, let gyoker else { return }
+        if let indito { indito.eloterbe(); return }
+        let vanSzerkeszto = origin != nil
+        if !vanSzerkeszto { window?.orderOut(nil) }
+        let valaszto = InditoAblak(gyoker: gyoker, vanSzerkeszto: vanSzerkeszto, jelenlegiVault: figyeltVault ?? inditottVault,
+            onMegnyit: { [weak self] vault in self?.inditoValasztott(vault) },
+            onMegsem: { [weak self] in self?.inditoMegsem() })
+        indito = valaszto
+        valaszto.megjelenit(automatikus: automatikus)
+    }
+
+    private func inditoMegsem() {
+        inditoVarakozoVault = nil
+        if inditoInditas {
+            inditoVisszavon = true
+            indito?.folyamat(L("Leállítás a futó feladat végén…"))
+            core?.requestStop()
+            return
+        }
+        if munkaterValtas != nil {
+            munkaterValtas?.megsem = true
+            indito?.folyamat(L("Az előző munkatér biztonságos visszaállítása…"))
+            return
+        }
+        indito?.bezar(); indito = nil
+        if origin != nil { ablakElotor() }
+        else { NSApp.terminate(nil) }
+    }
+
+    private func inditoValasztott(_ vault: String) {
+        guard let gyoker, munkaterValtas == nil else { return }
+        if let core, core.isRunning && core.stopping {
+            inditoVarakozoVault = vault
+            indito?.folyamat(L("Leállítás a futó feladat végén…"))
+            return
+        }
+        if core?.isRunning == true, let regi = figyeltVault ?? inditottVault,
+           URL(fileURLWithPath: regi).resolvingSymlinksInPath() == URL(fileURLWithPath: vault).resolvingSymlinksInPath() {
+            inditoMegsem(); return
+        }
+        guard let core, core.isRunning, origin != nil else {
+            inditoInditas = true
+            inditottVault = vault; termek = true; inditottValasztas = true
+            indit(CoreProcess(root: gyoker, vault: vault, termek: true, munkaterValasztas: true))
+            return
+        }
+        munkaterValtas = MunkaterValtas(regiVault: inditottVault, regiTermek: termek, regiValasztas: inditottValasztas, regiFigyelt: figyeltVault,
+                                      regiPort: port, regiTitok: titok, ujVault: vault)
+        indito?.folyamat(L("A nyitott jegyzetek mentése…"))
+        var eldontve = false
+        let dont = { [weak self] (jelentes: Any?, hiba: String?, idotullepes: Bool) in
+            guard let self, !eldontve, self.munkaterValtas?.lepes == .mentes else { return }
+            eldontve = true
+            let j = Eletciklus.ertelmez(jelentes, hiba: hiba)
+            if idotullepes || Eletciklus.kilepesKerdes(j, idotullepes: idotullepes) != nil || self.munkaterValtas?.megsem == true {
+                let megszakadt = self.munkaterValtas?.megsem == true
+                self.munkaterValtas = nil; self.leallAllapot(nil)
+                if megszakadt { self.indito?.bezar(); self.indito = nil; self.ablakElotor() }
+                else { self.indito?.hiba(L("A munkatérváltás megszakadt. Az előző munkatér megmaradt.")) }
+                return
+            }
+            self.munkaterValtas?.lepes = .leall
+            self.indito?.folyamat(L("Az előző munkatér leállítása a futó feladat végén…"))
+            self.leallAllapot(L("Munkatérváltás a futó feladat végén…"))
+            core.requestStop()
+        }
+        webView.callAsyncJavaScript("return await window.manifold?.mentes?.() ?? null", arguments: [:], in: nil, in: .page) { r in
+            switch r { case .success(let v): dont(v, nil, false)
+            case .failure(let e): dont(nil, e.localizedDescription, false) }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + mentesKorlat) { dont(nil, nil, true) }
+    }
+
+    private func inditoUjCore() {
+        guard let gyoker, let v = munkaterValtas else { return }
+        if v.megsem { return inditoRegiCore() }
+        munkaterValtas?.lepes = .indul
+        inditottVault = v.ujVault; figyeltVault = nil; termek = true; inditottValasztas = true
+        indito?.folyamat(L("Munkatér megnyitása…"))
+        indit(CoreProcess(root: gyoker, vault: v.ujVault, termek: true, munkaterValasztas: true))
+    }
+
+    private func inditoRegiCore() {
+        guard let gyoker, let v = munkaterValtas else { return }
+        munkaterValtas?.lepes = .visszaall
+        inditottVault = v.regiVault; figyeltVault = v.regiFigyelt; termek = v.regiTermek; inditottValasztas = v.regiValasztas
+        coreHalalFolyamatban = true
+        indito?.folyamat(L("Az előző munkatér biztonságos visszaállítása…"))
+        indit(CoreProcess(root: gyoker, vault: v.regiVault, termek: v.regiTermek, port: v.regiPort, titok: v.regiTitok, munkaterValasztas: v.regiValasztas))
+    }
+
+    /// A választóból indult core hibája nem zárja be az alkalmazást. Váltásnál előbb a régi core áll vissza.
+    private func inditoHiba(_ szoveg: String) -> Bool {
+        inditoCoreHibas = true
+        if let v = munkaterValtas {
+            if v.lepes == .visszaall {
+                munkaterValtas = nil; coreHalalFolyamatban = false
+                core?.requestStop()
+                indito?.hiba(L("Az előző munkatér nem indult újra. A mentett jegyzeteid megmaradtak. %@", szoveg))
+            } else {
+                munkaterValtas?.hiba = szoveg
+                if core?.isRunning == true {
+                    munkaterValtas?.lepes = .hibasLeall; core?.requestStop()
+                } else { inditoRegiCore() }
+            }
+            return true
+        }
+        if inditoInditas {
+            core?.requestStop()
+            inditoInditas = false
+            let vault = inditottVault
+            indito?.hiba(szoveg, ujra: { [weak self] in if let vault { self?.inditoValasztott(vault) } })
+            return true
+        }
+        return false
     }
 
     // MARK: felület
@@ -276,7 +448,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// (`window.manifold.fokusz`: a szerkesztő vagy a gyorskereső). Az AppKit saját visszaállítása után fut.
     private func fokuszVissza() {
         DispatchQueue.main.async { [weak self] in
-            guard let self, self.shown, let window = self.window, window.isVisible, !NSApp.isHidden else { return }
+            guard let self, self.indito == nil, self.shown, let window = self.window, window.isVisible, !NSApp.isHidden else { return }
             let birtokolja = (window.firstResponder as? NSView).map { $0 === self.webView || $0.isDescendant(of: self.webView) } ?? false
             if !birtokolja { window.makeFirstResponder(self.webView) }
             self.webView.evaluateJavaScript("window.manifold?.fokusz?.()", completionHandler: nil)
@@ -290,7 +462,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// Dock-kattintás, miközben nincs látható ablak (a felhasználó bezárta, de a kilépési kérdésre a „Vissza”-t választotta, vagy
     /// a kilépés még függőben): az ablak visszajön (T032).
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { ablakElotor() }
+        if let indito { indito.eloterbe() }
+        else if !flag { ablakElotor() }
         return true
     }
 
@@ -309,6 +482,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
                 kesobbiUzenet = nil
                 webView.evaluateJavaScript(uzenetJs(szint: u.szint, cim: u.cim, szoveg: u.szoveg), completionHandler: nil)
             }
+        case "munkater-valaszto":
+            inditoMegjelenit()
         case "tema":
             switch body["ertek"] as? String {
             case "vilagos": NSApp.appearance = NSAppearance(named: .aqua)
@@ -371,6 +546,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         let appItem = NSMenuItem(); main.addItem(appItem)
         let appMenu = NSMenu(); appItem.submenu = appMenu
         appMenu.addItem(withTitle: L("A Manifold névjegye"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let beallitasok = NSMenuItem(title: L("Beállítások…"), action: #selector(parancs(_:)), keyEquivalent: ",")
+        beallitasok.representedObject = "beallitasok.megnyit"; beallitasok.target = self
+        appMenu.addItem(beallitasok)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: L("Manifold elrejtése"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let tobbiElrejt = appMenu.addItem(withTitle: L("Többi elrejtése"), action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -378,6 +556,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         appMenu.addItem(withTitle: L("Összes megjelenítése"), action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: L("Kilépés"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let fajlItem = NSMenuItem(); main.addItem(fajlItem)
+        let fajl = NSMenu(title: L("Fájl")); fajlItem.submenu = fajl
+        let valaszto = NSMenuItem(title: L("Munkatér megnyitása…"), action: #selector(munkaterMegnyit(_:)), keyEquivalent: "o")
+        valaszto.keyEquivalentModifierMask = [.command, .shift]; valaszto.target = self; fajl.addItem(valaszto)
         let editItem = NSMenuItem(); main.addItem(editItem)
         let edit = NSMenu(title: L("Szerkesztés")); editItem.submenu = edit
         // Visszavonás / Újra (`undo:`/`redo:` a first responderre): a WKWebView a gyorsbillentyűt ELŐBB a lapnak adja — a CodeMirror
@@ -485,6 +667,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         let szoveg = L("A core %d másodperce nem jelentkezett (nagy vaultnál vagy lassú lemeznél az indulás tovább tarthat).", Int(mp.rounded(.up)))
             + (farok.isEmpty ? "\n\n" + L("A core nem írt hibaüzenetet.") : "\n\n" + L("A core utolsó sorai:") + "\n" + farok)
         if selftest { return finishSelftest(ok: forgatokonyv == "kezfogas-ido", note: "A core nem válaszol: " + szoveg, kill: true) }
+        if inditoInditas || munkaterValtas?.lepes == .indul || munkaterValtas?.lepes == .visszaall {
+            _ = inditoHiba(szoveg); return
+        }
         ablakElotor()
         let alert = NSAlert()
         alert.alertStyle = .warning
@@ -591,6 +776,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     /// (`{ok, mentetlen}`); ha maradt mentetlen vagy hibás jegyzet, a felület nem válaszolt, vagy a mentés nem végzett időben,
     /// kérdezünk, mielőtt a core leáll. A második ⌘Q kényszerít: SIGTERM — a core a folyamatban lévő írást így is befejezi.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        if munkaterValtas != nil { return .terminateCancel }
         guard let core, core.isRunning else { return .terminateNow }
         quitRequests += 1
         if quitRequests > 1 { core.terminateNow(); return .terminateNow }   // második ⌘Q: kényszerítés
@@ -641,6 +827,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
     }
 
     private func coreExited() {
+        if let vault = inditoVarakozoVault {
+            inditoVarakozoVault = nil; core = nil
+            inditoValasztott(vault); return
+        }
+        if inditoVisszavon {
+            inditoVisszavon = false; inditoInditas = false
+            inditoMegsem(); return
+        }
+        if let v = munkaterValtas {
+            if v.lepes == .leall { return inditoUjCore() }
+            if v.lepes == .hibasLeall { return inditoRegiCore() }
+        }
+        if inditoCoreHibas || (indito != nil && origin == nil) { return }
+        if inditoInditas { return }  // a startup-eredmény a választóban marad, nem nyitunk második hibaablakot
         if core?.foglalt == true { return }         // másik példány fut: az indító visszahívása már üzent és kilép
         if core?.stopping == true { NSApp.reply(toApplicationShouldTerminate: true); return }
         coreLeallt()
@@ -700,7 +900,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         guard let gyoker else { return NSApp.terminate(nil) }
         ujraindulasMentetlen = mentetlen
         coreHalalFolyamatban = true                       // a `coreElindult` ebből tudja, hogy újraindításról van szó
-        indit(CoreProcess(root: gyoker, vault: inditottVault, termek: termek, port: port, titok: titok))
+        indit(CoreProcess(root: gyoker, vault: inditottVault, termek: termek, port: port, titok: titok, munkaterValasztas: inditottValasztas))
     }
 
     private func ujraindulasHiba(_ uzenet: String) {

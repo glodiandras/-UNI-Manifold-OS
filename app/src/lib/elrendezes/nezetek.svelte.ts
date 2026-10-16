@@ -5,6 +5,8 @@
 //                        komponens: Szerkeszto, prioritas: 10 });
 
 
+import ModulKikapcsolva from '../../beallitasok/ModulKikapcsolva.svelte';
+import { nezetEngedelyezett } from '../beallitasok/modulok';
 import type { Component } from 'svelte';
 import type { FajlInfo } from '../vault/fajlok.svelte';
 import type { Ful } from './munkaterulet.svelte';
@@ -42,7 +44,8 @@ export class NezetRegiszter {
 
   valaszt(ful: Ful, info: FajlInfo | undefined): Nezet | undefined {
     void this.valtozat;
-    return this.nezetek.find((n) => n.illeszkedik(ful, info));
+    const n = this.nezetek.find((n) => n.illeszkedik(ful, info));
+    return n && !nezetEngedelyezett(n.id) ? { ...n, komponens: ModulKikapcsolva } : n;
   }
 }
 

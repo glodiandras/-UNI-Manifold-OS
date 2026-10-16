@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import posixpath
 import re
 import threading
 import time
@@ -422,6 +423,9 @@ class Vault:
     def uj_fajl_beallitas(self) -> tuple[str, str]:
         """Az Obsidian új-jegyzet helye a vault `.obsidian/app.json`-jából (csak olvasva; C31, a koordinátor döntése a K214
         helyett): (`newFileLocation`, `newFileFolderPath`). Kulcs vagy olvasható fájl nélkül az Obsidian alapja: `root`."""
+        if self.cfg.forras("beallitasok", "fajlok", "uj_mappa") != "os":
+            mappa = self.cfg.section("beallitasok").get("fajlok", {}).get("uj_mappa", "")
+            return ("current", "/") if mappa == "." else (("folder", mappa) if mappa else ("root", "/"))
         try:
             adat = json.loads((self.root / ".obsidian" / "app.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -441,6 +445,13 @@ class Vault:
         if not isinstance(cel, str) or not cel.strip():
             raise kodos(Invalid("hiányzik a link célja"), "vault.link_cel_hianyzik")
         tiszta = nfc(cel).strip().replace("\\", "/").lstrip("/")
+        relativ = tiszta.startswith(("./", "../"))
+        if relativ:
+            if not isinstance(forras, str) or not forras:
+                raise kodos(Invalid("hiányzik a link forrása"), "vault.link_cel_hianyzik")
+            # A norm_path ezután ellenőrzi a normalizált, vaulton belüli célt;
+            # a túl sok ../, rejtett mappa és tiltott név továbbra is elutasított.
+            tiszta = norm_path(posixpath.normpath(posixpath.join(posixpath.dirname(norm_path(forras)), tiszta)))
         if self.NEM_JEGYZET_CEL.search(tiszta):
             raise kodos(Invalid(f"a cél nem jegyzet (a fájl nem található): {cel}"), "vault.link_cel_nincs", cel=cel)
         kit = ".cpp" if tipus == "cpp" else ".md"          # C36a-UI: a hiányzó `x.cpp` célja C++ forrás
@@ -449,6 +460,8 @@ class Vault:
         mappa, _, nev = tiszta.rpartition("/")
         if mappa:
             return {"mappa": self.kanonikus(norm_path(mappa)), "nev": nev, "mappa_keszit": True}
+        if relativ:
+            return {"mappa": "", "nev": nev}
         hely, fix = self.uj_fajl_beallitas()
         if hely == "current" and isinstance(forras, str) and "/" in forras:
             elotag = norm_path(forras).rpartition("/")[0]
@@ -460,6 +473,8 @@ class Vault:
                     f = self.kanonikus(norm_path(f))
                 except Invalid:
                     f = ""
+                if self.cfg.forras("beallitasok", "fajlok", "uj_mappa") != "os" and f:
+                    return {"mappa": f, "nev": nev, "mappa_keszit": True}
                 return {"mappa": f if f and self._abs(f).is_dir() else "", "nev": nev}
         return {"mappa": "", "nev": nev}
 

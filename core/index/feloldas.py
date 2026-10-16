@@ -29,6 +29,7 @@ from __future__ import annotations
 import collections
 import json
 import os
+import posixpath
 import re
 import unicodedata
 
@@ -240,6 +241,19 @@ class Feloldo:
     def resolve(self, target: str, src: str) -> tuple[str | None, str | None, bool]:
         s = _elokeszit(target)
         if not s:
+            return None, None, False
+        # Kifejezett relatív link: a forrás mappájából, kizárólag a vaulton belül.
+        # Nem eshet át a végződéses keresésre: ../Other/A nem jelenthet egy másik A fájlt.
+        if s.startswith(("./", "../")):
+            cel = posixpath.normpath(posixpath.join(posixpath.dirname(src), s))
+            if cel in (".", "..") or cel.startswith("../") or cel.startswith("/"):
+                return None, None, False
+            for nev in (cel, cel + ".md"):
+                if nev in self.fileset:
+                    return nev, posixpath.basename(nev), False
+                egyezo = sorted(u for u in self.by_low.get(kis(posixpath.basename(nev)), ()) if kis(u) == kis(nev))
+                if egyezo:
+                    return egyezo[0], posixpath.basename(egyezo[0]), len(egyezo) > 1
             return None, None, False
         r = self._menet(s, src, True) or self._menet(s, src, False)
         if r is None:

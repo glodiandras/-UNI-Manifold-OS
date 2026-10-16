@@ -72,6 +72,7 @@ _MUNKATER = (
     "felkeszultseg.*", "!felkeszultseg.kalibral*", "!felkeszultseg.kalibrac*",
     "sema.mod",
     "modulok.*",
+    "beallitasok.*",
 )
 RETEG_JOG: dict[str, tuple[str, ...]] = {
     "munkater": _MUNKATER,
@@ -106,6 +107,7 @@ META_TIPUS: dict[str, type] = {
     "workspace.id": str, "workspace.formatum": int, "workspace.olvaso_min": int, "workspace.nev": str,
     "workspace.nyelv": str, "workspace.presetek": list, "workspace.obsidian_letrehozva": bool,
     "munkaterek.*.fuzet.mappak": list,
+    "beallitasok.billentyuk.*": str,
 }
 # Vault-relatív út értékek: NFC, nem abszolút, nincs `..`, nincs pontos szakasz (`.manifold/…`, `.obsidian/…`), nincs helyőrző
 UT_KULCSOK = ("naplo.ut", "*.mappa", "*_mappa", "sablon.mappa", "fuzet.cel_mappa", "media.*", "video.vault_mappa",
@@ -454,6 +456,8 @@ def _ertek_hiba(reteg: str, kulcs: str, ertek, alap, gyoker: Path | None) -> tup
                 return h, None
     if _illik(kulcs, UT_KULCSOK):
         for s in szovegek:
+            if (kulcs == "beallitasok.fajlok.csatolmany_mappa" and (s == "." or s.startswith("./"))) or (kulcs == "beallitasok.fajlok.uj_mappa" and s == "."):
+                s = s[2:] if s != "." else ""
             h = _ut_hiba(s)
             if h:
                 return h, None
@@ -626,6 +630,14 @@ def load(environment: dict[str, str] | None = None, *, munkater: bool = True) ->
     ok, rossz = _szur(i_reteg, i_adat, data, root)
     data = _melyegyesit(data, ok, retegek, "telepites")
     elutasitott += [("telepites", k, kod) for k, kod in rossz]
+
+    # A natív választóból indított core új munkatér: az előző folyamat rögzített útjai nem öröklődhetnek.
+    # A felhasználó explicit CLI-indítása és a sikertelen váltás visszaállítása változatlan környezettel fut.
+    if env.get("MOS_MUNKATER_VALTAS") == "1":
+        from .workspace import _munkater_fuggo
+        for k in _munkater_fuggo(data.get("utak") or {}) - {"vault"}:
+            env.pop(f"MOS_{k.upper()}", None)
+        env.pop("MOS_WORKSPACE_ID", None)
 
     # 3. {vault} → W (+P(W))
     elo = Config(root, data, env, forras)

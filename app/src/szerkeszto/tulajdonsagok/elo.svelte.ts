@@ -16,6 +16,7 @@ interface Beallitas { ut: string; nyitottsag: { nyitva: boolean }; kiegeszites?:
 export const eloTulajdonsagForras = Facet.define<Beallitas, Beallitas | null>({
   combine: (v) => v[0] ?? null,
 });
+export const tulajdonsagEngedelyezett = Facet.define<boolean, boolean>({ combine: v => v[0] ?? true });
 
 /** A core a frontmattert formai hibásnak találta (`string`: az ok) vagy rendben van (`null`). */
 export const eloFmHiba = StateEffect.define<string | null>();
@@ -71,7 +72,7 @@ interface Allapot { hiba: string | null; deco: DecorationSet }
 
 function diszites(state: EditorState, hiba: string | null): DecorationSet {
   const b = state.facet(eloTulajdonsagForras);
-  if (!b) return Decoration.none;
+  if (!b || !state.facet(tulajdonsagEngedelyezett)) return Decoration.none;
   const fm = fmBlokk(state.doc);
   const nyers = !fm || hiba !== null;
   const widget = new TulajdonsagWidget(b, fm?.szoveg ?? '', state.readOnly, fm ? hiba : null);
@@ -99,7 +100,7 @@ export const eloTulajdonsagMezo = StateField.define<Allapot>({
 /** A törzs első pozíciója, ha a frontmatter a widget mögött rejtőzik (és van utána sor); különben `null`. */
 export function torzsEleje(state: EditorState): number | null {
   const f = state.field(eloTulajdonsagMezo, false);
-  if (!f || f.hiba !== null || !state.facet(eloTulajdonsagForras)) return null;
+  if (!f || f.hiba !== null || !state.facet(eloTulajdonsagForras) || !state.facet(tulajdonsagEngedelyezett)) return null;
   const fm = fmBlokk(state.doc);
   if (!fm) return null;
   const vege = fmVege(state.doc, fm.ig);

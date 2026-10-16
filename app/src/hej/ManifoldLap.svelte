@@ -5,6 +5,7 @@
   Egy feladatra kattintva a lap a feladat részletét mutatja (haladás, leállítás, napló, mit változtatott).
 -->
 <script lang="ts">
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
   import { t } from '../lib/i18n';
   import { Activity, Boxes, CalendarDays, ChartNoAxesColumn, Gauge, GraduationCap, HardDrive, Inbox, MessageCircleQuestionMark, Sparkles } from '../lib/ikon/ikonok';
   import { kornyezet } from '../lib/kornyezet';
@@ -37,28 +38,42 @@
       <Szakasz cim={t('Most')} ikon={Activity} bind:nyitva={() => nyitva('most'), (v) => allit('most', v)}>
         <Most onnyit={(id) => (felulet.manifoldFeladat = id)} />
       </Szakasz>
+      {#if modulEngedelyezett('video')}
       <Szakasz cim={t('Bevitel')} ikon={Inbox} bind:nyitva={() => nyitva('bevitel'), (v) => allit('bevitel', v)}>
         {#if nyitva('bevitel')}<Bevitel onnyit={(id) => (felulet.manifoldFeladat = id)} />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('kerdezz')}
       <Szakasz cim={t('Kérdezz a vaulttól')} ikon={MessageCircleQuestionMark} bind:nyitva={() => nyitva('kerdezz'), (v) => allit('kerdezz', v)}>
         {#if nyitva('kerdezz')}<Kerdezz />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('kartya')}
       <Szakasz cim={t('Tanulás')} ikon={GraduationCap} bind:nyitva={() => nyitva('tanulas'), (v) => allit('tanulas', v)}>
         {#if nyitva('tanulas')}<Tanulas />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('tracker')}
       <Szakasz cim={t('Statisztika')} ikon={ChartNoAxesColumn} bind:nyitva={() => nyitva('statisztika'), (v) => allit('statisztika', v)}>
         {#if nyitva('statisztika')}<StatisztikaSzakasz />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('tracker')}
       <Szakasz cim={t('Használat')} ikon={Gauge} bind:nyitva={() => nyitva('hasznalat'), (v) => allit('hasznalat', v)}>
         {#if nyitva('hasznalat')}<HasznalatSzakasz />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('naptar')}
       <Szakasz cim={t('Naptár és emlékeztetők')} ikon={CalendarDays} bind:nyitva={() => nyitva('naptar'), (v) => allit('naptar', v)}>
         {#if nyitva('naptar')}<NaptarSzakasz />{/if}
       </Szakasz>
+      {/if}
+      {#if modulEngedelyezett('asszisztens')}
       <Szakasz cim={t('Asszisztens')} ikon={Sparkles} bind:nyitva={() => nyitva('asszisztens'), (v) => allit('asszisztens', v)}>
         <Kapcsolok />
         {#if nyitva('asszisztens')}<AsszisztensTanult /><AsszisztensStatisztika />{/if}
       </Szakasz>
+      {/if}
       <Szakasz cim={t('Modellek')} ikon={Boxes} bind:nyitva={() => nyitva('modellek'), (v) => allit('modellek', v)}>
         {#if nyitva('modellek')}<Modellek />{/if}
       </Szakasz>

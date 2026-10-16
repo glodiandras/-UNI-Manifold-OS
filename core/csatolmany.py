@@ -107,10 +107,12 @@ def nev_ellenor(nev):
     return vaultio.norm_path(nev.strip())
 
 
-def beallitas(vault_gyoker) -> str:
+def beallitas(vault_gyoker, cfg=None) -> str:
     """Az `.obsidian/app.json` `attachmentFolderPath` nyers értéke — a beállítás EGYETLEN olvasója (80(c); a CX-004 feltöltése és a
     83. döntés javaslatának `.apkg`-médiája is ezt használja). Csak olvasunk (24(b)). Hiányzó/olvashatatlan fájl vagy kulcs: `''`
     (az Obsidian alapja: a vault gyökere); nem szöveges érték: 400."""
+    if cfg is not None and cfg.forras("beallitasok", "fajlok", "csatolmany_mappa") != "os":
+        return cfg.section("beallitasok").get("fajlok", {}).get("csatolmany_mappa", "")
     try:
         cel = json.loads((Path(vault_gyoker) / '.obsidian/app.json').read_text(encoding='utf-8')).get('attachmentFolderPath', '')
     except (OSError, ValueError, AttributeError):
@@ -120,12 +122,12 @@ def beallitas(vault_gyoker) -> str:
     return cel
 
 
-def mappa(vault_gyoker, jegyzet_ut: str) -> str:
+def mappa(vault_gyoker, jegyzet_ut: str, cfg=None) -> str:
     """A `jegyzet_ut` (vault-relatív; nem kell léteznie — az új kísérőjegyzeté is) csatolmány-mappája, vault-relatív NFC úton
     (`''` = a gyökér), az Obsidian szabályával: `''`/`/` → gyökér, `.`/`./x` → a jegyzet mappája (alatta `x`), más → a gyökértől.
     Az érvénytelen mappa (`..`, rejtett vagy a vaultban tiltott jelű szegmens) `vaultio.Invalid`: ilyen helyre semmi nem kerül."""
     jegyzet_ut = vaultio.norm_path(jegyzet_ut)
-    cel = vaultio.nfc(beallitas(vault_gyoker)).replace('\\', '/').strip()
+    cel = vaultio.nfc(beallitas(vault_gyoker, cfg)).replace('\\', '/').strip()
     if cel in ('', '/'):
         return ''
     if cel == '.' or cel.startswith('./'):
@@ -142,7 +144,7 @@ def csatolmany_mappa(v, forras):
     """CX-004: a feltöltés célja a (létező) `forras` jegyzet csatolmány-mappája (`mappa`)."""
     forras = vaultio.norm_path(forras)
     v.lemezen(forras)
-    return mappa(v.root, forras)
+    return mappa(v.root, forras, v.cfg)
 
 
 def kovetett(repo, utak):

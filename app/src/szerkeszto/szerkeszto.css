@@ -45,6 +45,14 @@
   padding: 0;
 }
 
+.szerkeszto .cm-editor[data-olvashato-szelesseg='false'] .cm-content {
+  max-width: none;
+}
+
+.szerkeszto[data-olvashato-szelesseg='false'] .olvaso {
+  max-width: none;
+}
+
 .szerkeszto .cm-editor .cm-specialChar {
   color: var(--hiba);
 }

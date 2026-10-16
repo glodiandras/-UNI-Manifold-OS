@@ -705,7 +705,7 @@ class GepiIras:
         engedett = set()
         for f in jegyzetek:
             try:
-                engedett.add(nfc(csatolmany.mappa(self.v.root, f.ut)).casefold())
+                engedett.add(nfc(csatolmany.mappa(self.v.root, f.ut, self.cfg)).casefold())
             except Invalid as e:
                 raise kodol(Invalid(f"a csatolmány-mappa nem használható: {e}"), "gepi_iras.csatolmany_mappa_hasznalhato_e", {"e": e}) from None
         szovegek = [f.uj.decode("utf-8", errors="replace") for f in jegyzetek]

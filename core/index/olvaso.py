@@ -308,7 +308,9 @@ class IndexOlvaso:
         with self._fl_lock:
             if ut not in self.feloldo.fileset:
                 raise kodol(NotFound(f"nincs ilyen fájl az indexben: {ut}"), "index.olvaso.nincs_ilyen_fajl_indexben_ut", {"ut": ut})
-            return {"ut": ut, "cel": linkek.rovid_cel(self.feloldo, ut, forras)}
+            relativ = self.cfg.section("beallitasok").get("fajlok", {}).get("link_formatum") == "relativ"
+            fn = linkek.relativ_cel if relativ else linkek.rovid_cel
+            return {"ut": ut, "cel": fn(self.feloldo, ut, forras)}
 
     def aliasok(self) -> dict:
         """Az aliasos fájlok `aliases`-ai: `{ut: [alias]}`."""

@@ -148,6 +148,11 @@ class IndexLinkApiTest(unittest.TestCase):
         with self.assertRaises(NotFound):
             self.ix.link_cel("nincs.md", "x.md")
 
+    def test_beallitott_relativ_link_a_valodi_indexbol(self):
+        self.ix.cfg.data["beallitasok"]["fajlok"]["link_formatum"] = "relativ"
+        self.assertEqual(self.ix.link_cel("B/Jegyzet.md", "A/Forrás.md")["cel"], "../B/Jegyzet")
+        self.assertEqual(self.ix.feloldas("A/Forrás.md", ["../B/Jegyzet"])[0]["ut"], "B/Jegyzet.md")
+
     def test_aliasok(self):
         a = self.ix.aliasok()["aliasok"]
         self.assertEqual(a["Hosszú.md"], ["Hosszúság"])

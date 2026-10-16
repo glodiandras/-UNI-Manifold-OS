@@ -7,6 +7,7 @@
 // a mélységkorlát 6. Hiányzó cél: halvány jelzés és létrehozás gomb.
 
 import { t } from '../../lib/i18n';
+import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
 import { ApiHiba } from '../../lib/core/api';
 import { linkek, type BeagyazasAdat } from '../../lib/vault/linkek.svelte';
 import { fajlNev } from '../../lib/vault/fajlok.svelte';
@@ -72,7 +73,11 @@ async function betolt(kont: HTMLElement, link: LinkAdat, o: BeagyazasOpciok): Pr
   if (o.jel?.aborted) return;
   kont.classList.remove('beagyazas-betolt');
   try {
-    if (adat.tipus === 'nincs' || !adat.ut) {
+    const modul = adat.tipus === 'pdf' ? 'pdf' : adat.tipus === 'base' ? 'bazis' : adat.tipus === 'canvas' ? 'canvas' :
+      adat.tipus === 'video' || adat.tipus === 'hang' ? 'media' : null;
+    if (modul && !modulEngedelyezett(modul)) {
+      chip(adat, link, kont, o);
+    } else if (adat.tipus === 'nincs' || !adat.ut) {
       hianyzo(kont, link, o);
     } else if (adat.tipus === 'jegyzet' && o.sorban) {
       chip(adat, link, kont, o);

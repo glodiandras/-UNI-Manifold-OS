@@ -15,6 +15,7 @@ from tests.helpers import REPO, alg_core, tmpdir
 # A döntéstábla: a core minden nem-GET végpontja VAGY a lépés-folyamat számára engedett (`lepes_kapu.ENGEDELYEZETT`), VAGY itt, tiltottként
 # szerepel. Egy új író végpont, amely egyik helyen sincs, bukó teszt: a hozzáadó dönti el, hívhatja-e egy lánc.
 TILTOTT = {
+    ('PUT', '/api/beallitasok'),  # F5: Setup/privacy/modules are user choices, never machine-step actions.
     # CX: csak a felület indíthatja ezeket, gépi lépés nem.
     ('POST', '/api/vault/import'),
     ('POST', '/api/vault/mappa'),
@@ -81,7 +82,7 @@ class DontesTablaTest(unittest.TestCase):
             self.assertTrue(lepes_kapu.engedelyezett(m, u), (m, u))
         for m, u in (("PUT", "/api/vault/fajl"), ("POST", "/api/vault/uj"), ("POST", "/api/vault/atnevezes"), ("POST", "/api/sablon/uj"),
                      ("POST", "/api/vault/elozmeny/visszaallit"), ("POST", "/api/pillanat/vault/visszavonas"),
-                     ("POST", "/api/pdf/kiemeles"), ("POST", "/api/feladatok"), ("PUT", "/api/felulet/allapot")):
+                     ("POST", "/api/pdf/kiemeles"), ("POST", "/api/feladatok"), ("PUT", "/api/felulet/allapot"), ("PUT", "/api/beallitasok")):
             self.assertFalse(lepes_kapu.engedelyezett(m, u), (m, u))
 
 

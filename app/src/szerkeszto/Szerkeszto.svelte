@@ -21,7 +21,8 @@
   import { fajlNev, mappa } from '../lib/vault/fajlok.svelte';
   import { linkek } from '../lib/vault/linkek.svelte';
   import { vezerloKapcsolok } from '../lib/vezerlo/kapcsolok.svelte';
-  import { bovitmenyek, elonezetMod, forrasMod, irhatosagKapcsolo, modKapcsolo, szinkronJel } from './beallitas';
+  import { beallitasok } from '../lib/beallitasok/allapot.svelte';
+  import { bovitmenyek, elonezetMod, forrasMod, irhatosagKapcsolo, modKapcsolo, opciokKapcsolo, szerkesztoOpciok, szinkronJel } from './beallitas';
   import { felismertNyelv } from './nyelv';
   import type { Csatolt, Dokumentum } from './dokumentum/dokumentum.svelte';
   import { csere } from './dokumentum/kulonbseg';
@@ -57,6 +58,13 @@
   let view = $state.raw<EditorView | null>(null);
   let docValtozat = $state(0);
   let tartalmiKod = $state('');
+
+  $effect(() => {
+    // Más modul kikapcsolása az élő beágyazásokat is visszateszi egyszerű hivatkozássá.
+    void Object.values(beallitasok.ertek.modulok);
+    const opciok = szerkesztoOpciok(beallitasok.ertek);
+    view?.dispatch({ effects: opciokKapcsolo.reconfigure(opciok) });
+  });
 
   function kezdoMod(): Mod {
     const m = untrack(() => ful.nezet?.mod);
@@ -118,6 +126,7 @@
     const szerkMod = mod === 'olvaso' ? felulet.szerkesztoMod : mod;
     const ex = bovitmenyek({
           mod: szerkMod,
+          beallitas: beallitasok.ertek,
           csakOlvashato: !!d.csakOlvashato,
           ut,
           cimke: t('Jegyzet: {nev}', { nev: fajlNev(ut) }),
@@ -328,7 +337,7 @@
   });
 </script>
 
-<div class="szerkeszto" class:olvaso-mod={mod === 'olvaso'}>
+<div class="szerkeszto" class:olvaso-mod={mod === 'olvaso'} data-olvashato-szelesseg={beallitasok.ertek.szerkeszto.olvashato_szelesseg}>
   <header class="fejlec" data-csend-terulet>
     <p class="morzsa" title={ut} data-csend-rejt>
       <span class="morzsa-ikon"><JegyzetIkon {ut} tipus="md" meret={14} /></span>
@@ -366,7 +375,7 @@
 
   <Boritokep {ut} />
   <FajlCim {ut} irhato={!!dok && !dok.csakOlvashato && dok.allapot !== 'utkozes' && dok.allapot !== 'eltunt'} />
-  {#if dok && view && mod === 'olvaso'}
+  {#if dok && view && mod === 'olvaso' && beallitasok.ertek.modulok.tulajdonsagok}
     <Tulajdonsagok
       {ut}
       szoveg={() => dok!.szoveg}

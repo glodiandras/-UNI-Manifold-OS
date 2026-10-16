@@ -322,7 +322,7 @@ class MigracioTest(_Alap):
         c = tar.nyit(ix.db_ut)
         try:
             self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], tar.VERZIO)
-            self.assertEqual(tar.VERZIO, 4)
+            self.assertEqual(tar.VERZIO, 5)
             self.assertEqual(c.execute("SELECT count(*) FROM link WHERE cel_nyers = 'Tilde'").fetchone()[0], 0)
             self.assertEqual(c.execute("SELECT kulcs, cel FROM link WHERE cel_nyers = 'cél'").fetchall()[0][:],
                              ("cél", "Cél.md"))

@@ -5,7 +5,7 @@
 
 import { t } from '../../lib/i18n';
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language';
-import { type EditorState, type Extension, Prec, StateEffect, StateField } from '@codemirror/state';
+import { type EditorState, type Extension, Facet, Prec, StateEffect, StateField } from '@codemirror/state';
 import { EditorView, showTooltip, type Tooltip, type TooltipView, type ViewUpdate } from '@codemirror/view';
 import { ertesitesek } from '../../lib/ertesites/ertesites.svelte';
 import { FuzzyIndex } from '../../lib/kereses/fuzzy';
@@ -27,6 +27,7 @@ interface PerjelAllapot {
 }
 
 const perjelZar = StateEffect.define<null>();
+export const perjelEngedelyezett = Facet.define<boolean, boolean>({ combine: v => v[0] ?? true });
 
 /** Itt a `/` nem nyit menüt: kód, képlet, link, HTML, megjegyzés, frontmatter. */
 const TILTOTT = new Set([
@@ -53,7 +54,7 @@ const TILTOTT = new Set([
 
 /** Nyithat-e menüt a most gépelt, `p` helyén álló `/`. */
 export function perjelNyithato(state: EditorState, p: number): boolean {
-  if (state.readOnly) return false;
+  if (state.readOnly || !state.facet(perjelEngedelyezett)) return false;
   const sor = state.doc.lineAt(p);
   if (p > sor.from && !/\s/.test(state.sliceDoc(p - 1, p))) return false;
   const fa = ensureSyntaxTree(state, Math.min(state.doc.length, p + 1), 50) ?? syntaxTree(state);
@@ -76,6 +77,7 @@ function ujAllapot(state: EditorState, p: number): PerjelAllapot {
 const perjelMezo = StateField.define<PerjelAllapot | null>({
   create: () => null,
   update(ertek, tr) {
+    if (!tr.state.facet(perjelEngedelyezett)) return null;
     if (tr.effects.some((e) => e.is(perjelZar))) return null;
     if (ertek) {
       if (!tr.docChanged && !tr.selection) return ertek;

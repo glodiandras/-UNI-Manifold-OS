@@ -62,13 +62,14 @@ final class CoreProcess {
     /// a régi, hogy a lapba injektált titok érvényes maradjon; nil: a core újat sorsol.
     /// `vault`: a megnyitandó vault (`MOS_VAULT`; termékben a regiszterből). `termek` (F3-DESIGN §2.6): `MOS_ELRENDEZES=termek`, és a
     /// héj futtathatója a naptár-segéd és a CLI-mód (`MOS_NAPTAR_SEGED`, `MOS_HEJ_CLI`), ha a környezet nem adja meg.
-    init(root: URL, vault: String? = nil, termek: Bool = false, port: Int? = nil, titok: String? = nil) {
+    init(root: URL, vault: String? = nil, termek: Bool = false, port: Int? = nil, titok: String? = nil,
+         munkaterValasztas: Bool = false) {
         process.executableURL = root.appendingPathComponent("bin/mos")
         process.arguments = ["core", "start"]
         process.currentDirectoryURL = root
         process.environment = CoreProcess.kornyezet(alap: ProcessInfo.processInfo.environment, root: root, vault: vault,
                                                     termek: termek, port: port, titok: titok,
-                                                    futtathato: Bundle.main.executablePath)
+                                                    futtathato: Bundle.main.executablePath, munkaterValasztas: munkaterValasztas)
         process.standardInput = stdinPipe
         process.standardOutput = stdoutPipe
         process.standardError = stderrPipe
@@ -76,9 +77,11 @@ final class CoreProcess {
 
     /// A core környezete (tiszta függvény, a `--selftest` táblázata ellenőrzi).
     static func kornyezet(alap: [String: String], root: URL, vault: String?, termek: Bool, port: Int?, titok: String?,
-                          futtathato: String?) -> [String: String] {
+                          futtathato: String?, munkaterValasztas: Bool = false) -> [String: String] {
         var env = alap
         env["MOS_ROOT"] = root.path
+        if munkaterValasztas { env["MOS_MUNKATER_VALTAS"] = "1" }
+        else { env.removeValue(forKey: "MOS_MUNKATER_VALTAS") }
         if let vault, !vault.isEmpty { env["MOS_VAULT"] = vault }
         if termek {
             env["MOS_ELRENDEZES"] = "termek"
@@ -252,6 +255,12 @@ final class CoreProcess {
         if e1 != e1vart { hibak.append("termék-környezet: \(e1)") }
         let e2 = kornyezet(alap: ["MOS_VAULT": "/E"], root: r, vault: nil, termek: false, port: nil, titok: nil, futtathato: "/x")
         if e2 != ["MOS_VAULT": "/E", "MOS_ROOT": "/R"] { hibak.append("hordozható környezet: \(e2)") }
+        let e3 = kornyezet(alap: ["MOS_VAR": "/regi/var"], root: r, vault: "/uj", termek: true, port: nil, titok: nil,
+                           futtathato: nil, munkaterValasztas: true)
+        if e3["MOS_MUNKATER_VALTAS"] != "1" || e3["MOS_VAULT"] != "/uj" { hibak.append("választott workspace jelölése") }
+        let e4 = kornyezet(alap: ["MOS_MUNKATER_VALTAS": "1"], root: r, vault: "/regi", termek: false,
+                           port: nil, titok: nil, futtathato: nil)
+        if e4["MOS_MUNKATER_VALTAS"] != nil { hibak.append("régi indítási környezet visszaállítása") }
         let lecsatolas: [(String?, String, Bool)] = [
             ("/Volumes/Disk", "/Volumes/Disk/Manifold", true), ("/Volumes/Disk/", "/Volumes/Disk/Manifold", true),
             ("/Volumes/Disk/Manifold", "/Volumes/Disk/Manifold", true),

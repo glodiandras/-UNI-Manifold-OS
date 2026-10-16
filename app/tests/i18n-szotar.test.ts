@@ -28,7 +28,7 @@ describe('a szótárfájlok alakja', () => {
   it('a fájlok a várt partíciók, lapos szöveg→szöveg objektumok, üres érték nélkül, azonos kezdő/záró szóközzel', () => {
     // egy partíció több fájlt is használhat (párhuzamos munkához): `<partíció>.json` vagy `<partíció>-<utótag>.json` (pl. `core-b.json`)
     const nevek = FAJLOK.map(([ut]) => ut.replace('./en/', '').replace('.json', '')).sort();
-    const PARTICIOK = ['core', 'hej', 'lib', 'modulok', 'nezetek', 'oldalak', 'parancsok', 'pdfjs', 'szerkeszto'];
+    const PARTICIOK = ['beallitasok', 'core', 'hej', 'lib', 'modulok', 'nezetek', 'oldalak', 'parancsok', 'pdfjs', 'setup', 'szerkeszto'];
     expect(nevek.filter((n) => !new RegExp(`^(${PARTICIOK.join('|')})(-[a-z0-9]+)?$`).test(n))).toEqual([]);
     expect([...new Set(nevek.map((n) => n.split('-')[0]))].sort()).toEqual(PARTICIOK);
     const rossz: string[] = [];

@@ -9,7 +9,10 @@ import { t, tk } from '../lib/i18n';
 import { automatikusNyelv } from './nyelv';
 import { gepelesMero } from '../lib/tracker/gepelesMero';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { eloTulajdonsagok } from './tulajdonsagok/elo.svelte';
+import { eloTulajdonsagok, tulajdonsagEngedelyezett } from './tulajdonsagok/elo.svelte';
+import { perjelEngedelyezett } from './notion/perjel';
+import type { Beallitasok } from '../lib/beallitasok/tipusok';
+import { alapBeallitasok } from '../lib/beallitasok/tipusok';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { commonmarkLanguage, markdown } from '@codemirror/lang-markdown';
 import { indentUnit, syntaxHighlighting } from '@codemirror/language';
@@ -36,6 +39,18 @@ export type SzerkesztoMod = 'elo' | 'forras';
 
 export const modKapcsolo = new Compartment();
 export const irhatosagKapcsolo = new Compartment();
+export const opciokKapcsolo = new Compartment();
+
+/** Élő opciók: az újrakonfigurálás nem cseréli a dokumentumot, a kurzort vagy a history mezőt. */
+export function szerkesztoOpciok(b: Beallitasok): Extension {
+  return [
+    EditorState.tabSize.of(b.szerkeszto.tab_meret),
+    EditorView.contentAttributes.of({ spellcheck: String(b.szerkeszto.helyesiras) }),
+    EditorView.editorAttributes.of({ 'data-olvashato-szelesseg': String(b.szerkeszto.olvashato_szelesseg) }),
+    perjelEngedelyezett.of(b.szerkeszto.perjel && b.modulok.perjel),
+    tulajdonsagEngedelyezett.of(b.modulok.tulajdonsagok),
+  ];
+}
 
 /** A dokumentum felől érkező változás jele (külső változás, ütközés-feloldás, nézetek közti szinkron): csak olvasható
  *  állapotban is átmegy a `changeFilter`-en (T117). Egyetlen példány: a tárolt állapot is ezt ismeri. */
@@ -106,6 +121,7 @@ export interface BeallitasOpciok {
   kiegeszites?: KiegeszitesForras;
   /** a linkjavaslat (C30b-mag) külső függőségei; nélküle a bővítmény tétlen */
   javaslat?: JavaslatBeallitas;
+  beallitas?: Beallitasok;
   tovabbi?: Extension[];
 }
 
@@ -121,7 +137,7 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     EditorView.lineWrapping,
     EditorState.allowMultipleSelections.of(true),
     indentUnit.of('\t'),
-    EditorState.tabSize.of(4),
+    opciokKapcsolo.of(szerkesztoOpciok(o.beallitas ?? alapBeallitasok())),
     EditorState.phrases.of(MAGYAR_FELIRATOK),
     search({ top: true }),
     keymap.of([...closeBracketsKeymap, indentWithTab, ...searchKeymap, ...historyKeymap, ...defaultKeymap]),
@@ -142,7 +158,6 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     matekMargo(), // C24b: a levezetés-ellenőrzés margójele (Esc törli)
     gepelesMero(), // C27: a gépelési késleltetés folyamatos, mintavétel nélküli mérése (használati mérés)
     EditorView.contentAttributes.of({
-      spellcheck: 'true',
       autocorrect: 'off',
       autocapitalize: 'off',
       'aria-label': o.cimke,

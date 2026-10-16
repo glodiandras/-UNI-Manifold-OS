@@ -428,7 +428,7 @@ def _media_terv(app, p: dict, dontesek: list[dict], fajl: Path | None, tmp: Path
                 jel["kihagyva"].append({"nev": f["nev"], "ok": "ervenytelen_nev"})
                 continue
             try:
-                cel_mappa = csatolmany.mappa(root, d["ut"])
+                cel_mappa = csatolmany.mappa(root, d["ut"], app.cfg)
             except Invalid:
                 jel["kihagyva"].append({"nev": f["nev"], "ok": "csatolmany_mappa_ervenytelen"})
                 continue

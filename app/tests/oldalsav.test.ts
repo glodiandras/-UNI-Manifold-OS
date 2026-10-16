@@ -5,6 +5,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/svelte';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beallitasok } from '../src/lib/beallitasok/allapot.svelte';
+import { alapBeallitasok, type BeallitasokValasz } from '../src/lib/beallitasok/tipusok';
 import { CoreKapcsolat } from '../src/lib/core/ws.svelte';
 import { Felulet } from '../src/lib/elrendezes/felulet.svelte';
 import { KORNYEZET_KULCS } from '../src/lib/kornyezet';
@@ -25,6 +27,13 @@ const FAJLOK = [
 const MAPPAK = ['ATTCHMNTS', 'F02 - Dinamika', 'F02 - Dinamika/Elmélet', 'Üres'];
 
 let kerelmek: { url: string; metodus: string; body?: Record<string, unknown> }[];
+let beallitasElotte: { adat: BeallitasokValasz | null; elerheto: boolean };
+
+function ujMappaBeallitas(mappa: string): void {
+  const ertek = alapBeallitasok();
+  ertek.fajlok.uj_mappa = mappa;
+  beallitasok.fogad({ verzio: 1, rev: 'synthetic-revision', ertek, munkater: { id: 'synthetic', nev: 'Synthetic workspace', vault: '/synthetic' }, setup_szukseges: false, ujrainditas: [] });
+}
 
 function kornyezet(allapot: unknown = {}) {
   const felulet = new Felulet(allapot);
@@ -43,6 +52,8 @@ function valasz(adat: unknown, kod = 200) {
 const sorok = () => screen.getAllByRole('treeitem').map((e) => e.querySelector('.nev')?.textContent);
 
 beforeEach(() => {
+  beallitasElotte = { adat: beallitasok.adat, elerheto: beallitasok.elerheto };
+  beallitasok.adat = null;
   kerelmek = [];
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
     const u = new URL(url, 'http://127.0.0.1/');
@@ -58,6 +69,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  beallitasok.adat = beallitasElotte.adat;
+  beallitasok.elerheto = beallitasElotte.elerheto;
   document.body.textContent = '';
   vi.unstubAllGlobals();
 });
@@ -192,6 +205,69 @@ describe('új jegyzet', () => {
     await fireEvent.keyDown(mezo, { key: 'Enter' });
     expect(screen.queryByLabelText('Az új jegyzet neve')).toBeNull();
     expect(kerelmek.length).toBe(0);
+  });
+});
+
+describe('új jegyzet mappája a Settings API-ból', () => {
+  it('üres beállításnál a gyökérbe ír akkor is, ha egy mappasor fókuszált', async () => {
+    ujMappaBeallitas('');
+    const { felulet, context } = kornyezet();
+    render(Oldalsav, { context });
+    screen.getByText('F02 - Dinamika').closest<HTMLElement>('[role=treeitem]')!.focus();
+    await fireEvent.click(screen.getByRole('button', { name: 'Új jegyzet' }));
+    const mezo = await screen.findByLabelText('Az új jegyzet neve');
+    expect(mezo.getAttribute('title')).toBe('/');
+    await fireEvent.input(mezo, { target: { value: 'Root note' } });
+    await fireEvent.keyDown(mezo, { key: 'Enter' });
+    await waitFor(() => expect(felulet.munkaterulet.aktivFul?.ut).toBe('Root note.md'));
+    expect(kerelmek.find(k => k.url === '/api/vault/uj')?.body).toEqual({ mappa: '', nev: 'Root note' });
+  });
+
+  it('a pont az aktív jegyzet szülőmappáját használja a fa fókuszától függetlenül', async () => {
+    ujMappaBeallitas('.');
+    const { felulet, context } = kornyezet();
+    felulet.munkaterulet.megnyit('F02 - Dinamika/Elmélet/10 - Vége.md', 'aktiv');
+    render(Oldalsav, { context });
+    screen.getByText('ATTCHMNTS').closest<HTMLElement>('[role=treeitem]')!.focus();
+    await fireEvent.click(screen.getByRole('button', { name: 'Új jegyzet' }));
+    const mezo = await screen.findByLabelText('Az új jegyzet neve');
+    expect(mezo.getAttribute('title')).toBe('F02 - Dinamika/Elmélet');
+    await fireEvent.input(mezo, { target: { value: 'Related note' } });
+    await fireEvent.keyDown(mezo, { key: 'Enter' });
+    await waitFor(() => expect(felulet.munkaterulet.aktivFul?.ut).toBe('F02 - Dinamika/Elmélet/Related note.md'));
+    expect(kerelmek.find(k => k.url === '/api/vault/uj')?.body).toEqual({ mappa: 'F02 - Dinamika/Elmélet', nev: 'Related note' });
+  });
+
+  it('a még nem létező célmappánál is látszik és fókuszált a névmező, a POST pedig kéri a mappa létrehozását', async () => {
+    ujMappaBeallitas('Drafts/Missing');
+    const { felulet, context } = kornyezet();
+    render(Oldalsav, { context });
+    await fireEvent.click(screen.getByRole('button', { name: 'Új jegyzet' }));
+    const mezo = await screen.findByLabelText('Az új jegyzet neve');
+    expect(document.activeElement).toBe(mezo);
+    expect(mezo.getAttribute('title')).toBe('Drafts/Missing');
+    expect(mezo.closest('[hidden], [inert]')).toBeNull();
+    await fireEvent.input(mezo, { target: { value: 'Draft note' } });
+    await fireEvent.keyDown(mezo, { key: 'Enter' });
+    await waitFor(() => expect(felulet.munkaterulet.aktivFul?.ut).toBe('Drafts/Missing/Draft note.md'));
+    const keres = kerelmek.find(k => k.url === '/api/vault/uj');
+    expect(keres?.metodus).toBe('POST');
+    expect(keres?.body).toEqual({ mappa: 'Drafts/Missing', nev: 'Draft note', mappa_keszit: true });
+  });
+
+  it('a helyi menü Új jegyzet itt művelete felülírja az alapértelmezett célmappát', async () => {
+    ujMappaBeallitas('Drafts/Missing');
+    const { felulet, context } = kornyezet();
+    render(Oldalsav, { context });
+    const mappa = screen.getByText('F02 - Dinamika').closest<HTMLElement>('[role=treeitem]')!;
+    await fireEvent.contextMenu(mappa, { clientX: 20, clientY: 20 });
+    await fireEvent.click(screen.getByRole('option', { name: 'Új jegyzet itt' }));
+    const mezo = await screen.findByLabelText('Az új jegyzet neve');
+    expect(mezo.getAttribute('title')).toBe('F02 - Dinamika');
+    await fireEvent.input(mezo, { target: { value: 'Local note' } });
+    await fireEvent.keyDown(mezo, { key: 'Enter' });
+    await waitFor(() => expect(felulet.munkaterulet.aktivFul?.ut).toBe('F02 - Dinamika/Local note.md'));
+    expect(kerelmek.find(k => k.url === '/api/vault/uj')?.body).toEqual({ mappa: 'F02 - Dinamika', nev: 'Local note' });
   });
 });
 

@@ -12,6 +12,7 @@
 // renderelő a befoglaló jegyzet **egyetlen tranzakciójával** írja át (`blokk.csere`).
 
 import { t } from '../../lib/i18n';
+import { modulEngedelyezett } from '../../lib/beallitasok/allapot.svelte';
 export interface RenderKornyezet {
   /** a jegyzet vault-relatív útja (ha van) */
   ut: string | null;
@@ -64,6 +65,7 @@ export class KodRendeloRegiszter {
   /** A kódblokk info-sorához tartozó renderelő (az első szó, kisbetűvel). */
   keres(info: string): KodRenderelo | undefined {
     const nyelv = /^\S*/.exec(info.trim())?.[0].toLowerCase() ?? '';
+    if (nyelv === 'base' && !modulEngedelyezett('bazis')) return undefined;
     return nyelv ? this.nyelvek.get(nyelv) : undefined;
   }
 }

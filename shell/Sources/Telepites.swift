@@ -2,7 +2,7 @@ import Foundation
 
 /// A gépszintű telepítés (F3-DESIGN §2.1, §2.6, §3.5): `{install}` = `~/Library/Application Support/Manifold`.
 /// A héj itt csak OLVAS: a `workspaces.json` regiszter egyetlen írója a Python (`core/workspace.py`, atomi írással). Az F5
-/// indítóig a termék vaultja a regiszter `utolso` munkaterének mappája (a `MOS_VAULT` környezeti változó felülírja).
+/// indító a `bin/mos indito` szolgáltatást használja; az alábbi tiszta olvasó a kompatibilitási és CLI-próbákhoz marad.
 enum Telepites {
     /// A regiszter egy munkatere, amennyit a héj használ.
     struct Munkater: Equatable {
