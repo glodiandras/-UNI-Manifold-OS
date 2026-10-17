@@ -1,0 +1,54 @@
+# Gold-set candidates for the `kod` (C++ debugging) set: one complete task per call, in the layout of modulok/eval/kod/feladatok/kNN.
+# The tool checks the structure and safety statically only. Compile / run / freeze the evidence with modulok/eval/kod/keszit.py.
+[sablon]
+nev = "kod"
+cel = "kod"
+modell_osztaly = "minoseg"
+hivasok = 6
+tetel_hivasonkent = 1
+max_tokens = 6000
+alapertelmezett = true
+valtozatossag = [
+  "topic ciklus_tomb (loops and arrays), difficulty 1, such as a longest streak or a running maximum",
+  "topic rendezes_kereses (sorting and searching), difficulty 2, such as a binary search on the answer or counting inversions",
+  "topic dp (dynamic programming), difficulty 2, such as a knapsack variant or a path count in a grid",
+  "topic graf (graphs), difficulty 2, such as shortest paths in a small weighted graph or connected components",
+  "topic szam_sztring (number theory and strings), difficulty 2, such as gcd-based counting or palindromic substrings",
+  "topic ciklus_tomb (loops and arrays), difficulty 3, such as a prefix-sum or sliding-window task",
+]
+rendszer = """You write programming-contest style debugging tasks in C++17 for an automated benchmark. Everything you produce must be \
+correct: the reference solution must pass all examples, the brute-force solution must agree with it on small inputs, and every \
+planted bug must be a single changed line that really changes the behaviour on some valid input."""
+felhasznalo = """Write <<tetel_db>> new task (task number <<sorszam>>). Focus: <<valtozat>>. Pick an original, small story-free or \
+lightly themed problem with a single numeric or text output.
+
+Return a JSON array holding exactly one object with exactly these keys:
+- "cim": the title (4 to 80 characters),
+- "tema": one of "ciklus_tomb", "rendezes_kereses", "dp", "graf", "szam_sztring",
+- "nehezseg": 1, 2 or 3,
+- "idokorlat_s": the time limit in seconds (1.0 to 3.0),
+- "leiras_md": the statement in Markdown with the sections "# <title>", a paragraph, "## Input", "## Output" and "## Tests". \
+Under "## Tests" put at least two example blocks of exactly this form (the fence word is `teszt`, then a title):
+```teszt Example
+--- bemenet
+<input text>
+--- kimenet
+<expected output text>
+```
+- "ref_cpp": the correct and efficient solution, complete C++17 program reading standard input and writing standard output, \
+four-space indentation, LF line ends, no tabs, only standard headers (for example <bits/stdc++.h>), no file or system access,
+- "lassu_cpp": a deliberately simple brute-force solution of the same task (also complete),
+- "bemenet_py": Python source with `def general(rng, meret)` returning a valid input text (rng is random.Random; meret is \
+"kicsi" for a tiny input (a few elements, small values) or "nagy" for a maximal input) and `def ervenyes(s)` returning True when \
+the text is a valid input. Only the modules random and math may be imported,
+- "hibak": exactly three planted bugs, each {"id": "h1"|"h2"|"h3", "fajta": one of "index", "tulcsordulas", "inicializalas", \
+"alapeset", "ido", "feltetel", "sorrend", "egyeb", "sor": the 1-based line number in ref_cpp, "eredeti": the EXACT text of that \
+line of ref_cpp, "csere": the one-line replacement, "magyarazat": one or two English sentences explaining what the bug does}. \
+The three bugs are on three different lines. At least one of them must be detectable by a tiny input; a bug of kind "ido" must \
+make the program too slow on the maximal input only.
+
+Count the lines of ref_cpp carefully: "sor" and "eredeti" must agree. Return only the JSON array."""
+tiltasok = [
+  "The statement, comments and explanations are English. Identifiers inside the code are short and plain.",
+  "Code must not read or write files, start processes, use the network, the clock, threads or environment variables.",
+]

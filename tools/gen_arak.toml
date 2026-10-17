@@ -1,0 +1,16 @@
+# Price table for tools/gen_szintetikus.py: USD per MILLION tokens, per model id.
+#
+# CHECK THESE AGAINST THE PRICE LIST IN YOUR ANTHROPIC CONSOLE BEFORE A REAL RUN. The values below are deliberately
+# CONSERVATIVE UPPER ESTIMATES (above the list prices known when this file was written), so the cost guard errs on the side of
+# stopping early. They are not authoritative: if the Console shows higher prices, raise them here; lowering them below the real
+# price weakens the guard. Cache-read / cache-write tokens are charged at the input price (an upper bound).
+#
+# A model without an entry here is refused. The tool accepts only ids that start with "claude-".
+
+[modell."claude-haiku-5-5"]
+bemenet_usd_mtok = 2.00
+kimenet_usd_mtok = 10.00
+
+[modell."claude-sonnet-5-5"]
+bemenet_usd_mtok = 5.00
+kimenet_usd_mtok = 25.00

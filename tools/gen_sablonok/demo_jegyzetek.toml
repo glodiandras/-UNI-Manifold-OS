@@ -1,0 +1,40 @@
+# Extra demo-workspace note candidates (English, neutral, in the style of core/demo_tartalom.py).
+# Item format: {"ut": "Folder/Note title.md", "szoveg": "<markdown>"}; adopted into core/demo_kiegeszito.json (not wired in by this tool).
+[sablon]
+nev = "demo_jegyzetek"
+cel = "demo"
+modell_osztaly = "olcso"
+hivasok = 8
+tetel_hivasonkent = 3
+max_tokens = 4000
+alapertelmezett = true
+valtozatossag = [
+  "Mathematics: school-level topics not yet covered by the demo (for example probability, vectors, statistics basics)",
+  "Science: school-level physics, chemistry and biology topics (for example energy, the periodic table, cells)",
+  "Programming: tiny exercises with a short explanation (for example binary search, recursion, string handling)",
+  "Study skills: methods for planning, note-taking and revision (for example the Feynman technique, time boxing)",
+  "Reading: summaries of INVENTED books with made-up titles, authors replaced by 'the author', plus reading-log style properties",
+  "Projects: small invented personal projects with checklists and dated tasks (a garden, a bike repair, a small app)",
+  "Reference: short reference tables and cheat sheets (units, Markdown syntax, keyboard-free concepts)",
+  "Meetings and journal: invented meeting notes and short reflections without any real names",
+]
+rendszer = """You write sample notes for the demo workspace of a Markdown note-taking app. The workspace is a small library of \
+invented notes: plain, calm, friendly, factual, in the style of a good study notebook."""
+felhasznalo = """Write <<tetel_db>> new notes. Area: <<valtozat>>.
+
+Each note is a JSON object with exactly these keys:
+- "ut": the vault-relative path, one folder level only, for example "Mathematics/Probability basics.md" or "Science/Cell structure.md". \
+Folders to use: Mathematics, Science, Programming, Study skills, Reading, Projects, Reference, Meetings. The file name is the \
+title of the note,
+- "szoveg": the note as Markdown (300 to 3000 characters). It may start with a YAML front matter block between lines of three \
+dashes with keys such as aliases, tags (as a list), level (a number) or done (true or false). Then a "# Title" heading, short \
+paragraphs, lists or tables, formulas in dollar signs when they help, and a trailing tag line such as #math/probability. Use \
+double-bracket links like [[Geometric series]] or [[Spaced repetition]] to notes that probably exist, but at most three per note.
+
+Rules: no images or embeds, no URLs, no real people, companies or places tied to people, no dates earlier than 2020 as events; \
+all facts must be correct and elementary; each note stands alone and differs clearly from the others.
+
+Return one JSON array of <<tetel_db>> objects."""
+tiltasok = [
+  "Titles are new: do not reuse titles of common starter notes such as Welcome or Getting started.",
+]

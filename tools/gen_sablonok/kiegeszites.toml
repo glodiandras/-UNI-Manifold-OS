@@ -1,0 +1,34 @@
+# Gold-set candidates for the `kiegeszites` (short text continuation) evaluation set.
+# Item format (shipped set, English candidate set): {"elotte", "utana", "elfogadhato": [..]}.
+[sablon]
+nev = "kiegeszites"
+cel = "kiegeszites"
+modell_osztaly = "olcso"
+hivasok = 4
+tetel_hivasonkent = 12
+max_tokens = 3000
+alapertelmezett = true
+valtozatossag = [
+  "general science facts (physics, chemistry, biology) that every secondary-school student learns",
+  "school mathematics and geometry facts, formulas and definitions",
+  "geography, astronomy and earth science facts that are not disputed",
+  "computing and programming basics (variables, loops, binary numbers, file extensions) and general study-skills vocabulary",
+]
+rendszer = """You write test items for a short text-continuation evaluation. Each item is a sentence context with exactly one gap; \
+the continuation is short (one to five words) and unambiguous, so a correct answer is easy to check mechanically."""
+felhasznalo = """Write <<tetel_db>> items about: <<valtozat>>.
+
+Each item is a JSON object with exactly these keys:
+- "elotte": the text before the gap (one sentence start, usually ending with a space, 8 to 200 characters),
+- "utana": the text after the gap (may be an empty string, for example a closing full stop),
+- "elfogadhato": a list of 1 to 5 acceptable continuations (each at most 60 characters, no line breaks, spelling variants and \
+equivalent notations allowed, for example "a^2" and "a squared").
+
+Rules: the continuation must be established textbook knowledge with one clearly correct answer; do not repeat the answer inside \
+"elotte"; no item may be a trick question, an opinion or a recent news fact; every item must differ clearly from the others; \
+use plain text only (maths as plain characters, for example a^2 + b^2 = c^2).
+
+Return one JSON array of <<tetel_db>> objects."""
+tiltasok = [
+  "Do not name any real person; refer to concepts, not to discoverers or authors.",
+]

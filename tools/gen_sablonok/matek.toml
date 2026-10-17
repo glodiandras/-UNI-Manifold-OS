@@ -1,0 +1,44 @@
+# Gold-set candidates for the `matek` set: school-level maths problems with a checkable final answer.
+# Item format: {"tema", "szoveg", "vart"} (the shipped `feladatok` entries without the derivation steps).
+[sablon]
+nev = "matek"
+cel = "matek"
+modell_osztaly = "minoseg"
+hivasok = 6
+tetel_hivasonkent = 5
+max_tokens = 4000
+alapertelmezett = true
+valtozatossag = [
+  "topics algebra and fuggveny (equations, inequalities, function properties)",
+  "topics trigonometria and exp_log (trigonometric and exponential/logarithmic equations)",
+  "topics sorozat and analizis (sequences, series, derivatives, extrema, definite integrals)",
+  "topics koordinatageometria and valoszinuseg_kombinatorika (analytic geometry, counting, probability)",
+  "a mix of all topics, upper-secondary advanced level, each problem needing several steps",
+  "a mix of all topics, with answers that are fractions, roots or expressions rather than small integers",
+]
+rendszer = """You write upper-secondary mathematics problems for an automatic grader. Every problem has exactly one final result \
+that you have verified by careful, independent re-computation before writing it down."""
+felhasznalo = """Write <<tetel_db>> new, self-contained problems. Focus: <<valtozat>>.
+
+Each problem is a JSON object with exactly these keys:
+- "tema": one of "algebra", "fuggveny", "trigonometria", "exp_log", "sorozat", "koordinatageometria", "analizis", \
+"valoszinuseg_kombinatorika",
+- "szoveg": the English statement, 20 to 600 characters, maths in LaTeX between dollar signs (for example $2x^3-5x^2-3x=0$). \
+State the domain explicitly (for example "over the real numbers") and the exact form of the answer you expect,
+- "vart": the expected answer in a machine syntax: ASCII only, "*" for products, "^" for powers, "/" for fractions, "sqrt(2)", \
+"pi", "log(x)" natural logarithm, no LaTeX, no units inside values. One of:
+  {"tipus": "szam", "ertek": "14"}                     one number or fraction, for example "7/3"
+  {"tipus": "halmaz", "ertekek": ["-1/2", "0", "3"]}   all solutions of an equation in one unknown
+  {"tipus": "intervallum", "ertek": "[5, 6)"}          an interval (use U for a union, oo for infinity)
+  {"tipus": "par", "ertekek": {"x": "10", "y": "7"}}   values of two or three unknowns
+  {"tipus": "kifejezes", "ertek": "2*x^2-2*x+1"}       one expression.
+
+Rules: a problem asks for one result only; never use decimals as the expected answer unless the statement asks for rounding; \
+avoid problems whose answer depends on a figure; make the problems clearly different from each other and from typical \
+textbook openers; double-check every expected answer, including excluded roots and domain restrictions.
+
+Return one JSON array of <<tetel_db>> objects."""
+tiltasok = [
+  "Do not copy or closely paraphrase published exam problems; invent new numbers and situations.",
+  "No named persons in the statements; use neutral wording such as 'a runner' or 'a tank'.",
+]

@@ -31,12 +31,7 @@ TITOK_MINTAK = {
 SZEMELYES = r"glodi|andras\b|@gmail\.com|/Users/(?!x\b|x y\b|<)[A-Za-z]|/home/[a-z]+/|/Volumes/Work\b|C:\\\\Users\\\\"
 SZALLITOTT = ("core/", "modulok/", "app/src/", "app/index.html", "shell/", "bin/", "config/", "packaging/", "docs/user/", "README.md")
 # (file, exact text) → why it may stay. Every entry must still match (a fixed exception is removed from the list).
-ISMERT_KIVETEL = {
-    ("shell/Sources/RootLocator.swift", "/Volumes/Work/Manifold-OS"):
-        "self-test table: the developer checkout must NOT be taken for a bundle (audit 07 §5: rename to a neutral disk name)",
-    ("shell/Sources/RootLocator.swift", "/Volumes/Work/Manifold.app"):
-        "same self-test table (audit 07 §5)",
-}
+ISMERT_KIVETEL: dict[tuple[str, str], str] = {}   # audit 07 §5 closed: the RootLocator self-test table uses a neutral disk name
 
 PIP_MINIMUM = {          # package: (fixed version, advisory)
     "jinja2": ("3.1.6", "CVE-2025-27516 sandbox breakout via |attr"),

@@ -1,5 +1,7 @@
 # Internal planning and audit material: kept in the repository, excluded from `git archive` / release bundles.
 docs/plan/** export-ignore
+# Developer tools (e.g. the synthetic-data generator): never part of a release
+tools/** export-ignore
 docs/dev/DECISIONS-v2.md export-ignore
 config/presets/** export-ignore
 tests/adat/konfig/f2-hordozhato.json export-ignore
