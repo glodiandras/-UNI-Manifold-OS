@@ -57,12 +57,13 @@ def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | Non
     return alap, pontok, elo, fid
 
 
-def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = kiserok.ALAP_ELOTAG) -> dict:
+def hasonlok(index_olvaso, tar, ut: str, n: int = 10, elotag: str = kiserok.ALAP_ELOTAG, kizart=None) -> dict:
     alap, pontok, elo, fid = _alap(index_olvaso, tar, ut)
     if pontok is None:
         return {**alap, "talalatok": []}
     ut = alap["ut"]
-    jeloltek = sorted(((u, p) for u, p in pontok.items() if u != ut and u in elo and not kisero(u, elotag)),
+    jeloltek = sorted(((u, p) for u, p in pontok.items() if u != ut and u in elo and not kisero(u, elotag)
+                       and not (kizart and kizart.kizart(u))),
                       key=lambda x: (-x[1], x[0]))[:max(1, int(n))]
     with index_olvaso() as c:
         kimeno = {x[0] for x in c.execute("SELECT DISTINCT cel FROM link WHERE forras_id = ? AND cel IS NOT NULL", (fid,))}

@@ -61,7 +61,10 @@ class _Alap(unittest.TestCase):
 
 class ElonezetTest(_Alap):
     def test_az_elonezet_semmit_nem_ir_es_mindent_jelent(self):
-        r = self.elonezet()
+        # A terv determinisztikus; a teljes választ azonos lemezkapacitás mellett hasonlítjuk össze.
+        with mock.patch("core.workspace.shutil.disk_usage", return_value=types.SimpleNamespace(free=1 << 40)):
+            r = self.elonezet()
+            ismetelt = self.elonezet()
         self.assertFalse(self.cel.exists())
         self.assertFalse((self.alap.path("install") / "imports").exists(), "the preview must not create a journal")
         self.assertEqual(r["eredmeny"], "figyelmeztet", r["akadaly"])
@@ -94,7 +97,7 @@ class ElonezetTest(_Alap):
         self.assertEqual(b["sablon.datum"]["ertek"], "DD.MM.YYYY")
         self.assertEqual((b["sablon.mappa"]["ertek"], b["sablon.mappa"]["mod"]), ("Templates", "munkater"))
         self.assertEqual(b["naplo.ut"]["ertek"], "[Journal]/YYYY-MM-DD")
-        self.assertEqual(b["naplo.sablon"]["ertek"], "Daily")
+        self.assertEqual(b["naplo.sablon"]["ertek"], "Templates/Daily.md")      # vault-relatív út, nem csonkolt név (12-templates-01/08)
         self.assertEqual(b["beallitasok.fajlok.csatolmany_mappa"]["mod"], "kozvetlen")
         self.assertEqual(b["tulajdonsag_tipusok"]["ertek"], 2)
         nem = {x["forras"] for x in r["obsidian"]["nem_atvett"]}
@@ -112,7 +115,22 @@ class ElonezetTest(_Alap):
         self.assertIn("mappa", r["letrehozando"])
         self.assertNotIn("obsidian", r["letrehozando"])
         self.assertTrue(r["id"].startswith("obs-"))
-        self.assertEqual(r, self.elonezet(), "the preview is deterministic")
+        self.assertEqual(r, ismetelt, "the preview is deterministic under identical capacity")
+
+    def test_a_szabad_hely_friss_meres_a_terv_es_hash_valtozasa_nelkul(self):
+        """A háttérben változó szabad hely nem módosítja a tervet, amíg mindkét mérés elegendő helyet jelez."""
+        with mock.patch("core.workspace.shutil.disk_usage", side_effect=[
+            types.SimpleNamespace(free=1 << 40), types.SimpleNamespace(free=(1 << 40) + 4096),
+        ]) as meres:
+            elso, masodik = self.elonezet(), self.elonezet()
+        self.assertEqual(meres.call_count, 2)
+        self.assertEqual((elso["szabad_bajt"], masodik["szabad_bajt"]), (1 << 40, (1 << 40) + 4096))
+        self.assertEqual(elso["terv_hash"], masodik["terv_hash"])
+        self.assertEqual({k: v for k, v in elso.items() if k != "szabad_bajt"},
+                         {k: v for k, v in masodik.items() if k != "szabad_bajt"},
+                         "only the live capacity reading may change; every semantic preview field stays identical")
+        self.assertFalse(self.cel.exists())
+        self.assertEqual(ujjlenyomat(self.forras), self.lenyomat)
 
     def test_opciok_a_kuka_es_az_obsidian_mappa(self):
         r = self.elonezet(kuka_mappa=True, obsidian_mappa=False)

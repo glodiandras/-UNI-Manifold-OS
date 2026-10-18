@@ -22,6 +22,7 @@ TILTOTT = {
     ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})/valasztas"), ("POST", r"/api/modellek/halmazok/([a-z_]{1,40})/torles"),
     ('POST', '/api/vault/tulajdonsagok/tipus'),  # F11: explicit felhasználói vault-típusválasztás.
     ('PUT', '/api/beallitasok'),  # F5: Setup/privacy/modules are user choices, never machine-step actions.
+    ('POST', '/api/beallitasok/kizart-elonezet'),  # F11 14-appearance-06: Settings preview of the excluded-files list (read-only, UI only).
     # F8: import (Obsidian vault → new workspace, v2 settings) and its undo: only the user's wizard, never a machine step
     ('POST', '/api/import/obsidian/elonezet'), ('POST', '/api/import/obsidian'), ('POST', '/api/import/visszafordit'),
     ('POST', '/api/import/v2/elonezet'), ('POST', '/api/import/v2'),
@@ -51,6 +52,10 @@ TILTOTT = {
     ("POST", "/api/tracker/esemenyek"), ("POST", "/api/tracker/export"), ("POST", "/api/tracker/torles"),
     ("POST", "/api/vault/atnevezes"), ("POST", "/api/vault/elozmeny/visszaallit"), ("POST", "/api/vault/uj"),
     ("POST", "/api/sablon/uj"),                              # C32b: új jegyzet sablonból = vault-író, a lépés nem hívja
+    # F11: a szerkesztő parancsai felhasználói műveletek. A nem író dátum-formázás és összefűzési előnézet is UI-only.
+    ("POST", "/api/sablon/most"), ("POST", "/api/naplo/szomszed"),
+    ("POST", "/api/komponalo/kivon"), ("POST", "/api/komponalo/osszefuz/terv"), ("POST", "/api/komponalo/osszefuz"),
+    ("POST", "/api/vault/elozmeny/visszahoz"),              # törölt fájl visszaállítása: kizárólag felhasználói döntés
     ("PUT", "/api/felulet/allapot"), ("PUT", "/api/vault/fajl"), ("PUT", "/api/vezerlo/kapcsolok"),
     # a cloud-main végpontjai (Mac-integráció 2026-10-07): mind felületi művelet, a lépés-folyamat nem hívja (default-deny)
     ("POST", "/api/asszisztens/dontes"), ("POST", "/api/asszisztens/emlitesek"), ("POST", "/api/asszisztens/higienia/latva"),
@@ -96,6 +101,9 @@ class DontesTablaTest(unittest.TestCase):
                      ("POST", "/api/vault/tulajdonsagok/osszefesul"), ("GET", "/api/vault/fajl"), ("HEAD", "/api/vault/fajl")):
             self.assertTrue(lepes_kapu.engedelyezett(m, u), (m, u))
         for m, u in (("PUT", "/api/vault/fajl"), ("POST", "/api/vault/uj"), ("POST", "/api/vault/atnevezes"), ("POST", "/api/sablon/uj"),
+                     ("POST", "/api/sablon/most"), ("POST", "/api/naplo/szomszed"),
+                     ("POST", "/api/komponalo/kivon"), ("POST", "/api/komponalo/osszefuz/terv"), ("POST", "/api/komponalo/osszefuz"),
+                     ("POST", "/api/vault/elozmeny/visszahoz"),
                      ("POST", "/api/vault/elozmeny/visszaallit"), ("POST", "/api/pillanat/vault/visszavonas"),
                      ("POST", "/api/pdf/kiemeles"), ("POST", "/api/feladatok"), ("PUT", "/api/felulet/allapot"), ("PUT", "/api/beallitasok")):
             self.assertFalse(lepes_kapu.engedelyezett(m, u), (m, u))

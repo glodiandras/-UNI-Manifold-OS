@@ -38,7 +38,7 @@ import re
 import threading
 import time
 
-from ..index import maszk
+from ..index import kizaras, maszk
 from ..index.feloldas import MD_RE, nfc
 from ..utvonalak import HttpError
 from .beallitasok import beallitasok
@@ -131,11 +131,12 @@ class Emlitesek:
         b = beallitasok(self.cfg)
         reteg = str(self.cfg.section("media").get("reteg_mappa", "Média"))
         kizart = list(b["emlites_kizart"])
+        felhasznaloi = kizaras.betolt(self.cfg)           # Excluded files (14-appearance-06): a kizárt jegyzet nem említés-cél
         with self.index.olvaso() as c:
             sorok = c.execute("SELECT ut, nev, aliasok FROM fajl WHERE torolve IS NULL AND tipus = 'md'").fetchall()
         nevek: dict[str, dict] = {}            # kisbetűs név → {nev, forras, celok: {ut}}
         for ut, nev, aliasok in sorok:
-            if any(ut.startswith(p) for p in kizart) or (reteg and f"/{reteg}/" in "/" + ut):
+            if any(ut.startswith(p) for p in kizart) or (reteg and f"/{reteg}/" in "/" + ut) or felhasznaloi.kizart(ut):
                 continue
             jeloltek = [(nev.rsplit(".", 1)[0], "nev")]
             try:
@@ -161,14 +162,17 @@ class Emlitesek:
                 by_first.setdefault(elso.group(0), []).append((kis, e))
         for lista in by_first.values():
             lista.sort(key=lambda x: -len(x[0]))
-        return _Szotar(generacio, self.ido(), by_first, len(nevek))
+        sz = _Szotar(generacio, self.ido(), by_first, len(nevek))
+        sz.kizaras_jel = felhasznaloi.jel
+        return sz
 
     def szotar(self) -> _Szotar:
         with self._zar:
             sz = self._szotar
             gen = self.index.generacio
             frissites = float(beallitasok(self.cfg)["emlites_szotar_frissites_mp"])
-            if sz is None or (sz.generacio != gen and self.ido() - sz.ido >= frissites):
+            if sz is None or getattr(sz, "kizaras_jel", ()) != kizaras.jel(self.cfg) \
+                    or (sz.generacio != gen and self.ido() - sz.ido >= frissites):
                 sz = self._szotar = self._epit(gen)
             return sz
 

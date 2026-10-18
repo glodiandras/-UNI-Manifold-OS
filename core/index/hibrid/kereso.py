@@ -108,11 +108,15 @@ class HibridKereso:
     reranker hívható (`frissites.Beagyazo`, `rangsor.Reranker`); nélkülük a kereső lexikai."""
 
     def __init__(self, index_olvaso, tar: Vektortar | None = None, beagyazo=None, reranker=None,
-                 beall: Beallitas | None = None, regex_idokorlat: float = kereses.REGEX_IDOKORLAT_MP):
+                 beall: Beallitas | None = None, regex_idokorlat: float = kereses.REGEX_IDOKORLAT_MP, kizart=None):
         self.index_olvaso = index_olvaso
+        self.kizart = kizart             # `index.kizaras.Kizaras` vagy None: a kizárt fájl nem találat (14-appearance-06)
         self.tar, self.beagyazo, self.reranker = tar, beagyazo, reranker
         self.b = beall or Beallitas()
         self.regex_idokorlat = regex_idokorlat
+
+    def _kiz(self, ut: str) -> bool:
+        return bool(self.kizart) and self.kizart.kizart(ut)
 
     # ------------------------------------------------------------------ állapot
 
@@ -135,19 +139,20 @@ class HibridKereso:
     def _lexikai(self, c, q: str, kornyezet: int = 0) -> dict:
         """`{utak, legalabb, osszes, szuro, szabad, talalatok}`: a lexikai ág jegyzetei (legjobb elöl)."""
         if normal.operatoros(q):
-            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet)
+            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet, self.kizart)
             utak = [t["ut"] for t in r["talalatok"]]
             return {"utak": utak, "legalabb": r["legalabb"], "osszes": r["osszes"], "szuro": set(utak),
                     "szabad": szabad_szoveg(q), "talalatok": {t["ut"]: t for t in r["talalatok"]}}
         fts = normal.fts_kerdes(q)
         if fts is None:                               # csak töltelékszó: a lexikai kereső dönt (a szókezdet-illesztéssel)
-            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet)
+            r = kereses.keres(c, q, self.b.jelolt_n, self.regex_idokorlat, kornyezet, self.kizart)
             utak = [t["ut"] for t in r["talalatok"]]
             return {"utak": utak, "legalabb": r["legalabb"], "osszes": r["osszes"], "szuro": None, "szabad": q,
                     "talalatok": {t["ut"]: t for t in r["talalatok"]}}
         sorok = c.execute("SELECT f.ut, bm25(fts, 2.0, 10.0, 1.0) FROM fts JOIN fajl f ON f.id = fts.rowid "
                           "WHERE fts MATCH ? AND f.torolve IS NULL ORDER BY bm25(fts, 2.0, 10.0, 1.0), f.ut LIMIT ?",
-                          (fts, self.b.jelolt_n + 1)).fetchall()
+                          (fts, self.b.jelolt_n + 1 + (0 if not self.kizart else 4 * self.b.jelolt_n))).fetchall()
+        sorok = [r for r in sorok if not self._kiz(r[0])]
         legalabb = len(sorok) > self.b.jelolt_n
         sorok = sorok[:self.b.jelolt_n]
         return {"utak": [r[0] for r in sorok], "legalabb": legalabb, "osszes": len(sorok), "szuro": None, "szabad": q,
@@ -164,7 +169,7 @@ class HibridKereso:
         ok = "kert_lexikai" if mod == "lexikai" else self.miert_lexikai()
         if ok is not None:
             with self.index_olvaso() as c:
-                r = kereses.keres(c, q, limit, self.regex_idokorlat, kornyezet)
+                r = kereses.keres(c, q, limit, self.regex_idokorlat, kornyezet, self.kizart)
             return {**r, "mod": "lexikai", "ok": ok}
         with self.index_olvaso() as c:
             lex = self._lexikai(c, q, kornyezet)
@@ -175,7 +180,7 @@ class HibridKereso:
         qv = self.beagyazo([lex["szabad"]], "kerdes")[0]
         vek = [(i, p) for i, p in self.tar.keres(qv, self.b.darab_n, lex["szuro"]) if p > 0]     # a merőleges nem jel
         darabok = {d.id: d for d in self.tar.darabok([i for i, _ in vek])}
-        jegyzetek = rangsor.jegyzetre((darabok[i].ut, i, p) for i, p in vek if i in darabok)
+        jegyzetek = rangsor.jegyzetre((darabok[i].ut, i, p) for i, p in vek if i in darabok and not self._kiz(darabok[i].ut))
         legjobb = {u: (d, p) for u, d, p in jegyzetek}
         fuzott = rangsor.rrf({"lexikai": lex["utak"], "vektor": [u for u, _, _ in jegyzetek]}, self.b.rrf_k,
                              {"lexikai": self.b.lexikai_suly, "vektor": self.b.vektor_suly})
@@ -232,6 +237,8 @@ class HibridKereso:
             vek = [(i, p) for i, p in self.tar.keres(qv, self.b.darab_n) if p > 0]
             pont = dict(vek)
             for d in self.tar.darabok([i for i, _ in vek]):
+                if self._kiz(d.ut):
+                    continue
                 kulcs = (d.ut, d.sorszam)
                 jeloltek[kulcs] = d
                 hasonlosag[kulcs] = pont[d.id]

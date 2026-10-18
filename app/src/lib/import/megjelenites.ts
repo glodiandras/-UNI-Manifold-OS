@@ -91,6 +91,13 @@ export const NEM_ATVETT_OKA: Record<string, string> = {
   nem_tamogatott: tk('import.nematvett.nem_tamogatott'),
   masolva_nem_olvasott: tk('import.nematvett.masolva_nem_olvasott'),
   sema_hibas: tk('import.nematvett.sema_hibas'),
+  // 13-palette-01: a hotkeys.json soronkénti jelentése (semmi sem marad ki csendben)
+  hotkey_nincs_parancs: tk('import.nematvett.hotkey_nincs_parancs'),
+  hotkey_ures: tk('import.nematvett.hotkey_ures'),
+  hotkey_ervenytelen: tk('import.nematvett.hotkey_ervenytelen'),
+  hotkey_foglalt: tk('import.nematvett.hotkey_foglalt'),
+  hotkey_utkozes: tk('import.nematvett.hotkey_utkozes'),
+  hotkey_tobb: tk('import.nematvett.hotkey_tobb'),
 };
 export const NEM_ATVETT_TARTALEK = tk('import.nematvett.ismeretlen');
 
@@ -128,6 +135,7 @@ const ERTEK_CIM: Record<string, string> = {
 
 export function beallitasCim(kulcs: string): string {
   const rovid = kulcs.replace(/^beallitasok\./, '');
+  if (rovid.startsWith('billentyuk.')) return t('Gyorsbillentyű: {parancs}', { parancs: rovid.slice('billentyuk.'.length) });
   return Object.hasOwn(BEALLITAS_CIM, rovid) ? t(BEALLITAS_CIM[rovid]) : rovid;
 }
 

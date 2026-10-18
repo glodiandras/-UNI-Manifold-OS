@@ -184,7 +184,7 @@ describe('canvas-nézet', () => {
   it('hibás JSON: csak olvasható, a hiba helye látszik, írás nincs', async () => {
     const c = nyit('{\n\t"nodes":[\n\t\t{"id":"a",}\n\t]\n}');
     await waitFor(() => expect(c.container.querySelector('.olvasasi-hiba')).not.toBeNull());
-    expect(c.container.querySelector('.olvasasi-hiba')!.textContent).toMatch(/nem érvényes JSON.*3\. sor/);
+    expect(c.container.querySelector('.olvasasi-hiba')!.textContent).toMatch(/nem érvényes JSON.*line 3, column/);
     expect(c.container.querySelector('.jel.figyelmeztetes')?.textContent).toBe('Csak olvasható');
     expect(c.container.querySelector('.vaszon')).toBeNull();
     expect(irasok).toEqual([]);

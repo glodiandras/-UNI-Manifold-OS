@@ -24,6 +24,7 @@
   import Oldalsav from './Oldalsav.svelte';
   import Osztas from './Osztas.svelte';
   import Elrendezesek from '../atfedes/Elrendezesek.svelte';
+  import ToroltVisszahozas from '../atfedes/ToroltVisszahozas.svelte';
   import { nagyitasAlkalmaz } from '../lib/elrendezes/nagyitas';
 
   const { felulet } = kornyezet();
@@ -91,6 +92,8 @@
   <KulsoAi />
 {:else if felulet.atfedes === 'elrendezesek'}
   <Elrendezesek />
+{:else if felulet.atfedes === 'torolt'}
+  <ToroltVisszahozas />
 {/if}
 </LeallVedelem>
 

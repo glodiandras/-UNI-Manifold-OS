@@ -84,7 +84,7 @@ RETEG_JOG: dict[str, tuple[str, ...]] = {
         "mentes.ido_perc", "mentes.allapot_*", "mentes.megtartott_bundle", "mentes.megtartott_migracio",
         "teljes_mentes.cel", "teljes_mentes.figyelo_be", "teljes_mentes.figyelo_ora", "teljes_mentes.megtartott",
         "naptar.automatikus", "naptar.szinkron_perc", "naptar.tanulas_naptar",
-        "adatvedelem.*", "felulet.*", "modulok.*",
+        "adatvedelem.*", "felulet.*", "modulok.*", "elozmeny.*",
         "kod.eszkozok.*", "kod.proba_modell",          # F10: the machine's toolchain paths, the trial model (D9)
         "munkaterek.*.fuzet.mappak",
         "telepites.presetek",
@@ -111,7 +111,7 @@ META_TIPUS: dict[str, type] = {
     "beallitasok.billentyuk.*": str,
 }
 # Vault-relatív út értékek: NFC, nem abszolút, nincs `..`, nincs pontos szakasz (`.manifold/…`, `.obsidian/…`), nincs helyőrző
-UT_KULCSOK = ("naplo.ut", "*.mappa", "*_mappa", "sablon.mappa", "fuzet.cel_mappa", "media.*", "video.vault_mappa",
+UT_KULCSOK = ("naplo.ut", "naplo.sablon", "*.mappa", "*_mappa", "sablon.mappa", "fuzet.cel_mappa", "media.*", "video.vault_mappa",
               "video.kizart_mappak", "*_kizart")
 REGEX_KULCSOK = ("video.tema_minta",)
 # Mappanévbe, fájlnévbe és frontmatterbe kerülő szövegek (nem út): nincs `/`, `\\`, `..`, kezdő pont, helyőrző; NFC; rövid
@@ -446,8 +446,8 @@ def _ertek_hiba(reteg: str, kulcs: str, ertek, alap, gyoker: Path | None) -> tup
             h = regex_biztonsag.veszelyes(s)           # fordítható, és nincs katasztrofális visszalépést engedő beágyazott ismétlés
             if h:
                 return h, None
-    elif reteg == "munkater" and any(s.startswith(("/", "~")) for s in szovegek):
-        return "ut_abszolut", None
+    elif reteg == "munkater" and kulcs != "beallitasok.fajlok.kizart" and any(s.startswith(("/", "~")) for s in szovegek):
+        return "ut_abszolut", None          # a kizárási lista `/regex/` eleme `/`-lel kezdődik; a `core/index/kizaras.py` ellenőrzi
     if _illik(kulcs, NEV_KULCSOK):
         for s in szovegek:
             h = _nev_hiba(s)

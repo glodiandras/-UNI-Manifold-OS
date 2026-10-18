@@ -17,16 +17,21 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, localcontext
 
+from ..hibakod import angol_uzenet, json_param
+
 NAP_MS = 86_400_000
 _HONAP_NAPJA_MS = int(30.4375 * NAP_MS)         # csak összehasonlításhoz és a `number()`-hez
 
 
 class FutasHiba(Exception):
-    """Egy kifejezés kiértékelési hibája (rossz típus, ismeretlen függvény, null-on hívott metódus…)."""
+    """Egy kifejezés kiértékelési hibája (rossz típus, ismeretlen függvény, null-on hívott metódus…). `kod` + `param`: a
+    `hibakodok.BAZIS_ANGOL` kulcsa és skalár paraméterei; az `uzenet` az angol tartalék-mondat (10-bases-01)."""
 
-    def __init__(self, uzenet: str):
-        super().__init__(uzenet)
-        self.uzenet = uzenet
+    def __init__(self, kod: str, param: dict | None = None):
+        self.kod = kod
+        self.param = json_param(param)
+        self.uzenet = angol_uzenet(kod, param, kod)
+        super().__init__(self.uzenet)
 
 
 class IdokeretHiba(RuntimeError):
@@ -34,18 +39,20 @@ class IdokeretHiba(RuntimeError):
     (újabb kérés érkezett ugyanarra a nézetre; T040). **Nem `FutasHiba`**: azt a soronkénti kezelők lenyelik, ez az egész
     lekérdezést leállítja (a végpont `ok: false` + `hibak` választ ad, nem 500-at)."""
 
-    def __init__(self, uzenet: str, megszakitva: bool = False):
-        super().__init__(uzenet)
-        self.uzenet, self.megszakitva = uzenet, megszakitva
+    def __init__(self, kod: str, megszakitva: bool = False):
+        self.kod, self.param = kod, {}
+        self.uzenet, self.megszakitva = angol_uzenet(kod), megszakitva
+        super().__init__(self.uzenet)
 
 
 class ErtekKeretHiba(RuntimeError):
     """A lekérdezés értékkerete betelt: az előállított értékek együttes mérete (T041: `repeat`, hosszú cella-értékek) a
     lekérdezésenkénti keretet meghaladta. Mint az `IdokeretHiba`, az egész lekérdezést leállítja."""
 
-    def __init__(self, uzenet: str):
-        super().__init__(uzenet)
-        self.uzenet = uzenet
+    def __init__(self, kod: str):
+        self.kod, self.param = kod, {}
+        self.uzenet = angol_uzenet(kod)
+        super().__init__(self.uzenet)
 
 
 class Keret:
@@ -58,7 +65,7 @@ class Keret:
     def fogyaszt(self, n: int) -> None:
         self.maradt -= int(n)
         if self.maradt < 0:
-            raise ErtekKeretHiba("a lekérdezés értékkerete betelt: túl nagy értékek keletkeznek (szűkítsd a nézetet)")
+            raise ErtekKeretHiba("bazis.futas.ertekkeret")
 
 
 # ================================================================ típusok
@@ -137,7 +144,7 @@ class Regex:
         try:
             self.rx = regex.compile(minta, f)
         except regex.error as e:
-            raise FutasHiba(f"hibás regex: {e}") from e
+            raise FutasHiba("bazis.futas.regex_hibas", {"e": e}) from e
 
     @property
     def globalis(self) -> bool:
@@ -147,13 +154,13 @@ class Regex:
         try:
             return self.rx.search(s, concurrent=True, timeout=self.IDOKORLAT_MP)
         except TimeoutError:
-            raise FutasHiba("a regex túl lassú") from None
+            raise FutasHiba("bazis.futas.regex_lassu") from None
 
     def minden(self, s: str) -> list:
         try:
             return list(self.rx.finditer(s, concurrent=True, timeout=self.IDOKORLAT_MP))
         except TimeoutError:
-            raise FutasHiba("a regex túl lassú") from None
+            raise FutasHiba("bazis.futas.regex_lassu") from None
 
     def szoveg(self) -> str:
         return f"/{self.minta}/{self.zaszlok}"
@@ -190,16 +197,16 @@ def _szam_e(x) -> bool:
 
 
 def tipus_neve(x) -> str:
-    """A típus magyar neve (hibaüzenethez)."""
+    """A típus angol neve (hibaüzenethez)."""
     if x is None:
-        return "üres érték"
+        return "empty value"
     if isinstance(x, bool):
-        return "logikai érték"
+        return "boolean"
     if _szam_e(x):
-        return "szám"
-    return {str: "szöveg", list: "lista", dict: "objektum", Datum: "dátum", Idotartam: "időtartam", Link: "link",
-            Fajl: "fájl", Cimke: "címke", Regex: "regex", Kep: "kép", Ikon: "ikon", Html: "html",
-            Hiba: "hiba"}.get(type(x), type(x).__name__)
+        return "number"
+    return {str: "text", list: "list", dict: "object", Datum: "date", Idotartam: "duration", Link: "link",
+            Fajl: "file", Cimke: "tag", Regex: "regex", Kep: "image", Ikon: "icon", Html: "html",
+            Hiba: "error"}.get(type(x), type(x).__name__)
 
 
 def tipus_kulcs(x) -> str:
@@ -240,7 +247,7 @@ def kerekit(x, jegyek: int = 0):
     if not _szam_e(x) or (isinstance(x, float) and (math.isnan(x) or math.isinf(x))):
         return x
     if not -100 <= jegyek <= 100:
-        raise FutasHiba("`round`: a jegyek száma -100 és 100 közti egész")
+        raise FutasHiba("bazis.futas.round_jegyek")
     p = 10 ** jegyek
     return szam(math.floor(x * p + 0.5) / p)
 
@@ -487,7 +494,7 @@ def datum_hozzaad(d: Datum, i: Idotartam, elojel: int = 1) -> Datum:
             dt = dt.replace(year=ev, month=ho + 1, day=min(dt.day, calendar.monthrange(ev, ho + 1)[1]))
         dt = dt + timedelta(milliseconds=elojel * i.ms)
     except (OverflowError, ValueError):
-        raise FutasHiba("a dátum kívül esik a megengedett tartományon") from None
+        raise FutasHiba("bazis.futas.datum_tartomany") from None
     return Datum(dt, d.van_ido or (i.ms % NAP_MS != 0))
 
 
@@ -612,8 +619,8 @@ def _id(x) -> Idotartam | None:
     return x if isinstance(x, Idotartam) else idotartam(x) if isinstance(x, str) else None
 
 
-def _hiba2(mit: str, a, b) -> FutasHiba:
-    return FutasHiba(f"{mit}: {tipus_neve(a)} és {tipus_neve(b)}")
+def _hiba2(kod: str, a, b) -> FutasHiba:
+    return FutasHiba(kod, {"a": tipus_neve(a), "b": tipus_neve(b)})
 
 
 def osszead(a, b):
@@ -632,7 +639,7 @@ def osszead(a, b):
         return None
     if _szam_e(a) and _szam_e(b):
         return szam(a + b)
-    raise _hiba2("nem összeadható", a, b)
+    raise _hiba2("bazis.futas.nem_osszeadhato", a, b)
 
 
 def kivon(a, b):
@@ -651,7 +658,7 @@ def kivon(a, b):
         return None
     if _szam_e(a) and _szam_e(b):
         return szam(a - b)
-    raise _hiba2("nem vonható ki", a, b)
+    raise _hiba2("bazis.futas.nem_vonhato_ki", a, b)
 
 
 def szoroz(a, b):
@@ -662,7 +669,7 @@ def szoroz(a, b):
             return szam(a * b)
         except OverflowError:
             return math.inf
-    raise _hiba2("nem szorozható", a, b)
+    raise _hiba2("bazis.futas.nem_szorozhato", a, b)
 
 
 def oszt(a, b):
@@ -674,7 +681,7 @@ def oszt(a, b):
                 return math.nan
             return math.inf if (a > 0) == (math.copysign(1, b) > 0) else -math.inf
         return szam(a / b)
-    raise _hiba2("nem osztható", a, b)
+    raise _hiba2("bazis.futas.nem_oszthato", a, b)
 
 
 def modulo(a, b):
@@ -686,7 +693,7 @@ def modulo(a, b):
         if b == 0 or (isinstance(a, float) and (math.isnan(a) or math.isinf(a))):
             return math.nan
         return szam(math.fmod(a, b))
-    raise _hiba2("nem vehető maradéka", a, b)
+    raise _hiba2("bazis.futas.nincs_maradek", a, b)
 
 
 def negal(a):
@@ -694,7 +701,7 @@ def negal(a):
         return szam(-a)
     if isinstance(a, Idotartam):
         return Idotartam(-a.honap, -a.ms)
-    raise FutasHiba(f"nem negálható: {tipus_neve(a)}")
+    raise FutasHiba("bazis.futas.nem_negalhato", {"tipus": tipus_neve(a)})
 
 
 # ================================================================ frontmatter-érték → kifejezés-érték

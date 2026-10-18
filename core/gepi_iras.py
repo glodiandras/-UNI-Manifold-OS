@@ -83,7 +83,7 @@ FUZET_MAPPA_ALAP = kiserok.alap_mappa("fuzet")
 # a gépi írás forrása (`Mos-Forras`, L09) mindig `mos-<lánc>` (C29.8, T135): így a `kezi`, `pult`, `pult-…` (a felhasználó munkájának
 # forrásai) és minden idegen alak kizárt, és a tracker a „gépi funkciót” egyértelműen felismeri
 _FORRAS = re.compile(r"mos-[a-z0-9-]{1,36}")
-_GAZDAI_ELOTAG = {"SZERK", "ATNEV", "VISSZA"}        # a szerkesztő, az átnevezés és a visszaállítás kör-előtagjai
+_GAZDAI_ELOTAG = {"SZERK", "ATNEV", "VISSZA", "KOMP"}        # a szerkesztő, az átnevezés, a visszaállítás és a Note composer kör-előtagjai
 _FELADAT = re.compile(r"F-[0-9]{8}-[0-9]{6}-[0-9]+")
 _SZAKASZ = re.compile(r"(#{1,6})[ \t]+(.*)")
 

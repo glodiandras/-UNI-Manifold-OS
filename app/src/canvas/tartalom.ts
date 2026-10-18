@@ -11,6 +11,9 @@ import { beagyazasElem, beagyazasFrissitesFigyel } from '../szerkeszto/beagyazas
 import { kepVodor } from '../szerkeszto/beagyazas/nagyito';
 import { obsidianElemzo } from '../szerkeszto/markdown/elemzo';
 import { dokumentumRenderel } from '../szerkeszto/olvaso/html';
+import { ikonElem } from '../lib/ikon/ikonElem';
+import { ExternalLink } from '../lib/ikon/ikonok';
+import { kulsoCim, kulsoLink } from '../szerkeszto/linkek/kulso';
 import { LustaRajzolo } from '../szerkeszto/olvaso/lusta';
 import { t } from '../lib/i18n';
 
@@ -31,8 +34,14 @@ export function fajlTipus(ut: string): FajlTipus {
   return 'egyeb';
 }
 
+export interface SzovegOpciok {
+  /** a canvas nem írható: a kártya feladat-jelölői le vannak tiltva (09-canvas-01), a `cim` magyarázza, mit kell tenni */
+  csakOlvashato?: boolean;
+  cim?: string;
+}
+
 /** Markdown-szöveg az Olvasó tipográfiájával (a szövegkártya). */
-export function szovegRajzol(kont: HTMLElement, szoveg: string, canvasUt: string): () => void {
+export function szovegRajzol(kont: HTMLElement, szoveg: string, canvasUt: string, o: SzovegOpciok = {}): () => void {
   const lusta = LustaRajzolo.azonnali();
   const md = document.createElement('div');
   md.className = 'md tipo kartya-md';
@@ -42,8 +51,11 @@ export function szovegRajzol(kont: HTMLElement, szoveg: string, canvasUt: string
       ut: canvasUt,
       lusta,
       beagyazas: { lanc: [{ ut: canvasUt, alcel: null }], melyseg: 0 },
+      csakOlvashato: o.csakOlvashato === true,
     }),
   );
+  if (o.csakOlvashato && o.cim)
+    for (const j of md.querySelectorAll<HTMLInputElement>('input.feladat-jelolo')) if (!j.closest('.beagyazas-torzs')) j.title = o.cim;
   kont.replaceChildren(md);
   const le = beagyazasFrissitesFigyel(md);   // 04-embeds-07: a szövegkártya beágyazásai a céljuk változásakor frissülnek
   return () => { le(); lusta.leall(); };
@@ -66,6 +78,25 @@ export function jegyzetRajzol(kont: HTMLElement, ut: string, subpath: string | u
   );
   kont.replaceChildren(md);
   const le = beagyazasFrissitesFigyel(md);   // 04-embeds-07: a jegyzetkártya a jegyzet (vagy beágyazott célja) mentésekor frissül
+  return () => { le(); vezerlo.abort(); };
+}
+
+/** PDF- és Bases-kártya (09-canvas-07/08): a jegyzetek közötti `![[x.pdf#page=N]]` / `![[x.base#Nézet]]` beágyazás motorja
+ *  rajzolja, a kártya méretére nyújtva (a CSS). A modul-kapcsoló és a hiányzó-cél kezelés a beágyazás-motoré; ha a modul ki van
+ *  kapcsolva, a motor chipet ad. A `subpath` a PDF-nél `#page=N`, a Basesnél a nézet neve. */
+export function beagyazottRajzol(kont: HTMLElement, ut: string, subpath: string | undefined, canvasUt: string): () => void {
+  const vezerlo = new AbortController();
+  const alcel = subpath?.replace(/^#/, '') || null;
+  const doboz = document.createElement('div');
+  doboz.className = 'kartya-beagyazott';
+  doboz.appendChild(
+    beagyazasElem(
+      { cel: ut, alcel, alias: null, beagyazas: true, from: 0, to: 0 },
+      { forras: canvasUt, lanc: [{ ut: canvasUt, alcel: null }], melyseg: 0, kompakt: false, jel: vezerlo.signal, sor: kartyaSor },
+    ),
+  );
+  kont.replaceChildren(doboz);
+  const le = beagyazasFrissitesFigyel(doboz);
   return () => { le(); vezerlo.abort(); };
 }
 
@@ -109,7 +140,8 @@ export function mediaRajzol(kont: HTMLElement, ut: string, tipus: 'video' | 'han
   };
 }
 
-/** A link-kártya: cím és domain (offline: nincs weboldal-előnézet). */
+/** A link-kártya (D3: nincs hálózati kérés, nincs beágyazott oldal, nincs `iframe`): a domain és a teljes cím helyőrzőként, és
+ *  egy kifejezett „Megnyitás a böngészőben” gomb, amely a rendszerböngészőben nyitja meg (csak `http`/`https`/`mailto`). */
 export function linkRajzol(kont: HTMLElement, url: string): () => void {
   const d = document.createElement('div');
   d.className = 'kartya-link';
@@ -124,6 +156,21 @@ export function linkRajzol(kont: HTMLElement, url: string): () => void {
   }
   teljes.textContent = url;
   d.append(domain, teljes);
+  if (url && kulsoCim(url)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'kartya-link-nyit';
+    const felirat = t('Open in browser');
+    b.title = t('Opens the page in your system browser. Nothing is loaded in the canvas.');
+    b.setAttribute('aria-label', `${felirat}: ${domain.textContent}`);
+    b.append(ikonElem(ExternalLink, 14), document.createTextNode(felirat));
+    b.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      kulsoLink(url);
+    });
+    d.append(b);
+  }
   kont.replaceChildren(d);
   return () => {};
 }

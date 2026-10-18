@@ -365,7 +365,8 @@ class TablaNezet {
     input.type = 'text';
     input.className = 'nt-cella-mezo';
     input.value = this.tabla.sorok[sor][oszlop] ?? '';
-    input.spellcheck = true;
+    // a Beállítások › Szerkesztő › Spellcheck kapcsolója a cella-beviteli mezőre is érvényes (14-appearance-04)
+    input.spellcheck = this.view.contentDOM.getAttribute('spellcheck') !== 'false';
     input.setAttribute('lang', this.view.contentDOM.lang);
     input.setAttribute('aria-label', sor === 0 ? tx('Fejléc, {o}. oszlop', { o: oszlop + 1 }) : tx('{s}. sor, {o}. oszlop', { s: sor, o: oszlop + 1 }));
     const fogok = [...td.querySelectorAll(':scope > .nt-fogo-sav')];

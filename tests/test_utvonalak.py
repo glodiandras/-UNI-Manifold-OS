@@ -446,7 +446,8 @@ for m, u, torzs, kod in [('GET', '/api/rendszer/epites', None, 200), ('GET', '/a
     KERESEK.append((m, u, torzs, {}))
 
 
-for m, u, torzs, kod in [("GET", "/api/beallitasok", None, 200), ("PUT", "/api/beallitasok", {}, 400)]:
+for m, u, torzs, kod in [("GET", "/api/beallitasok", None, 200), ("PUT", "/api/beallitasok", {}, 400),
+                         ("POST", "/api/beallitasok/kizart-elonezet", {}, 400)]:
     ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
     KERESEK.append((m, u, torzs, {}))
 
@@ -485,6 +486,16 @@ for m, u, torzs, kod in [("GET", "/api/demo/allapot", None, 200), ("POST", "/api
     KERESEK.append((m, u, torzs, {}))
 
 
+# F11 (12-templates): mostani dátum/idő a sablonformátummal, előző/következő napi jegyzet, Note composer (a teljes út a
+# tests/test_komponalo.py-ban; itt a kapu és a hibaágak)
+for m, u, torzs, kod in [("POST", "/api/sablon/most", {}, 400), ("POST", "/api/sablon/most", {"fajta": "date"}, 200),
+                         ("POST", "/api/naplo/szomszed", {"irany": "fel"}, 400),
+                         ("POST", "/api/komponalo/kivon", {}, 400), ("POST", "/api/komponalo/osszefuz/terv", {}, 400),
+                         ("POST", "/api/komponalo/osszefuz", {}, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
 # F6: Model Manager háttere (letöltést/tesztet itt nem indít: ismeretlen modell vagy hibás törzs; a teljes út a
 # tests/test_f6_modellek.py-ban mockolt forrással és álworkerrel)
 for m, u, torzs, kod in [("GET", "/api/modellek", None, 200), ("GET", "/api/modellek/halmazok", None, 200),
@@ -518,6 +529,16 @@ for m, u, torzs, kod in [("GET", "/api/import", None, 200), ("GET", "/api/import
                          ("POST", "/api/import/obsidian/elonezet", {}, 400), ("POST", "/api/import/obsidian", {}, 400),
                          ("POST", "/api/import/visszafordit", {}, 400), ("POST", "/api/import/v2/elonezet", {}, 400),
                          ("POST", "/api/import/v2", {}, 400), ("POST", "/api/import/megszakit", {}, 400)]:
+    ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
+    KERESEK.append((m, u, torzs, {}))
+
+
+# F11: törölt fájlok előnézete és visszahozása. Státuszok szintetikus HTTP-próbával rögzítve (2026-10-18);
+# a sikeres, bájthű visszaállítás, ütközés és visszavonás kapui: tests/test_elozmeny_f11.py.
+for m, u, torzs, kod in [("GET", "/api/vault/elozmeny/torolt", None, 200),
+                         ("GET", "/api/vault/elozmeny/torolt?n=0", None, 400),
+                         ("GET", "/api/vault/elozmeny/torolt/valtozat", None, 400),
+                         ("POST", "/api/vault/elozmeny/visszahoz", {}, 400)]:
     ELVART[f"{len(KERESEK):02d} {m} {u}"] = kod
     KERESEK.append((m, u, torzs, {}))
 

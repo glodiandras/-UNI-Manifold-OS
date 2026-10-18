@@ -1,10 +1,12 @@
 # F11 executable gap checklist
 
-Status: **in progress**. This is a checkpoint, not the F11 release gate.
+Status: **reopened integration / parity acceptance remains open (2026-10-18)**. This is not the F11 release gate. The frontend suite and build failed at audit start; the fresh UI gate now passes. Current integration results and the remaining gates are recorded in the [S0 report](../S0-INTEGRACIO.md), against the [audit and completion plan](../2026-10-18-STABILIZALASI-TERV.md).
 
-Inventory source: the eight committed audit files in `docs/plan/parity/`. PLAN §10 refers to fourteen audits and a critical top-25, but the other six and that ranked list are absent from both this checkout and the read-only v2 docs. No parity percentage is claimed against an incomplete inventory. Cross-referenced duplicate requirements retain both IDs; the final gate must deduplicate them before computing coverage.
+Inventory source: all fourteen audit files now exist in the current working tree. This file contains the original 01–08 inventory: 94 historical Verified rows (21 must, 73 should). The additional [09 Canvas](checklist-09.md), [10 Bases](checklist-10.md), [11 Graph](checklist-11.md), [12 Templates/daily](checklist-12.md), [13 Palette/hotkeys/history](checklist-13.md) and [14 Appearance](checklist-14.md) contain 59 Open rows (7 must, 52 should), several with substantial implementation already present. The combined 153 rows must be deduplicated and reconciled with actual integration and fresh tests before computing parity. The old closure entry in NAPLO applies to its then-existing 01–08 scope, not to the newer six audits.
 
-`Verified` means the implementation has a named automated check in this first batch (or the completed F5 gate). `Partial` keeps the remainder visible. Every unimplemented must/should gap remains Open. Full validation results and limitations are recorded in `../NAPLO.md`.
+`Verified` below preserves the historical implementation checkpoint; it does not assert that the current working tree has passed. Some older evidence cells also retain prior checkpoint remainder text. Reconcile each row with a concrete current implementation/test result instead of repeating the implementation or trusting the label alone. The newer checklist files currently still say Open; the next reconciliation must distinguish implemented-but-unwired, failing, absent and native-verification-needed work. Full validation results and limitations are recorded in `../NAPLO.md`.
+
+S0 provides fresh implementation/test evidence for Canvas tasks and selection zoom, Bases List and shared controls, Outline operations and deleted-note recovery; some of these requirements remain only partly covered. `Open` in the newer files therefore means full requirement acceptance is pending, not that every underlying implementation is absent. Use the S0 report before implementing a row again. Native per-view interaction and complete 14-audit parity are separate gates.
 
 ## 01-rendering
 

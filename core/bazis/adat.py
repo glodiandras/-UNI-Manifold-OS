@@ -7,7 +7,6 @@ a sorok a `Tabla` életében nem változnak, így a rajtuk számolt értékek (`
 from __future__ import annotations
 
 import collections
-import os
 import re
 import threading
 import time
@@ -25,11 +24,12 @@ class Sor:
     `tulajdonsagok`: [(kulcs, típus, JSON-érték)] a frontmatter sorrendjében; `cimkek`: a címkék `#` nélkül,
     ahogy az index tárolja (frontmatter, majd szöveg); `linkek`: [{cel_nyers, alcel, alias, beagyazas, cel}],
     ahol a `cel` a feloldott vault-út vagy `None`."""
-    __slots__ = ("id", "ut", "lemez_ut", "nev", "kit", "mappa", "tipus", "meret", "mtime_ns", "tulajdonsagok",
+    __slots__ = ("id", "ut", "lemez_ut", "nev", "kit", "mappa", "tipus", "meret", "mtime_ns", "ctime_ns", "tulajdonsagok",
                  "cimkek", "linkek", "aliasok", "_ert", "_kis", "_cimkek", "_linkek")
 
     def __init__(self, ut: str, *, tipus: str | None = None, meret: int = 0, mtime_ns: int = 0, tulajdonsagok=(),
-                 cimkek=(), linkek=(), aliasok=(), lemez_ut: str | None = None, id: int | None = None):
+                 cimkek=(), linkek=(), aliasok=(), lemez_ut: str | None = None, id: int | None = None,
+                 ctime_ns: int | None = None):
         self.id = id
         self.ut = ut
         self.lemez_ut = lemez_ut or ut
@@ -37,6 +37,7 @@ class Sor:
         self.kit = self.nev.rsplit(".", 1)[-1].lower() if "." in self.nev else ""
         self.tipus = tipus or {"md": "md", "canvas": "canvas", "base": "base"}.get(self.kit, "egyeb")
         self.meret, self.mtime_ns = meret, mtime_ns
+        self.ctime_ns = ctime_ns                      # a valódi születési idő az indexből (F11), vagy `None`: ismeretlen
         self.tulajdonsagok = list(tulajdonsagok)
         self.cimkek = list(cimkek)
         self.linkek = list(linkek)
@@ -108,7 +109,7 @@ class Sor:
 
 class Tabla:
     """A sorhalmaz. `felold(cél, forrás_út) → út | None` az index feloldója (L42: nincs saját feloldás);
-    `gyoker`: a vault gyökere (csak a `file.ctime` számára)."""
+    `gyoker`: a vault gyökere (megmaradt a hívók miatt; a `file.ctime` már az indexből jön, 10-bases-13)."""
 
     def __init__(self, sorok, felold=None, gyoker=None, generacio: int = 0, tipusok: dict | None = None):
         self.sorok: list[Sor] = list(sorok)
@@ -119,7 +120,6 @@ class Tabla:
         self.generacio = generacio
         self._memo: dict = {}
         self._visszalinkek: dict[str, list[Sor]] | None = None
-        self._ctime: dict[str, Datum] = {}
         self._tip: dict[str, collections.Counter] | None = None
 
     def felold(self, cel: str, forras_ut: str) -> str | None:
@@ -167,20 +167,10 @@ class Tabla:
             self._visszalinkek = v
         return self._visszalinkek.get(ut, [])
 
-    def ctime(self, sor: Sor) -> Datum:
-        """`file.ctime`: a fájlrendszer születési ideje (lusta, csak ha kifejezés hivatkozik rá); híján az mtime."""
-        d = self._ctime.get(sor.ut)
-        if d is None:
-            t = None
-            if self.gyoker is not None:
-                try:
-                    st = os.stat(self.gyoker / sor.lemez_ut)
-                    t = getattr(st, "st_birthtime", None) or st.st_mtime
-                except OSError:
-                    t = None
-            d = Datum(datetime.fromtimestamp(t), True) if t else sor.mtime()
-            self._ctime[sor.ut] = d
-        return d
+    def ctime(self, sor: Sor) -> Datum | None:
+        """`file.ctime`: a fájl valódi születési ideje az indexből (`fajl.ctime_ns`, F11). Ismeretlen születési időre
+        (a fájlrendszer nem ad) `None`: sosem az mtime és sosem a POSIX `st_ctime` (10-bases-13)."""
+        return Datum(datetime.fromtimestamp(sor.ctime_ns / 1e9), True) if sor.ctime_ns else None
 
 
 def nfc(s: str) -> str:
@@ -210,9 +200,9 @@ class Tar:
         return Tabla(sorok, self.index.felold_egy, self.index.root, gen, self.index.tipusok)
 
     @staticmethod
-    def _sor(fid, ut, lemez, tip, meret, mtime, tul, cim, lnk, alias) -> Sor:
+    def _sor(fid, ut, lemez, tip, meret, mtime, tul, cim, lnk, alias, ctime=None) -> Sor:
         return Sor(ut, tipus=tip, meret=meret, mtime_ns=mtime, tulajdonsagok=tul, cimkek=cim, linkek=lnk, aliasok=alias,
-                   lemez_ut=lemez, id=fid)
+                   lemez_ut=lemez, id=fid, ctime_ns=ctime)
 
     def tabla(self) -> Tabla:
         t = self._tabla

@@ -1,0 +1,21 @@
+{
+  "Aktív jegyzet követése": "Follow active note",
+  "Csak létező fájlok": "Existing files only",
+  "Csúcsméret": "Node size",
+  "Címke másolása": "Copy tag",
+  "Címkék csúcsként": "Tags",
+  "Egyes címkék vagy feloldatlan célok a korlát miatt kimaradtak.": "Some tags or unresolved targets were left out because of the size limit.",
+  "Gráfcsúcs menü": "Graph node menu",
+  "Helyi gráf innen": "Open local graph here",
+  "Jegyzet létrehozása": "Create note",
+  "Keresés erre a címkére": "Search this tag",
+  "Megjelenítés": "Display",
+  "Megnyitás jobbra": "Open to the right",
+  "Még nem létező jegyzet": "Note does not exist yet",
+  "Név másolása": "Copy name",
+  "Szöveg halványítása": "Text fade threshold",
+  "Vonalvastagság": "Link thickness",
+  "{n} jegyzet hivatkozik rá|one": "{n} note links to it",
+  "{n} jegyzet hivatkozik rá|other": "{n} notes link to it",
+  "Útvonal másolása": "Copy path"
+}

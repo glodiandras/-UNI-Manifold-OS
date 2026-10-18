@@ -1,5 +1,5 @@
 <!--
-  A Bases-nézet kerete (C12): eszköztár, hibák és figyelmeztetések, és alatta a nézet maga (táblázat, kártyák vagy Kanban),
+  A Bases-nézet kerete (C12): eszköztár, hibák és figyelmeztetések, és alatta a nézet maga (táblázat, kártyák, lista vagy Kanban),
   vagy a teljes YAML-forrás. Három helyen él: `.base` fülön, ```` ```base ```` blokkban és `![[x.base]]` beágyazásban — a
   szöveget a `BazisForras` adja. A beállítások (rendezés, oszlopok, szűrők, nézetek…) az egyetlen írási úton íródnak vissza.
   A találatszám `title`-je a core és a rajzolás idejét mutatja (cél: 2000 soron együtt < 300 ms).
@@ -13,6 +13,8 @@
   import type { BazisForras } from './forras';
   import Kanban from './Kanban.svelte';
   import Kartyak from './Kartyak.svelte';
+  import Lista from './Lista.svelte';
+  import { zartKapcsol } from './csoportok';
   import { BazisModell } from './modell.svelte';
   import SzovegMezo from './SzovegMezo.svelte';
   import Tabla from './Tabla.svelte';
@@ -36,6 +38,7 @@
   const modell = untrack(() => new BazisModell(forras, { api, kapcsolat, nezet }));
   const v = $derived(modell.valasz);
   let rajzIdo = $state<number | null>(null);
+  let zart = $state<ReadonlySet<string>>(new Set());
 
   onMount(() => {
     modell.indit();
@@ -86,7 +89,7 @@
 
 <section class="bazis" class:kompakt aria-label={t('Adatbázis-nézet')}>
   {#if v}
-    <Eszkoztar {modell} {v} {irhato} {idoSzoveg} nezetValtott={valtott} {forrasGomb} />
+    <Eszkoztar {modell} {v} {irhato} {cellaIras} {idoSzoveg} nezetValtott={valtott} {forrasGomb} />
     {#if modell.irasHiba}
       <p class="uzenet hiba" role="alert">{modell.irasHiba}</p>
     {/if}
@@ -114,6 +117,8 @@
     {:else if v.ok}
       {#if v.nezet?.tipus === 'cards'}
         <Kartyak valasz={v} ez={forras.ez} />
+      {:else if v.nezet?.tipus === 'list'}
+        <Lista valasz={v} ez={forras.ez} {zart} zartKapcsol={(kulcs) => (zart = zartKapcsol(zart, kulcs))} />
       {:else if v.nezet?.tipus === 'kanban'}
         <Kanban valasz={v} ez={forras.ez} {cellaIras} />
       {:else}

@@ -86,6 +86,8 @@ export function beolvas(szoveg: string): Beolvasas {
   if (!objektum(v)) return rossz(t('A canvas gyökere nem objektum.'));
   for (const k of ['nodes', 'edges'] as const)
     if (k in v && !Array.isArray(v[k])) return rossz(t('A „{kulcs}” nem tömb.', { kulcs: k }));
+  // 09-canvas-15: a spec az azonosító egyediségét gyűjteményenként kéri — egy node és egy él osztozhat az id-n (a nézet a
+  // kijelölést és a törlést ezért gyűjtemény szerint minősíti, `kijeloles.ts`); gyűjteményen belüli ismétlődés végzetes
   const ids = new Set<string>();
   for (const [n, c] of ((v.nodes ?? []) as unknown[]).entries()) {
     if (!objektum(c)) return rossz(t('A {n}. node nem objektum.', { n: n + 1 }));
@@ -100,11 +102,12 @@ export function beolvas(szoveg: string): Beolvasas {
       if (!Number.isInteger(c[m])) figyelmeztetesek.push(t('A(z) {id} node „{mezo}” mezője nem egész szám.', { id: c.id, mezo: m }));
   }
   const csomopontIds = new Set(ids);
+  const elIds = new Set<string>();
   for (const [n, e] of ((v.edges ?? []) as unknown[]).entries()) {
     if (!objektum(e)) return rossz(t('A {n}. él nem objektum.', { n: n + 1 }));
     if (typeof e.id !== 'string' || !e.id) return rossz(t('A {n}. élnek nincs azonosítója (id).', { n: n + 1 }));
-    if (ids.has(e.id)) return rossz(t('Két elemnek azonos az azonosítója: {id}.', { id: e.id }));
-    ids.add(e.id);
+    if (elIds.has(e.id)) return rossz(t('Két elemnek azonos az azonosítója: {id}.', { id: e.id }));
+    elIds.add(e.id);
     if (typeof e.fromNode !== 'string' || typeof e.toNode !== 'string')
       return rossz(t('A(z) {id} élnek nincs kezdő vagy záró node-ja.', { id: e.id }));
     if (!csomopontIds.has(e.fromNode) || !csomopontIds.has(e.toNode))
@@ -113,7 +116,7 @@ export function beolvas(szoveg: string): Beolvasas {
   return { vaszon: v as Vaszon, hiba: null, hely: null, figyelmeztetesek };
 }
 
-/** Egy új, 16 hexa jegyű azonosító (az Obsidian alakja), amely a canvasban még nem foglalt. */
+/** Egy új, 16 hexa jegyű azonosító (az Obsidian alakja), amely a canvasban még nem foglalt (node-ok és élek között sem). */
 export function ujId(v: Vaszon, foglalt: Set<string> = new Set()): string {
   const van = new Set([...csomopontok(v).map((c) => c.id), ...elek(v).map((e) => e.id), ...foglalt]);
   for (;;) {
@@ -134,9 +137,12 @@ export const SZIN_NEV: Record<string, string> = {
   '6': tk('lila'),
 };
 
+/** A hex szín: `#rgb`, `#rrggbb`, vagy átlátszósággal `#rgba`, `#rrggbbaa` (09-canvas-12: az importált szín nem tűnik el). */
+export const HEX_SZIN = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
 /** A szín CSS-értéke: a preset a tokenre képeződik, a hex szín nyersen, a többi (ismeretlen) nincs. */
 export function szinCss(szin: unknown): string | null {
   if (typeof szin !== 'string' || !szin) return null;
   if (SZIN_NEV[szin]) return `var(--canvas-szin-${szin})`;
-  return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(szin) ? szin : null;
+  return HEX_SZIN.test(szin) ? szin : null;
 }

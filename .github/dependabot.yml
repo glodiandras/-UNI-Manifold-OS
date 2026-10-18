@@ -1,0 +1,42 @@
+# Dependabot version updates.
+#
+# - npm (app/): package.json pins exact versions and package-lock.json is committed, so Dependabot proposes
+#   exact-version bumps and refreshes the lock file.
+# - github-actions: workflow actions are pinned to commit SHAs (see .github/workflows/ci.yml); Dependabot
+#   updates the SHA together with the trailing version comment.
+# - pip is intentionally NOT configured. config/requirements.lock is a `uv pip compile --generate-hashes`
+#   output generated from config/requirements.in, and the AI runtimes in it (mlx*, torch, transformers)
+#   are pinned to the versions the model calibration was measured with (see the header of
+#   config/requirements.in). Dependabot's pip ecosystem does not regenerate such a hashed lock file, and
+#   an automatic bump could silently invalidate the measurements. Python pins change by hand, after
+#   `bin/mos eval`.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    versioning-strategy: "increase"
+    groups:
+      codemirror:
+        patterns:
+          - "@codemirror/*"
+          - "@lezer/*"
+      test-tooling:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+          - "jsdom"
+          - "@testing-library/*"
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"

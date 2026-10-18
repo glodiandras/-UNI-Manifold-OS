@@ -106,9 +106,10 @@ describe('a forrás t()/tp()/tk() kulcsai és a szótár', () => {
     const tpKulcsok = new Set(kulcsok.filter((k) => k.fajta === 'tp').map((k) => k.kulcs));
     const elavult = [...EN.keys()].filter((k) => {
       if (HIBAKOD.test(k)) return false;
-      if (PYTHON_FORRAS.some((sz) => sz.includes(k))) return false;
       const m = k.match(KATEGORIA);
-      return m ? !tpKulcsok.has(k.replace(KATEGORIA, '')) && !hasznalt.has(k) : !hasznalt.has(k) && !tpKulcsok.has(k);
+      const feluleten = m ? tpKulcsok.has(k.replace(KATEGORIA, '')) || hasznalt.has(k) : hasznalt.has(k) || tpKulcsok.has(k);
+      // A már bizonyított UI-kulcsokhoz nem kell újra bejárni az összes Python-forrást. A core-only kulcsok ellenőrzése megmarad.
+      return !feluleten && !PYTHON_FORRAS.some((sz) => sz.includes(k));
     });
     if (elavult.length) console.warn(`i18n szótár: ${elavult.length} nem használt kulcs, pl.: ${elavult.slice(0, 8).map((k) => `"${k}"`).join('; ')}`);
     if (KOTELEZO) expect(elavult).toEqual([]);

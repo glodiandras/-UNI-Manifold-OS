@@ -21,7 +21,11 @@ mkdir -p "$TMPDIR" "$CLANG_MODULE_CACHE_PATH"
 IDENTITAS="${MOS_ALAIRAS_IDENTITAS:--}"
 ALAIRAS_KAPCSOLOK=()
 FEJLESZTOI_KAPCSOLOK=()
-if [ "${MOS_DEVELOPER_BUILD:-0}" = "1" ]; then FEJLESZTOI_KAPCSOLOK=(-DMOS_DEVELOPER); fi
+HEJ_VALTOZAT=kiadasi
+if [ "${MOS_DEVELOPER_BUILD:-0}" = "1" ]; then
+  FEJLESZTOI_KAPCSOLOK=(-DMOS_DEVELOPER)
+  HEJ_VALTOZAT=fejlesztoi
+fi
 if [ "$IDENTITAS" != "-" ]; then
   security find-identity -p codesigning 2>/dev/null | grep -qF "\"$IDENTITAS\"" || {
     echo "HIBA: nincs \"$IDENTITAS\" nevű kódaláíró tanúsítvány a kulcskarikában (security find-identity -p codesigning); lépései: docs/PLAN.md §7" >&2
@@ -31,7 +35,7 @@ if [ "$IDENTITAS" != "-" ]; then
 fi
 rm -rf "$EPIT"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 xcrun --find swiftc >/dev/null 2>&1 || { echo "HIBA: nincs swiftc (Command Line Tools)" >&2; exit 1; }
-"$MOS_HOME/bin/mos" epites --swift > "$EPIT/EpitesAzonosito.swift"
+"$MOS_HOME/bin/mos" epites --swift --hej-valtozat "$HEJ_VALTOZAT" > "$EPIT/EpitesAzonosito.swift"
 xcrun swiftc -O -swift-version 5 -parse-as-library -target "arm64-apple-macos26.0" \
   -module-cache-path "$CLANG_MODULE_CACHE_PATH" ${FEJLESZTOI_KAPCSOLOK[@]+"${FEJLESZTOI_KAPCSOLOK[@]}"} -o "$APP/Contents/MacOS/Manifold" "$MODUL"/Sources/*.swift "$EPIT/EpitesAzonosito.swift"
 cp "$MODUL/Info.plist" "$APP/Contents/Info.plist"
@@ -39,7 +43,7 @@ cp "$MODUL/Info.plist" "$APP/Contents/Info.plist"
 # build nem függ a raszterezéstől. Hiányzó ikon nem némán marad el.
 [ -f "$MODUL/ikon/AppIcon.icns" ] || { echo "HIBA: nincs shell/ikon/AppIcon.icns (bash shell/ikon/keszit.sh)" >&2; exit 1; }
 cp "$MODUL/ikon/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
-"$MOS_HOME/bin/mos" epites > "$APP/Contents/Resources/epites.json"
+"$MOS_HOME/bin/mos" epites --hej-valtozat "$HEJ_VALTOZAT" > "$APP/Contents/Resources/epites.json"
 # A héj szövegei (F4): a verziókövetett `Resources/*.lproj` mappák (Localizable.strings: kulcs = a magyar forrásszöveg, érték = az angol)
 # a csomagba másolódnak; a hiányzó vagy hibás angol szótár nem marad némán el (hiányzó kulcsnál a felirat magyar maradna).
 [ -f "$MODUL/Resources/en.lproj/Localizable.strings" ] || { echo "HIBA: nincs shell/Resources/en.lproj/Localizable.strings" >&2; exit 1; }

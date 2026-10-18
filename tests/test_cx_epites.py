@@ -1,12 +1,105 @@
 """CX-001: az állapot tartalomra érzékeny, nem puszta fájllétezésre."""
 import json
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
-from core.epites import allapot, jegyzek
+from unittest import mock
+from core.epites import RESZEK, allapot, befagyaszt, fo, jegyzek
 
 
 class EpitesTest(unittest.TestCase):
+    def test_a_hej_valtozat_explicit_es_nem_valtoztatja_a_forrasujjlenyomatokat(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "core").mkdir()
+            (root / "core/a.py").write_text("fixture", encoding="utf-8")
+            alap = jegyzek(root)
+            # A felület jegyzékét a buildet indító környezet sem minősíti fejlesztői héjnak.
+            with mock.patch.dict("os.environ", {"MOS_DEVELOPER_BUILD": "1"}):
+                self.assertEqual(jegyzek(root), alap)
+            self.assertNotIn("hej_valtozat", alap)
+            for valtozat in ("fejlesztoi", "kiadasi"):
+                with self.subTest(valtozat=valtozat):
+                    j = jegyzek(root, hej_valtozat=valtozat)
+                    self.assertEqual(j.pop("hej_valtozat"), valtozat)
+                    self.assertEqual(j, alap)
+            with self.assertRaises(ValueError):
+                jegyzek(root, hej_valtozat="ismeretlen")
+
+    def test_a_json_es_a_swiftbe_agyazott_js_azonos_valtozatot_es_hash_eket_kap(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for resz, utak in RESZEK.items():
+                f = root / utak[0] / "fixture.txt"
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_text(resz, encoding="utf-8")
+            with mock.patch("core.epites.__file__", str(root / "core/epites.py")):
+                for valtozat in ("fejlesztoi", "kiadasi"):
+                    with self.subTest(valtozat=valtozat):
+                        json_ki, swift_ki = io.StringIO(), io.StringIO()
+                        with redirect_stdout(json_ki):
+                            fo(["--hej-valtozat", valtozat])
+                        with redirect_stdout(swift_ki):
+                            fo(["--swift", "--hej-valtozat", valtozat])
+                        swift = swift_ki.getvalue().strip()
+                        eleje = "enum EpitesAzonosito { static let js = "
+                        self.assertTrue(swift.startswith(eleje))
+                        self.assertTrue(swift.endswith(" }"))
+                        js = json.loads(swift[len(eleje):-2])
+                        prefix = "window.__manifoldHejEpites = "
+                        self.assertTrue(js.startswith(prefix))
+                        j = json.loads(json_ki.getvalue())
+                        self.assertEqual(json.loads(js[len(prefix):]), j)
+                        self.assertEqual(j["hej_valtozat"], valtozat)
+                        self.assertEqual({r: j[r] for r in RESZEK}, {r: jegyzek(root)[r] for r in RESZEK})
+            with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as hiba:
+                fo(["--hej-valtozat", "ismeretlen"])
+            self.assertEqual(hiba.exception.code, 2)
+
+    def test_az_allapot_a_hej_valtozatat_metaadatkent_adja_nem_hashkent(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            j = jegyzek(root)
+            felulet = root / "app/dist/epites.json"
+            hej = root / "Manifold.app/Contents/Resources/epites.json"
+            felulet.parent.mkdir(parents=True)
+            hej.parent.mkdir(parents=True)
+            felulet.write_text(json.dumps(j), encoding="utf-8")
+            for v in ("fejlesztoi", "kiadasi", None, "ismeretlen"):
+                with self.subTest(valtozat=v):
+                    hej.write_text(json.dumps({**j, **({"hej_valtozat": v} if v else {})}), encoding="utf-8")
+                    a = allapot(root)
+                    self.assertTrue(a["ok"])
+                    sorok = {r["resz"]: r for r in a["reszek"]}
+                    self.assertNotIn("hej_valtozat", sorok["felulet"])
+                    if v in ("fejlesztoi", "kiadasi"):
+                        self.assertEqual(sorok["hej"]["hej_valtozat"], v)
+                    else:
+                        self.assertNotIn("hej_valtozat", sorok["hej"])
+
+    def test_a_csomag_jegyzeke_top_level_mezorol_orzi_a_hej_valtozatat(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d) / "Manifold.app/Contents/Resources/manifold"
+            dist = root / "app/dist/epites.json"
+            dist.parent.mkdir(parents=True)
+            dist.write_text(json.dumps({"felulet": "f"}), encoding="utf-8")
+            args = dict(termek_verzio="1", build="1", commit="fixture", tiszta=True, epitve="2026-10-18T00:00:00Z",
+                        felulet="f", hej="h", runtime=False)
+            for v in ("fejlesztoi", "kiadasi"):
+                with self.subTest(valtozat=v):
+                    j = befagyaszt(root, **args, hej_valtozat=v)
+                    self.assertEqual(j["hej_valtozat"], v)
+                    self.assertNotIn("hej_valtozat", j["csomag"])
+                    (root.parent / "epites.json").write_text(json.dumps(j), encoding="utf-8")
+                    a = allapot(root)
+                    self.assertTrue(a["ok"])
+                    self.assertEqual(next(r for r in a["reszek"] if r["resz"] == "hej")["hej_valtozat"], v)
+            self.assertNotIn("hej_valtozat", befagyaszt(root, **args))
+            with self.assertRaises(ValueError):
+                befagyaszt(root, **args, hej_valtozat="ismeretlen")
+
     def test_a_lokalizacio_valtozasa_elavultta_teszi_a_hejat(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

@@ -161,10 +161,11 @@ class HibaTest(unittest.TestCase):
                              ("1a", 1), ("{a 1}", 3), ("[1", 2), ("a ]", 2), ("/ab", 0), ("", 0), ("   ", 0)]:
             self.assertEqual(hiba(forras).hely, hely, forras)
 
-    def test_uzenet_magyar_es_helyet_mond(self):
-        self.assertIn("hiányzik", str(hiba("(a")))
-        self.assertIn("karakternél", str(hiba("a +")))
-        self.assertEqual(hiba("").uzenet, "üres kifejezés")
+    def test_uzenet_angol_kodolt_es_helyet_mond(self):
+        self.assertIn("is missing", str(hiba("(a")))
+        self.assertIn("at character", str(hiba("a +")))
+        self.assertEqual(hiba("").uzenet, "The expression is empty.")
+        self.assertEqual((hiba("").kod, hiba("(a").kod, hiba("(a").param), ("bazis.kifejezes.ures", "bazis.kifejezes.hianyzik", {"mit": ")"}))
 
     def test_nem_szoveg(self):
         with self.assertRaises(KifejezesHiba):

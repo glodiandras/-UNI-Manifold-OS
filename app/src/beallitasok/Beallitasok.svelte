@@ -2,6 +2,10 @@
   import { onMount, tick, untrack } from 'svelte';
   import { t, tk } from '../lib/i18n';
   import Atfedes from '../lib/ui/Atfedes.svelte';
+  import Kapcsolo from '../lib/ui/Kapcsolo.svelte';
+  import BetuMezo from './BetuMezo.svelte';
+  import KizartSzerkeszto from './KizartSzerkeszto.svelte';
+  import { betuNevJo } from '../lib/elrendezes/betutipus';
   import { beallitasok, type BeallitasokTar } from '../lib/beallitasok/allapot.svelte';
   import { MODULOK, type Beallitasok, type BeallitasokValtozas } from '../lib/beallitasok/tipusok';
   import { parancsNev, regiszter } from '../lib/parancsok/regiszter';
@@ -18,7 +22,7 @@
   import ModellKezelo from '../modellek/ModellKezelo.svelte';
   import Kalibracio from '../modellek/Kalibracio.svelte';
   let { tar = beallitasok, onbezar, onsetup, onrendszer }: { tar?: BeallitasokTar; onbezar: () => void; onsetup: () => void; onrendszer: (szakasz: string) => void } = $props();
-  const masolat = (v: Beallitasok) => { const m = JSON.parse(JSON.stringify(v)) as Beallitasok; m.fejleszto ??= { mod: false }; return m; };
+  const masolat = (v: Beallitasok) => { const m = JSON.parse(JSON.stringify(v)) as Beallitasok; m.fejleszto ??= { mod: false }; m.fajlok.kizart ??= []; m.megjelenes.betu_szoveg ??= ''; m.megjelenes.betu_mono ??= ''; for (const k of ['auto_par_zarojel', 'auto_par_idezojel', 'auto_par_jeloles'] as const) m.szerkeszto[k] ??= true; return m; };
   let alap = $state(masolat(untrack(() => tar.ertek)));
   let vazlat = $state(masolat(untrack(() => tar.ertek)));
   let rev = $state(untrack(() => tar.adat?.rev ?? ''));
@@ -27,6 +31,7 @@
   let elvetesElotti: HTMLElement | null = null;
   let mentve = $state(false);
   let billentyuHiba = $state('');
+  let kizartHiba = $state(false);
   let szures = $state('');
   const szakasz = $derived(szakaszLathato(beallitasAblak.szakasz, fejlesztoMod()) ? beallitasAblak.szakasz : 'nevjegy');
   const szakaszok = $derived(SZAKASZOK.filter(s => szakaszLathato(s.id, fejlesztoMod())));
@@ -69,6 +74,8 @@
     billentyuHiba = '';
     if (!Number.isInteger(vazlat.szerkeszto.tab_meret) || vazlat.szerkeszto.tab_meret < 1 || vazlat.szerkeszto.tab_meret > 8) { billentyuHiba = t('beallitasok.hibas_tab'); return; }
     if (!Number.isInteger(vazlat.megjelenes.betumeret) || vazlat.megjelenes.betumeret < 12 || vazlat.megjelenes.betumeret > 28) { billentyuHiba = t('beallitasok.hibas_betumeret'); return; }
+    if (!betuNevJo(vazlat.megjelenes.betu_szoveg) || !betuNevJo(vazlat.megjelenes.betu_mono)) { billentyuHiba = t('beallitasok.hibas_betu'); return; }
+    if (kizartHiba) { billentyuHiba = t('beallitasok.hibas_kizart'); return; }
     try { regiszter.billentyuketEllenoriz(vazlat.billentyuk); } catch (e) { billentyuHiba = e instanceof Error ? e.message : t('beallitasok.hibas_billentyu'); return; }
     const valtozas: BeallitasokValtozas = {};
     for (const kulcs of Object.keys(vazlat) as (keyof Beallitasok)[]) {
@@ -127,6 +134,10 @@
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.szerkeszto.helyesiras} />{t('beallitasok.helyesiras')}</label>
             <label>{t('beallitasok.tab')}<input type="number" min="1" max="8" bind:value={vazlat.szerkeszto.tab_meret} /></label>
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.szerkeszto.perjel} />{t('beallitasok.perjel')}</label>
+            <div class="kapcsolo-sor"><span>{t('beallitasok.auto_par_zarojel')}</span><Kapcsolo cimke={t('beallitasok.auto_par_zarojel')} bind:ertek={vazlat.szerkeszto.auto_par_zarojel} /></div>
+            <div class="kapcsolo-sor"><span>{t('beallitasok.auto_par_idezojel')}</span><Kapcsolo cimke={t('beallitasok.auto_par_idezojel')} bind:ertek={vazlat.szerkeszto.auto_par_idezojel} /></div>
+            <div class="kapcsolo-sor"><span>{t('beallitasok.auto_par_jeloles')}</span><Kapcsolo cimke={t('beallitasok.auto_par_jeloles')} bind:ertek={vazlat.szerkeszto.auto_par_jeloles} /></div>
+            <p class="leiras">{t('beallitasok.auto_par_leiras')}</p>
           {:else if szakasz === 'fajlok'}
             <p class="leiras">{t('beallitasok.fajlok_leiras')}</p>
             {#each FAJL_MEZOK as m}<label>{t(m.cim)}<input type="text" bind:value={vazlat.fajlok[m.id]} spellcheck="false" /></label>{/each}
@@ -134,12 +145,16 @@
             <label>{t('beallitasok.link_formatum')}<select bind:value={vazlat.fajlok.link_formatum}><option value="rovid">{t('beallitasok.rovid')}</option><option value="relativ">{t('beallitasok.relativ')}</option><option value="abszolut">{t('beallitasok.abszolut')}</option></select></label>
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.fajlok.wikilinkek} />{t('beallitasok.wikilinkek')}</label>
             <p class="leiras">{t('beallitasok.link_leiras')}</p>
+            <KizartSzerkeszto bind:lista={vazlat.fajlok.kizart} bind:ervenytelen={kizartHiba} tiltott={tar.mentes} />
             <p class="leiras">{t('beallitasok.kuka_leiras')}</p>
             <ImportSzakasz fajta="obsidian" />
           {:else if szakasz === 'megjelenes'}
             <label>{t('beallitasok.tema')}<select bind:value={vazlat.megjelenes.tema}><option value="rendszer">{t('beallitasok.rendszer')}</option><option value="vilagos">{t('beallitasok.vilagos')}</option><option value="sotet">{t('beallitasok.sotet')}</option></select></label>
             <label>{t('beallitasok.betumeret')}<input type="number" min="12" max="28" bind:value={vazlat.megjelenes.betumeret} /></label>
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.megjelenes.csend} />{t('beallitasok.csend')}</label>
+            <BetuMezo cimke={t('beallitasok.betu_szoveg')} fajta="szoveg" bind:ertek={vazlat.megjelenes.betu_szoveg} tiltott={tar.mentes} />
+            <BetuMezo cimke={t('beallitasok.betu_mono')} fajta="mono" bind:ertek={vazlat.megjelenes.betu_mono} tiltott={tar.mentes} />
+            <p class="leiras">{t('beallitasok.betu_leiras')}</p>
             <p class="leiras">{t('beallitasok.akcentus')}</p>
           {:else if szakasz === 'modulok'}
             <p class="leiras">{t('beallitasok.modul_leiras')}</p>
@@ -209,6 +224,7 @@
   fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   label { display: flex; align-items: center; justify-content: space-between; gap: var(--t-4); padding: var(--t-3) 0; }
   label.kapcsolo { justify-content: flex-start; gap: var(--t-3); }
+  .kapcsolo-sor { display: flex; align-items: center; justify-content: flex-start; gap: var(--t-3); padding: var(--t-3) 0; }
   input:not([type="checkbox"]), select { width: 50%; min-width: 0; padding: var(--t-2); color: var(--szoveg); background: var(--hatter); border: var(--keret-vastag) solid var(--keret-mezo); border-radius: var(--kerekites); font: inherit; }
   input[type="checkbox"] { accent-color: var(--akcent-kitoltes); }
   .leiras, .ut { color: var(--szoveg-masodlagos); font-size: var(--betu-kicsi); }

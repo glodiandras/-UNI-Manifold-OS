@@ -19,12 +19,18 @@ export interface Szinek {
   szoveg: string;
   halo: string;
   talalat: string;
+  /** A címke-csúcs (11-graph-03) és a feloldatlan cél (11-graph-02) színe. */
+  cimke: string;
+  feloldatlan: string;
 }
 
 export type MegnyitasMod = 'aktiv' | 'ujful' | 'osztas';
 
 export interface Esemenyek {
-  megnyit(i: number, mod: MegnyitasMod): void;
+  /** Kattintás / Enter egy csúcson; az `x`, `y` a csúcs helye a vásznon (virtuális csúcsnál a felajánlott művelet menüjének). */
+  megnyit(i: number, mod: MegnyitasMod, x?: number, y?: number): void;
+  /** Jobb gomb vagy a menü billentyű egy csúcson (11-graph-05): az x, y a vászon koordinátája. */
+  menu?(i: number, x: number, y: number): void;
   fizika(m: Be): void;
   /** A kurzor alatti csúcs változott (tooltiphoz): -1 = nincs. Az x, y a vászon koordinátája. */
   hover?(i: number, x: number, y: number): void;
@@ -41,6 +47,8 @@ export interface Bemenet {
   nyil: boolean;
   meretSzorzo: number;
   vonalSzorzo: number;
+  /** A feliratok halványítási küszöbe (−3 … 3, 0 = alap; 11-graph-04). */
+  szovegHalvany?: number;
 }
 
 export interface Meres {
@@ -63,9 +71,18 @@ const NEGYZET = 1;
 const HAROMSZOG = 2;
 const ROMBUSZ = 3;
 const GYURU = 4;
+const HATSZOG = 5; // a címke-csúcs
+const SZAGGATOTT = 6; // a feloldatlan cél: szaggatott gyűrű
+const ALAK_DB = 7;
+/** A palettában a fix színek száma: jegyzet, canvas, melléklet, címke, feloldatlan (utánuk a színcsoportok). */
+const FIX_SZIN = 5;
 
 function alak(tipus: string): number {
   switch (tipus) {
+    case 'cimke':
+      return HATSZOG;
+    case 'feloldatlan':
+      return SZAGGATOTT;
     case 'md':
       return KOR;
     case 'pdf':
@@ -402,15 +419,16 @@ export class GrafRajzolo {
     const b = this.be;
     const s = this.szinek;
     if (!b || !s) return;
-    this.palettaSzinek = [s.jegyzet, s.canvas, s.melleklet, ...b.csoportSzinek];
+    this.palettaSzinek = [s.jegyzet, s.canvas, s.melleklet, s.cimke, s.feloldatlan, ...b.csoportSzinek];
     const n = b.adat.n;
     this.szinId = new Int16Array(n);
     for (let i = 0; i < n; i++) {
       const cs = b.csoport[i];
-      this.szinId[i] = cs >= 0 ? 3 + cs : b.adat.tipus[i] === 'md' ? 0 : b.adat.tipus[i] === 'canvas' || b.adat.tipus[i] === 'base' ? 1 : 2;
+      const tp = b.adat.tipus[i];
+      this.szinId[i] = cs >= 0 ? FIX_SZIN + cs : tp === 'md' ? 0 : tp === 'canvas' || tp === 'base' ? 1 : tp === 'cimke' ? 3 : tp === 'feloldatlan' ? 4 : 2;
     }
     // csúcsok vödrökbe (szín × alak) rendezve: a képkockánként nincs csoportosítás
-    const kulcs = (i: number) => this.szinId[i] * 5 + this.alakok[i];
+    const kulcs = (i: number) => this.szinId[i] * ALAK_DB + this.alakok[i];
     const db = new Map<number, number>();
     for (let i = 0; i < n; i++) db.set(kulcs(i), (db.get(kulcs(i)) ?? 0) + 1);
     this.vedoKulcs = [...db.keys()].sort((a, c) => a - c);
@@ -637,8 +655,8 @@ export class GrafRajzolo {
     const gyuru = this.k * 3.4 >= 2.6;
     for (let v = 0; v < this.vedoKulcs.length; v++) {
       const kulcs = this.vedoKulcs[v];
-      const alakId = kulcs % 5;
-      const szin = this.palettaSzinek[(kulcs - alakId) / 5] ?? s.melleklet;
+      const alakId = kulcs % ALAK_DB;
+      const szin = this.palettaSzinek[(kulcs - alakId) / ALAK_DB] ?? s.melleklet;
       ctx.beginPath();
       let van = false;
       for (let q = this.vedoKezd[v]; q < this.vedoKezd[v + 1]; q++) {
@@ -650,12 +668,14 @@ export class GrafRajzolo {
         this.alakUt(alakId, this.sx[i], this.sy[i], this.sr[i]);
       }
       if (!van) continue;
-      if (alakId === GYURU) {
+      if (alakId === GYURU || alakId === SZAGGATOTT) {
         ctx.fillStyle = s.felulet;
         ctx.fill();
         ctx.strokeStyle = szin;
         ctx.lineWidth = 1.6;
+        if (alakId === SZAGGATOTT) ctx.setLineDash([2.5, 2.5]); // a még nem létező cél: szaggatott gyűrű (alakkal is jelzett, nem csak színnel)
         ctx.stroke();
+        if (alakId === SZAGGATOTT) ctx.setLineDash([]);
       } else {
         ctx.fillStyle = szin;
         ctx.fill();
@@ -681,6 +701,16 @@ export class GrafRajzolo {
         ctx.lineTo(x - r * 1.05, y + r * 0.85);
         ctx.closePath();
         break;
+      case HATSZOG:
+        for (let q = 0; q < 6; q++) {
+          const f = (Math.PI / 3) * q;
+          const px = x + Math.cos(f) * r * 1.15;
+          const py = y + Math.sin(f) * r * 1.15;
+          if (q === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        break;
       case ROMBUSZ:
         ctx.moveTo(x, y - r * 1.2);
         ctx.lineTo(x + r * 1.2, y);
@@ -688,6 +718,7 @@ export class GrafRajzolo {
         ctx.lineTo(x - r * 1.2, y);
         ctx.closePath();
         break;
+      case SZAGGATOTT:
       default:
         ctx.moveTo(x + r, y);
         ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -718,6 +749,11 @@ export class GrafRajzolo {
     if (this.hover >= 0) fontos.add(this.hover);
     if (this.huz) fontos.add(this.huz.i);
 
+    // a felirat-küszöb a csúszkával tolódik: negatív = már a kisebb / távolabbi csúcs is kap feliratot, pozitív = csak a nagyobb
+    const eltolas = korlat(b.szovegHalvany ?? 0, -3, 3) * 1.6;
+    const kuszobAlso = Math.max(0.5, 6.5 + eltolas);
+    const kuszobFelso = kuszobAlso + 3.5;
+
     // jelöltek: elég nagy csúcsok (nagy fokszámúak hamarabb)
     const jeloltek: { i: number; alfa: number; fontossag: number }[] = [];
     for (let i = 0; i < g.n; i++) {
@@ -729,7 +765,7 @@ export class GrafRajzolo {
         jeloltek.push({ i, alfa: 1, fontossag: 1e9 });
         continue;
       }
-      const alfa = simitas(6.5, 10, this.sr[i]) * (kie > 0 && !this.szomsz[i] ? 1 - 0.86 * kie : 1);
+      const alfa = simitas(kuszobAlso, kuszobFelso, this.sr[i]) * (kie > 0 && !this.szomsz[i] ? 1 - 0.86 * kie : 1);
       if (alfa > 0.02) jeloltek.push({ i, alfa, fontossag: g.fok[i] });
     }
     if (!jeloltek.length) return;
@@ -781,6 +817,17 @@ export class GrafRajzolo {
       const r = c.getBoundingClientRect();
       return [e.clientX - r.left, e.clientY - r.top];
     };
+
+    // 11-graph-05: jobb gomb egy csúcson = a csúcs menüje; a natív menü sosem jön elő a vásznon
+    figyel('contextmenu', (e) => {
+      e.preventDefault();
+      const [x, y] = hely(e);
+      const i = this.csucsAlatt(x, y);
+      if (i < 0) return;
+      this.kijeloles(i);
+      this.e.kijeloles?.(i);
+      this.e.menu?.(i, x, y);
+    });
 
     figyel('pointerdown', (e) => {
       if (e.button !== 0) return;
@@ -846,7 +893,7 @@ export class GrafRajzolo {
       if (!d.mozdult) {
         // kattintás: a csúcs megnyitása, vagy (üres helyre) a kijelölés törlése
         if (d.i >= 0) {
-          this.e.megnyit(d.i, d.mod);
+          this.e.megnyit(d.i, d.mod, this.sx[d.i], this.sy[d.i]);
           this.kijeloles(d.i);
           this.e.kijeloles?.(d.i);
         } else if (this.kijelolt >= 0) {
@@ -916,6 +963,15 @@ export class GrafRajzolo {
 
     figyel('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // a menü billentyűje (Shift+F10 / ContextMenu) a kijelölt csúcs menüjét nyitja
+      if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+        const i = this.kijelolt;
+        if (i >= 0 && this.be?.lathato[i]) {
+          e.preventDefault();
+          this.e.menu?.(i, this.sx[i], this.sy[i]);
+        }
+        return;
+      }
       const kozep: [number, number] = [this.w / 2, this.h / 2];
       let kezelt = true;
       switch (e.key) {
@@ -947,7 +1003,7 @@ export class GrafRajzolo {
           this.kerKeret();
           break;
         case 'Enter':
-          if (this.kijelolt >= 0) this.e.megnyit(this.kijelolt, e.shiftKey ? 'ujful' : 'aktiv');
+          if (this.kijelolt >= 0) this.e.megnyit(this.kijelolt, e.shiftKey ? 'ujful' : 'aktiv', this.sx[this.kijelolt], this.sy[this.kijelolt]);
           break;
         case 'Escape':
           if (this.kijelolt >= 0) {

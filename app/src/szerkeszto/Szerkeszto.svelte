@@ -36,6 +36,7 @@
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
   import { linkVerzioValt, tartalomVerzioValt } from './beagyazas/widget';
   import { eloFejezetek } from './linkek/kiegeszites';
+import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   import Olvaso from './Olvaso.svelte';
   import Boritokep from './tulajdonsagok/Boritokep.svelte';
   import Tulajdonsagok from './tulajdonsagok/Tulajdonsagok.svelte';
@@ -306,6 +307,26 @@
     },
     vazlat: () => (view ? eloFejezetek(view.state) : []),
     valtozat: () => docValtozat,
+    athelyezTilt: () => athelyezTilt({ mod, nezetVan: !!view, csakOlvashato: dok?.csakOlvashato, allapot: dok?.allapot }),
+    szakaszAthelyez(k) {
+      // 11-graph-08: a jegyzetet csak a szerkesztő saját tranzakciója írja (Dokumentum → CAS-mentés); előbb minden tiltás
+      const tilt = peldany.athelyezTilt?.() ?? null;
+      if (tilt || !view) return { kesz: false, ok: tilt ?? 'nincsNezet' };
+      if (k.valtozat !== docValtozat) return { kesz: false, ok: 'elavult' };
+      const elemek = eloFejezetek(view.state);
+      const f = elemIndex(elemek, k.forras);
+      const c = elemIndex(elemek, k.cel);
+      if (f < 0 || c < 0) return { kesz: false, ok: 'elavult' };
+      const r = athelyezTerv(view.state, elemek, f, c, k.hova);
+      if ('hiba' in r) return { kesz: false, ok: r.hiba };
+      view.dispatch({
+        changes: r.terv.changes,
+        selection: { anchor: r.terv.fejezetPoz },
+        effects: EditorView.scrollIntoView(r.terv.fejezetPoz, { y: 'center' }),
+        userEvent: 'move.section',
+      });
+      return { kesz: true };
+    },
   };
 
   $effect(() => {

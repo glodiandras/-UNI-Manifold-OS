@@ -600,12 +600,13 @@ def _sorok(tartalom: str, spanok: list, max_db: int = MAX_SOR, kornyezet: int = 
     return out
 
 
-def keres(c, q: str, limit: int = 200, idokorlat: float = REGEX_IDOKORLAT_MP, kornyezet: int = 0) -> dict:
-    """A keresés; a regexek együtt legfeljebb `idokorlat` másodpercig futnak (túllépés: `Invalid` → 400)."""
+def keres(c, q: str, limit: int = 200, idokorlat: float = REGEX_IDOKORLAT_MP, kornyezet: int = 0, kizart=None) -> dict:
+    """A keresés; a regexek együtt legfeljebb `idokorlat` másodpercig futnak (túllépés: `Invalid` → 400).
+    `kizart`: a kizárt fájlokat (`index.kizaras.Kizaras`) kihagyja a találatok közül — csak láthatóság, az index változatlan."""
     e = elemez(q)
     _hatar.ertek = time.monotonic() + idokorlat
     try:
-        return _keres(c, q, e, limit, kornyezet)
+        return _keres(c, q, e, limit, kornyezet, kizart)
     except TimeoutError:
         raise kodol(Invalid(f"A regex túl sokáig futott ({idokorlat:g} s alatt nem végzett) — egyszerűsítsd a mintát "
                       "(pl. az egymásba ágyazott ismétlést, mint az „(a|aa)+”)."), "index.kereses.regex_tul_sokaig_futott_idokorlat", {"idokorlat": idokorlat}) from None
@@ -613,7 +614,7 @@ def keres(c, q: str, limit: int = 200, idokorlat: float = REGEX_IDOKORLAT_MP, ko
         _hatar.ertek = None
 
 
-def _keres(c, q: str, e, limit: int, kornyezet: int = 0) -> dict:
+def _keres(c, q: str, e, limit: int, kornyezet: int = 0, kizart=None) -> dict:
     fts = _fts(e)
     if fts:
         jeloltek = c.execute("SELECT f.id, f.ut, f.nev, bm25(fts, 2.0, 10.0, 1.0), f.tipus FROM fts JOIN fajl f "
@@ -629,6 +630,8 @@ def _keres(c, q: str, e, limit: int, kornyezet: int = 0) -> dict:
     talalatok, osszes, legalabb = [], 0, len(jeloltek) >= MAX_JELOLT
     hatar = getattr(_hatar, "ertek", None)
     for fid, ut, nev, pont, tipus in jeloltek:
+        if kizart and kizart.kizart(ut):
+            continue
         if len(talalatok) >= limit or (hatar is not None and time.monotonic() >= hatar):
             legalabb = True                 # korai leállás a `limit`-nél, vagy lejárt az időkeret (T152): az `osszes` alsó korlát
             break
@@ -643,7 +646,7 @@ def _keres(c, q: str, e, limit: int, kornyezet: int = 0) -> dict:
             t["tipus"] = tipus
         talalatok.append(t)
     if fts:
-        uj, tobb = _media(c, e, fts, minták, cimkek, talalatok, kornyezet, hatar)
+        uj, tobb = _media(c, e, fts, minták, cimkek, talalatok, kornyezet, hatar, kizart)
         osszes += uj
         legalabb |= tobb
         if uj:
@@ -654,7 +657,7 @@ def _keres(c, q: str, e, limit: int, kornyezet: int = 0) -> dict:
     return {"q": q, "osszes": osszes, "legalabb": legalabb, "talalatok": talalatok}
 
 
-def _media(c, e, fts: str, minták: dict, cimkek: dict, talalatok: list, kornyezet: int, hatar) -> tuple[int, bool]:
+def _media(c, e, fts: str, minták: dict, cimkek: dict, talalatok: list, kornyezet: int, hatar, kizart=None) -> tuple[int, bool]:
     """C25c: a PDF-lapok és a feliratablakok (`fts_szakasz`) találatai, fájlonként összevonva a `talalatok`-ba (a név szerinti
     találatba is). A kérdés a szakaszon (lapon, ablakon) belül teljesül; a `path:`/`file:` a fájlra szűr. A fájl pontja a legjobb
     szakaszáé, `MEDIA_SULY`-lyal; a sor `sor`-a a fájl egész szövegében, mellette az `oldal` vagy a mondat `mp`-je.
@@ -670,6 +673,8 @@ def _media(c, e, fts: str, minták: dict, cimkek: dict, talalatok: list, kornyez
     fajlok = {t["ut"]: t for t in talalatok}
     uj = 0
     for fid, ertek, sor_kezd, idok, ut, nev, tipus, szoveg, pont in sorok:
+        if kizart and kizart.kizart(ut):
+            continue
         if hatar is not None and time.monotonic() >= hatar:
             return uj, True
         d = _Dok(c, fid, ut, nev, cimkek, szoveg, media=True)

@@ -114,7 +114,14 @@ def elofeltetelek(b: Beallitasok, futtato: Futtato, naplo) -> dict:
     hej = b.hej_app / "Contents" / "MacOS" / "Manifold"
     if not (hej.is_file() and os.access(hej, os.X_OK)):
         raise CsomagHiba("hej_hianyzik", f"nincs lefordított héj: {hej} — futtasd: bash shell/build.sh")
-    ki["hej"] = str(_json(b.hej_app / "Contents" / "Resources" / "epites.json").get("hej") or "")
+    hej_jegyzek = _json(b.hej_app / "Contents" / "Resources" / "epites.json")
+    valtozat = hej_jegyzek.get("hej_valtozat")
+    # A forráshash nem különbözteti meg a developer kapcsolóval fordított binárist. Ezt az elavult-build kivétel sem engedheti át.
+    if valtozat != "kiadasi":
+        ok = "fejlesztői héj nem csomagolható termékként" if valtozat == "fejlesztoi" else "a héj build-változata hiányzik vagy ismeretlen"
+        raise CsomagHiba("hej_valtozat", f"{ok} — futtasd: MOS_DEVELOPER_BUILD=0 bash shell/build.sh")
+    ki["hej_valtozat"] = valtozat
+    ki["hej"] = str(hej_jegyzek.get("hej") or "")
     _friss(b, "hej", ki["hej"], "futtasd: bash shell/build.sh", naplo)
     if not (b.dist / "index.html").is_file():
         raise CsomagHiba("felulet_hianyzik", f"nincs felület-build: {b.dist / 'index.html'} — futtasd: bin/mos app build")
@@ -272,7 +279,7 @@ def epit(b: Beallitasok, *, futtato: Futtato = futtat, naplo=print) -> Eredmeny:
         if not tiszta:
             b.figyelmeztetesek.append("a forrás munkafája nem tiszta (nem commitolt változások): a commit nem írja le pontosan a csomagot")
         jegyzek = epites.befagyaszt(root, termek_verzio=termek_verzio, build=build, commit=commit, tiszta=tiszta,
-                                    epitve=_epitve(), felulet=elo["felulet"], hej=elo["hej"],
+                                    epitve=_epitve(), felulet=elo["felulet"], hej=elo["hej"], hej_valtozat=elo["hej_valtozat"],
                                     egyeb={**info, "bajtkod": b.bajtkod, "alairas": b.alairas,
                                            "figyelmeztetesek": list(b.figyelmeztetesek)})
         (app / "Contents" / "Resources" / "epites.json").write_text(json.dumps(jegyzek, ensure_ascii=False, indent=1) + "\n",

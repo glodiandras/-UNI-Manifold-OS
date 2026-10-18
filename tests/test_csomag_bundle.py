@@ -67,7 +67,7 @@ class TermekCsomagTest(unittest.TestCase):
     def setUpClass(cls):
         cls._t = tmpdir()
         cls.t = Path(os.path.realpath(cls._t.name))
-        j = epites.jegyzek(REPO)
+        j = epites.jegyzek(REPO, hej_valtozat="kiadasi")
         hej = cls.t / "hej" / "Manifold.app"
         (hej / "Contents" / "MacOS").mkdir(parents=True)
         (hej / "Contents" / "Resources").mkdir()
@@ -181,6 +181,7 @@ class TermekCsomagTest(unittest.TestCase):
         self.assertEqual(j.hibak, [])
         self.assertEqual(relokacio.ellenoriz(self.root / "runtime" / "venv", self.root / "runtime" / "python"), [])
         jegy = json.loads((self.app / "Contents" / "Resources" / "epites.json").read_text(encoding="utf-8"))
+        self.assertEqual(jegy["hej_valtozat"], "kiadasi")
         cs = jegy["csomag"]
         self.assertEqual((cs["termek_verzio"], cs["build"], cs["git"], cs["alairas"]), ("9.8.7", "42", None, "nincs"))
         self.assertRegex(cs["commit"], r"^[0-9a-f]{40}$")

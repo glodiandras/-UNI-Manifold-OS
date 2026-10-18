@@ -9,7 +9,7 @@ from core.index.feloldas import Feloldo
 MOST = Datum(datetime(2026, 10, 2, 12, 0, 0), True)
 
 
-def sor(ut, tul=None, cimkek=(), linkek=(), meret=100, mtime=None, tipus=None, **kw):
+def sor(ut, tul=None, cimkek=(), linkek=(), meret=100, mtime=None, tipus=None, ctime=None, **kw):
     """Álsor: `tul` = {kulcs: érték} (a típus az értékből: `{kulcs: (típus, érték)}` is lehet)."""
     t = []
     for k, v in (tul or {}).items():
@@ -28,7 +28,8 @@ def sor(ut, tul=None, cimkek=(), linkek=(), meret=100, mtime=None, tipus=None, *
         L.setdefault("cel", None)
         ln.append(L)
     ns = int((mtime or datetime(2026, 9, 1, 8, 0, 0)).timestamp() * 1e9)
-    return Sor(ut, tulajdonsagok=t, cimkek=cimkek, linkek=ln, meret=meret, mtime_ns=ns, tipus=tipus, **kw)
+    cns = int(ctime.timestamp() * 1e9) if ctime else None            # a születési idő az indexből; híján ismeretlen (None)
+    return Sor(ut, tulajdonsagok=t, cimkek=cimkek, linkek=ln, meret=meret, mtime_ns=ns, ctime_ns=cns, tipus=tipus, **kw)
 
 
 def tabla(sorok, extra_utak=()):

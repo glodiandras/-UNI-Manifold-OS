@@ -23,6 +23,7 @@
     ures,
     onvalaszt,
     onbevitel,
+    ontab,
     onbezar,
     lablec,
   }: {
@@ -36,6 +37,8 @@
     onvalaszt: (e: T, m: Modositok) => void;
     /** Egyedi Enter (pl. új jegyzet): igaz esetén a listaválasztás kimarad. */
     onbevitel?: (e: KeyboardEvent) => boolean;
+    /** Tab (kiegészítés): az aktív elem; a fókusz mindig a mezőben marad. */
+    ontab?: (e: T | undefined, ev: KeyboardEvent) => void;
     onbezar: () => void;
     lablec?: Snippet;
   } = $props();
@@ -82,7 +85,7 @@
     else if (e.key === 'Enter') { if (!onbevitel?.(e)) valaszt(aktiv, e); }
     else if (e.key === 'Escape') onbezar();
     else if (e.key === 'Tab') {
-      /* a fókusz a mezőben marad */
+      ontab?.(elemek[aktiv], e);      // a fókusz a mezőben marad
     } else return;
     e.preventDefault();
     e.stopPropagation();

@@ -1,0 +1,146 @@
+name: CI
+
+# Two independent jobs on the hosted Apple-Silicon runner (`macos-latest` is macOS 26 arm64, the product's target):
+#   frontend  type-check, svelte-check, vitest and a production build of app/ with a stock Node and Python.
+#   core      the real developer path: the sha256-pinned portable runtime is fetched with `bin/mos runtime fetch`
+#             (the same Python 3.14.x, Node 24.x, uv and ffmpeg the product ships, from config/runtime-pins.env),
+#             var/venv is built from config/requirements.lock (hashes enforced), the UI and the developer build of
+#             the macOS shell are built, then the whole Python suite runs with strict skips.
+#
+# No secrets are used and the token is read-only. Nothing here needs the repository to be public.
+#
+# WHAT THIS WORKFLOW DOES NOT RUN (it is not a replacement for the phase-closing local gates; nothing below is
+# reported as passed):
+#   - Real model inference and measurement (`bin/mos eval|bench|kapu`, calibration): no model weights are downloaded
+#     in CI. Tests that need weights skip with an `[indokolt]` reason; MOS_SZIGORU lists every skip at the end of the run.
+#   - The C / C++ / Go / Rust toolchain: the portable LLVM and SDK (`bin/mos cpp telepit`) are not installed; the
+#     tests that need them skip with an `[indokolt]` reason (the mocked toolchain tests do run).
+#   - The wall-clock performance gates (`bin/mos perf`) and the manual gates in tests/kezi (they need an idle machine
+#     or a cloned vault).
+#   - Release steps: the release shell build, signing, notarization, DMG (`bin/mos csomag ...`).
+# The WKWebView self-tests (tests/test_app.py) DO run, against the developer build of the shell. They need a window
+# server on the runner; this has not been confirmed on a hosted runner, so if that job step fails to start the web
+# view, treat it as an environment finding and do not silence the test.
+#
+# Action versions are pinned to full commit SHAs (a tag can be moved; a SHA cannot). The trailing comment names the
+# release the SHA belongs to. Dependabot (.github/dependabot.yml) proposes updates to both.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (type-check, svelte-check, vitest, build)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # One source of truth for the toolchain versions: the same pins `bin/mos runtime fetch` uses.
+      - name: Read toolchain pins
+        id: pins
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          . config/runtime-pins.env
+          echo "node=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "python=${PY_VERSION%.*}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ steps.pins.outputs.node }}
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      # The build calls `bin/mos epites` and one vitest module calls the Python core's tag regex, so a Python is needed
+      # here. Both use only the standard library plus PyYAML (pinned as in config/requirements.in).
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.pins.outputs.python }}
+
+      - name: Install PyYAML for the core imports used by the UI tests
+        run: |
+          python -m pip install --disable-pip-version-check PyYAML==6.0.3
+          echo "MOS_PYTHON=$(command -v python)" >> "$GITHUB_ENV"
+
+      - name: Install UI packages (lock file only)
+        run: npm ci --ignore-scripts
+
+      - name: Type-check (tsc)
+        run: npx tsc --noEmit
+
+      - name: Svelte check
+        run: npx svelte-check --tsconfig ./tsconfig.json --threshold error
+
+      - name: UI tests (vitest)
+        run: npx vitest run
+
+      - name: Production build
+        run: npm run build
+
+  core:
+    name: Core (pinned runtime, full Python suite, strict skips)
+    runs-on: macos-latest
+    timeout-minutes: 120
+    env:
+      # Ignore any install-level settings; fail on every skip that is not marked `[indokolt]`.
+      MOS_SETTINGS: ""
+      MOS_SZIGORU: "1"
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `runtime/` is git-ignored and is a symlink to a toolchain folder in a development checkout; one test
+      # (test_symlinkelt_runtime_ba_nem_ir) only runs in that layout, and strict mode fails a skip. CI recreates the layout.
+      - name: Create the runtime folder and link it like a development checkout
+        run: |
+          mkdir -p "$RUNNER_TEMP/mos-runtime"
+          ln -s "$RUNNER_TEMP/mos-runtime" runtime
+
+      # Only the downloads are cached (they are verified against the pinned sha256 on every use).
+      - name: Cache runtime downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/mos-runtime/dl
+            ${{ runner.temp }}/mos-runtime/wheels
+          key: mos-runtime-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('config/runtime-pins.env', 'config/requirements.lock') }}
+
+      - name: Fetch the pinned runtime (Python, Node, uv, wheels, ffmpeg)
+        run: bin/mos runtime fetch
+
+      - name: Build var/venv from config/requirements.lock
+        run: bin/mos runtime install
+
+      - name: Install UI packages and build the UI (svelte-check with warnings as errors, vite build)
+        run: |
+          bin/mos app install --online
+          bin/mos app build
+
+      # The developer build carries the --selftest scenarios the WKWebView tests drive. Ad-hoc signed; never published.
+      - name: Build the developer shell
+        run: MOS_DEVELOPER_BUILD=1 bash shell/build.sh
+
+      - name: Python test suite
+        run: bin/mos test

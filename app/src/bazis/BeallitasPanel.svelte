@@ -6,7 +6,9 @@
 <script lang="ts">
   import { t, tk } from '../lib/i18n';
   import type { BazisModell } from './modell.svelte';
+  import { listaBeallitas, MAX_ELVALASZTO } from './lista';
   import { csoport, csoportBeallit, egeszBevitel, nezetKulcs, type Irany } from './muveletek';
+  import { elerhetoNev, NEZET_TIPUSOK, TIPUS_FELIRAT } from './nevek';
   import type { Elerheto, NezetTipus, Valasz } from './tipusok';
 
   let { modell, v }: { modell: BazisModell; v: Valasz } = $props();
@@ -31,10 +33,12 @@
       : elerheto,
   );
 
-  const TIPUSOK: Array<{ id: NezetTipus; felirat: string }> = [
-    { id: 'table', felirat: tk('Táblázat') },
-    { id: 'cards', felirat: tk('Kártyák') },
-    { id: 'kanban', felirat: tk('Kanban') },
+  const TIPUSOK: Array<{ id: NezetTipus; felirat: string }> = NEZET_TIPUSOK.map((id) => ({ id, felirat: TIPUS_FELIRAT[id] }));
+  const lista = $derived(listaBeallitas(beall));
+  const JELOLOK = [
+    { id: 'bullet', felirat: tk('Felsorolásjel') },
+    { id: 'number', felirat: tk('Sorszám') },
+    { id: 'none', felirat: tk('Nincs') },
   ];
   const SORMAGASSAG = [
     { id: 'short', felirat: tk('Alacsony') },
@@ -109,7 +113,7 @@
         onchange={(e) => void modell.alkalmaz(csoportBeallit(nezet, e.currentTarget.value || null, cs?.direction ?? 'ASC'))}
       >
         <option value="">{t('(nincs)')}</option>
-        {#each csoportIdk as e (e.id)}<option value={e.id}>{e.nev}</option>{/each}
+        {#each csoportIdk as e (e.id)}<option value={e.id}>{elerhetoNev(e)}</option>{/each}
       </select>
       {#if cs}
         <select
@@ -133,7 +137,29 @@
       onchange={(e) => egesz('limit', e.currentTarget.value, tk('Sorok száma'))}
     />
   </label>
-  {#if tipus === 'table'}
+  {#if tipus === 'list'}
+    <label class="sor">
+      <span>{t('Jelölő')}</span>
+      <select value={lista.jel} onchange={(e) => ir('markers', e.currentTarget.value === 'bullet' ? null : e.currentTarget.value)}>
+        {#each JELOLOK as j (j.id)}<option value={j.id}>{t(j.felirat)}</option>{/each}
+      </select>
+    </label>
+    <label class="sor">
+      <span>{t('További tulajdonságok behúzva')}</span>
+      <input type="checkbox" checked={lista.behuzas} onchange={(e) => ir('indentProperties', e.currentTarget.checked ? true : null)} />
+    </label>
+    {#if !lista.behuzas}
+      <label class="sor">
+        <span>{t('Elválasztó')}</span>
+        <input
+          type="text"
+          maxlength={MAX_ELVALASZTO}
+          value={lista.elvalaszto}
+          onchange={(e) => ir('separator', e.currentTarget.value === ', ' || e.currentTarget.value === '' ? null : e.currentTarget.value)}
+        />
+      </label>
+    {/if}
+  {:else if tipus === 'table'}
     <label class="sor">
       <span>{t('Sormagasság')}</span>
       <select value={String(beall.rowHeight ?? 'short')} onchange={(e) => ir('rowHeight', e.currentTarget.value === 'short' ? null : e.currentTarget.value)}>
@@ -145,7 +171,7 @@
       <span>{t('Borítókép')}</span>
       <select value={typeof beall.image === 'string' ? beall.image : ''} onchange={(e) => ir('image', e.currentTarget.value || null)}>
         <option value="">{t('(nincs)')}</option>
-        {#each kepIdk as e (e.id)}<option value={e.id}>{e.nev}</option>{/each}
+        {#each kepIdk as e (e.id)}<option value={e.id}>{elerhetoNev(e)}</option>{/each}
       </select>
     </label>
     <label class="sor">
@@ -206,6 +232,11 @@
     background: var(--hatter);
     color: var(--szoveg);
     font: inherit;
+  }
+
+  input[type='checkbox'] {
+    height: auto;
+    justify-self: start;
   }
 
   .ketto {

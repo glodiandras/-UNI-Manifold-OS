@@ -183,9 +183,13 @@ export class Munkaterulet {
    * Önálló nézet megnyitása fülben (gráf): ha ugyanilyen nézet-fül már nyitva van az aktív panelben, az aktiválódik
    * (az állapota frissül), az üres „Új fül” átalakul, különben új fül nyílik az aktív mellett.
    */
-  megnyitNezet(tipus: string, allapot: Record<string, unknown> = {}): void {
+  megnyitNezet(tipus: string, allapot: Record<string, unknown> = {}, opciok: { oldalra?: boolean } = {}): void {
     if (tipus === 'ma') tipus = 'manifold';
     const nezet: Record<string, unknown> = { ...allapot, tipus };
+    if (opciok.oldalra) {
+      this.nezetOldalra(tipus, nezet);
+      return;
+    }
     const p = this.aktivPanel;
     const mar = p.fulek.find((f) => nezetFul(f) && f.nezet?.tipus === tipus && f.nezet?.mod === nezet.mod);
     if (mar) {
@@ -202,6 +206,28 @@ export class Munkaterulet {
     const i = p.fulek.findIndex((x) => x.id === p.aktiv);
     p.fulek.splice(i + 1, 0, f);
     p.aktiv = f.id;
+  }
+
+  /**
+   * Nézet a jegyzet MELLETT (11-graph-01: a helyi gráf): ha ilyen nézet-fül (azonos típus és mód) már nyitva van valamelyik
+   * panelben, az állapota frissül (a középpont az aktív jegyzet lesz), és nem keletkezik másik; különben az aktív panel jobbra
+   * osztódik, az új panelbe kerül a nézet. A fókusz a jegyzetnél marad (a gépelés nem szakad meg); a nézet a `celPanel`
+   * állapotból tudja, melyik panelben nyíljanak a belőle megnyitott jegyzetek.
+   */
+  private nezetOldalra(tipus: string, nezet: Record<string, unknown>): void {
+    const forras = this.aktivPanel;
+    for (const q of this.panelek()) {
+      const mar = q.fulek.find((f) => nezetFul(f) && f.nezet?.tipus === tipus && f.nezet?.mod === nezet.mod);
+      if (mar) {
+        mar.nezet = { ...mar.nezet, ...nezet, celPanel: q.id === forras.id ? mar.nezet?.celPanel : forras.id };
+        q.aktiv = mar.id;
+        return;
+      }
+    }
+    this.oszt('sor', false);
+    const uj = this.aktivPanel;
+    uj.fulek[0].nezet = { ...nezet, celPanel: forras.id };
+    this.aktivPanelId = forras.id;
   }
 
   ujFul(panelId = this.aktivPanelId): void {

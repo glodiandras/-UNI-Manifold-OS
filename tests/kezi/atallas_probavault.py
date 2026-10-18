@@ -154,7 +154,7 @@ def _jegyzetek() -> dict[str, str]:
     # K17 — napi jegyzet (a 2.0 beépített váza, kiértékelve)
     havi = "X01 - Napló & To-Do/2026-10/2026-10.canvas"
     j["X01 - Napló & To-Do/2026-10/Napló/2026-10-07.md"] = sablon.kiertekel(
-        naplo.alapvaz("2026-10.canvas"), "2026-10-07", NAP).szoveg + "Mai bejegyzés.\n"
+        naplo.v2_vaz("2026-10.canvas"), "2026-10-07", NAP).szoveg + "Mai bejegyzés.\n"
     # T156 — sablon: a 2.0 kimenete ugyanarra a napra (a sablon maga a _Template alatt)
     j["_Template/C31 sablonpróba.md"] = ("# {{title}}\n\nDATE: {{DATE}}\nÜres formátum: {{date:}}\nRövid hónap: {{date:MMM}}\n"
                                          "Szóközös: {{ date }}\nIdő: {{time:HH.mm}}\nKurzor: {{cursor}}\n")

@@ -34,7 +34,7 @@ import { linkBovitmeny } from './linkek/szerkeszto';
 import { linkNevForras, notionBovitmenyek } from './notion';
 import { elonezetPlugin, stilusPlugin } from './elo/sorok';
 import { OBSIDIAN_BOVITESEK } from './markdown/elemzo';
-import { autoParokBovitmeny } from './autoParok';
+import { autoParEngedelyezett, autoParKapcsolok, autoParokBovitmeny, parosithatoJelek } from './autoParok';
 import { feloldatlanLinkek } from './linkek/feloldatlan';
 import { hajtasBovitmeny } from './hajtogatas';
 import { fuggoBehuzas } from './elo/fuggoBehuzas';
@@ -53,6 +53,9 @@ export function szerkesztoOpciok(b: Beallitasok): Extension {
     EditorView.editorAttributes.of({ 'data-olvashato-szelesseg': String(b.szerkeszto.olvashato_szelesseg) }),
     perjelEngedelyezett.of(b.szerkeszto.perjel && b.modulok.perjel),
     tulajdonsagEngedelyezett.of(b.modulok.tulajdonsagok),
+    // Auto-pair, három külön kapcsoló (14-appearance-05); a dokumentum, a kurzor és az előzmény nem változik
+    autoParKapcsolok.of({ zarojel: b.szerkeszto.auto_par_zarojel !== false, idezojel: b.szerkeszto.auto_par_idezojel !== false }),
+    autoParEngedelyezett.of(b.szerkeszto.auto_par_jeloles !== false),
   ];
 }
 
@@ -136,7 +139,7 @@ export function bovitmenyek(o: BeallitasOpciok): Extension[] {
     closeBrackets(),
     autoParokBovitmeny(),
     // A [[…]] párt a wikilink-bővítmény kezeli; a CM nem párosíthatja előtte külön a [ karaktert.
-    EditorState.languageData.of(() => [{ closeBrackets: { brackets: ['(', '{', "'", '"', '`'] } }]),
+    EditorState.languageData.of((state) => [{ closeBrackets: { brackets: parosithatoJelek(state) } }]),
     highlightSpecialChars(),
     dropCursor(),
     EditorView.lineWrapping,

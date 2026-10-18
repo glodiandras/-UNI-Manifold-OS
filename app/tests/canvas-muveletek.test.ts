@@ -74,6 +74,19 @@ describe('geometria', () => {
     expect(mindentMutat(null, { w: 800, h: 600 })).toEqual({ tx: 400, ty: 300, z: 1 });
   });
 
+  it('kijelölésre illesztés: külön 2× plafon, középre igazítás, a nagy doboz margóval is elfér', () => {
+    const kicsi = n('x', -500, 800, 100, 60);
+    const k = mindentMutat(kicsi, { w: 1200, h: 800 }, 48, 2);
+    expect(k.z).toBe(2);
+    expect(kepernyore(k, { x: -450, y: 830 })).toEqual({ x: 600, y: 400 });
+    const nagy = n('y', -400, -200, 2208, 1408);
+    const m = mindentMutat(nagy, { w: 1200, h: 800 }, 48, 2);
+    expect(m.z).toBe(0.5);
+    expect(kepernyore(m, { x: nagy.x, y: nagy.y })).toEqual({ x: 48, y: 48 });
+    expect(kepernyore(m, { x: nagy.x + nagy.width, y: nagy.y + nagy.height })).toEqual({ x: 1152, y: 752 });
+    expect(mindentMutat(kicsi, { w: 1200, h: 800 }, 48, 100).z).toBe(Z_MAX);
+  });
+
   it('rács, átméretezés minimális mérettel', () => {
     expect(racsra(29)).toBe(20);
     expect(racsra(31)).toBe(40);
@@ -172,7 +185,7 @@ describe('műveletek: új objektum, a változatlan elem ugyanaz marad', () => {
   it('csoport a kijelölés köré, a rácsra igazítva', () => {
     const r = csoportKore(V, new Set(['a', 'b']))!;
     const g = r.vaszon.nodes!.find((x) => x.id === r.id)!;
-    expect(g).toMatchObject({ type: 'group', x: -20, y: -20, width: 360, height: 360, label: 'Csoport' });
+    expect(g).toMatchObject({ type: 'group', x: -20, y: -20, width: 360, height: 360, label: 'Group' });
     expect(r.vaszon.nodes!.map((x) => x.type).indexOf('text')).toBeGreaterThan(r.vaszon.nodes!.indexOf(g));
     expect(csoportKore(V, new Set())).toBeNull();
   });

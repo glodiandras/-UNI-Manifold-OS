@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste private notes, file paths with your name, or API keys.
+        Security problems: do not open a public issue, follow SECURITY.md instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Manifold version or commit
+      description: The version shown in the app, or the output of `git rev-parse --short HEAD`
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and chip
+      placeholder: macOS 26.0, Apple M2, 16 GB
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Editor / notes
+        - Files and explorer
+        - Search / index
+        - Links, properties, tags
+        - AI / models
+        - Cards / quiz / math / code workbench
+        - Workspaces / import / backup
+        - Installer / shell
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output of `bin/mos doctor` (optional)
+      description: Remove anything personal before pasting.
+      render: text

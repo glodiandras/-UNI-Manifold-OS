@@ -36,7 +36,8 @@ export function grafTelepit(reg: Regiszter, felulet: Felulet): () => void {
         const ut = m.aktivFul?.ut;
         if (!ut) return;
         felulet.atfedes = null;
-        m.megnyitNezet('graf', { mod: 'helyi', kozeppont: ut, melyseg: 1 });
+        // a jegyzet mellett nyílik (osztott panel), és az aktív jegyzetet követi; a kapcsoló a nézet eszköztárában kikapcsolható
+        m.megnyitNezet('graf', { mod: 'helyi', kozeppont: ut, melyseg: 1, kovet: true }, { oldalra: true });
       },
     },
   ]);

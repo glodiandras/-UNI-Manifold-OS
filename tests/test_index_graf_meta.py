@@ -55,7 +55,7 @@ class GrafMetaTest(unittest.TestCase):
             "T2.md": "szöveg\n",
         })
         m = graf_meta.graf_meta(ix)
-        self.assertEqual(set(m), {"cimkek", "tulajdonsagok"})
+        self.assertEqual(set(m), {"cimkek", "tulajdonsagok", "cimke_csucsok", "feloldatlan_elek", "feloldatlan_csonkolt"})
         self.assertEqual(m["cimkek"]["T1.md"], ["Fizika/Mechanika", "Matek", "Optika"])      # egyszer, sorrendben
         self.assertEqual(m["cimkek"]["Cél.md"], ["Math/Algebra"])
         self.assertNotIn("T2.md", m["cimkek"])                                                # címke nélkül nincs kulcs
@@ -64,6 +64,48 @@ class GrafMetaTest(unittest.TestCase):
         self.assertEqual(t["Status"], ["kész"])
         self.assertEqual(t["Szam"], ["3"])
         self.assertEqual(t["Lista"], ["a", "b"])
+
+    def test_cimke_csucsok_darabszammal_egy_jegyzet_egyszer(self):
+        """11-graph-03: a címke-csúcsok a core `cimke` tábláján alapulnak: teljes címke egy csúcs, a darab = a jegyzetek száma."""
+        ix, _ = self.indit({
+            "A.md": "---\nTags:\n  - Fizika/Mechanika\n  - Matek\n---\n#Matek és #Matek újra\n",
+            "B.md": "#Matek #Optika\n",
+            "C.md": "nincs címke\n",
+            "D.md": "#matek\n",                                     # kis-nagybetű: ugyanaz a címke (Obsidian)
+        })
+        m = graf_meta.graf_meta(ix)
+        self.assertEqual({k: v["db"] for k, v in m["cimke_csucsok"].items()}, {"fizika/mechanika": 1, "matek": 3, "optika": 1})
+        self.assertEqual(m["cimke_csucsok"]["fizika/mechanika"]["nev"], "Fizika/Mechanika")
+        self.assertEqual(sorted(m["cimke_csucsok"]), list(m["cimke_csucsok"]))                 # rendezett: a válasz determinisztikus
+
+    def test_feloldatlan_elek_forrasonkent_egyszer_es_a_graf_szamlalojaval_egyezoen(self):
+        """11-graph-02: a feloldatlan link-célok forrás szerint; ugyanaz a kulcs, mint a `/graf` `feloldatlan` számlálójáé."""
+        ix, _ = self.indit({
+            "A.md": "[[Nincs egy]] [[Nincs egy]] [[Létező]] [[Nincs kettő|alias]] [[ Szóköz ]]\n",
+            "B.md": "[[Nincs egy]] ![[kep-nincs.png]]\n",
+            "Létező.md": "x\n",
+        })
+        m = graf_meta.graf_meta(ix)
+        el = {tuple(e) for e in m["feloldatlan_elek"]}
+        self.assertIn(("A.md", "Nincs egy"), el)
+        self.assertIn(("B.md", "Nincs egy"), el)
+        self.assertIn(("B.md", "kep-nincs.png"), el)
+        self.assertEqual(len(m["feloldatlan_elek"]), len(el))                                  # nincs ismétlődő él
+        self.assertFalse(any(cel == "Létező" for _, cel in el))                                # a feloldott link nem feloldatlan él
+        self.assertFalse(m["feloldatlan_csonkolt"])
+        g = ix.graf_api()
+        self.assertEqual({cel for _, cel in el}, set(g["feloldatlan"]))                        # a két nézet ugyanazt a célhalmazt adja
+
+    def test_feloldatlan_elek_korlatja_jelzessel(self):
+        ix, _ = self.indit({"A.md": " ".join(f"[[Hiany {i}]]" for i in range(12)) + "\n"})
+        korabbi = graf_meta.MAX_FELOLDATLAN_EL
+        graf_meta.MAX_FELOLDATLAN_EL = 5
+        try:
+            m = graf_meta.graf_meta(ix)
+        finally:
+            graf_meta.MAX_FELOLDATLAN_EL = korabbi
+        self.assertEqual(len(m["feloldatlan_elek"]), 5)
+        self.assertTrue(m["feloldatlan_csonkolt"])                                            # a csonkolás jelezve, nem csendes
 
     def test_a_hosszu_ertek_vagott(self):
         ix, v = self.indit({"H.md": "---\nHosszu: " + "x" * 500 + "\n---\n", "Z.md": "---\nStatus: x\n---\n"})
@@ -84,6 +126,8 @@ class GrafMetaTest(unittest.TestCase):
         self.assertEqual(b["erok"], {"kozep": 0.25, "taszitas": 20.0, "rugo": 0.55, "tavolsag": 230.0})
         self.assertEqual(b["meret_szorzo"], 2.25)
         self.assertEqual(b["szoveg_halvanyitas"], -0.5)
+        self.assertFalse(b["mutat_cimkek"])                  # showTags
+        self.assertFalse(b["csak_letezo"])                   # hideUnresolved
         self.assertEqual(b["szincsoportok"], [
             {"lekerdezes": "tag:#Mathematics", "szin": "#4caf50", "alfa": 1.0},         # 5025616 = 0x4CAF50
             {"lekerdezes": "file:.canvas", "szin": "#f00000", "alfa": 0.5},
@@ -104,6 +148,8 @@ class GrafMetaTest(unittest.TestCase):
         self.assertEqual(b["szincsoportok"], [])
         self.assertEqual(b["erok"], {})
         self.assertTrue(b["mutat_mellekletek"])
+        self.assertFalse(b["mutat_cimkek"])                  # alap: a címke nem csúcs
+        self.assertTrue(b["csak_letezo"])                    # alap: csak létező fájlok (a Manifold korábbi nézete)
 
     def test_nem_ir_a_vaultba(self):
         cfg, v = alvault(self._t.name, {"A.md": "x\n"})
@@ -153,6 +199,8 @@ class GrafMetaApiTest(unittest.TestCase):
         kod, m = self.get("/api/vault/graf-meta")
         self.assertEqual(kod, 200)
         self.assertEqual(m["cimkek"]["Cél.md"], ["Math/Algebra"])
+        self.assertEqual(m["cimke_csucsok"]["math/algebra"]["db"], 1)                                # 11-graph-03: címke-csúcsok a végponton
+        self.assertIn(["Linkek.md", "nincs ilyen"], m["feloldatlan_elek"])                      # 11-graph-02: feloldatlan élek a végponton
         kod, b = self.get("/api/vault/graf-beallitasok")
         self.assertEqual(kod, 200)
         self.assertTrue(b["van"])

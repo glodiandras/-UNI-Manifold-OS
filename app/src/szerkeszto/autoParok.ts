@@ -9,6 +9,17 @@ import type { SyntaxNode } from '@lezer/common';
 
 export const autoParEngedelyezett = Facet.define<boolean, boolean>({ combine: (v) => v[0] ?? true });
 
+/** A másik két csoport kapcsolója (Beállítások › Szerkesztő, 14-appearance-05): a Markdown-jelek (`* _ ~ = $`) az `autoParEngedelyezett`-et
+ *  követik; a zárójelek `( {` és a `[[` záró `]]`-je, illetve az idézőjelek `' " \`` külön-külön kapcsolhatók. */
+export interface ParKapcsolok { zarojel: boolean; idezojel: boolean }
+export const autoParKapcsolok = Facet.define<ParKapcsolok, ParKapcsolok>({ combine: (v) => v[0] ?? { zarojel: true, idezojel: true } });
+
+/** A CodeMirror `closeBrackets` párjai a kapcsolók szerint (a `[` szándékosan kimarad: a `[[`-t a wikilink-bővítmény kezeli). */
+export function parosithatoJelek(state: EditorState): string[] {
+  const k = state.facet(autoParKapcsolok);
+  return [...(k.zarojel ? ['(', '{'] : []), ...(k.idezojel ? ["'", '"', '`'] : [])];
+}
+
 interface Par { from: number; to: number; jel: string; hossz: number }
 const parokBeallit = StateEffect.define<readonly Par[]>();
 const JELEK = new Set(['*', '_', '~', '=', '$']);

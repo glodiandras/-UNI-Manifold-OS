@@ -58,7 +58,7 @@ class ForrasCsereTest(unittest.TestCase):
     def test_a_megjegyzes_es_a_kulcssorrend_megmarad(self):
         uj = "# A könyvek nézete\nviews:\n  - type: table   # táblázat\n    name: B\nfoo: 1\n"
         szoveg, hibak, valtozas = modosit(self.REGI, {"fajta": "forras_csere", "szoveg": uj})
-        self.assertEqual((szoveg, hibak, valtozas), (uj, [], "forrás"))
+        self.assertEqual((szoveg, hibak, valtozas), (uj, [], "source"))
 
     def test_a_yaml_hiba_mindig_akadaly(self):
         szoveg, hibak, _ = modosit(self.REGI, {"fajta": "forras_csere", "szoveg": "views: [\n"})

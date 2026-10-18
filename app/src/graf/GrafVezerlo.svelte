@@ -1,13 +1,23 @@
 <!--
   A gráf vezérlőpanelje (C13): szűrők (lekérdezés, mellékletek, árvák, nyilak), színcsoportok (az Obsidian graph.json-jából
-  indul, szerkeszthető), erők (csúszkák). A módosítások a `Felulet.graf` felülírásokba kerülnek (tartósak); ami nincs
+  indul, szerkeszthető), megjelenés (csúcsméret, vonalvastagság, szöveg-halványítás), erők (csúszkák). A módosítások a `Felulet.graf` felülírásokba kerülnek (tartósak); ami nincs
   felülírva, a graph.json értékét kapja. A graph.json-ba a 2.0 nem ír vissza.
 -->
 <script lang="ts">
   import { t } from '../lib/i18n';
   import { Plus, RotateCcw, X } from '../lib/ikon/ikonok';
   import Ikon from '../lib/ikon/Ikon.svelte';
-  import { EROK_KULCSOK, EROK_TARTOMANY, MAX_LEKERDEZES, MAX_SZINCSOPORT, type ErokKulcs, type GrafEffektiv, type GrafJson } from '../lib/graf/beallitasok';
+  import {
+    EROK_KULCSOK,
+    EROK_TARTOMANY,
+    MAX_LEKERDEZES,
+    MAX_SZINCSOPORT,
+    MEGJELENES_TARTOMANY,
+    type ErokKulcs,
+    type GrafEffektiv,
+    type GrafJson,
+    type MegjelenesKulcs,
+  } from '../lib/graf/beallitasok';
   import type { GrafAdat, SzuroEredmeny } from '../lib/graf/modell';
   import { kornyezet } from '../lib/kornyezet';
 
@@ -28,6 +38,12 @@
 
   function erokBeallit(kulcs: ErokKulcs, ertek: number) {
     beallit({ erok: { ...(felulet.graf.erok ?? {}), [kulcs]: ertek } });
+  }
+
+  const MEGJELENES_KULCSOK = Object.keys(MEGJELENES_TARTOMANY) as MegjelenesKulcs[];
+
+  function megjelenesNev(k: MegjelenesKulcs): string {
+    return k === 'meretSzorzo' ? t('Csúcsméret') : k === 'vonalSzorzo' ? t('Vonalvastagság') : t('Szöveg halványítása');
   }
 
   function csoportModosit(i: number, valtozas: Partial<{ lekerdezes: string; szin: string }>) {
@@ -77,6 +93,8 @@
     {/if}
     <label class="kapcsolo"><input type="checkbox" checked={eff.mellekletek} onchange={(e) => beallit({ mellekletek: e.currentTarget.checked })} />{t('Mellékletek (kép, PDF, média)')}</label>
     <label class="kapcsolo"><input type="checkbox" checked={eff.arvak} onchange={(e) => beallit({ arvak: e.currentTarget.checked })} />{t('Árva csúcsok (kapcsolat nélkül)')}</label>
+    <label class="kapcsolo"><input type="checkbox" checked={eff.cimkek} onchange={(e) => beallit({ cimkek: e.currentTarget.checked })} />{t('Címkék csúcsként')}</label>
+    <label class="kapcsolo"><input type="checkbox" checked={eff.letezoCsak} onchange={(e) => beallit({ letezoCsak: e.currentTarget.checked })} />{t('Csak létező fájlok')}</label>
     <label class="kapcsolo"><input type="checkbox" checked={eff.nyilak} onchange={(e) => beallit({ nyilak: e.currentTarget.checked })} />{t('Nyilak az élek irányával')}</label>
     <p class="sugo">{t('{db} / {n} csúcs látszik.', { db: szuro.csucsDb, n: adat.n })}</p>
   </section>
@@ -104,6 +122,18 @@
       {/each}
     </ul>
     <button type="button" class="m-gomb semleges gomb" disabled={eff.szincsoportok.length >= MAX_SZINCSOPORT} onclick={csoportUj}><Ikon ikon={Plus} meret={14} />{t('Új csoport')}</button>
+  </section>
+
+  <section aria-labelledby="gv-megj">
+    <h3 id="gv-megj">{t('Megjelenítés')}</h3>
+    {#each MEGJELENES_KULCSOK as k (k)}
+      {@const ta = MEGJELENES_TARTOMANY[k]}
+      <div class="csuszka">
+        <label for={`gv-megj-${k}`}>{megjelenesNev(k)}</label>
+        <output for={`gv-megj-${k}`}>{eff[k].toFixed(k === 'szovegHalvany' ? 1 : 2)}</output>
+        <input id={`gv-megj-${k}`} type="range" min={ta.min} max={ta.max} step={ta.lepes} value={eff[k]} oninput={(e) => beallit({ [k]: Number(e.currentTarget.value) })} />
+      </div>
+    {/each}
   </section>
 
   <section aria-labelledby="gv-erok">

@@ -1,20 +1,23 @@
 <!--
-  A gráfnézet (C13): globális és helyi gráf (1–3 lépés), szűrők, színcsoportok, erők, keresés repüléssel, kattintás =
-  megnyitás. A csúcs- és élhalmaz a core gráfja (`/api/vault/graf`); a felület nem old fel linket. A rajzolás Canvas 2D
+  A gráfnézet (C13): globális és helyi gráf (1–3 lépés; a helyi gráf a jegyzet mellett nyílhat és — kapcsolóval — az aktív
+  jegyzetet követi), szűrők (címkék és feloldatlan célok csúcsként), színcsoportok, erők, megjelenítés-csúszkák, keresés
+  repüléssel, kattintás = megnyitás, jobb gomb = a csúcs menüje. A csúcs- és élhalmaz a core gráfja (`/api/vault/graf`); a felület nem old fel linket. A rajzolás Canvas 2D
   (lib/graf/rajzolo.ts), a fizika Web Workerben fut (lib/graf/fizika.ts); nyugalomban sem a rajzolás, sem a fizika nem
   ütemez semmit, így a nézet CPU-használata nulla.
 -->
 <script lang="ts">
   import { t, tp } from '../lib/i18n';
   import { onMount, tick, untrack } from 'svelte';
-  import { Maximize, Network, SlidersHorizontal } from '../lib/ikon/ikonok';
+  import { Maximize, Network, Pin, SlidersHorizontal, TriangleAlert } from '../lib/ikon/ikonok';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { fizikaBeallitas, effektiv } from '../lib/graf/beallitasok';
   import type { Be, Ki } from '../lib/graf/fizikaMotor';
   import { FizikaGazda } from '../lib/graf/fizikaGazda';
   import { kezdoAllas, pozicioFrissites } from '../lib/graf/kezdoallas';
   import { GrafAdat, MAX_MELYSEG, kereses, lathatoElDb, lathatosag, szinCsoportok } from '../lib/graf/modell';
-  import { GrafRajzolo, type Szinek } from '../lib/graf/rajzolo';
+  import { GrafRajzolo, type MegnyitasMod, type Szinek } from '../lib/graf/rajzolo';
+  import { csucsMenu, type CsucsMenuKontextus } from './csucsMenu';
+  import { celPanelAzon, fajlMegnyitPanelben } from './panelek';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import IkonGomb from '../lib/ui/IkonGomb.svelte';
@@ -25,6 +28,7 @@
 
   let { ful }: NezetProps = $props();
   const { felulet, fajlok } = kornyezet();
+  let menuBezar: ((fokusz?: boolean) => void) | null = null;
 
   let vaszon: HTMLCanvasElement | undefined = $state();
   let proba: HTMLElement | undefined = $state();
@@ -42,11 +46,13 @@
   const kozeppontUt = $derived(typeof ful.nezet?.kozeppont === 'string' ? ful.nezet.kozeppont : null);
   const melyseg = $derived(Math.min(MAX_MELYSEG, Math.max(1, Math.round(Number(ful.nezet?.melyseg) || 1))));
   const panelNyitva = $derived(ful.nezet?.panel === true);
+  /** A helyi gráf az aktív jegyzetet követi (11-graph-01): a kapcsoló a nézet tartós állapota; hiányában a középpont rögzített. */
+  const kovet = $derived(ful.nezet?.kovet === true);
+  const aktivJegyzetUt = $derived(felulet.munkaterulet.aktivFul?.ut ?? null);
+  const szuroBe = $derived({ lekerdezes: eff.lekerdezes, mellekletek: eff.mellekletek, arvak: eff.arvak, cimkek: eff.cimkek, letezoCsak: eff.letezoCsak });
   const kozeppont = $derived(adat && kozeppontUt ? adat.csucsIndex(kozeppontUt) : -1);
   const helyi = $derived(adat && mod === 'helyi' && kozeppont >= 0 ? { kozeppont, melyseg } : null);
-  const szuro = $derived(
-    adat ? lathatosag(adat, { lekerdezes: eff.lekerdezes, mellekletek: eff.mellekletek, arvak: eff.arvak }, helyi) : null,
-  );
+  const szuro = $derived(adat ? lathatosag(adat, szuroBe, helyi) : null);
   const szin = $derived(adat ? szinCsoportok(adat, eff.szincsoportok) : null);
   const lathatoEl = $derived(adat && szuro ? lathatoElDb(adat, szuro.lathato) : 0);
 
@@ -95,6 +101,8 @@
       szoveg: c('szoveg'),
       halo: c('felulet'),
       talalat: c('talalat'),
+      cimke: c('cimke'),
+      feloldatlan: c('feloldatlan'),
     };
   }
 
@@ -188,10 +196,8 @@
     const v = vaszon;
     if (!v) return;
     const r = new GrafRajzolo(v, {
-      megnyit: (i, m) => {
-        const a = untrack(() => adat);
-        if (a) felulet.munkaterulet.megnyit(a.ut[i], m);
-      },
+      megnyit: (i, m, x, y) => untrack(() => csucsKattintas(i, m, x, y)),
+      menu: (i, x, y) => untrack(() => csucsMenuNyit(i, x, y)),
       fizika: (m) => gazda?.kuld(m),
       hover: (i, x, y) => (tooltip = i >= 0 ? { i, x, y } : null),
       kijeloles: (i) => (kijelolt = i),
@@ -263,7 +269,7 @@
       if (fizikaAlairas === a.alairas && gazda) return;
       fizikaAlairas = a.alairas;
       // a rajzoló bemenete előbb: a vödrök és a tömbök a csúcsszámhoz igazodnak
-      r.bemenet({ adat: a, lathato: sz.lathato, csoport: cs.csoport, csoportSzinek: eff.szincsoportok.map((c) => c.szin), nyil: eff.nyilak, meretSzorzo: eff.meretSzorzo, vonalSzorzo: eff.vonalSzorzo });
+      r.bemenet({ adat: a, lathato: sz.lathato, csoport: cs.csoport, csoportSzinek: eff.szincsoportok.map((c) => c.szin), nyil: eff.nyilak, meretSzorzo: eff.meretSzorzo, vonalSzorzo: eff.vonalSzorzo, szovegHalvany: eff.szovegHalvany });
       fizikaInit(a, r, sz.lathato);
       if (helyi) r.kijeloles(helyi.kozeppont);
     });
@@ -279,9 +285,10 @@
     const nyil = eff.nyilak;
     const ms = eff.meretSzorzo;
     const vs = eff.vonalSzorzo;
+    const sh = eff.szovegHalvany;
     const szinek = eff.szincsoportok.map((c) => c.szin);
     untrack(() => {
-      r.bemenet({ adat: a, lathato: sz.lathato, csoport: cs.csoport, csoportSzinek: szinek, nyil, meretSzorzo: ms, vonalSzorzo: vs });
+      r.bemenet({ adat: a, lathato: sz.lathato, csoport: cs.csoport, csoportSzinek: szinek, nyil, meretSzorzo: ms, vonalSzorzo: vs, szovegHalvany: sh });
       // a rejtett csúcsok a fizikában is kiesnek (csak ha a maszk tényleg változott)
       const m = sz.lathato;
       if (utolsoMaszk && utolsoMaszk.length === m.length && (utolsoMaszk as Uint8Array).some((v, i) => v !== m[i])) {
@@ -319,6 +326,56 @@
       });
   });
 
+  // a helyi gráf kövesse az aktív jegyzetet (11-graph-01): a szomszédos csoport jegyzetének váltására újra középre áll;
+  // a nézet-fülek (a gráf maga) nem jegyzetek, a gráfban nem szereplő fájl nem csúcs
+  $effect(() => {
+    const ut = aktivJegyzetUt;
+    const a = adat;
+    if (!kovet || mod !== 'helyi' || !a || !ut) return;
+    untrack(() => {
+      if (ut === kozeppontUt || a.csucsIndex(ut) < 0) return;
+      nezetAllapot({ kozeppont: ut });
+      ujIllesztes();
+    });
+  });
+
+  // ------------------------------------------------------------------ csúcs-műveletek (kattintás, menü)
+
+  function fajlMegnyit(ut: string, m: MegnyitasMod) {
+    fajlMegnyitPanelben(felulet.munkaterulet, celPanelAzon(felulet.munkaterulet, ful.id, ful.nezet), ut, m);
+  }
+
+  function kontextus(): CsucsMenuKontextus {
+    return {
+      felulet,
+      fajlMegnyit,
+      helyiGraf: (ut) => {
+        nezetAllapot({ mod: 'helyi', kozeppont: ut, melyseg });
+        ujIllesztes();
+      },
+      fokusz: () => vaszon?.focus({ preventScroll: true }),
+    };
+  }
+
+  /** Kattintás / Enter: fájlnál megnyitás, címkénél keresés, a feloldatlan célnál felajánlott létrehozás. */
+  function csucsKattintas(i: number, m: MegnyitasMod, x?: number, y?: number) {
+    const a = adat;
+    if (!a) return;
+    if (!a.virtualis(i)) {
+      fajlMegnyit(a.ut[i], m);
+      return;
+    }
+    csucsMenuNyit(i, x ?? 0, y ?? 0, a.tipus[i] === 'cimke');
+  }
+
+  function csucsMenuNyit(i: number, x: number, y: number, kozvetlenCimke = false) {
+    const a = adat;
+    if (!a || !vaszon) return;
+    menuBezar?.(false);
+    const r = vaszon.getBoundingClientRect();
+    menuBezar = csucsMenu(a, i, r.left + x, r.top + y, kontextus(), kozvetlenCimke);
+  }
+
   // ------------------------------------------------------------------ keresés repüléssel
 
   let keresoSzoveg = $state('');
@@ -336,7 +393,7 @@
 
   async function ugras(i: number) {
     if (!adat) return;
-    const globalis = lathatosag(adat, { lekerdezes: eff.lekerdezes, mellekletek: eff.mellekletek, arvak: eff.arvak }, null).lathato;
+    const globalis = lathatosag(adat, szuroBe, null).lathato;
     // a szűrő oldása: a keresés a rejtett csúcsot is megtalálja
     if (!globalis[i]) felulet.graf = { ...felulet.graf, lekerdezes: '', mellekletek: true, arvak: true };
     if (mod === 'helyi' && !(szuro && szuro.lathato[i])) nezetAllapot({ mod: 'globalis' });
@@ -378,7 +435,7 @@
   const cimke = $derived(
     adat
       ? t('Gráfnézet: {n} fájl és {el} kapcsolat{helyi}. + és − nagyít, nyilak mozgatnak, 0 a teljes nézet, Enter megnyitja a kijelölt jegyzetet.', {
-          n: adat.n,
+          n: adat.nValos,
           el: adat.iranyitott.length / 2,
           helyi: mod === 'helyi' && kozeppontUt ? t(', helyi gráf: {fajl}, {m} lépés', { fajl: fajlNev(kozeppontUt), m: melyseg }) : '',
         })
@@ -396,7 +453,7 @@
   <!-- a rajzoló színeit a témából olvassa: rejtett próbaelemek -->
   <div class="proba" bind:this={proba} aria-hidden="true">
     <i class="p-jegyzet"></i><i class="p-canvas"></i><i class="p-melleklet"></i><i class="p-el"></i><i class="p-el-kiemelt"></i>
-    <i class="p-kijelolt"></i><i class="p-felulet"></i><i class="p-szoveg"></i><i class="p-talalat"></i>
+    <i class="p-kijelolt"></i><i class="p-felulet"></i><i class="p-szoveg"></i><i class="p-talalat"></i><i class="p-cimke"></i><i class="p-feloldatlan"></i>
   </div>
 
   <div class="eszkoztar" role="toolbar" aria-label={t('Gráf eszközök')}>
@@ -419,6 +476,7 @@
           >
         {/each}
       </div>
+      <IkonGomb ikon={Pin} cimke={t('Aktív jegyzet követése')} lenyomva={kovet} onclick={() => nezetAllapot({ kovet: !kovet })} />
     {/if}
     <div class="kereso">
       <input
@@ -467,14 +525,23 @@
       <span>{t('A vaultban még nincs fájl.')}</span>
     {:else}
       <span>{t('{db} / {n} csúcs · {el} él', { db: szuro?.csucsDb ?? 0, n: adat.n, el: lathatoEl })}</span>
+      {#if adat.csonkolt}
+        <span class="figy"><Ikon ikon={TriangleAlert} meret={14} />{t('Egyes címkék vagy feloldatlan célok a korlát miatt kimaradtak.')}</span>
+      {/if}
     {/if}
   </div>
 
   {#if tooltipAdat && adat}
     <div class="tooltip" role="tooltip" style:left="{tooltipAdat.x + 14}px" style:top="{tooltipAdat.y + 14}px">
       <strong>{adat.nev[tooltipAdat.i]}</strong>
-      <span>{adat.ut[tooltipAdat.i]}</span>
-      <span>{adat.fok[tooltipAdat.i]} kapcsolat{adat.cimkek[tooltipAdat.i].length ? ` · ${adat.cimkek[tooltipAdat.i].slice(0, 4).join(', ')}` : ''}</span>
+      {#if adat.tipus[tooltipAdat.i] === 'cimke'}
+        <span>{t('Címke')} · {tp('{n} jegyzet', adat.fok[tooltipAdat.i])}</span>
+      {:else if adat.tipus[tooltipAdat.i] === 'feloldatlan'}
+        <span>{t('Még nem létező jegyzet')} · {tp('{n} jegyzet hivatkozik rá', adat.fok[tooltipAdat.i])}</span>
+      {:else}
+        <span>{adat.ut[tooltipAdat.i]}</span>
+        <span>{adat.fok[tooltipAdat.i]} kapcsolat{adat.cimkek[tooltipAdat.i].length ? ` · ${adat.cimkek[tooltipAdat.i].slice(0, 4).join(', ')}` : ''}</span>
+      {/if}
     </div>
   {/if}
 
@@ -546,6 +613,12 @@
   }
   .proba :global(.p-talalat) {
     color: var(--figyelmeztetes);
+  }
+  .proba :global(.p-cimke) {
+    color: var(--graf-cimke);
+  }
+  .proba :global(.p-feloldatlan) {
+    color: var(--graf-feloldatlan);
   }
 
   .eszkoztar {
@@ -677,6 +750,14 @@
 
   .allapot .hiba {
     color: var(--hiba);
+  }
+
+  .allapot .figy {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--t-1);
+    margin-left: var(--t-2);
+    color: var(--figyelmeztetes);
   }
 
   .tooltip {

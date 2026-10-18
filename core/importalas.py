@@ -99,7 +99,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from . import config, kiserok, mediatipus, rejtett, tartos, termek_beallitasok, workspace
+from . import config, importalas_billentyuk, kiserok, mediatipus, rejtett, tartos, termek_beallitasok, workspace
 from .config import ConfigError
 from .index.maszk import FM_RE, mask_code
 from .utvonalak import HttpError, Valasz
@@ -116,6 +116,8 @@ VISSZAVONAS_ELOTAG = ".manifold-import-visszavonas-"
 _ID = re.compile(r"\A(obs|v2)-[0-9a-f]{16}\Z")
 _HALADAS_MP = 0.25
 _VEZERLO = re.compile("[\x00-\x1f\x7f]")
+
+_BILLENTYU_TABLA = "beallitasok.billentyuk."
 
 ALAP_OPCIOK = {"obsidian_mappa": True, "kuka_mappa": False, "nev": ""}
 
@@ -644,11 +646,23 @@ def _obsidian_lekepezes(forras: Path, alap, opciok: dict) -> tuple[dict, dict]:
         for k in adat:
             if k not in MUNKATER_ALTAL["daily-notes"]:
                 nem_atvett.append({"forras": f".obsidian/daily-notes.json#{k}", "ok": "nem_tamogatott"})
-    for kulcs, ertek in _levelek(workspace._w_mag(workspace._obsidian_beallitasok(forras), alap)):
+    w_mag = workspace._w_mag(workspace._obsidian_beallitasok(forras), alap, workspace._napi_engedelyezve(forras))
+    napi = olvasott.get("daily-notes")
+    if isinstance(napi, dict):                          # amit a rétegellenőrzés elutasít (pl. `..`, `{}` a mappában), nem tűnhet el némán
+        for k, w_kulcs in (("folder", "ut"), ("format", "ut"), ("template", "sablon")):
+            if isinstance(napi.get(k), str) and napi[k].strip() and w_kulcs not in w_mag.get("naplo", {}):
+                nem_atvett.append({"forras": f".obsidian/daily-notes.json#{k}", "ok": "ervenytelen"})
+    for kulcs, ertek in _levelek(w_mag):
         forras_nev = ".obsidian/templates.json" if kulcs.startswith("sablon.") else ".obsidian/daily-notes.json"
         beallitasok.append({"kulcs": kulcs, "ertek": ertek, "forras": forras_nev, "mod": "munkater"})
-    if "hotkeys" in olvasott:
-        nem_atvett.append({"forras": ".obsidian/hotkeys.json", "ok": "nem_tamogatott"})
+    billentyuk: dict = {}
+    if "hotkeys" in olvasott:                                # 13-palette-01: carried over per command, every skip reported
+        hk = importalas_billentyuk.lekepez(olvasott["hotkeys"])
+        beallitasok.extend(hk["beallitasok"])
+        nem_atvett.extend(hk["nem_atvett"])
+        billentyuk = hk["billentyuk"]
+        if billentyuk:
+            w = _melyegyesit(w, {"beallitasok": {"billentyuk": billentyuk}})
     tipusok = olvasott.get("types")
     tipusok_db = len(tipusok.get("types") or {}) if isinstance(tipusok, dict) and isinstance(tipusok.get("types"), dict) else 0
     if tipusok_db:
@@ -999,7 +1013,11 @@ def _w_valtozas_szukseges(tcfg, w: dict) -> dict:
     """Only what differs from the new workspace's effective value."""
     ki: dict = {}
     for kulcs, ertek in _levelek(w):
-        if _keres(tcfg.data, kulcs) != ertek:
+        if kulcs.startswith(_BILLENTYU_TABLA):          # hotkey ids contain dots: ONE key under the table, not a path
+            azonosito = kulcs[len(_BILLENTYU_TABLA):]
+            if (tcfg.data.get("beallitasok", {}).get("billentyuk", {}) or {}).get(azonosito) != ertek:
+                ki = _melyegyesit(ki, {"beallitasok": {"billentyuk": {azonosito: ertek}}})
+        elif _keres(tcfg.data, kulcs) != ertek:
             ki = _melyegyesit(ki, _beagyaz(kulcs, ertek))
     return ki
 

@@ -14,19 +14,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from ..hibakod import angol_uzenet, json_param
+
 MAX_MELY = 200
 
 
 class KifejezesHiba(ValueError):
-    """Hibás kifejezés: `uzenet` magyarul, `hely` a hiba karakter-eltolása a szövegben (vagy `None`)."""
+    """Hibás kifejezés: `kod` + `param` (a `hibakodok.BAZIS_ANGOL` kulcsa), `uzenet` az angol tartalék-mondat, `hely` a hiba
+    karakter-eltolása a szövegben (vagy `None`)."""
 
-    def __init__(self, uzenet: str, hely: int | None = None):
-        super().__init__(uzenet)
-        self.uzenet = uzenet
+    def __init__(self, kod: str, hely: int | None = None, param: dict | None = None):
+        self.kod = kod
+        self.param = json_param(param)
+        self.uzenet = angol_uzenet(kod, param, kod)
         self.hely = hely
+        super().__init__(self.uzenet)
 
     def __str__(self) -> str:
-        return self.uzenet if self.hely is None else f"{self.uzenet} (a {self.hely + 1}. karakternél)"
+        return self.uzenet if self.hely is None else angol_uzenet("bazis.kifejezes.hely", {"uzenet": self.uzenet, "hely": self.hely + 1})
 
 
 # ================================================================ szintaxisfa
@@ -196,7 +201,7 @@ def _tokenek(s: str) -> list[tuple]:
                         k += 1
                     j = k
             if j < n and _azon_kezd(s[j]):
-                raise KifejezesHiba("a szám után betű áll", j)
+                raise KifejezesHiba("bazis.kifejezes.szam_utan_betu", j)
             sz = s[i:j]
             out.append(("szam", float(sz) if tort else int(sz), i, j))
             i = j
@@ -205,11 +210,11 @@ def _tokenek(s: str) -> list[tuple]:
             j, buf = i + 1, []
             while True:
                 if j >= n:
-                    raise KifejezesHiba("lezáratlan szöveg", i)
+                    raise KifejezesHiba("bazis.kifejezes.lezaratlan_szoveg", i)
                 d = s[j]
                 if d == "\\":
                     if j + 1 >= n:
-                        raise KifejezesHiba("lezáratlan szöveg", i)
+                        raise KifejezesHiba("bazis.kifejezes.lezaratlan_szoveg", i)
                     e = s[j + 1]
                     hexa = s[j + 2:j + 6]
                     if e == "u" and len(hexa) == 4 and all(h in "0123456789abcdefABCDEF" for h in hexa):
@@ -243,7 +248,7 @@ def _tokenek(s: str) -> list[tuple]:
             j, osztaly = i + 1, False
             while True:
                 if j >= n:
-                    raise KifejezesHiba("lezáratlan regex", i)
+                    raise KifejezesHiba("bazis.kifejezes.lezaratlan_regex", i)
                 d = s[j]
                 if d == "\\":
                     j += 2
@@ -271,7 +276,7 @@ def _tokenek(s: str) -> list[tuple]:
             out.append((c, c, i, i + 1))
             i += 1
             continue
-        raise KifejezesHiba(f"váratlan karakter: {c!r}", i)
+        raise KifejezesHiba("bazis.kifejezes.varatlan_karakter", i, {"c": repr(c)})
     out.append(("vég", None, n, n))
     return out
 
@@ -303,20 +308,20 @@ class _Elemzo:
     def _var(self, fajta: str, mit: str):
         t = self._nez()
         if t[0] != fajta:
-            raise KifejezesHiba(f"{mit} hiányzik", t[2])
+            raise KifejezesHiba("bazis.kifejezes.hianyzik", t[2], {"mit": mit})
         return self._lep()
 
     def _kesz(self, csomo: Csomo, kezd: int, veg: int) -> Csomo:
         csomo.kezd, csomo.veg = kezd, veg
         csomo.mely = 1 + max((g.mely for g in csomo.gyerekek()), default=0)
         if csomo.mely > MAX_MELY:
-            raise KifejezesHiba("a kifejezés túl mélyen összetett", kezd)
+            raise KifejezesHiba("bazis.kifejezes.tul_melyen", kezd)
         return csomo
 
     def _be(self, hely: int):
         self.beagyazas += 1
         if self.beagyazas > _MAX_BEAGYAZAS:
-            raise KifejezesHiba("a kifejezés túl mélyen összetett", hely)
+            raise KifejezesHiba("bazis.kifejezes.tul_melyen", hely)
 
     def _ki(self):
         self.beagyazas -= 1
@@ -324,18 +329,18 @@ class _Elemzo:
     # ---- nyelvtan
     def elemez(self) -> Csomo:
         if self._nez()[0] == "vég":
-            raise KifejezesHiba("üres kifejezés", 0)
+            raise KifejezesHiba("bazis.kifejezes.ures", 0)
         c = self.kifejezes(0)
         t = self._nez()
         if t[0] != "vég":
-            raise KifejezesHiba(f"váratlan {self._leir(t)}", t[2])
+            raise KifejezesHiba("bazis.kifejezes.varatlan", t[2], {"mit": self._leir(t)})
         return c
 
     @staticmethod
     def _leir(t) -> str:
         if t[0] == "vég":
-            return "kifejezés-vég"
-        return {"szam": "szám", "szoveg": "szöveg", "nev": "név", "regex": "regex"}.get(t[0], f"`{t[0]}`")
+            return "end of expression"
+        return {"szam": "number", "szoveg": "text", "nev": "name", "regex": "regex"}.get(t[0], f"`{t[0]}`")
 
     def kifejezes(self, min_bp: int) -> Csomo:
         bal = self.unaris()
@@ -368,20 +373,20 @@ class _Elemzo:
                 self._lep()
                 n = self._nez()
                 if n[0] != "nev":
-                    raise KifejezesHiba("a `.` után név kell", n[2])
+                    raise KifejezesHiba("bazis.kifejezes.pont_utan_nev", n[2])
                 self._lep()
                 c = self._kesz(Tag(c, n[1]), c.kezd, n[3])
             elif t[0] == "[":
                 self._lep()
                 self._be(t[2])
                 k = self.kifejezes(0)
-                z = self._var("]", "a záró `]`")
+                z = self._var("]", "]")
                 self._ki()
                 c = self._kesz(Index(c, k), c.kezd, z[3])
             elif t[0] == "(":
                 self._lep()
                 self._be(t[2])
-                argok = self._argok(")", "a záró `)`")
+                argok = self._argok(")", ")")
                 z = self._lep()
                 self._ki()
                 c = self._kesz(Hivas(c, argok), c.kezd, z[3])
@@ -425,12 +430,12 @@ class _Elemzo:
         if f == "(":
             self._be(t[2])
             c = self.kifejezes(0)
-            self._var(")", "a záró `)`")
+            self._var(")", ")")
             self._ki()
             return c                                # a zárójel nem csomópont; a pozíciók a kifejezéséi maradnak
         if f == "[":
             self._be(t[2])
-            elemek = self._argok("]", "a záró `]`")
+            elemek = self._argok("]", "]")
             z = self._lep()
             self._ki()
             return self._kesz(ListaL(elemek), t[2], z[3])
@@ -447,8 +452,8 @@ class _Elemzo:
                     elif k[0] == "szam":
                         kulcs = str(k[1])
                     else:
-                        raise KifejezesHiba("az objektum kulcsa szöveg vagy név", k[2])
-                    self._var(":", "a `:`")
+                        raise KifejezesHiba("bazis.kifejezes.objektum_kulcs", k[2])
+                    self._var(":", ":")
                     parok.append((kulcs, self.kifejezes(0)))
                     if self._nez()[0] == ",":
                         self._lep()
@@ -456,17 +461,17 @@ class _Elemzo:
                             break
                         continue
                     break
-            z = self._var("}", "a záró `}`")
+            z = self._var("}", "}")
             self._ki()
             return self._kesz(ObjektumL(parok), t[2], z[3])
-        raise KifejezesHiba(f"váratlan {self._leir(t)}", t[2])
+        raise KifejezesHiba("bazis.kifejezes.varatlan", t[2], {"mit": self._leir(t)})
 
 
 def elemez(szoveg: str) -> Csomo:
     """A kifejezés szintaxisfája; hibás szövegre `KifejezesHiba`."""
     if not isinstance(szoveg, str):
-        raise KifejezesHiba("a kifejezés nem szöveg")
+        raise KifejezesHiba("bazis.kifejezes.nem_szoveg")
     try:
         return _Elemzo(szoveg).elemez()
     except RecursionError:                  # a beágyazás-korlát mellett is: a hívó verem már mély lehet
-        raise KifejezesHiba("a kifejezés túl mélyen összetett") from None
+        raise KifejezesHiba("bazis.kifejezes.tul_melyen") from None

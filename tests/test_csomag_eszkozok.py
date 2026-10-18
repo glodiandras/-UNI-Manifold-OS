@@ -513,13 +513,15 @@ class ElofeltetelTest(unittest.TestCase):
     def _repo(self, d: Path) -> build_app.Beallitasok:
         from core import epites
         repo = d / "repo"
-        for rel in ("shell/Sources/A.swift", "app/src/a.ts", "core/a.py"):
+        for rel in ("shell/Sources/A.swift", "app/src/a.ts", "core/a.py", "core/__main__.py", "bin/mos", "config/os.toml"):
             (repo / rel).parent.mkdir(parents=True, exist_ok=True)
             (repo / rel).write_text("x", encoding="utf-8")
-        j = epites.jegyzek(repo)
+        j = epites.jegyzek(repo, hej_valtozat="kiadasi")
         hej = d / "Manifold.app"
         _futtathato(hej / "Contents" / "MacOS" / "Manifold", "#!/bin/sh\n")
         (hej / "Contents" / "Resources").mkdir(parents=True)
+        with (hej / "Contents" / "Info.plist").open("wb") as fh:
+            plistlib.dump({"CFBundleShortVersionString": "1.0", "CFBundleVersion": "1"}, fh)
         (hej / "Contents" / "Resources" / "epites.json").write_text(json.dumps(j))
         dist = d / "dist"
         dist.mkdir()
@@ -536,6 +538,7 @@ class ElofeltetelTest(unittest.TestCase):
             (Path(d) / "python" / "pyvenv.cfg").write_text("home = x\n")
             elo = build_app.elofeltetelek(b, csomag_kozos.futtat, lambda s: None)
             self.assertEqual(elo["git"], None)
+            self.assertEqual(elo["hej_valtozat"], "kiadasi")
             self.assertTrue(any("hordozható git" in f for f in b.figyelmeztetesek))
             (b.repo / "shell" / "Sources" / "A.swift").write_text("uj", encoding="utf-8")
             b.figyelmeztetesek = []
@@ -546,6 +549,51 @@ class ElofeltetelTest(unittest.TestCase):
             b.elavult_ok = True
             build_app.elofeltetelek(b, csomag_kozos.futtat, lambda s: None)
             self.assertTrue(any("hej buildje elavult" in f for f in b.figyelmeztetesek))
+
+    def test_csak_explicit_kiadasi_hej_csomagolhato_az_elavult_kivetellel_is(self):
+        # Hibás/legacy metaadatnál még staging-mappa sem készül, és a másoló/runtime/parancsfuttató nem indul el.
+        for valtozat in ("fejlesztoi", None, "", "unknown", "release", False, [], {}):
+            for elavult_ok in (False, True):
+                with self.subTest(valtozat=valtozat, elavult_ok=elavult_ok), tmpdir() as d:
+                    b = self._repo(Path(d))
+                    p = b.hej_app / "Contents" / "Resources" / "epites.json"
+                    j = json.loads(p.read_text())
+                    if valtozat is None:
+                        j.pop("hej_valtozat")
+                    else:
+                        j["hej_valtozat"] = valtozat
+                    p.write_text(json.dumps(j))
+                    b.elavult_ok = elavult_ok
+                    futtato = mock.Mock()
+                    with mock.patch.object(build_app, "klonoz") as masolas, \
+                            mock.patch.object(build_app, "_runtime") as runtime, \
+                            mock.patch.object(build_app.epites, "ujjlenyomat") as hash_, \
+                            self.assertRaises(CsomagHiba) as e:
+                        build_app.epit(b, futtato=futtato, naplo=lambda s: None)
+                    self.assertEqual(e.exception.kod, "hej_valtozat")
+                    self.assertIn("MOS_DEVELOPER_BUILD=0 bash shell/build.sh", str(e.exception))
+                    self.assertIn("fejlesztői" if valtozat == "fejlesztoi" else "ismeretlen", str(e.exception))
+                    self.assertFalse(b.kimenet.exists())
+                    masolas.assert_not_called()
+                    runtime.assert_not_called()
+                    hash_.assert_not_called()
+                    futtato.assert_not_called()
+
+    def test_kiadasi_valtozat_a_befagyasztott_csomagban_megmarad(self):
+        # Apró, szintetikus kódfa, tényleges másolás/fagyasztás/önellenőrzés; a nagy runtime építése nem része ennek a tesztnek.
+        with tmpdir() as d:
+            b = self._repo(Path(d))
+            (b.python / "pyvenv.cfg").write_text("home = x\n")
+            b.bajtkod = False
+            with mock.patch.object(build_app, "_runtime", return_value={"git": None}) as runtime, \
+                    mock.patch.object(build_app, "_git_adatok", return_value=("c" * 40, True)):
+                r = build_app.epit(b, naplo=lambda s: None)
+            runtime.assert_called_once()
+            j = json.loads((r.app / "Contents" / "Resources" / "epites.json").read_text())
+            self.assertEqual(r.epites, j)
+            self.assertEqual(j["hej_valtozat"], "kiadasi")
+            self.assertNotIn("hej_valtozat", j["csomag"])
+            self.assertTrue(build_app.ellenoriz_app(r.app, naplo=lambda s: None))
 
     def test_hianyzo_git_alapbol_hiba(self):
         with tmpdir() as d:

@@ -774,6 +774,7 @@
         class:cel={cs.mappa && celUt === cs.ut}
         class:huzott={huzott?.ut === cs.ut}
         class:kijelolt={kijeloltSet.has(cs.ut)}
+        class:kizart={!cs.mappa && fajlok.info(cs.ut)?.kizart === true}
         role="treeitem"
         tabindex={tabUt === cs.ut ? 0 : -1}
         data-regio-fokusz={tabUt === cs.ut ? '' : undefined}
@@ -784,7 +785,7 @@
         aria-setsize={s.testverek}
         aria-expanded={cs.mappa ? nyitott.has(cs.ut) : undefined}
         aria-selected={(!cs.mappa && cs.ut === aktivUt) || kijeloltSet.has(cs.ut)}
-        title={tipusNev(cs)}
+        title={!cs.mappa && fajlok.info(cs.ut)?.kizart === true ? `${tipusNev(cs)} · ${t('beallitasok.kizart_fa')}` : tipusNev(cs)}
         style:padding-left={`${8 + s.melyseg * 16}px`}
         draggable={atnevezesSor?.ut === cs.ut ? 'false' : 'true'}
         onclick={(e) => sorKattint(cs, e)}
@@ -955,6 +956,11 @@
   }
 
   .sor.huzott {
+    opacity: var(--atlatszosag-felig);
+  }
+
+  /* Excluded files (14-appearance-06): a fán halványan látszik (a fájl nem tűnik el), a keresésből, gráfból és gyorsváltóból kimarad */
+  .sor.kizart .nev {
     opacity: var(--atlatszosag-felig);
   }
 

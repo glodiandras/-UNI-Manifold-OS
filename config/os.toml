@@ -129,6 +129,11 @@ vault = "{os}/config/vault-sema.json"   # EGY VÁLASZTHATÓ helyi sémafájl (me
 alap = "{os}/config/schema-default.json"  # a szállított semleges séma (a lánc vége)
 mod = "ki"                           # ki | tanacsado | szigoru: ki = nincs sémaellenőrzés; tanacsado = a sértések tanácsként látszanak (`tanacsok`), semmit nem tiltanak; szigoru = a sértés megerősítést kér, a gépi írás elutasítja
 
+[elozmeny]                           # 13-palette-05: a jegyzet-előzmények (Version history) lapozása
+lap = 50                             # alapértelmezett lapméret (a felület ennyit kér egyszerre)
+lap_max = 200                        # egy hívás legfeljebb ennyi bejegyzést ad
+max_melyseg = 20000                  # ennél régebbi változat egy fájl naplójában nem keresett (védelem a rendkívül hosszú történet ellen)
+
 [mentes]
 megtartott_bundle = 10               # tárolónként ennyi bundle marad a {backup} alatt (L18); a kódtárból is
 megtartott_migracio = 5              # fájlonként ennyi migráció előtti SQLite-másolat marad (33. döntés, C29.7b)
@@ -211,13 +216,14 @@ forras_max_karakter = 1600
 mappa = "_Template"                  # a vault sablonmappája (az Obsidian templates.json-jával azonos)
 datum = "YYYY-MM-DD"                 # a {{date}} alapformátuma
 ido = "HH:mm"                        # a {{time}} alapformátuma
-nyelv = "hu"                         # a hónap- és napnevek nyelve: hu | en
+nyelv = ""                           # a hónap- és napnevek nyelve: hu | en; üres = a munkatér nyelve (`[workspace] nyelv`), annak híján angol
 
 [naplo]
 # A napi jegyzet vault-relatív útja (kiterjesztés nélkül; moment.js-részhalmaz, a `[szó]` szó szerinti: a `D` és az `a` betű formátum-jel,
 # ezért a mappanév zárójelben áll): semleges alap `Daily/ÉÉÉÉ-HH-NN`.
 ut = "[Daily]/YYYY-MM-DD"
-sablon = "Napi jegyzet"              # ha a sablonmappában van ilyen nevű .md, az a napi jegyzet váza (a beépített helyett)
+sablon = ""                          # a napi jegyzet sablonja: vault-relatív út (`Templates/Daily.md`) vagy a sablonmappa jegyzetének neve; üres = a beépített semleges váz
+vaz = "semleges"                     # a beépített váz fajtája, ha nincs sablon: semleges | v2 (a v2-kompat preset régi vázát adja)
 canvas = "YYYY-MM"                   # a havi canvas neve (L59 szomszédja): a `Canvas:` mező csak létező canvasra mutat
 dolgozat_mappa = "Dolgozatok"        # a felkészülési jegyzet mappaneve (L59): <hónap>/Dolgozatok/ÉÉÉÉ-HH-NN - Tantárgy.md
 naptar_regi_ora = 36                 # ennyi óra után jelzi a Ma oldal, hogy a naptáradat régi
@@ -1097,6 +1103,9 @@ olvashato_szelesseg = true
 helyesiras = true
 tab_meret = 2
 perjel = true
+auto_par_zarojel = true
+auto_par_idezojel = true
+auto_par_jeloles = true
 [beallitasok.fajlok]
 uj_mappa = ""
 csatolmany_mappa = ""
@@ -1104,10 +1113,19 @@ sablon_mappa = "_Template"
 napi_ut = "[Daily]/YYYY-MM-DD"
 link_formatum = "rovid"
 wikilinkek = true
+sablon_datum = "YYYY-MM-DD"  # 12-templates-06: a {{date}} alapformátuma (a `[sablon] datum` tükre)
+sablon_ido = "HH:mm"         # a {{time}} alapformátuma (a `[sablon] ido` tükre)
+napi_sablon = ""             # a napi jegyzet sablonja (a `[naplo] sablon` tükre): vault-relatív út; üres = a beépített váz
+napi_inditaskor = false      # 12-templates-05: a napi jegyzet megnyitása induláskor
+kivonas_utana = "link"       # 12-templates-10: a kivont szöveg helyén: link | beagyazas | semmi
+kivonas_sablon = ""          # a Note composer kivonás-sablonja (vault-relatív út; {{content}} {{fromTitle}} {{newTitle}})
+kizart = []                # 14-appearance-06: Excluded files (útvonal-előtag vagy /regex/); csak láthatóság, a fájl érintetlen
 [beallitasok.megjelenes]
 tema = "rendszer"
 betumeret = 16
 csend = false
+betu_szoveg = ""           # 14-appearance-01/02: telepített betűcsalád neve; üres = a rendszer betűje
+betu_mono = ""
 [beallitasok.adatvedelem]
 asszisztens = true
 tracker = true

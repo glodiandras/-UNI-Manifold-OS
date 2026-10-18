@@ -16,6 +16,7 @@ import time
 from datetime import datetime
 
 from . import fuggvenyek as fn
+from ..hibakod import angol_uzenet
 from .ertekek import (
     Datum, Fajl, FutasHiba, Hiba, IdokeretHiba, Regex, egyenlo, hasonlit, igaz_e, kivon, modulo, negal, oszt, osszead, szoroz,
 )
@@ -57,9 +58,9 @@ class Kor:
     def ellenoriz(self) -> None:
         """A lekérdezés időkerete és megszakítása: `IdokeretHiba`, ha a határidő lejárt vagy a kérés elavult (T040)."""
         if self.megszakitva is not None and self.megszakitva():
-            raise IdokeretHiba("a lekérdezést megszakítottam: újabb kérés érkezett ugyanerre a nézetre", megszakitva=True)
+            raise IdokeretHiba("bazis.futas.megszakitva", megszakitva=True)
         if self.hatarido is not None and time.monotonic() > self.hatarido:
-            raise IdokeretHiba("a lekérdezés túllépte az időkeretét — szűkítsd a szűrőt vagy egyszerűsítsd a képleteket")
+            raise IdokeretHiba("bazis.futas.idokeret")
 
     def alkor(self, **helyi) -> "Kor":
         k = self._masol(self.sor, {**self.helyi, **helyi})
@@ -104,7 +105,7 @@ class KepletNezet:
 
     def bazis_mezo(self, kor, nev):
         if kor.kepletek is None:
-            raise FutasHiba(f"nincs ilyen képlet: {nev}")
+            raise FutasHiba("bazis.futas.nincs_keplet", {"nev": nev})
         return kor.kepletek.ertek(kor, nev)
 
     def mint_dict(self) -> dict:
@@ -127,9 +128,9 @@ def futtat(f, kor):
     except FutasHiba:
         raise
     except RecursionError:
-        raise FutasHiba("a kifejezés túl mélyen összetett") from None
+        raise FutasHiba("bazis.futas.tul_melyen") from None
     except (ArithmeticError, ValueError, TypeError, IndexError) as e:
-        raise FutasHiba(f"{type(e).__name__}: {e}") from None
+        raise FutasHiba("bazis.futas.vegrehajtas", {"tipus": type(e).__name__, "e": e}) from None
 
 
 # ================================================================ fordítás
@@ -154,7 +155,7 @@ def fordit(c):
         try:
             rx = Regex(c.minta, c.zaszlok)
         except FutasHiba as e:
-            raise KifejezesHiba(e.uzenet, c.kezd) from None
+            raise KifejezesHiba(e.kod, c.kezd, e.param) from None
         return _allando(rx)
     if isinstance(c, ListaL):
         fs = [fordit(e) for e in c.elemek]
@@ -178,7 +179,7 @@ def fordit(c):
         return lambda kor: negal(o(kor))
     if isinstance(c, Binaris):
         return _binaris(c)
-    raise KifejezesHiba(f"nem támogatott kifejezés: {type(c).__name__}", c.kezd)
+    raise KifejezesHiba("bazis.kifejezes.nem_tamogatott", c.kezd, {"tipus": type(c).__name__})
 
 
 def _nev(nev: str):
@@ -219,25 +220,25 @@ def _hivas(c: Hivas):
         nev = f.nev
         if nev == "if":
             if not 2 <= len(c.argok) <= 3:
-                raise KifejezesHiba("`if`: 2 vagy 3 argumentum kell", c.kezd)
+                raise KifejezesHiba("bazis.kifejezes.if_argumentum", c.kezd)
             felt, igaz = fordit(c.argok[0]), fordit(c.argok[1])
             hamis = fordit(c.argok[2]) if len(c.argok) == 3 else _allando(None)
             return lambda kor: igaz(kor) if igaz_e(felt(kor)) else hamis(kor)
         glob = fn.GLOBALIS.get(nev)
         if glob is None:
-            raise KifejezesHiba(f"ismeretlen függvény: {nev}()", f.kezd)
+            raise KifejezesHiba("bazis.kifejezes.ismeretlen_fuggveny", f.kezd, {"nev": nev})
         argok = [fordit(a) for a in c.argok]
         return lambda kor: glob(kor, *[a(kor) for a in argok])
     if isinstance(f, Tag):
         nev = f.nev
         if nev not in fn.metodus_nevek():
-            raise KifejezesHiba(f"ismeretlen függvény: {nev}()", f.kezd)
+            raise KifejezesHiba("bazis.kifejezes.ismeretlen_fuggveny", f.kezd, {"nev": nev})
         o = fordit(f.obj)
         argok = [fordit(a) for a in c.argok]
         if nev in fn.LUSTA_NEVEK:
             return lambda kor: fn.hivas_lusta(kor, o(kor), nev, argok)
         return lambda kor: fn.hivas_metodus(kor, o(kor), nev, [a(kor) for a in argok])
-    raise KifejezesHiba("ez a kifejezés nem hívható", f.kezd)
+    raise KifejezesHiba("bazis.kifejezes.nem_hivhato", f.kezd)
 
 
 def _binaris(c: Binaris):
@@ -299,21 +300,21 @@ class KepletTar:
     def __init__(self, kepletek: dict[str, str]):
         self.forras = {str(k): v for k, v in kepletek.items()}
         self.fn: dict = {}
-        self.hiba: dict[str, str] = {}
+        self.hiba: dict[str, tuple] = {}              # név → (kod, param) a hibás képletre
         hiv: dict[str, set[str]] = {}
         for nev, szoveg in self.forras.items():
             if not isinstance(szoveg, str):
-                self.hiba[nev] = "a képlet nem szöveg"
+                self.hiba[nev] = ("bazis.futas.keplet_nem_szoveg", {})
                 continue
             try:
                 csomo = elemez(szoveg)
                 self.fn[nev] = fordit(csomo)
                 hiv[nev] = _kepletek_hivatkozasai(csomo)
             except KifejezesHiba as e:
-                self.hiba[nev] = str(e)
+                self.hiba[nev] = (e.kod, {**e.param, "hely": e.hely})
         for nev in hiv:
             if self._ciklusban(nev, hiv):
-                self.hiba[nev] = "körkörös képlet-hivatkozás"
+                self.hiba[nev] = ("bazis.futas.keplet_kor", {"nev": nev})
                 self.fn.pop(nev, None)
 
     @staticmethod
@@ -329,28 +330,35 @@ class KepletTar:
             verem.extend(hiv.get(x, ()))
         return False
 
+    def hiba_szoveg(self, nev: str) -> str:
+        """A hibás képlet hibájának angol mondata (elemzési hibánál a karakterhellyel)."""
+        kod, param = self.hiba[nev]
+        hely = param.get("hely")
+        uzenet = angol_uzenet(kod, {k: v for k, v in param.items() if k != "hely"}, kod)
+        return uzenet if hely is None else angol_uzenet("bazis.kifejezes.hely", {"uzenet": uzenet, "hely": hely + 1})
+
     def nevek(self) -> list[str]:
         return list(self.forras)
 
     def ertek(self, kor: Kor, nev: str):
         if nev in self.hiba:
-            raise FutasHiba(f"a(z) `{nev}` képlet hibás: {self.hiba[nev]}")
+            raise FutasHiba("bazis.futas.keplet_hibas", {"nev": nev, "reszlet": self.hiba_szoveg(nev)})
         f = self.fn.get(nev)
         if f is None:
-            raise FutasHiba(f"nincs ilyen képlet: {nev}")
+            raise FutasHiba("bazis.futas.nincs_keplet", {"nev": nev})
         kulcs = (kor.sor.ut if kor.sor is not None else None, nev)
         m = kor.memo.get(kulcs)
         if m is not None:
             if m[0]:
                 return m[1]
-            raise FutasHiba(m[1])
+            raise FutasHiba(m[1].kod, m[1].param)
         if kulcs in kor.folyamatban:
-            raise FutasHiba(f"körkörös képlet-hivatkozás: {nev}")
+            raise FutasHiba("bazis.futas.keplet_kor", {"nev": nev})
         kor.folyamatban.add(kulcs)
         try:
             v = futtat(f, kor.tiszta())
         except FutasHiba as e:
-            kor.memo[kulcs] = (False, e.uzenet)
+            kor.memo[kulcs] = (False, e)
             raise
         finally:
             kor.folyamatban.discard(kulcs)

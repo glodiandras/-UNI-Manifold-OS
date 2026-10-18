@@ -14,6 +14,8 @@ export interface FajlInfo {
   mtime: number | null;
   /** Valódi fájllétrehozási idő epoch-másodpercben. Ha a fájlrendszer nem ad születési időt, ismeretlen. */
   ctime?: number | null;
+  /** A Beállítások › Files & links › Excluded files listája illeszkedik rá (14-appearance-06): a fán halvány, a keresőből, a gráfból és a gyorsváltóból kimarad. */
+  kizart?: boolean;
 }
 
 export interface IndexAllapot {

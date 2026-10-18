@@ -299,20 +299,60 @@ def _obsidian_beallitasok(vault: Path) -> dict:
     return ki
 
 
-def _w_mag(obsidian: dict, alap: Config) -> dict:
+def _moment_literal(szoveg: str) -> str:
+    """Egy mappanév szó szerinti (moment `[…]`) alakja. A `[…]` belsejében nem állhat `]`, ezért a `]` maga a szegmensek
+    között szó szerinti karakter (a `]` nem formátum-jel): `a]b` → `[a]][b]`."""
+    reszek = szoveg.split("]")
+    ki: list[str] = []
+    for i, r in enumerate(reszek):
+        if r:
+            ki.append(f"[{r}]")
+        if i < len(reszek) - 1:
+            ki.append("]")
+    return "".join(ki)
+
+
+def _napi_engedelyezve(vault: Path) -> bool | None:
+    """Az Obsidian `core-plugins.json` szerint be van-e kapcsolva a Napi jegyzetek mag-plugin: True/False, ha a fájl olvasható és
+    ismert alakú; None, ha nincs vagy nem értelmezhető (csak olvas)."""
+    try:
+        d = json.loads((vault / OBSIDIAN / "core-plugins.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if isinstance(d, list):
+        return "daily-notes" in d
+    if isinstance(d, dict) and "daily-notes" in d:
+        return d["daily-notes"] is True
+    return False if isinstance(d, dict) else None
+
+
+def napi_utvonal(mappa: str, forma: str) -> str:
+    """Az Obsidian Napi jegyzetek (mappa, formátum) párjából a `[naplo] ut` formátum-kulcs: a mappa szó szerinti szegmensei, majd a
+    formátum; üres mappa (az Obsidian alapja) a vault gyökere: csak a formátum."""
+    szegmensek = [_moment_literal(r) for r in mappa.split("/") if r]
+    return _nfc("/".join(szegmensek + [forma.strip()]))
+
+
+def _w_mag(obsidian: dict, alap: Config, napi_be: bool | None = None) -> dict:
     """A W réteg magja az Obsidian beállításaiból (§3.3/5): sablonmappa és a napi jegyzet útja. Csak a réteg-ellenőrzésen
-    (`config.reteg_ellenoriz`) átmenő érték kerül be."""
+    (`config.reteg_ellenoriz`) átmenő érték kerül be.
+
+    A `daily-notes.json` bármely változata bejön (12-templates-01): a hiányzó `folder` az Obsidian alapja (a vault gyökere), a
+    hiányzó `format` a `YYYY-MM-DD`, a `template` vault-relatív út marad (nem csonkul névre). Üres `{}` fájl csak akkor ad
+    útvonalat, ha a `core-plugins.json` szerint a plugin be van kapcsolva (`napi_be`): különben a Manifold alapja marad."""
     w: dict = {}
     sablon = (obsidian.get("templates") or {}).get("folder", "").strip().strip("/")
     if sablon:
         w.setdefault("sablon", {})["mappa"] = _nfc(sablon)
     nap = obsidian.get("daily-notes") or {}
-    mappa, forma = nap.get("folder", "").strip().strip("/"), (nap.get("format") or "YYYY-MM-DD").strip()
-    if mappa and forma and "[" not in mappa and "]" not in mappa:
-        w.setdefault("naplo", {})["ut"] = _nfc("/".join(f"[{r}]" for r in mappa.split("/") if r) + "/" + forma)
-        tmpl = Path(nap.get("template", "").strip()).name
+    if nap or napi_be is True:
+        mappa, forma = nap.get("folder", "").strip().strip("/"), (nap.get("format") or "").strip() or "YYYY-MM-DD"
+        # a `..` és a rejtett szegmens a `[…]` escape mögött elkerülné a rétegellenőrzést, de a kész útvonal elbukna: kihagyjuk
+        if not any(r in (".", "..") or r.startswith(".") for r in mappa.split("/") if r):
+            w.setdefault("naplo", {})["ut"] = napi_utvonal(mappa, forma)
+        tmpl = nap.get("template", "").strip().strip("/")
         if tmpl:
-            w["naplo"]["sablon"] = _nfc(tmpl[:-3] if tmpl.lower().endswith(".md") else tmpl)
+            w.setdefault("naplo", {})["sablon"] = _nfc(tmpl if tmpl.lower().endswith(".md") else tmpl + ".md")
     if not w:
         return w
     rossz = {k for k, _ in config.reteg_ellenoriz("munkater", w, alap.data)}
@@ -782,7 +822,7 @@ def letrehoz(vault: Path, alap: Config, *, nev=None, nyelv="en", presetek=(), uj
     # 6. véglegesítési pont
     haladas({"lepes": "beallitasok"})
     w = {"workspace": {"id": id, **ws_tabla, "obsidian_letrehozva": obsidian_letrehozva}}
-    w.update(_w_mag(_obsidian_beallitasok(v), alap))
+    w.update(_w_mag(_obsidian_beallitasok(v), alap, _napi_engedelyezve(v)))
     munkater_mappa_ellenoriz(v)
     _atomi_ir_nofollow(ws, WS_TOML, _toml_ir(w).encode("utf-8"))
 

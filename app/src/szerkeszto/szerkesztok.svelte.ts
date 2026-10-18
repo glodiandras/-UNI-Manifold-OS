@@ -5,6 +5,7 @@ import type { EditorState } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { vaultApi } from './dokumentum/api';
 import { Dokumentumok } from './dokumentum/dokumentum.svelte';
+import type { AthelyezEredmeny, AthelyezKeres, AthelyezTilt } from './vazlat';
 
 export type Mod = 'elo' | 'forras' | 'olvaso';
 
@@ -27,6 +28,10 @@ export interface SzerkesztoPeldany {
   vazlat(): VazlatElem[];
   /** Nő, ha a szöveg változott (a reaktív származtatások ebből frissülnek). */
   valtozat(): number;
+  /** A szakasz-áthelyezés tilalmának oka (`null`: szabad); reaktív (a Vázlat ebből tiltja a húzást). */
+  athelyezTilt?(): AthelyezTilt | null;
+  /** Egy fejezet szakaszának áthelyezése a Vázlatból (11-graph-08): egyetlen szerkesztő-tranzakció, a meglévő mentési úton. */
+  szakaszAthelyez?(k: AthelyezKeres): AthelyezEredmeny;
 }
 
 export interface VazlatElem {

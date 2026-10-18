@@ -44,7 +44,7 @@ export class JsonHiba extends Error {
     readonly oszlop: number,
     uzenet: string,
   ) {
-    super(`${uzenet} (${sor}. sor, ${oszlop}. oszlop)`);
+    super(`${uzenet} (${t('line {sor}, column {oszlop}', { sor, oszlop })})`);
   }
 }
 

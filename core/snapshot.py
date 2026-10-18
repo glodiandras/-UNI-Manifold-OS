@@ -731,6 +731,31 @@ class Repo:
                           "statusz": statusz, "ut_akkor": akkor, "regi_ut": regi})
         return lista
 
+    def torolt_fajlok(self, max_commit: int = 20000) -> list[dict]:
+        """A HEAD-ben már nem álló fájlok, amelyeknek a legutóbbi eseménye a törlés (13-palette-04), a legújabb törlés elöl:
+        `{ut, sha (a törlő commit), datum, targy, trailerek}`. Az átnevezés nem törlés (`-M`), és a törölt, majd újra létrehozott
+        fájl sem szerepel. A tartalom a `sha^` változatban áll."""
+        if not self.has_head():
+            return []
+        fmt = _SEP_REC + _SEP_FIELD.join(["%H", "%aI", "%s", "%(trailers:only,unfold)"])
+        out = self.git("log", "-M", "--diff-filter=D", "--name-only", "-z", f"-n{max(1, int(max_commit))}", f"--format={fmt}").stdout
+        van = {u for u in self.git("ls-tree", "-r", "--name-only", "-z", "HEAD").stdout.split("\0") if u}
+        lat: set[str] = set()
+        ki: list[dict] = []
+        for rec in out.split(_SEP_REC):
+            if not rec.strip("\n\0"):
+                continue
+            fej, _, farok = rec.partition("\0")
+            sha, date, subject, trailers = (fej.split(_SEP_FIELD) + ["", "", "", ""])[:4]
+            for ut in (m for m in farok.lstrip("\n").split("\0") if m.strip("\n")):
+                ut = ut.strip("\n")
+                if ut in lat:
+                    continue
+                lat.add(ut)
+                if ut not in van:
+                    ki.append({"ut": ut, "sha": sha, "datum": date, "targy": subject, "trailerek": _parse_trailers(trailers)})
+        return ki
+
     def fajl_valtozat(self, sha: str, ut: str, max_bajt: int = 8 * 1024 * 1024) -> tuple[str | None, str | None]:
         """A fájl szövege a commit után: (szöveg, None) vagy (None, ok): `nincs` (törölve volt), `nagy`, `kodolas`
         (nem UTF-8). A sorvég marad, ahogy a tárolóban áll."""

@@ -15,7 +15,15 @@ export type CanvasParancs =
   | 'ujra'
   | 'torol'
   | 'duplikal'
-  | 'mind';
+  | 'mind'
+  | 'masol'
+  | 'kivag'
+  | 'beillesztes'
+  | 'kijeloles-mutat'
+  | 'objektum-igazitas'
+  | 'jegyzette'
+  | 'alcel'
+  | 'helyi-menu';
 
 export interface VaszonPeldany {
   readonly ut: string;

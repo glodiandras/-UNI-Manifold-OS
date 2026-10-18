@@ -12,7 +12,6 @@ import hashlib
 import json
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 RESZEK = {
@@ -27,6 +26,7 @@ KIHAGY_MAPPAK = frozenset({"staging", "archive", "logs", "__pycache__", ".pytest
 KIHAGY_KITERJESZTES = (".pyc", ".pyo")
 FAJL_MAX_BAJT = 64 << 20        # a tartalék bejárásban e fölött a tartalom nem olvasódik, csak a méret számít
 GIT_IDOKORLAT_MP = 30
+HEJ_VALTOZATOK = ("fejlesztoi", "kiadasi")
 
 
 def _git_fajlok(root: Path, utak: tuple[str, ...]) -> list[str] | None:
@@ -94,8 +94,24 @@ def ujjlenyomat(root: Path, resz: str) -> str:
     return h.hexdigest()
 
 
-def jegyzek(root: Path) -> dict:
-    return {"verzio": 1, **{r: ujjlenyomat(root, r) for r in RESZEK}}
+def jegyzek(root: Path, *, hej_valtozat: str | None = None) -> dict:
+    """A forrásujjlenyomatok és — csak natív héj építésekor — az explicit build-változat.
+
+    A változat nem ujjlenyomat: azonos forrásból is lehet fejlesztői és kiadási bináris. A felület változatlanul a változat
+    nélküli jegyzéket kapja, a héj beégetett JS-rekordja és lemezes jegyzéke ugyanazt az explicit értéket kapja.
+    """
+    if hej_valtozat is not None and hej_valtozat not in HEJ_VALTOZATOK:
+        raise ValueError("Unknown native shell build variant")
+    j = {"verzio": 1, **{r: ujjlenyomat(root, r) for r in RESZEK}}
+    if hej_valtozat is not None:
+        j["hej_valtozat"] = hej_valtozat
+    return j
+
+
+def _hej_valtozat(j: dict) -> dict:
+    """Additív metaadat: a régi/hiányzó/ismeretlen változat nem állítható kiadásinak, és nem változtatja a hash-kaput."""
+    v = j.get("hej_valtozat")
+    return {"hej_valtozat": v} if v in HEJ_VALTOZATOK else {}
 
 
 # ------------------------------------------------------------------ a csomag befagyasztott jegyzéke (F9)
@@ -179,16 +195,19 @@ def fagyott(root: Path) -> dict | None:
 
 
 def befagyaszt(root: Path, *, termek_verzio: str, build: str, commit: str, tiszta: bool, epitve: str, felulet: str,
-               hej: str, runtime: bool = True, egyeb: dict | None = None) -> dict:
+               hej: str, runtime: bool = True, egyeb: dict | None = None, hej_valtozat: str | None = None) -> dict:
     """A csomag jegyzéke a KÉSZ kódfából (`root` = a csomag `manifold` mappája): a `mag` a csomagban újraszámolva (ugyanazzal
     a bejárással, amellyel a futó core méri), a `felulet` és a `hej` a forrás-buildek jegyzékéből."""
+    if hej_valtozat is not None and hej_valtozat not in HEJ_VALTOZATOK:
+        raise ValueError("Unknown native shell build variant")
     cs = {"formatum": CSOMAG_FORMATUM, "termek_verzio": termek_verzio, "build": build, "commit": commit, "tiszta": tiszta,
           "epitve": epitve, "fajlok": csomag_fajlok(root)}
     if runtime:
         cs["runtime"] = runtime_osszesito(root)
     if egyeb:
         cs.update(egyeb)
-    return {"verzio": 1, "felulet": felulet, "mag": ujjlenyomat(root, "mag"), "hej": hej, "csomag": cs}
+    return {"verzio": 1, "felulet": felulet, "mag": ujjlenyomat(root, "mag"), "hej": hej, "csomag": cs,
+            **_hej_valtozat({"hej_valtozat": hej_valtozat})}
 
 
 def csomag_ellenoriz(root: Path, jegyzek_: dict | None = None, *, runtime: bool = False) -> dict:
@@ -228,7 +247,7 @@ def _csomag_allapot(root: Path, futo: dict | None) -> dict:
         felulet = dist.get("felulet") if isinstance(dist, dict) else None
         reszek.append({"resz": "felulet", "friss": felulet == vart["felulet"], "azonosito": str(felulet or "")[:12],
                        "elteres": [] if felulet == vart["felulet"] else ["felulet"]})
-        reszek.append({"resz": "hej", "friss": True, "azonosito": vart["hej"][:12], "elteres": []})
+        reszek.append({"resz": "hej", "friss": True, "azonosito": vart["hej"][:12], "elteres": [], **_hej_valtozat(j)})
         ell = csomag_ellenoriz(root, j)
         cs = j["csomag"]
         reszek.append({"resz": "csomag", "friss": ell["ok"], "azonosito": str(cs.get("commit") or "")[:12],
@@ -274,7 +293,8 @@ def allapot(root: Path, futo: dict | None = None) -> dict:
         # (core) változása nem teszi elavulttá a felület- vagy a héj-buildet; a mag elavultságát a futó core jelzi (`futo`).
         elteres = [resz] if epult.get(resz) != vart[resz] else []
         reszek.append({"resz": resz, "friss": ervenyes and not elteres,
-                       "azonosito": str(epult.get(resz, ""))[:12], "elteres": elteres})
+                       "azonosito": str(epult.get(resz, ""))[:12], "elteres": elteres,
+                       **(_hej_valtozat(epult) if resz == "hej" else {})})
     ismeretlen = []
     for resz, az in (futo or {}).items():
         if resz not in vart:
@@ -300,7 +320,16 @@ def utvonalak(r):
     r.get("/api/rendszer/epites", epites)
 
 
-if __name__ == "__main__":
-    j = json.dumps(jegyzek(Path(__file__).resolve().parent.parent))
+def fo(argv: list[str] | None = None) -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Generate Manifold source fingerprints and native shell build metadata.")
+    parser.add_argument("--swift", action="store_true", help="Generate the native JavaScript build record as Swift source.")
+    parser.add_argument("--hej-valtozat", choices=HEJ_VALTOZATOK, help="Native shell build variant (explicit, independent of source hashes).")
+    args = parser.parse_args(argv)
+    j = json.dumps(jegyzek(Path(__file__).resolve().parent.parent, hej_valtozat=args.hej_valtozat))
     print('enum EpitesAzonosito { static let js = ' + json.dumps('window.__manifoldHejEpites = ' + j) + ' }'
-          if '--swift' in sys.argv else j)
+          if args.swift else j)
+
+
+if __name__ == "__main__":
+    fo()

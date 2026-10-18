@@ -48,7 +48,7 @@ NEM_SZERKESZTHETO_FORRAS = tuple(k for k in kod_nyelvek.kiterjesztesek() if k in
 FORRAS_KITERJESZTESEK = tuple(k for k in kod_nyelvek.kiterjesztesek() if k not in NEM_SZERKESZTHETO_FORRAS)
 OLVASHATO = SZOVEGES + FORRAS_KITERJESZTESEK   # C36a, F10: a forrás a szerkesztőnek olvasható
 IRHATO = (".md", ".base", ".canvas") + FORRAS_KITERJESZTESEK   # a többi szöveges fájl csak olvasható (C12, C14, C36a, F10)
-UJ_BASE = "views:\n  - type: table\n    name: Táblázat\n"   # az új `.base` tartalma (= `bazis.modell.UJ_SZOVEG`)
+UJ_BASE = "views:\n  - type: table\n    name: Table\n"   # az új `.base` tartalma (= `bazis.modell.UJ_SZOVEG`)
 UJ_CANVAS = "{}"                        # az új `.canvas` tartalma (az Obsidian új canvasának alakja, C14)
 
 _FELIRAT = {"md": "jegyzet", "base": "adatbázis-nézet", "canvas": "canvas", "cpp": "C++ forrás"}   # a commit-üzenet a fájltípus szerint

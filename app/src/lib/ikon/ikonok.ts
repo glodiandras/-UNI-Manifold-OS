@@ -140,6 +140,9 @@ export {
   ImageDown,
   Scissors,
   ClipboardPaste,
+  Focus,
+  Magnet,
+  FileOutput,
 } from 'lucide';
 
 export type { IconNode } from 'lucide';

@@ -17,7 +17,7 @@ import type { IconNode } from 'lucide';
 import { hibaUzenet } from '../core/api';
 import { ertesitesek } from '../ertesites/ertesites.svelte';
 import { t } from '../i18n';
-import { elemez, normalizalLeiras } from './billentyuk';
+import { elemez, fenntartott, normalizalLeiras } from './billentyuk';
 
 export interface Parancs {
   /** Egyedi, pontokkal tagolt azonosító: `<modul>.<művelet>`. */
@@ -125,26 +125,71 @@ export class Regiszter {
   /** A beállítások a rejtett és épp nem elérhető parancsokat is felsorolják. */
   mind(): Parancs[] { return [...this.parancsok.values()]; }
   alapBillentyu(id: string): string { return this.alapBillentyuk.get(id) ?? ''; }
+  /** Egy kötés önmagában (az többi parancstól függetlenül) elfogadható-e: alak, módosító, fenntartott (natív menü) akkord. */
+  private akkordEllenoriz(id: string, kert: string): string {
+    let a: ReturnType<typeof elemez>;
+    try { a = elemez(kert); } catch { throw new Error(t('beallitasok.hibas_billentyu')); }
+    if (!a.mod && !a.ctrl && !a.alt && !/^F\d+$/.test(a.kulcs)) throw new Error(t('beallitasok.modosito_kell'));
+    const kanonikus = normalizalLeiras(kert);
+    // a natív menü akkordjai (⌘C/V/X/Z/A/H/M/Q, ⇧⌘Z, ⌥⌘H, ⌃⌘F, ⌘, és ⇧⌘O): a lista a shell menüjéből generált (RESERVED_CHORDS)
+    if (fenntartott(kanonikus, id) || (id === 'beallitasok.megnyit' && kanonikus !== 'Mod+,')) throw new Error(t('beallitasok.foglalt_billentyu'));
+    return kanonikus;
+  }
   /** Teljes csere: előbb ellenőriz, ütközésnél a működő kiosztás érintetlen. */
   billentyuketEllenoriz(feluliras: Record<string, string>): void {
     const latott = new Map<string, string>();
     for (const [id, kert] of Object.entries(feluliras)) {
       if (!kert) continue;
-      let a: ReturnType<typeof elemez>;
-      try { a = elemez(kert); } catch { throw new Error(t('beallitasok.hibas_billentyu')); }
-      if (!a.mod && !a.ctrl && !a.alt && !/^F\d+$/.test(a.kulcs)) throw new Error(t('beallitasok.modosito_kell'));
-      const kanonikus = normalizalLeiras(kert);
-      if ((kanonikus === 'Mod+,' && id !== 'beallitasok.megnyit') || kanonikus === 'Mod+Shift+o') throw new Error(t('beallitasok.foglalt_billentyu'));
+      this.akkordEllenoriz(id, kert);
     }
     for (const p of this.parancsok.values()) {
       const kert = Object.hasOwn(feluliras, p.id) ? feluliras[p.id] : this.alapBillentyu(p.id);
       if (p.id === 'beallitasok.megnyit' && kert !== 'Mod+,') throw new Error(t('beallitasok.foglalt_billentyu'));
       if (!kert) continue;
       const a = normalizalLeiras(kert);
-      if ((a === 'Mod+,' && p.id !== 'beallitasok.megnyit') || a === 'Mod+Shift+o') throw new Error(t('beallitasok.foglalt_billentyu'));
+      if (Object.hasOwn(feluliras, p.id) && fenntartott(a, p.id)) throw new Error(t('beallitasok.foglalt_billentyu'));
       if (latott.has(a)) throw new Error(t('A gyorsbillentyű már foglalt: {nev}', { nev: parancsNev(this.parancsok.get(latott.get(a)!)!) }));
       latott.set(a, p.id);
     }
+  }
+  /** Türelmes betöltés (tárolt vagy importált kiosztás): az érvénytelen, fenntartott vagy ütköző bejegyzést kihagyja és visszaadja,
+   *  a többit alkalmazza — egy rossz kötés nem dobja el az egész kiosztást. Az ütközést a KIALAKULÓ kiosztáson ítéli meg (két akkord
+   *  cseréje elfogadott); ha egy bejegyzés egy változatlanul maradó alapértelmezéssel vagy egy korábbi bejegyzéssel ütközik, az marad ki. */
+  billentyuketAlkalmazTurelmesen(feluliras: Record<string, string>): { id: string; akkord: string; ok: string }[] {
+    const elfogadott: Record<string, string> = {};
+    const kihagyott: { id: string; akkord: string; ok: string }[] = [];
+    for (const [id, kert] of Object.entries(feluliras)) {
+      if (!kert) {
+        if (id === 'beallitasok.megnyit') kihagyott.push({ id, akkord: kert, ok: t('beallitasok.foglalt_billentyu') });
+        else elfogadott[id] = kert;
+        continue;
+      }
+      try { this.akkordEllenoriz(id, kert); elfogadott[id] = kert; }
+      catch (e) { kihagyott.push({ id, akkord: kert, ok: e instanceof Error ? e.message : String(e) }); }
+    }
+    for (;;) {
+      const csoport = new Map<string, string[]>();
+      for (const p of this.parancsok.values()) {
+        const kert = Object.hasOwn(elfogadott, p.id) ? elfogadott[p.id] : this.alapBillentyu(p.id);
+        if (!kert) continue;
+        const a = normalizalLeiras(kert);
+        csoport.set(a, [...(csoport.get(a) ?? []), p.id]);
+      }
+      const kiesik = new Map<string, string>();
+      for (const idk of csoport.values()) {
+        if (idk.length < 2) continue;
+        const sajat = idk.filter((id) => Object.hasOwn(elfogadott, id));
+        const marad = idk.filter((id) => !Object.hasOwn(elfogadott, id));
+        for (const id of marad.length ? sajat : sajat.slice(1)) kiesik.set(id, idk.find((x) => x !== id)!);
+      }
+      if (!kiesik.size) break;
+      for (const [id, masik] of kiesik) {
+        kihagyott.push({ id, akkord: elfogadott[id], ok: t('A gyorsbillentyű már foglalt: {nev}', { nev: parancsNev(this.parancsok.get(masik)!) }) });
+        delete elfogadott[id];
+      }
+    }
+    this.billentyuketAlkalmaz(elfogadott);
+    return kihagyott;
   }
   billentyuketAlkalmaz(feluliras: Record<string, string>): void {
     this.billentyuketEllenoriz(feluliras);

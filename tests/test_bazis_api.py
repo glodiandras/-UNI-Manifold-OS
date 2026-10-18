@@ -67,7 +67,7 @@ class ApiTest(_Szerver):
         self.assertEqual(len(self.lekerdez(sz)[1]["sorok"]), 1)
         st, v = self.lekerdez(sz, nezet="nincs")
         self.assertEqual((st, v["nezet"]["nev"]), (200, "A"))
-        self.assertTrue(any("nincs ilyen nézet" in f["uzenet"] for f in v["figyelmeztetesek"]))
+        self.assertTrue(any("There is no such view" in f["uzenet"] and f["kod"] == "bazis.api.nincs_nezet" for f in v["figyelmeztetesek"]))
         self.assertEqual(self.lekerdez(sz, nezet=9)[1]["nezet"]["nev"], "A")
 
     def test_ez_a_this(self):
@@ -104,7 +104,7 @@ class ApiTest(_Szerver):
     def test_modosit_tiszta(self):
         t = {"szoveg": BOOKS, "muvelet": {"fajta": "nezet_beallit", "nezet": 0, "kulcs": "limit", "ertek": 2}}
         st, v = self.k("POST", "/api/vault/bazis/modosit", t)
-        self.assertEqual((st, v["ok"], v["hibak"], v["valtozas"]), (200, True, [], "nézet limit"))
+        self.assertEqual((st, v["ok"], v["hibak"], v["valtozas"]), (200, True, [], "view limit"))
         self.assertEqual(v["szoveg_uj"], BOOKS + "    limit: 2\n")
         st, v2 = self.lekerdez(v["szoveg_uj"])                     # az új szöveg közvetlenül lekérdezhető
         self.assertEqual(len(v2["sorok"]), 2)

@@ -209,7 +209,7 @@ class KepletTest(unittest.TestCase):
         for n in "abc":
             with self.assertRaises(FutasHiba, msg=n) as r:
                 self.kepletek(f"formula.{n}", k)
-            self.assertIn("körkörös", r.exception.uzenet)
+            self.assertIn("Circular", r.exception.uzenet)
         with self.assertRaises(FutasHiba) as r:
             self.kepletek("formula.d", k)             # a körre hivatkozó képlet hibás, de nem része a körnek
         self.assertEqual(self.kepletek("formula.e", k), 320)
@@ -229,7 +229,7 @@ class KepletTest(unittest.TestCase):
         k = {"rossz": "[] + 1", "tovabb": "formula.rossz + 1"}
         with self.assertRaises(FutasHiba) as r:
             self.kepletek("formula.tovabb", k)
-        self.assertIn("nem összeadható", r.exception.uzenet)
+        self.assertIn("Cannot add", r.exception.uzenet)
 
     def test_nincs_ilyen_kepelt(self):
         with self.assertRaises(FutasHiba):

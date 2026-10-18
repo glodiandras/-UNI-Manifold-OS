@@ -12,7 +12,12 @@
   import Billentyu from '../lib/ui/Billentyu.svelte';
   import Kiemelt from './Kiemelt.svelte';
   import ListaValaszto, { type Modositok } from '../lib/ui/ListaValaszto.svelte';
-  import { linkek } from '../lib/vault/linkek.svelte';
+  import { kerdez } from '../lib/core/api';
+  import { linkek, type VaultFejezet } from '../lib/vault/linkek.svelte';
+  import { szerkesztok } from '../szerkeszto/szerkesztok.svelte';
+  import {
+    blokkSzures, fejezetSzures, horgonyElemez, jegyzetKiegeszit, jegyzetKivalaszt, type BlokkSor, type FejezetSor, type HorgonyElem,
+  } from '../lib/vault/valtoHorgony';
   import { ujJegyzetCel } from '../lib/elrendezes/ujJegyzet';
   import { fajlNev, mappa, type FajlInfo } from '../lib/vault/fajlok.svelte';
 
@@ -22,7 +27,7 @@
   let aliasok = $state<Record<string, string[]>>({});
   let aliasHiba = $state(false);
   let nevHiba = $state(false);
-  type ValtoElem = FajlInfo & { alias?: string };
+  type ValtoElem = FajlInfo & { alias?: string; horgony?: HorgonyElem };
   const ujCel = $derived(ujJegyzetCel(lekerdezes));
 
   $effect(() => {
@@ -33,13 +38,66 @@
     return () => { ervenyes = false; };
   });
   $effect(() => { void lekerdezes; nevHiba = false; });
-  const kereso = $derived.by(() => new FuzzyIndex<ValtoElem>(fajlok.lista.flatMap(f => [
+  // Excluded files (14-appearance-06): a kizárt fájl nem jelenik meg a gyorsváltóban (a link rá továbbra is feloldódik)
+  const lista = $derived(fajlok.lista.filter(f => !f.kizart));
+  const kereso = $derived.by(() => new FuzzyIndex<ValtoElem>(lista.flatMap(f => [
     { ertek: f, nev: fajlNev(f.ut), ut: mappa(f.ut) },
     ...[...new Set(aliasok[f.ut] ?? [])].filter(a => a.trim() && a !== fajlNev(f.ut)).map(alias => ({ ertek: { ...f, alias }, nev: alias, ut: f.ut })),
   ])));
 
 
+  // `Jegyzet#fejezet` / `Jegyzet^blokk` / `#fejezet` (13-palette-03): a jegyzetrész a legjobb egyező .md; adatai a core indexéből
+  const horgony = $derived(horgonyElemez(lekerdezes));
+  const horgonyJegyzet = $derived.by(() => {
+    if (!horgony) return null;
+    if (horgony.jegyzet) return jegyzetKivalaszt(fajlok.lista, horgony.jegyzet, felulet.legutobbiFajlok);
+    const aktivUt = felulet.munkaterulet.aktivFul?.ut;
+    return horgony.jel === '^' && aktivUt ? (fajlok.info(aktivUt) ?? null) : null;
+  });
+  let jegyzetAdat = $state.raw<{ ut: string; fejezetek: FejezetSor[]; blokkok: BlokkSor[] } | null>(null);
+  let vaultFejezetek = $state.raw<VaultFejezet[] | null>(null);
+  let horgonyHiba = $state(false);
+  const vaultSzintu = $derived(!!horgony && !horgony.jegyzet && horgony.jel === '#');
+
+  $effect(() => {
+    const ut = horgonyJegyzet?.ut ?? null;
+    void linkek.tartalomVerzio;
+    if (!ut) { jegyzetAdat = null; return; }
+    let ervenyes = true;
+    kerdez<{ fejezetek: FejezetSor[]; blokkok: BlokkSor[] }>(`/api/vault/jegyzet?ut=${encodeURIComponent(ut)}`, { idokorlat: 8000 }).then(
+      (d) => { if (ervenyes) { jegyzetAdat = { ut, fejezetek: d.fejezetek ?? [], blokkok: d.blokkok ?? [] }; horgonyHiba = false; } },
+      () => { if (ervenyes) { jegyzetAdat = null; horgonyHiba = true; } },
+    );
+    return () => { ervenyes = false; };
+  });
+  $effect(() => {
+    if (!vaultSzintu) { vaultFejezetek = null; return; }
+    const szuro = horgony!.szuro;
+    const ac = new AbortController();
+    const ido = setTimeout(() => {
+      linkek.fejezetekMind(szuro, ac.signal).then(
+        (d) => { if (!ac.signal.aborted) { vaultFejezetek = d.slice(0, LIMIT); horgonyHiba = false; } },
+        () => { if (!ac.signal.aborted) horgonyHiba = true; },
+      );
+    }, 120);
+    return () => { clearTimeout(ido); ac.abort(); };
+  });
+  const horgonyTalalatok = $derived.by((): Talalat<ValtoElem>[] => {
+    if (!horgony) return [];
+    if (vaultSzintu) {
+      return (vaultFejezetek ?? []).flatMap((f) => {
+        const info = fajlok.info(f.ut);
+        return info ? [{ ertek: { ...info, horgony: { jel: '#' as const, ut: f.ut, sor: f.sor, szoveg: f.szoveg, szint: f.szint } }, pont: 0, kiemeles: [] as [number, number][] }] : [];
+      });
+    }
+    const j = horgonyJegyzet;
+    if (!j || jegyzetAdat?.ut !== j.ut) return [];
+    const t = horgony.jel === '#' ? fejezetSzures(j.ut, jegyzetAdat.fejezetek, horgony.szuro) : blokkSzures(j.ut, jegyzetAdat.blokkok, horgony.szuro);
+    return t.map((x) => ({ ...x, ertek: { ...j, horgony: x.ertek } }));
+  });
+
   const talalatok = $derived.by((): Talalat<ValtoElem>[] => {
+    if (horgony) return horgonyTalalatok;
     void fajlok.lista;
     const legutobbi = felulet.legutobbiFajlok;
     const q = lekerdezes.trim();
@@ -48,12 +106,12 @@
       const ki: Talalat<ValtoElem>[] = [];
       for (const ut of legutobbi) {
         const f = fajlok.info(ut);
-        if (f && !lat.has(ut)) {
+        if (f && !f.kizart && !lat.has(ut)) {
           lat.add(ut);
           ki.push({ ertek: f, pont: 0, kiemeles: [] });
         }
       }
-      const tobbi = fajlok.lista
+      const tobbi = lista
         .filter((f) => !lat.has(f.ut))
         .sort((a, b) => (b.mtime ?? 0) - (a.mtime ?? 0))
         .slice(0, LIMIT - ki.length);
@@ -72,9 +130,15 @@
   const ures = $derived(
     fajlok.index && !fajlok.index.kesz
       ? t('Az index még épül…')
-      : lekerdezes.trim()
-        ? t('Nincs találat erre: „{kif}”', { kif: lekerdezes.trim() })
-        : t('A vault üres.'),
+      : horgonyHiba
+        ? t('A fejezetek és blokkok nem érhetők el.')
+        : horgony && !vaultSzintu && !horgonyJegyzet
+          ? t('Nincs ilyen jegyzet: „{kif}”', { kif: horgony.jegyzet || lekerdezes.trim() })
+          : horgony
+            ? t('Nincs találat erre: „{kif}”', { kif: horgony.szuro || lekerdezes.trim() })
+            : lekerdezes.trim()
+              ? t('Nincs találat erre: „{kif}”', { kif: lekerdezes.trim() })
+              : t('A vault üres.'),
   );
 
   function letrehoz(m: Modositok = { uj: false, oszt: false }) {
@@ -87,6 +151,7 @@
   }
 
   function bevitel(e: KeyboardEvent): boolean {
+    if (horgony) return !talalatok.length;             // a `#`/`^` nem érvényes jegyzetnév: ott nincs létrehozás
     if (!e.shiftKey && talalatok.length) return false;
     if (lekerdezes.trim()) letrehoz({ uj: e.metaKey && !e.altKey, oszt: e.metaKey && e.altKey });
     return true;
@@ -99,13 +164,23 @@
   function valaszt(t: Talalat<ValtoElem>, m: Modositok) {
     bezar();
     felulet.munkaterulet.megnyit(t.ertek.ut, m.oszt ? 'osztas' : m.uj ? 'ujful' : 'aktiv');
+    if (t.ertek.horgony) szerkesztok.ugras(t.ertek.ut, t.ertek.horgony.sor);
+  }
+
+  /** Tab: a jegyzetrész a teljes névre (`Pla#` → `Plan#`); utána az aktív fejezet/blokk szövegére (`Plan#Áttekintés`). */
+  function tab(elem: Talalat<ValtoElem> | undefined) {
+    if (!horgony) return;
+    const k = jegyzetKiegeszit(horgony, horgonyJegyzet);
+    if (k !== null) lekerdezes = k;
+    else if (elem?.ertek.horgony) lekerdezes = `${fajlNev(elem.ertek.ut)}${horgony.jel}${elem.ertek.horgony.szoveg}`;
   }
 </script>
 
 <Atfedes cimke={t('Gyorsváltó')} nev="valto" onbezar={bezar}>
   <ListaValaszto
     elemek={talalatok}
-    kulcs={(t) => `${t.ertek.ut}\0${t.ertek.alias ?? ''}`}
+    kulcs={(t) => `${t.ertek.ut}\0${t.ertek.alias ?? ''}\0${t.ertek.horgony ? `${t.ertek.horgony.jel}${t.ertek.horgony.sor}` : ''}`}
+    ontab={tab}
     onbevitel={bevitel}
     bind:lekerdezes
     helyorzo={t('Fájl keresése…')}
@@ -116,15 +191,21 @@
   >
     {#snippet sor(t: Talalat<ValtoElem>)}
       <span class="ikon"><Ikon ikon={fajlIkon(t.ertek.tipus)} /></span>
+      {#if t.ertek.horgony}
+        <span class="nev"><span class="jel" aria-hidden="true">{t.ertek.horgony.jel === '#' ? '#'.repeat(t.ertek.horgony.szint ?? 1) : '^'}</span>{#if t.kiemeles.length}<Kiemelt szoveg={t.ertek.horgony.szoveg} kiemeles={t.kiemeles} />{:else}{t.ertek.horgony.szoveg}{/if}</span>
+        <span class="ut">{fajlNev(t.ertek.ut)}</span>
+      {:else}
       <span class="nev">{#if t.kiemeles.length}<Kiemelt szoveg={t.ertek.alias ?? fajlNev(t.ertek.ut)} kiemeles={t.kiemeles} />{:else}{t.ertek.alias ?? fajlNev(t.ertek.ut)}{/if}</span>
       <span class="ut">{t.ertek.alias ? fajlNev(t.ertek.ut) : mappa(t.ertek.ut)}</span>
+      {/if}
     {/snippet}
     {#snippet lablec()}
       {#if nevHiba}<span role="alert">{t('Adj meg érvényes jegyzetnevet vagy relatív mappát.')}</span>{/if}
       {#if aliasHiba}<span role="status">{t('Az aliasok nem érhetők el. Keress fájlnév alapján.')}</span>{/if}
-      {#if lekerdezes.trim()}
+      {#if lekerdezes.trim() && !horgony}
         <button type="button" class="letrehoz" disabled={!ujCel} onclick={() => letrehoz()}>{t('Új jegyzet: {nev}', { nev: lekerdezes.trim() })} <Billentyu akkord="Shift+Enter" /></button>
       {/if}
+      {#if horgony}<span><kbd>⇥</kbd> {t('kiegészítés')}</span>{:else if !lekerdezes.trim()}<span>{t('Jegyzet#fejezet · Jegyzet^blokk')}</span>{/if}
       <span><kbd>↑↓</kbd> {t('választás')}</span>
       <span><kbd>↩</kbd> {t('megnyitás')}</span>
       <span><Billentyu akkord="Mod+Enter" /> {t('új fülben')}</span>
@@ -145,6 +226,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .jel {
+    margin-right: var(--t-1);
+    color: var(--szoveg-halvany);
   }
 
   .ut {

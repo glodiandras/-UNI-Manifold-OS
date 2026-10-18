@@ -79,6 +79,8 @@
   --graf-jegyzet: var(--szoveg-masodlagos);
   --graf-canvas: var(--callout-cian);
   --graf-melleklet: var(--callout-narancs);
+  --graf-cimke: var(--callout-lila);
+  --graf-feloldatlan: var(--szoveg-halvany);
 
   /* ---- szerkesztő (C08): kód, kiemelés, callout ---- */
   --hatter-kod: light-dark(#f6f5f2, #252524);
@@ -140,7 +142,10 @@
 
   /* ---- tipográfia ---- */
   --betu-rendszer: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Helvetica Neue', sans-serif;
-  --betu-mono: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  --betu-mono-alap: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  /* a jegyzet szövege és a monospace helyek betűje: a Beállítások › Megjelenés felülírhatja (telepített család neve, tartalékkal) */
+  --betu-jegyzet: var(--betu-rendszer);
+  --betu-mono: var(--betu-mono-alap);
   --betu-torzs: 16px;
   --sor-torzs: 1.6;
   --betu-ui: 13px;

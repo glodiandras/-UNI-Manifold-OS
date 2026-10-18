@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
-from core import naplo, snapshot, vaultio
+from core import naplo, sablon, snapshot, vaultio
 from core.utvonalak import HttpError
 from tests import csak_darwin
 from tests.helpers import alg_core, ir, tmpdir
@@ -206,6 +206,180 @@ class CreateKulcsokTest(Alap):
         self.assertEqual(self.olvas("03 - Valami.md"), "# Valami\n")
         with self.assertRaises(vaultio.Invalid):
             self.vault.create({"mappa": "", "nev": "03 - Valami"})
+
+
+class SemlegesAlap(unittest.TestCase):
+    """A szállított semleges alapok (preset nélkül): angol nevek, `Daily/` mappa, semleges váz. 12-templates-04/08/09."""
+    FAJLOK: dict = {}
+
+    def setUp(self):
+        from tests.vaultgyar import alg_semleges
+        self._t = tmpdir()
+        self.addCleanup(self._t.cleanup)
+        self.cfg, self.root, self.v = alg_semleges(self._t.name)
+        for rp, t in self.FAJLOK.items():
+            ir(self.v, rp, t)
+        self.vault = vaultio.Vault(self.cfg)
+        self.ix, _ = index_indit(self.cfg)
+        self.addCleanup(self.ix.leallit)
+        self.app = SimpleNamespace(vault=self.vault, index=self.ix)
+
+    def olvas(self, rp):
+        return (self.v / rp).read_text(encoding="utf-8")
+
+    def naplo(self, **kulcsok):
+        self.cfg.data.setdefault("naplo", {}).update(kulcsok)
+
+
+class SemlegesVazTest(SemlegesAlap):
+    """12-templates-09: a beépített váz semleges, angol, a fejlesztő konvenciója nélkül."""
+
+    def test_az_alap_ut_es_a_semleges_vaz(self):
+        r = naplo.megnyit_vagy_letrehoz(self.app, "2026-10-02")
+        self.assertEqual((r["ut"], r["letrejott"], r["sablon_hiany"]), ("Daily/2026-10-02.md", True, None))
+        t = self.olvas("Daily/2026-10-02.md")
+        self.assertEqual(t, "# 2026-10-02\n\n\n")
+        self.assertEqual(r["kurzor"], len("# 2026-10-02\n\n"))
+        for tiltott in ("Tags", "Source", "Status", "NN", "Canvas", "Napló", "---"):
+            self.assertNotIn(tiltott, t)
+
+    def test_a_szallitott_konfig_nem_hordoz_fejleszto_vazat(self):
+        b = naplo.beallitasok(self.cfg)
+        self.assertEqual((b["sablon"], b["vaz"]), ("", "semleges"))
+        szoveg = (Path(naplo.__file__).parent.parent / "config" / "os.toml").read_text(encoding="utf-8")
+        self.assertNotIn("Napi jegyzet", szoveg)
+
+    def test_a_v2_vaz_csak_kifejezett_kerésre(self):
+        self.naplo(vaz="v2")
+        naplo.megnyit_vagy_letrehoz(self.app, "2026-10-02")
+        self.assertIn("\nStatus:\n", self.olvas("Daily/2026-10-02.md"))
+
+    def test_a_v2_preset_a_regi_vazat_es_nevet_hozza(self):
+        """A `v2-kompat` preset (a tesztgyökér alapja): sablonnév, váz és hónapnevek a fejlesztő konvenciója — beállításon át."""
+        t = tmpdir()
+        self.addCleanup(t.cleanup)
+        cfg = alg_core(t.name)[0]
+        b = naplo.beallitasok(cfg)
+        self.assertEqual((b["vaz"], b["sablon"]), ("v2", "Napi jegyzet"))
+        self.assertEqual(sablon.tartalmi_nyelv(cfg), "hu")
+
+
+class SablonUtTest(SemlegesAlap):
+    """12-templates-08: a napi sablon vault-relatív út (bárhol a vaultban), látható tartalékkal."""
+    FAJLOK = {"Templates/Daily.md": "# Daily {{date:dddd}}\n\n{{cursor}}",
+              "Elsewhere/Journal/Day.md": "Day {{title}}\n",
+              "_Template/Rövid.md": "Short {{title}}\n"}
+
+    def nyit(self):
+        return naplo.megnyit_vagy_letrehoz(self.app, "2026-10-02")
+
+    def test_utvonal_a_sablonmappan_kivul_is(self):
+        self.naplo(sablon="Elsewhere/Journal/Day.md")
+        r = self.nyit()
+        self.assertEqual(self.olvas(r["ut"]), "Day 2026-10-02\n")
+        self.assertIsNone(r["sablon_hiany"])
+
+    def test_az_md_kiterjesztes_elhagyhato(self):
+        self.naplo(sablon="Templates/Daily")
+        r = self.nyit()
+        self.assertEqual(self.olvas(r["ut"]), "# Daily Friday\n\n")                 # angol nap, alap nyelv
+        self.assertEqual(r["kurzor"], len("# Daily Friday\n\n"))
+
+    def test_puszta_nev_a_sablonmappaban_regi_rovidites(self):
+        self.naplo(sablon="Rövid")
+        self.assertEqual(self.olvas(self.nyit()["ut"]), "Short 2026-10-02\n")
+
+    def test_hianyzo_sablon_semleges_vaz_es_lathato_jelzes(self):
+        self.naplo(sablon="Templates/Nincs.md")
+        r = self.nyit()
+        self.assertEqual(self.olvas(r["ut"]), "# 2026-10-02\n\n\n")
+        self.assertEqual(r["sablon_hiany"], "Templates/Nincs.md")
+        self.naplo(sablon="Nincs ilyen")                                              # puszta név: a sablonmappa útja a jelzésben
+        r = naplo.megnyit_vagy_letrehoz(self.app, "2026-10-03")
+        self.assertEqual(r["sablon_hiany"], "_Template/Nincs ilyen.md")
+
+    def test_ervenytelen_sablon_ut_sem_dob_hibat(self):
+        for rossz in ("../kint.md", ".obsidian/app.json", "Templates/../../x.md", "/abszolut/x.md"):
+            self.naplo(sablon=rossz)
+            r = naplo.megnyit_vagy_letrehoz(self.app, "2026-10-04")
+            self.assertTrue(r["sablon_hiany"], rossz)
+            self.assertEqual(self.olvas(r["ut"]), "# 2026-10-04\n\n\n")
+            (self.v / r["ut"]).unlink()
+
+    def test_meglevo_jegyzetnel_nincs_jelzes(self):
+        self.naplo(sablon="Templates/Nincs.md")
+        self.nyit()
+        r = self.nyit()
+        self.assertEqual((r["letrejott"], r["sablon_hiany"]), (False, None))
+
+    def test_nem_szoveges_sablon_hianynak_szamit(self):
+        ir(self.v, "Templates/kep.png", b"\x89PNG", "wb")
+        self.naplo(sablon="Templates/kep.png")
+        self.assertEqual(self.nyit()["sablon_hiany"], "Templates/kep.png.md")
+
+
+class NapAzUtbolTest(SemlegesAlap):
+    """12-templates-04: a napi jegyzet napja az útjából (a `napi_ut` fordítottja)."""
+
+    def test_korbejaras_tobb_formatummal(self):
+        from datetime import date
+        for fmt in ("[Daily]/YYYY-MM-DD", "YYYY-MM-DD", "YYYY/MMMM/YYYY-MMM-DD", "[Journal]/gggg/[W]ww/dddd",
+                    "[Dnevnik]/DD.MM.YYYY", "gggg-[W]ww-E"):
+            self.naplo(ut=fmt)
+            for nap in (date(2026, 1, 1), date(2026, 10, 17), date(2026, 12, 31), date(2024, 2, 29)):
+                ut = naplo.napi_ut(self.cfg, nap)
+                # (a hét-év formátumoknál a decemberi/januári határnap az év ±1-ében is megtalálható)
+                self.assertEqual(naplo.nap_az_utbol(self.cfg, ut), nap, f"{fmt} → {ut}")
+
+    def test_nem_napi_jegyzet_none(self):
+        self.assertIsNone(naplo.nap_az_utbol(self.cfg, "Welcome.md"))
+        self.assertIsNone(naplo.nap_az_utbol(self.cfg, "Daily/valami.md"))
+        self.assertIsNone(naplo.nap_az_utbol(self.cfg, "../Daily/2026-10-01.md"))
+        self.assertIsNone(naplo.nap_az_utbol(self.cfg, ""))
+        self.assertIsNone(naplo.nap_az_utbol(self.cfg, None))
+
+
+class SzomszedTest(SemlegesAlap):
+    """12-templates-04: előző / következő napi jegyzet."""
+    FAJLOK = {"Daily/2026-10-01.md": "egy\n", "Daily/2026-10-05.md": "öt\n", "Daily/2026-10-20.md": "húsz\n"}
+
+    def test_a_legkozelebbi_letezo_jegyzet_a_hivatkozasi_naptol(self):
+        r = naplo.szomszed(self.app, "Daily/2026-10-05.md", None, "elozo")
+        self.assertEqual((r["ut"], r["datum"], r["letrejott"]), ("Daily/2026-10-01.md", "2026-10-01", False))
+        r = naplo.szomszed(self.app, "Daily/2026-10-05.md", None, "kovetkezo")
+        self.assertEqual((r["ut"], r["datum"], r["letrejott"]), ("Daily/2026-10-20.md", "2026-10-20", False))
+        self.assertFalse((self.v / "Daily/2026-10-06.md").exists())             # a hézag nem jön létre
+
+    def test_kifejezett_datum_a_hivatkozas(self):
+        r = naplo.szomszed(self.app, "Welcome.md", "2026-10-20", "elozo")
+        self.assertEqual(r["datum"], "2026-10-05")
+
+    def test_nem_napi_jegyzetrol_a_mai_naphoz_kepest(self):
+        from datetime import date, timedelta
+        ma = date.today()
+        ir(self.v, f"Daily/{(ma - timedelta(days=3)).isoformat()}.md", "x\n")
+        r = naplo.szomszed(self.app, "Welcome.md", None, "elozo")
+        self.assertEqual(r["datum"], (ma - timedelta(days=3)).isoformat())
+
+    def test_ha_nincs_letezo_a_szomszedos_naptari_nap_jon_letre(self):
+        r = naplo.szomszed(self.app, "Daily/2026-10-20.md", None, "kovetkezo")
+        self.assertEqual((r["ut"], r["letrejott"], r["datum"]), ("Daily/2026-10-21.md", True, "2026-10-21"))
+        self.assertEqual(self.olvas("Daily/2026-10-21.md"), "# 2026-10-21\n\n\n")
+        r = naplo.szomszed(self.app, "Daily/2026-10-01.md", None, "elozo")
+        self.assertEqual((r["ut"], r["letrejott"]), ("Daily/2026-09-30.md", True))
+
+    def test_az_ablakon_tul_nem_keres(self):
+        ir(self.v, "Daily/2025-01-01.md", "régi\n")
+        r = naplo.szomszed(self.app, "Daily/2026-10-01.md", None, "elozo")
+        self.assertEqual(r["datum"], "2026-09-30")                              # 2025-01-01 több mint SZOMSZED_ABLAK napra van
+
+    def test_hibas_irany_es_datum_400(self):
+        for irany in ("fel", None, 1):
+            with self.assertRaises(HttpError, msg=str(irany)) as e:
+                naplo.szomszed(self.app, None, None, irany)
+            self.assertEqual(e.exception.code, 400)
+        with self.assertRaises(HttpError):
+            naplo.szomszed(self.app, None, "tegnap", "elozo")
 
 
 if __name__ == "__main__":

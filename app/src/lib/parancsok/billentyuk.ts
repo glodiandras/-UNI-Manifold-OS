@@ -5,6 +5,10 @@
 // Kerüljük a magyar kiosztáson csak AltGr/Option-nel elérhető jeleket (\ [ ] { }).
 
 import { t } from '../i18n';
+// A natív menü akkordjai: a `config/billentyuk.json` GENERÁLT a shell menüjéből (`python -m core.billentyu_forras --iras`), a core
+// beállítás-író és az Obsidian-import ugyanezt olvassa — egy forrás, nem kézzel vezetett lista (13-palette-02).
+import tabla from '../../../../config/billentyuk.json';
+
 export interface Akkord {
   mod: boolean;
   ctrl: boolean;
@@ -123,4 +127,22 @@ export function szerkesztheto(cel: EventTarget | null): boolean {
     return !['button', 'checkbox', 'radio', 'range', 'submit', 'reset', 'color', 'file'].includes(cel.type);
   }
   return false;
+}
+
+/** A natív macOS-menü akkordjai (⌘C, ⌘V, ⌘Z, ⌘Q, …): a menü a billentyűt a webnézet előtt elviszi, ezért parancshoz nem rendelhetők.
+ *  Kulcs: a regiszter kanonikus alakja; `ok` a menüpont angol felirata; `tulajdonos` az a regiszterparancs, amelyet maga a menüpont
+ *  indít (az egyetlen, amely megtarthatja az akkordot). Forrás: `shell/Sources/AppController.swift` (lásd fent). */
+export const RESERVED_CHORDS: Readonly<Record<string, { ok: string; tulajdonos?: string }>> = Object.freeze(
+  Object.fromEntries(
+    (tabla.natav as { akkord: string; cim: string; tulajdonos?: string }[]).map((e) => [
+      e.akkord,
+      e.tulajdonos ? { ok: e.cim, tulajdonos: e.tulajdonos } : { ok: e.cim },
+    ]),
+  ),
+);
+
+/** Fenntartott-e az akkord a megadott parancs számára (igen, ha a natív menü birtokolja, és nem ő a tulajdonosa). */
+export function fenntartott(kanonikusAkkord: string, parancsId?: string): boolean {
+  const r = RESERVED_CHORDS[kanonikusAkkord];
+  return !!r && (r.tulajdonos === undefined || r.tulajdonos !== parancsId);
 }

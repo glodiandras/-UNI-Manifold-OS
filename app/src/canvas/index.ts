@@ -29,13 +29,21 @@ const PARANCSOK: [CanvasParancs, string, boolean][] = [
   ['racs', tk('Canvas: rácsra igazítás be/ki'), true],
   ['visszavon', tk('Canvas: visszavonás'), true],
   ['ujra', tk('Canvas: újra'), true],
+  ['masol', tk('Canvas: copy the selection'), false],
+  ['kivag', tk('Canvas: cut the selection'), true],
+  ['beillesztes', tk('Canvas: paste'), true],
+  ['kijeloles-mutat', tk('Canvas: zoom to selection'), false],
+  ['objektum-igazitas', tk('Canvas: snap to other cards on/off'), false],
+  ['jegyzette', tk('Canvas: convert the text card to a note'), true],
+  ['alcel', tk('Canvas: choose heading, block, page or view of the card'), true],
+  ['helyi-menu', tk('Canvas: open the context menu'), false],
 ];
 
-// i18n-ignore: a vaultba írt fájlnév (azonosító), nem felületi szöveg
-export const UJ_NEV = 'Névtelen canvas';
+// i18n-ignore: a vaultba írt fájlnév (azonosító), nem felületi szöveg; semleges angol alapérték (09-canvas-14)
+export const UJ_NEV = 'Untitled';
 
 /** Új, üres canvas (`{}`, az Obsidian alakja) az aktív fájl mappájában (különben a gyökérben), a következő szabad
- *  „Névtelen canvas N” néven; utána megnyílik. Meglévőt nem ír felül (a core `POST /api/vault/uj` szabálya). */
+ *  „Untitled N” néven; utána megnyílik. Meglévőt nem ír felül (a core `POST /api/vault/uj` szabálya). */
 export async function ujCanvas(felulet: Felulet, fajlok: VaultFajlok): Promise<string | null> {
   const akt = felulet.munkaterulet.aktivFul?.ut ?? null;
   const hely = akt ? mappa(akt) : '';
@@ -48,7 +56,7 @@ export async function ujCanvas(felulet: Felulet, fajlok: VaultFajlok): Promise<s
       felulet.munkaterulet.megnyit(d.ut, akt ? 'ujful' : 'aktiv');
       return d.ut;
     } catch (e) {
-      if (e instanceof ApiHiba && e.statusz === 400 && /már van/.test(e.message)) continue;
+      if (e instanceof ApiHiba && e.statusz === 400 && (e.kod === 'vault.van_ilyen_fajl' || /már van/.test(e.message))) continue;
       ertesitesek.ertesit({ szint: 'hiba', cim: t('Az új canvas nem jött létre'), szoveg: e instanceof Error ? e.message : String(e) });
       return null;
     }

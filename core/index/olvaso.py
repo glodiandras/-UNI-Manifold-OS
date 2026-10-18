@@ -31,7 +31,7 @@ from pathlib import Path
 
 from .. import atirat, mediatipus
 from ..vaultio import Invalid, NotFound
-from . import elemzo, kereses, linkek, tar
+from . import elemzo, kereses, kizaras, linkek, tar
 from .feloldas import nfc
 from ..hibakod import kodol
 
@@ -89,7 +89,7 @@ class IndexOlvaso:
         self.generacio = 0              # minden írás (új/változott/törölt fájl, stat-változás, típusváltás) után nő (C12)
         self.szerkezet_generacio = 0    # csak a gráfot / graf-metát érintő változásra nő (C33, T070)
         self._valtozasok: collections.deque = collections.deque(maxlen=VALTOZAS_NAPLO)
-        self._gyorsitotar: dict[str, tuple[int, bytes, str]] = {}
+        self._gyorsitotar: dict[str, tuple[tuple, bytes, str]] = {}
         self._gyorsitotar_zar = threading.Lock()
 
     # ---------------------------------------------------------------- generációk
@@ -125,7 +125,7 @@ class IndexOlvaso:
         """Egy JSON-válasz (bájtok) és az ETag-je a szerkezeti generáció szerint gyorsítótárazva: a tartalmi mentés után a
         gráf nem épül újra, és ha a tartalma változatlan, az ETag is az (a felület 304-et kap, nem épít újra)."""
         with self._gen_zar:
-            g = self.szerkezet_generacio
+            g = (self.szerkezet_generacio, kizaras.jel(self.cfg))        # a kizárási lista is érvényteleníti (14-appearance-06)
         t = self._gyorsitotar.get(kulcs)
         if t is not None and t[0] == g:
             return t[1], t[2]
@@ -200,12 +200,24 @@ class IndexOlvaso:
                            "kinyero": k is not None, "hiba": k.hiba if k is not None else None}
         return a
 
+    def kizaras_valtozott(self) -> None:
+        """A kizárási lista (14-appearance-06) változott: a fa, a gráf, a kereső és a gyorsváltó újratölt. Az index tartalma
+        nem változik; a gráf gyorsítótára a lista jele szerint magától érvénytelen."""
+        pub = getattr(self, "publish", None)
+        if pub is not None:
+            pub({"tipus": "index", **self.allapot()})
+
     def fa(self) -> dict:
+        kiz = kizaras.betolt(self.cfg)
         with self.olvaso(nehez=True) as c:
             mappak = [r[0] for r in c.execute("SELECT ut FROM mappa WHERE torolve IS NULL ORDER BY ut")]
             fajlok = [{"ut": r[0], "tipus": r[1], "meret": r[2], "mtime": r[3] / 1e9 if r[3] else None,
                        "ctime": r[4] / 1e9 if r[4] else None}     # F11: valódi születési idő, vagy None (sosem mtime)
                       for r in c.execute("SELECT ut, tipus, meret, mtime_ns, ctime_ns FROM fajl WHERE torolve IS NULL ORDER BY ut")]
+        if kiz:         # a kizárt fájl a fában marad (halványan); a többi nézet a jelzőből szűr
+            for f in fajlok:
+                if kiz.kizart(f["ut"]):
+                    f["kizart"] = True
         return {"mappak": mappak, "fajlok": fajlok, "kesz": self.allapot_d["kesz"]}
 
     @staticmethod
@@ -284,6 +296,7 @@ class IndexOlvaso:
         kis-nagybetűtől függetlenül, ékezetre érzékenyen; link, kód és frontmatter nélkül."""
         rp = self._ut(rp)
         limit = limit or self.max_talalat
+        kiz = kizaras.betolt(self.cfg)
         with self.olvaso(nehez=True) as c:
             f = self._sor(c, rp)
             nevek = [f["nev"].rsplit(".", 1)[0] if f["tipus"] in ("md", "canvas", "base") else f["nev"]]
@@ -296,7 +309,7 @@ class IndexOlvaso:
                     continue
                 for r in c.execute("SELECT f.id, f.ut FROM fts JOIN fajl f ON f.id = fts.rowid "
                                    "WHERE fts.tartalom MATCH ? AND f.torolve IS NULL AND f.tipus = 'md'", (q,)):
-                    if r[1] != rp:
+                    if r[1] != rp and not kiz.kizart(r[1]):          # a kizárt jegyzet nem javasol említést (14-appearance-06)
                         jeloltek[r[0]] = r[1]
             mintak = [re.compile(r"(?<!\w)" + re.escape(n) + r"(?!\w)", re.I) for n in nevek]
             out = []
@@ -403,8 +416,9 @@ class IndexOlvaso:
             szoveg = self._tartalom(c, f["id"])
         sorok = szoveg.split("\n")
         csoport: dict[str, list[dict]] = {}
+        kiz = kizaras.betolt(self.cfg)
         for e in motor.keres(rp, szoveg, limit)["emlitesek"]:
-            if e["tobbertelmu"] or not e["cel"]:
+            if e["tobbertelmu"] or not e["cel"] or kiz.kizart(e["cel"]):
                 continue
             sor = sorok[e["sor"] - 1] if 0 < e["sor"] <= len(sorok) else ""
             csoport.setdefault(e["cel"], []).append({"sor": e["sor"], "oszlop": e["oszlop"], "hossz": e["veg"] - e["kezd"],
@@ -413,10 +427,13 @@ class IndexOlvaso:
 
     def aliasok(self) -> dict:
         """Az aliasos fájlok `aliases`-ai: `{ut: [alias]}`."""
+        kiz = kizaras.betolt(self.cfg)
         with self.olvaso() as c:
             ki = {}
             for ut, a in c.execute("SELECT ut, aliasok FROM fajl WHERE torolve IS NULL AND aliasok IS NOT NULL "
                                    "AND aliasok != '[]' ORDER BY ut"):
+                if kiz.kizart(ut):
+                    continue
                 lista = [x for x in json.loads(a) if isinstance(x, str) and x.strip()]
                 if lista:
                     ki[ut] = lista
@@ -601,7 +618,7 @@ class IndexOlvaso:
 
     def bazis_sorok(self, utak=None) -> tuple[int, list[tuple]]:
         """Minden élő fájl a Bases számára: (generáció, [(id, ut, lemez_ut, tipus, meret, mtime_ns, tulajdonsagok,
-        cimkek, linkek, aliasok)]) útrendben, **egy olvasó-tranzakcióban**. A generáció az olvasás előtt készült:
+        cimkek, linkek, aliasok, ctime_ns)]) útrendben (a `ctime_ns` a valódi születési idő vagy `None`, F11), **egy olvasó-tranzakcióban**. A generáció az olvasás előtt készült:
         ha közben írás történt, a következő hívás újra olvas. A `tulajdonsagok` [(kulcs, típus, JSON-érték)] a
         frontmatter sorrendjében; a `cimkek` a címkék `#` nélkül (frontmatter, majd szöveg); a `linkek`
         [{cel_nyers, alcel, alias, beagyazas, cel}]. `utak`: csak ezek a (NFC) utak (a `Tabla` inkrementális frissítése,
@@ -610,7 +627,7 @@ class IndexOlvaso:
         gen = self.generacio
         with self.olvaso(nehez=True) as c:
             if utak is None:
-                fajlok = c.execute("SELECT id, ut, lemez_ut, tipus, meret, mtime_ns, aliasok FROM fajl "
+                fajlok = c.execute("SELECT id, ut, lemez_ut, tipus, meret, mtime_ns, aliasok, ctime_ns FROM fajl "
                                    "WHERE torolve IS NULL ORDER BY ut").fetchall()
                 szuro, idk = "", []
             else:
@@ -618,7 +635,7 @@ class IndexOlvaso:
                 fajlok = []
                 for i in range(0, len(lista), 500):
                     resz = lista[i:i + 500]
-                    fajlok += c.execute("SELECT id, ut, lemez_ut, tipus, meret, mtime_ns, aliasok FROM fajl WHERE torolve IS "
+                    fajlok += c.execute("SELECT id, ut, lemez_ut, tipus, meret, mtime_ns, aliasok, ctime_ns FROM fajl WHERE torolve IS "
                                         f"NULL AND ut IN ({','.join('?' * len(resz))})", resz).fetchall()
                 fajlok.sort(key=lambda r: r["ut"])
                 idk = [r["id"] for r in fajlok]
@@ -640,7 +657,7 @@ class IndexOlvaso:
                 lnk[fid].append({"cel_nyers": cel_nyers, "alcel": alcel or None, "alias": alias or None,
                                  "beagyazas": bool(beag), "cel": cel})
         return gen, [(r["id"], r["ut"], r["lemez_ut"], r["tipus"], r["meret"], r["mtime_ns"], tul.get(r["id"], []),
-                      cim.get(r["id"], []), lnk.get(r["id"], []), json.loads(r["aliasok"] or "[]")) for r in fajlok]
+                      cim.get(r["id"], []), lnk.get(r["id"], []), json.loads(r["aliasok"] or "[]"), r["ctime_ns"]) for r in fajlok]
 
     def felold_egy(self, cel: str, forras: str) -> str | None:
         """Egy link-cél feloldása a `forras` fájlból (a feloldó zára alatt): a Bases-kifejezések `link()`-je és a
@@ -671,7 +688,8 @@ class IndexOlvaso:
 
     def kereses(self, q: str, limit: int | None = None, kornyezet: int = 0) -> dict:
         with self.olvaso() as c:
-            v = kereses.keres(c, q, min(int(limit or self.max_talalat), 1000), self.regex_idokorlat, kornyezet)
+            v = kereses.keres(c, q, min(int(limit or self.max_talalat), 1000), self.regex_idokorlat, kornyezet,
+                              kizaras.betolt(self.cfg))
         return self.media_kiegeszit(v)
 
     def media_kiegeszit(self, valasz: dict) -> dict:
@@ -694,22 +712,27 @@ class IndexOlvaso:
 
     def graf(self) -> dict:
         """A gráf a legacy `obsidian_graf` alakjában, az indexből (egy olvasó-tranzakcióban, a nehéz olvasók zára alatt)."""
+        kiz = kizaras.betolt(self.cfg)
         with self.olvaso(nehez=True) as c:
-            files = [r[0] for r in c.execute("SELECT ut FROM fajl WHERE torolve IS NULL ORDER BY lemez_ut")]
+            files = [r[0] for r in c.execute("SELECT ut FROM fajl WHERE torolve IS NULL ORDER BY lemez_ut") if not kiz.kizart(r[0])]
             out: dict[str, set] = collections.defaultdict(set)
             unresolved: collections.Counter = collections.Counter()
             tobbertelmu: collections.Counter = collections.Counter()
             for forras, cel, nyers, alap, tobb in c.execute(
                     "SELECT f.ut, l.cel, l.cel_nyers, l.alap, l.tobbertelmu FROM link l "
                     "JOIN fajl f ON f.id = l.forras_id WHERE f.torolve IS NULL"):
+                if kiz.kizart(forras):
+                    continue                    # a kizárt jegyzet linkjei nem rajzolódnak (a fájl és a linkjei az indexben maradnak)
                 if tobb:
                     tobbertelmu[alap] += 1
                 if cel:
-                    out[forras].add(cel)
+                    if not kiz.kizart(cel):
+                        out[forras].add(cel)
                 elif (nyers or "").strip():
                     unresolved[nfc(nyers.strip())] += 1
             canvas_hiba = [tuple(r) for r in c.execute(
-                "SELECT ut, canvas_hiba FROM fajl WHERE torolve IS NULL AND canvas_hiba IS NOT NULL ORDER BY lemez_ut")]
+                "SELECT ut, canvas_hiba FROM fajl WHERE torolve IS NULL AND canvas_hiba IS NOT NULL ORDER BY lemez_ut")
+                if not kiz.kizart(r[0])]
         return {"files": files, "out": out, "unresolved": unresolved, "tobbertelmu": tobbertelmu,
                 "canvas_hiba": canvas_hiba}
 

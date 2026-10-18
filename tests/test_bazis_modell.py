@@ -94,15 +94,15 @@ class BetoltTest(unittest.TestCase):
         for sz in ("", "  \n", "{}\n", "views: []\n", "views:\n"):
             b, hibak = betolt(sz)
             self.assertEqual(hibak, [], sz)
-            self.assertEqual([(n.tipus, n.nev) for n in b.nezetek], [("table", "Táblázat")], sz)
+            self.assertEqual([(n.tipus, n.nev) for n in b.nezetek], [("table", "Table")], sz)
 
     def test_ismeretlen_nezettipus_tablazat_figyelmeztetessel(self):
         b, hibak = betolt("views:\n  - type: map\n    name: Térkép\n  - type: list\n  - type: table\n")
         self.assertEqual(hibak, [])
         self.assertEqual([(n.tipus, n.eredeti_tipus, n.ismert) for n in b.nezetek],
-                         [("table", "map", False), ("table", "list", False), ("table", "table", True)])
-        self.assertEqual(hibahelyek(b.figyelmeztetesek), ["views[0]", "views[1]"])
-        self.assertEqual(b.nezetek[1].nev, "Nézet 2")
+                         [("table", "map", False), ("list", "list", True), ("table", "table", True)])
+        self.assertEqual(hibahelyek(b.figyelmeztetesek), ["views[0]"])
+        self.assertEqual(b.nezetek[1].nev, "View 2")                       # az alapnév angol (10-bases-01)
 
     def test_kanban_es_board_alias(self):
         b, _ = betolt("views:\n  - type: kanban\n  - type: board\n    name: B\n")
@@ -260,7 +260,7 @@ class ModositTest(unittest.TestCase):
         sz = BOOKS + "    jovobeli: {a: [1, 2]}\n"
         sz = sz.replace("{a: [1, 2]}", "\n      a:\n        - 1\n        - 2")
         uj, v = self.mod(sz, fajta="nezet_beallit", nezet=0, kulcs="limit", ertek=5)
-        self.assertEqual(v, "nézet limit")
+        self.assertEqual(v, "view limit")
         n = yaml.safe_load(uj)["views"][0]
         self.assertEqual(list(n), ["type", "name", "filters", "imageFit", "cardSize", "jovobeli", "limit"])
         self.assertEqual(n["jovobeli"], {"a": [1, 2]})
@@ -297,7 +297,7 @@ class ModositTest(unittest.TestCase):
         uj, _ = self.mod(uj, fajta="nezet_uj", tipus="kanban")
         uj, _ = self.mod(uj, fajta="nezet_uj", tipus="cards", nev="Books")
         self.assertEqual([(n["type"], n["name"]) for n in yaml.safe_load(uj)["views"]],
-                         [("cards", "Books"), ("table", "Táblázat"), ("table", "Táblázat 2"), ("kanban", "Kanban"),
+                         [("cards", "Books"), ("table", "Table"), ("table", "Table 2"), ("kanban", "Kanban"),
                           ("cards", "Books 2")])
 
     def test_nezet_uj_ures_fajlban(self):
@@ -306,7 +306,7 @@ class ModositTest(unittest.TestCase):
 
     def test_ures_fajlon_masik_muvelet_az_alap_nezetet_is_beirja(self):
         uj, _ = self.mod("", fajta="nezet_beallit", nezet=0, kulcs="limit", ertek=3)
-        self.assertEqual(yaml.safe_load(uj)["views"], [{"type": "table", "name": "Táblázat", "limit": 3}])
+        self.assertEqual(yaml.safe_load(uj)["views"], [{"type": "table", "name": "Table", "limit": 3}])
 
     def test_nezet_torol_es_mozgat(self):
         sz = "views:\n  - name: A\n  - name: B\n  - name: C\n"
@@ -353,7 +353,7 @@ class ModositTest(unittest.TestCase):
         self.assertEqual(n["views"][0]["order"], ["file.name"])
         self.assertNotIn("columnSize", n["views"][0])
         self.assertNotIn("summaries", n["views"][0])
-        self.assertEqual(v, "képlet törlése")
+        self.assertEqual(v, "formula deleted")
 
     def test_keplet_hibas_nem_ir(self):
         for kif, hely in [("1 +", "formulas.x"), ("nincs_fn(1)", "formulas.x"), ("formula.x", "formulas.x")]:

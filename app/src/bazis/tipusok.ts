@@ -19,7 +19,7 @@ export type Ertek =
   | { t: 'html'; v: string }
   | { t: 'hiba'; u: string };
 
-export type NezetTipus = 'table' | 'cards' | 'kanban';
+export type NezetTipus = 'table' | 'cards' | 'list' | 'kanban';
 
 export interface Oszlop {
   /** `file.name`, `note.Rating` → `Rating`, `formula.x` */
@@ -30,6 +30,8 @@ export interface Oszlop {
   tipus: string;
   szerkesztheto: boolean;
   szelesseg: number | null;
+  /** igaz, ha a név a core angol alapneve (nem a felhasználó `displayName`-je): a felület az azonosítóból fordít (10-bases-01) */
+  alap_nev?: boolean;
 }
 
 export type Boritos = { t: 'ut'; ut: string } | { t: 'szin'; v: string } | { t: 'kulso'; url: string };
@@ -61,8 +63,38 @@ export interface Csoport {
 
 export interface BazisHiba {
   hely: string;
+  /** a core angol tartalék-mondata */
   uzenet: string;
+  /** a hibakód és a skalár paraméterei: a felület ezen át fordít (`hibak.ts`) */
+  kod?: string;
+  param?: Record<string, string | number | boolean | null>;
   db?: number;
+}
+
+/** Az új jegyzet előtöltése a nézet szűrőiből (10-bases-07; `core/bazis/elotoltes.py`). */
+export interface Elotoltes {
+  /** a jegyzet mappája, ha a szűrők egyértelműen megadják */
+  mappa: string | null;
+  tulajdonsagok: Array<{ kulcs: string; ertek: string | number | boolean; tipus: string }>;
+  cimkek: string[];
+  /** a kulcsok, amelyekre a szűrők ellentmondó értéket követelnek (nem töltődnek elő) */
+  nem_egyertelmu: string[];
+}
+
+/** Egy elrejtett csoport (a `groupOrder` nem sorolja fel): a sorai nem látszanak (10-bases-05). */
+export interface RejtettCsoport {
+  kulcs: Ertek;
+  cimke: string;
+  db: number;
+}
+
+/** A szerkesztő-segítség függvénylistájának egy eleme (10-bases-10; `fuggvenyek.fuggveny_lista`). */
+export interface Fuggveny {
+  nev: string;
+  /** `global` vagy a metódus tulajdonosa (`string`, `list`, `date`, `file`…) */
+  tipus: string;
+  min: number | null;
+  max: number | null;
 }
 
 export interface NezetLeiro {
@@ -97,6 +129,7 @@ export interface FajlAdat {
   /** az egyedi összesítők nevei */
   osszesitok: string[];
   elerheto: Elerheto[];
+  elotoltes?: Elotoltes;
 }
 
 export interface Valasz {
@@ -106,6 +139,8 @@ export interface Valasz {
   oszlopok: Oszlop[];
   sorok: Sor[];
   csoportok: Csoport[] | null;
+  /** a `groupOrder` által elrejtett csoportok (a sorai nincsenek a `sorok`-ban) */
+  rejtett_csoportok?: RejtettCsoport[];
   osszesitok: Record<string, Osszesito>;
   /** hiányzik, ha a fájl nem értelmezhető (`ok: false`) */
   fajl?: FajlAdat;

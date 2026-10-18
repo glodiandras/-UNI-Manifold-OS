@@ -23,7 +23,10 @@ UJ_UTAK = {"install", "install_run", "install_state", "install_logs", "workspace
 # Az F3 új szakaszai / levelei
 UJ_ELOTAGOK = ("_meta.", "elrendezes.", "telepites.", "pdf.nevek.",
                "kod.")       # F10: a többnyelvű kód-munkafelület új `[kod]` / `[kod.eszkozok]` szakasza (a `[cpp]` változatlan)
-UJ_LEVELEK = {"sema.alap", "sema.mod"}
+UJ_LEVELEK = {"sema.alap", "sema.mod",
+              # F11 / 12-templates: a napi jegyzet váza, a sablon-formátumok és a Note composer beállításai (semleges alapok)
+              "naplo.vaz", "beallitasok.fajlok.sablon_datum", "beallitasok.fajlok.sablon_ido", "beallitasok.fajlok.napi_sablon",
+              "beallitasok.fajlok.napi_inditaskor", "beallitasok.fajlok.kivonas_utana", "beallitasok.fajlok.kivonas_sablon"}
 # F5 public defaults are explicit additions; this gate still rejects any other
 # accidental key or change to the frozen F2-compatible configuration.
 F5_MODULOK = "hivatkozasok vazlat tulajdonsagok gyorsvalto kereses perjel cimkek sablonok napi canvas bazis graf pdf media kartya kviz osszefoglalas matek kod fuzet video kerdezz asszisztens naptar felkeszultseg tracker".split()
@@ -41,6 +44,18 @@ F5_LEVELEK = {**{f"modulok.{m}": True for m in F5_MODULOK},
               "beallitasok.adatvedelem.tracker": True, "beallitasok.adatvedelem.ertesitesek": True,
               "beallitasok.adatvedelem.naptar": False, "beallitasok.setup.kesz": False,
               "beallitasok.setup.elmeny": "egyeni", "beallitasok.fejleszto.mod": False}
+# F11 új alapértékek: minden levél neve, típusa és értéke külön ellenőrzött; további kulcsokra nincs prefix-kivétel.
+F11_LEVELEK = {
+    # 13-palette-05: konfigurálható előzménylapozás és keresési mélység (tests/test_elozmeny_f11.py).
+    "elozmeny.lap": 50, "elozmeny.lap_max": 200, "elozmeny.max_melyseg": 20000,
+    # 14-appearance-05: az automatikus párok meglévő viselkedése alapból megmarad.
+    "beallitasok.szerkeszto.auto_par_zarojel": True,
+    "beallitasok.szerkeszto.auto_par_idezojel": True,
+    "beallitasok.szerkeszto.auto_par_jeloles": True,
+    # 14-appearance-01/02: üres betűcsalád = rendszerbetű; 14-appearance-06: alapból nincs kizárt fájl.
+    "beallitasok.megjelenes.betu_szoveg": "", "beallitasok.megjelenes.betu_mono": "",
+    "beallitasok.fajlok.kizart": [],
+}
 # Tervezett változás (F3-DESIGN §2.4): a `.manifold/` a vault pillanatkép-tárolójának kizárásában
 MANIFOLD_KIZARAS = ("pillanat.vault.kizar", ".manifold/")
 # A `v2-kompat` preset F3 előtti értékei (a presetből jönnek, és csak a preset értékével egyezhetnek)
@@ -134,10 +149,15 @@ class KonfigEgyenertekTeszt(unittest.TestCase):
             self.assertEqual(most[k], _bejar(self.cfg, self._t.name, nyers), k)
             self.assertEqual(self.cfg.forras(*k.split(".")), "preset:v2-kompat", k)
         uj = set(most) - set(arany)
-        self.assertEqual({k for k in uj if not k.startswith(UJ_ELOTAGOK) and k not in UJ_LEVELEK and k not in F5_LEVELEK}, set(), "új kulcs a listán kívül")
+        self.assertEqual({k for k in uj if not k.startswith(UJ_ELOTAGOK) and k not in UJ_LEVELEK and k not in F5_LEVELEK and k not in F11_LEVELEK}, set(), "új kulcs a listán kívül")
         self.assertTrue(UJ_LEVELEK <= uj)
         self.assertTrue(F5_LEVELEK.keys() <= uj)
         self.assertEqual({k: most[k] for k in F5_LEVELEK}, F5_LEVELEK)
+        self.assertTrue(F11_LEVELEK.keys() <= uj)
+        for k, v in F11_LEVELEK.items():
+            with self.subTest(kulcs=k):
+                self.assertIs(type(most[k]), type(v))
+                self.assertEqual(most[k], v)
 
     def test_a_vaultot_es_a_presetet_a_telepitesi_reteg_adja(self):
         self.assertEqual(self.cfg.forras("utak", "vault"), "telepites")

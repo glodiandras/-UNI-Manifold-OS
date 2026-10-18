@@ -13,7 +13,9 @@ import time
 from datetime import datetime
 
 from . import fuggvenyek as fn
+from ..hibakod import angol_uzenet
 from .adat import Sor, Tabla
+from .elotoltes import elotoltes
 from .ertekek import (
     Datum, Fajl, FutasHiba, Hiba, Idotartam, Kep, Keret, Link, datum_ms, kimenet, kulcs, rendezo_kulcs, szovegge, _szam_e,
 )
@@ -26,9 +28,10 @@ ERTEK_KERET = 16 * 1024 * 1024        # T041: az egy lekérdezésben előállít
 FAJL_TIPUS = {"name": "text", "basename": "text", "path": "text", "folder": "text", "ext": "text", "size": "number",
               "ctime": "datetime", "mtime": "datetime", "tags": "tags", "links": "multitext", "embeds": "multitext",
               "backlinks": "multitext"}
-FAJL_NEV = {"name": "Fájlnév", "basename": "Név", "path": "Útvonal", "folder": "Mappa", "ext": "Kiterjesztés",
-            "size": "Méret", "ctime": "Létrehozva", "mtime": "Módosítva", "tags": "Címkék", "links": "Linkek",
-            "embeds": "Beágyazások", "backlinks": "Visszahivatkozások"}
+# A `file.*` oszlopok alapneve (angol tartalék); a felület az oszlop azonosítójából fordít (`alap_nev: true`, 10-bases-01).
+FAJL_NEV = {"name": "File name", "basename": "Name", "path": "Path", "folder": "Folder", "ext": "Extension",
+            "size": "Size", "ctime": "Created", "mtime": "Modified", "tags": "Tags", "links": "Links",
+            "embeds": "Embeds", "backlinks": "Backlinks"}
 _SZIN = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
 _KULSO = re.compile(r"^https?://", re.I)
 
@@ -99,7 +102,7 @@ def osszesit(nev: str, ertekek: list, kor: Kor, egyedi: dict):
         return sum(1 for x in ertekek if not _ures_e(x))
     if nev == "Unique":
         return len({kulcs(x) for x in ertekek if x is not None})
-    return Hiba(f"ismeretlen összesítő: {nev}")
+    return Hiba(angol_uzenet("bazis.futas.ismeretlen_osszesito", {"nev": nev}))
 
 
 # ================================================================ kép
@@ -133,6 +136,34 @@ def _kep(v, sor: Sor, tabla: Tabla):
     return {"t": "ut", "ut": ut} if cel is not None and cel.tipus == "kep" else None
 
 
+# ================================================================ csoportsorrend (groupOrder)
+
+def _csoport_egyezik(bejegyzes, ertek) -> bool:
+    """A `groupOrder` egy bejegyzése a csoport értékére illik-e: az értékek azonossága (`kulcs`), ennek híján a szöveges alak
+    (a YAML-dátum / szám és a csoport dátum / szám értéke közti különbség áthidalására)."""
+    if kulcs(bejegyzes) == kulcs(ertek):
+        return True
+    return bejegyzes is not None and not isinstance(bejegyzes, (list, dict)) and ertek is not None \
+        and not isinstance(ertek, (str, list, dict)) and szovegge(bejegyzes) == szovegge(ertek)
+
+
+def _csoport_sorrend(rendezett: list, sorrend):
+    """(látható csoportok, rejtett csoportok). `sorrend is None`: minden csoport, a `groupBy` sorrendjében. Egyébként a lista
+    szerint: a felsorolt csoport a megadott helyen áll (a sor nélküli is, üres csoportként), a fel nem sorolt rejtett."""
+    if sorrend is None:
+        return rendezett, []
+    maradt = list(rendezett)
+    latszik: list = []
+    for bejegyzes in sorrend:
+        talalt = next((e for e in maradt if _csoport_egyezik(bejegyzes, e[0])), None)
+        if talalt is not None:
+            maradt.remove(talalt)
+            latszik.append(talalt)
+        elif not any(_csoport_egyezik(bejegyzes, e[0]) for e in latszik):
+            latszik.append([bejegyzes, []])            # sor nélküli, de felsorolt csoport: üres csoportként látszik
+    return latszik, maradt
+
+
 # ================================================================ futtatás
 
 def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, most: Datum | None = None,
@@ -163,7 +194,7 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
             if glob_f(kor) and nezet_f(kor):
                 szurt.append((sor, kor))
         except SzuroHiba as e:
-            h = szuro_hibak.setdefault(e.hely, [e.uzenet, 0])
+            h = szuro_hibak.setdefault(e.hely, [e, 0])
             h[1] += 1
 
     # ---- értékek (soronként és oszloponként egyszer)
@@ -215,6 +246,7 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
     # ---- csoportosítás
     csoport = nezet.csoport()
     csoportok = None
+    rejtett_ki: list = []
     if csoport:
         azon, irany = csoport
         csopertek: dict = {}
@@ -226,7 +258,10 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
                 csopertek[k] = [v, []]
             csopertek[k][1].append((sor, kor))
         rendezett = sorted(csopertek.values(), key=lambda e: rendezo_kulcs(e[0]), reverse=irany == "DESC")
+        rendezett, rejtett = _csoport_sorrend(rendezett, nezet.csoport_sorrend())
         szurt = [sk for _, tagok in rendezett for sk in tagok]
+        rejtett_db = sum(len(tagok) for _, tagok in rejtett)
+        osszes -= rejtett_db
         csoportok_nyers = rendezett
 
     # ---- oszlopok
@@ -238,8 +273,9 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
             else tabla.tulajdonsag_tipus(nev)
         szel = nezet.nyers.get("columnSize")
         szel = szel.get(azon) if isinstance(szel, dict) else None
-        oszlopok.append({"id": azon, "nev": bazis.megjelenes(azon) or (FAJL_NEV.get(nev, nev) if ter == "file" else nev),
-                         "ter": ter, "tipus": tip, "szerkesztheto": ter == "note",
+        megj = bazis.megjelenes(azon)
+        oszlopok.append({"id": azon, "nev": megj or (FAJL_NEV.get(nev, nev) if ter == "file" else nev),
+                         "ter": ter, "tipus": tip, "szerkesztheto": ter == "note", "alap_nev": megj is None,
                          "szelesseg": szel if _szam_e(szel) else None})
 
     # ---- cellák
@@ -273,7 +309,7 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
 
     for nev in {n for n in ossz_beallitas.values() if isinstance(n, str)}:
         if nev not in OSSZESITOK and nev not in egyedi:
-            figyelm.append(hiba(f"views[{nezet.index}].summaries", f"ismeretlen összesítő: {nev}"))
+            figyelm.append(hiba(f"views[{nezet.index}].summaries", kod="bazis.api.ismeretlen_osszesito", param={"nev": nev}))
     osszesitok_ki = osszesitok(szurt) if ossz_beallitas else {}
     if csoport:
         csoportok, tol = [], 0
@@ -282,6 +318,7 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
                               "osszesitok": osszesitok(tagok) if ossz_beallitas else {},
                               "huzhato": tulajdonsag_id(csoport[0])[0] == "note"})
             tol += len(tagok)
+        rejtett_ki = [{"kulcs": kimenet(v), "cimke": szovegge(v), "db": len(tagok)} for v, tagok in rejtett]
 
     elerheto = [{"id": f"file.{k}", "nev": FAJL_NEV[k], "ter": "file", "tipus": FAJL_TIPUS[k]} for k in FAJL_NEV]
     elerheto += [{"id": k, "nev": k, "ter": "note", "tipus": t} for k, t in tabla.tulajdonsag_lista()]
@@ -294,9 +331,10 @@ def futtat(bazis: Bazis, tabla: Tabla, nezet: Nezet, ez_ut: str | None = None, m
         "fajl": {"szuro": szuro_szoveg(bazis.nyers.get("filters")),
                  "szuro_nezet": szuro_szoveg(nezet.nyers.get("filters")),
                  "kepletek": {str(k): str(v) for k, v in bazis.kepletek.items()},
-                 "osszesitok": [str(k) for k in bazis.osszesitok], "elerheto": elerheto},
-        "osszes": osszes, "levagva": levagva,
-        "hibak": [hiba(h, m, db=db) for h, (m, db) in szuro_hibak.items()],
+                 "osszesitok": [str(k) for k in bazis.osszesitok], "elerheto": elerheto,
+                 "elotoltes": elotoltes(bazis, nezet)},
+        "rejtett_csoportok": rejtett_ki, "osszes": osszes, "levagva": levagva,
+        "hibak": [hiba(h, kod=e.kod, param=e.param, db=db) for h, (e, db) in szuro_hibak.items()],
         "figyelmeztetesek": figyelm,
         "ido_ms": round((time.perf_counter() - t0) * 1000, 1), "generacio": tabla.generacio,
     }

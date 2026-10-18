@@ -33,17 +33,67 @@ export interface ElozmenyValtozat {
   elozo_ok: string | null;
 }
 
+/** Egy lap a jegyzet napjából (13-palette-05): a lapméretet a core konfigurációja adja (`[elozmeny] lap`, plafon: `lap_max`). */
+export interface ElozmenyLap {
+  ut: string;
+  bejegyzesek: ElozmenyBejegyzes[];
+  lap: number;
+  /** van régebbi bejegyzés */
+  tovabb: boolean;
+  /** a következő lap kurzora (`elotte`), ha van */
+  kovetkezo: string | null;
+}
+
+/** Egy törölt jegyzet (13-palette-04): a törlő commit és az, hogy az eredeti helyen áll-e most valami. */
+export interface ToroltBejegyzes {
+  ut: string;
+  sha: string;
+  datum: string;
+  targy: string;
+  tipus: string;
+  cimke: string;
+  ut_van: boolean;
+}
+
+export interface VisszahozasEredmeny {
+  ok: boolean;
+  ut: string;
+  eredeti_ut: string;
+  sha: string | null;
+  visszaallitott: string;
+  uj_nev: boolean;
+}
+
 const q = encodeURIComponent;
 
+/** Az előzmény a "írható szöveges" típusoknak van (a core `vaultio.IRHATO` jegyzet-/nézettípusai): `.md`, `.base`, `.canvas`
+ *  (13-palette-06). A napló és a revert útvonal-független; a szerkesztők a visszaállítás után a `Dokumentum.kulsoValtozas()`-szal töltenek újra. */
+export const ELOZMENY_KITERJESZTESEK = ['.md', '.base', '.canvas'] as const;
+
+export function elozmenyesUt(ut: string | null | undefined): boolean {
+  const kis = (ut ?? '').toLowerCase();
+  return ELOZMENY_KITERJESZTESEK.some((k) => kis.endsWith(k));
+}
+
 export const elozmenyApi = {
-  naplo: (ut: string, n = 50) =>
-    kerdez<{ ut: string; bejegyzesek: ElozmenyBejegyzes[] }>(`/api/vault/elozmeny?ut=${q(ut)}&n=${n}`, { idokorlat: 15000 }),
+  naplo: (ut: string, elotte?: string | null) =>
+    kerdez<ElozmenyLap>(`/api/vault/elozmeny?ut=${q(ut)}${elotte ? `&elotte=${q(elotte)}` : ''}`, { idokorlat: 15000 }),
   valtozat: (ut: string, sha: string) =>
     kerdez<ElozmenyValtozat>(`/api/vault/elozmeny/valtozat?ut=${q(ut)}&sha=${q(sha)}`, { idokorlat: 15000 }),
   visszaallit: (ut: string, sha: string) =>
     kerdez<{ ok: boolean; ut: string; sha: string; visszaallitott: string }>('/api/vault/elozmeny/visszaallit', {
       metodus: 'POST',
       torzs: { ut, sha },
+      idokorlat: 60000,
+    }),
+  torolt: (kerdes: string, jel?: AbortSignal) =>
+    kerdez<{ torolt: ToroltBejegyzes[]; lap: number; lap_max: number }>(`/api/vault/elozmeny/torolt?q=${q(kerdes)}`, { idokorlat: 20000, jel }),
+  toroltValtozat: (ut: string, sha: string) =>
+    kerdez<ElozmenyValtozat>(`/api/vault/elozmeny/torolt/valtozat?ut=${q(ut)}&sha=${q(sha)}`, { idokorlat: 15000 }),
+  visszahoz: (ut: string, sha: string, mod: 'eredeti' | 'uj', nev?: string) =>
+    kerdez<VisszahozasEredmeny>('/api/vault/elozmeny/visszahoz', {
+      metodus: 'POST',
+      torzs: { ut, sha, mod, ...(nev ? { nev } : {}) },
       idokorlat: 60000,
     }),
 };

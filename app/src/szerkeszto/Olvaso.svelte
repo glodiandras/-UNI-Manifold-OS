@@ -258,5 +258,6 @@
 
   .olvaso {
     padding: var(--t-5) var(--t-6) 30vh;
+    font-family: var(--betu-jegyzet);
   }
 </style>

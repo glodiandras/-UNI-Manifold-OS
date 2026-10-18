@@ -25,6 +25,7 @@ import { fajlIkon } from '../../lib/ikon/fajlIkon';
 import { FuzzyIndex } from '../../lib/kereses/fuzzy';
 import { fajlNev, mappa, type FajlInfo } from '../../lib/vault/fajlok.svelte';
 import { linkek, type LinkForma, type VaultFejezet } from '../../lib/vault/linkek.svelte';
+import { autoParKapcsolok } from '../autoParok';
 import { jegyzetUtja } from '../elo/jegyzet';
 import { OBSIDIAN_BOVITESEK } from '../markdown/elemzo';
 import { Menu, type MenuElem } from '../notion/menu';
@@ -669,8 +670,9 @@ const gepeles = EditorView.inputHandler.of((view, from, to, text) => {
   if (!linkNyithato(s, from)) return false;
   const beagyazas = s.sliceDoc(from - 2, from - 1) === '!';
   const zaroVan = s.sliceDoc(from, from + 2) === ']]';
+  const parosit = s.facet(autoParKapcsolok).zarojel;        // kikapcsolt auto-pair: a menü megnyílik, de a záró `]]`-t nem írjuk be
   view.dispatch({
-    changes: { from, to, insert: zaroVan ? '[' : '[]]' },
+    changes: { from, to, insert: zaroVan || !parosit ? '[' : '[]]' },
     selection: { anchor: from + 1 },
     effects: nyit.of({ from: from + 1, beagyazas }),
     userEvent: 'input.type',

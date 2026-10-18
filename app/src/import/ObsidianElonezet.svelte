@@ -12,6 +12,7 @@
     NEM_ATVETT_TARTALEK, PLUGIN_ALLAPOT, UTKOZES_OKA, UTKOZES_TARTALEK, BEALLITAS_MOD, beallitasCim, ertekSzoveg, kodSzoveg, szam,
   } from '../lib/import/megjelenites';
   import type { ObsidianElonezet } from '../lib/import/tipusok';
+  import Billentyu from '../lib/ui/Billentyu.svelte';
 
   let { e }: { e: ObsidianElonezet } = $props();
 
@@ -129,7 +130,7 @@
       {#if e.obsidian.nem_atvett.length}
         <h5>{t('import.nematvett.cim')}</h5>
         <ul class="fajlok" data-lista="nem-atvett">
-          {#each e.obsidian.nem_atvett as n, i (i)}<li><span class="ut">{n.forras ?? n.kulcs}</span> <span class="halvany">{kodSzoveg(NEM_ATVETT_OKA, n.ok, NEM_ATVETT_TARTALEK)}</span></li>{/each}
+          {#each e.obsidian.nem_atvett as n, i (i)}<li><span class="ut">{n.forras ?? n.kulcs}</span> <span class="halvany">{kodSzoveg(NEM_ATVETT_OKA, n.ok, NEM_ATVETT_TARTALEK)}{#if n.akkord} · <Billentyu akkord={n.akkord} />{/if}{#if n.masik} · {n.masik}{/if}</span></li>{/each}
         </ul>
       {/if}
     </section>

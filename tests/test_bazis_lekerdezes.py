@@ -3,6 +3,8 @@
 import os
 import time
 import unittest
+from datetime import datetime
+from unittest import mock
 
 from core.bazis.adat import Tar
 from core.bazis.lekerdezes import futtat
@@ -189,7 +191,7 @@ class CsoportTest(_Alap):
         v = self.fut(sz)
         self.assertEqual(v["osszesitok"]["Rating"], {"nev": "tobb", "ertek": 2})
         self.assertEqual(v["osszesitok"]["Pages"]["ertek"]["t"], "hiba")
-        self.assertTrue(any("ismeretlen összesítő: Nincs" in f["uzenet"] for f in v["figyelmeztetesek"]))
+        self.assertTrue(any("Unknown summary: Nincs" in f["uzenet"] and f["kod"] == "bazis.api.ismeretlen_osszesito" for f in v["figyelmeztetesek"]))
         self.assertEqual([h["hely"] for h in v["betolt_hibak"]], ["summaries.hibas"])
 
 
@@ -201,10 +203,11 @@ class OszlopTest(_Alap):
               "    columnSize:\n      file.name: 250\n      Rating: 90\n")
         v = self.fut(sz)
         self.assertEqual([(o["id"], o["nev"], o["ter"], o["tipus"], o["szerkesztheto"], o["szelesseg"]) for o in v["oszlopok"]], [
-            ("file.name", "Fájlnév", "file", "text", False, 250), ("file.mtime", "Módosítva", "file", "datetime", False, None),
+            ("file.name", "File name", "file", "text", False, 250), ("file.mtime", "Modified", "file", "datetime", False, None),
             ("Rating", "Értékelés", "note", "number", True, 90), ("Started", "Started", "note", "date", True, None),
             ("Tags", "Tags", "note", "tags", True, None), ("Status", "Status", "note", "text", True, None),
-            ("formula.dupla", "Dupla", "formula", "formula", False, None), ("file.tags", "Címkék", "file", "tags", False, None)])
+            ("formula.dupla", "Dupla", "formula", "formula", False, None), ("file.tags", "Tags", "file", "tags", False, None)])
+        self.assertEqual([o["alap_nev"] for o in v["oszlopok"]], [True, True, False, True, True, True, False, True])
         c = v["sorok"][0]["cellak"]
         self.assertEqual(c[0], {"t": "link", "cel": "X03 - Books/Atomic Habits.md", "ut": "X03 - Books/Atomic Habits.md", "nev": "Atomic Habits"})
         self.assertEqual((c[2], c[3], c[4], c[5], c[6]), (4.5, {"t": "datum", "iso": "2026-09-01", "ido": False},
@@ -289,9 +292,22 @@ class GeneracioTest(_Alap):
         self.assertGreater(self.ix.generacio, g)
         self.assertEqual(self.tar.tabla().tulajdonsag_tipus("Rating"), "text")
 
-    def test_ctime_lusta_es_a_fajlrendszer_szuletesi_ideje(self):
-        v = self.fut('views:\n  - type: table\n    order: [file.ctime]\n    filters: file.name == "doc.pdf"\n')
-        self.assertTrue(v["sorok"][0]["cellak"][0]["iso"].startswith(time.strftime("%Y")))
+    def test_ctime_az_indexbol_nem_a_fajlrendszerbol_es_nem_mtime(self):
+        """10-bases-13: a `file.ctime` az index `ctime_ns` oszlopa; lekérdezéskor nincs `os.stat`, és ismeretlenre `null`."""
+        SZ = 'views:\n  - type: table\n    order: [file.ctime]\n    filters: file.name == "doc.pdf"\n'
+        with self.ix.olvaso() as c:
+            ns = c.execute("SELECT ctime_ns FROM fajl WHERE ut = 'doc.pdf'").fetchone()[0]
+        with mock.patch("os.stat", side_effect=AssertionError("a Bases nem stat-ol soronként")):
+            v = self.fut(SZ)
+        if ns:
+            self.assertEqual(v["sorok"][0]["cellak"][0]["iso"], datetime.fromtimestamp(ns / 1e9).isoformat(timespec="seconds"))
+        else:
+            self.assertIsNone(v["sorok"][0]["cellak"][0])
+        # ismeretlen születési idő: üres érték, soha nem az mtime
+        sor = self.tar.tabla().ut_szerint["doc.pdf"]
+        sor.ctime_ns = None
+        v = self.fut(SZ)
+        self.assertIsNone(v["sorok"][0]["cellak"][0])
 
 
 class ForrasTest(_Alap):
@@ -304,7 +320,7 @@ class ForrasTest(_Alap):
         gen, sorok = self.ix.bazis_sorok()
         self.assertEqual(gen, self.ix.generacio)
         r = {s[1]: s for s in sorok}["X03 - Books/Atomic Habits.md"]
-        _, ut, lemez, tip, meret, mtime, tul, cim, lnk, alias = r
+        _, ut, lemez, tip, meret, mtime, tul, cim, lnk, alias, ctime = r
         self.assertEqual((tip, [t[0] for t in tul][:3], cim), ("md", ["Tags", "Status", "Rating"], ["Book"]))
         self.assertEqual({L["cel_nyers"]: L["cel"] for L in lnk}, {"James Clear": "People/James Clear.md", "atomic.jpg": "kep/atomic.jpg"})
 

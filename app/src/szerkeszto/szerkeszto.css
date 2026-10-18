@@ -13,8 +13,13 @@
   height: 100%;
   background: var(--hatter);
   color: var(--szoveg);
-  font-family: var(--betu-rendszer);
+  font-family: var(--betu-jegyzet);
   font-size: var(--betu-torzs);
+}
+
+/* Forrás mód: a monospace betű (Beállítások › Megjelenés › Monospace font), mint az Obsidianban (14-appearance-02) */
+.szerkeszto .cm-editor.cm-forrasmod {
+  font-family: var(--betu-mono);
 }
 
 .szerkeszto .cm-editor.cm-focused {

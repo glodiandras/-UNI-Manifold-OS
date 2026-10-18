@@ -155,7 +155,8 @@ class ObsidianVaultTest(_Alap):
         self.assertEqual(w["workspace"]["nev"], "Fizika")
         self.assertFalse(w["workspace"]["obsidian_letrehozva"])
         self.assertEqual(w["sablon"], {"mappa": "Sablonok"})
-        self.assertEqual(w["naplo"], {"ut": "[Napló]/YYYY-MM-DD", "sablon": "Napi"})
+        self.assertEqual(w["naplo"], {"ut": "[Napló]/YYYY-MM-DD", "sablon": "Sablonok/Napi.md"})
+        self.assertTrue((self.v / w["naplo"]["sablon"]).is_file(), "a napi sablon a vault-relatív útján feloldható")
         self.assertEqual((cfg.section("naplo")["ut"], cfg.forras("naplo", "ut")), ("[Napló]/YYYY-MM-DD", "munkater"))
 
     def test_a_manifold_torlese_bajtra_visszaadja_a_vaultot_I7(self):

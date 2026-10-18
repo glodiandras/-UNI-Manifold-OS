@@ -7,6 +7,7 @@
   import { egeszsegTelepit } from './egeszseg';
   import { egeszsegAblak } from './lib/egeszseg/allapot.svelte';
   import { alkalmaz } from './lib/elrendezes/tema';
+  import { betuAlkalmaz } from './lib/elrendezes/betutipus';
   import { tartalmiNyelv } from './lib/munkater/nyelv.svelte';
   import { beallitasok } from './lib/beallitasok/allapot.svelte';
   import { beallitasokTelepit } from './beallitasok';
@@ -117,11 +118,12 @@
       felulet.tema = b.megjelenes.tema;
       alkalmaz(b.megjelenes.tema);
       document.documentElement.style.setProperty('--betu-torzs', `${b.megjelenes.betumeret}px`);
+      betuAlkalmaz(b.megjelenes);       // jegyzet- és monospace betűcsalád (14-appearance-01/02): telepített név, tartalékkal
       if (felulet.csend.be !== b.megjelenes.csend) felulet.csendKapcsol(b.megjelenes.csend);
       felulet.rendszerErtesites = b.adatvedelem.ertesitesek;
       felulet.szerkesztoMod = b.szerkeszto.mod;
       tartalmiNyelv.beallit(b.altalanos.nyelv === 'auto' ? '' : b.altalanos.nyelv);
-      try { regiszter.billentyuketAlkalmaz(b.billentyuk); } catch { /* hibás külső kiosztás nem állítja le az editort */ }
+      try { regiszter.billentyuketAlkalmazTurelmesen(b.billentyuk); } catch { /* hibás külső kiosztás nem állítja le az editort; az egyes rossz kötések kimaradnak, a többi él */ }
     });
   });
   $effect(() => {

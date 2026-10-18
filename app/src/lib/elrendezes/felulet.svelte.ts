@@ -66,7 +66,7 @@ export const LISTA_RENDEZESEK: readonly ListaRendezes[] = ['nev', 'nev-forditott
 export type KeresesRendezes = 'relevancia' | 'nev' | 'nev-forditott' | 'modositva' | 'modositva-regi';
 export const KERESES_RENDEZESEK: readonly KeresesRendezes[] = ['relevancia', 'nev', 'nev-forditott', 'modositva', 'modositva-regi'];
 
-export type Atfedes = 'paletta' | 'valto' | 'kereso' | 'atnevezes' | 'sablon' | 'cpp-feladat' | 'kulso-ai' | 'elrendezesek' | null;
+export type Atfedes = 'paletta' | 'valto' | 'kereso' | 'atnevezes' | 'sablon' | 'cpp-feladat' | 'kulso-ai' | 'elrendezesek' | 'torolt' | null;
 
 /** A szerkesztő utoljára használt szerkesztő módja (C08): az új fül ezzel nyílik. */
 export type SzerkesztoMod = 'elo' | 'forras';

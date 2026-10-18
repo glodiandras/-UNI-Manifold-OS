@@ -27,6 +27,7 @@ import threading
 import weakref
 from pathlib import Path
 
+from .index import kizaras
 from .utvonalak import KESZ, HttpError, biztonsagi_fejlecek
 from .vaultio import Invalid
 from .hibakod import kodol
@@ -129,7 +130,7 @@ class Szolgalat:
         self.worker_kot()
         return kereso.HibridKereso(self.app.index.olvaso, self.tar(), self.beagyazo if beagyazo else None,
                                    self.reranker if reranker else None, kereso.beallitas(self.app.cfg),
-                                   getattr(self.app.index, "regex_idokorlat", 2.0))
+                                   getattr(self.app.index, "regex_idokorlat", 2.0), kizaras.betolt(self.app.cfg))
 
     def hianyzo_modell(self) -> bool:
         """Kell-e még betölteni a hibrid kereséshez a beágyazót vagy a rerankert (a futó worker szerint)."""
@@ -274,7 +275,8 @@ def utvonalak(r) -> None:
         from .index.hibrid import hasonlo as H
         sz = szolgalat(k.app)
         from .automatika import kisero_elotag
-        return H.hasonlok(k.app.index.olvaso, sz.tar(), k.q.get("ut"), k.egesz("n", 10, 1, 50), kisero_elotag(k.app.cfg))
+        return H.hasonlok(k.app.index.olvaso, sz.tar(), k.q.get("ut"), k.egesz("n", 10, 1, 50), kisero_elotag(k.app.cfg),
+                          kizaras.betolt(k.app.cfg))
 
     def hasonlosag(k):
         from .index.hibrid import hasonlo as H

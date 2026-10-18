@@ -11,8 +11,13 @@ mod = "szigoru"                      # a v2 sémaellenőrzése: sértés → meg
 [vault]
 kisero_elotag = "ATTCHMNTS - "
 
+[sablon]
+nyelv = "hu"                         # a v2 magyar hónap- és napnevei (a termék alapja angol)
+
 [naplo]
 ut = "[X01 - Napló & To-Do]/YYYY-MM/[Napló]/YYYY-MM-DD"
+sablon = "Napi jegyzet"              # a v2 sablonmappa-jegyzete a napi jegyzet váza
+vaz = "v2"                           # a v2 beépített váza (Tags/Source/Status/NN/Canvas) — a termék semleges vázat ad
 
 # a kísérőmappák v2-nevei (a `kisero_elotag`-ból képzett alap `Cards`/`Quizzes`/… utótagjától eltérnek)
 [kartya]

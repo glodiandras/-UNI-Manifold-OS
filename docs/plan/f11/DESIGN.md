@@ -1,6 +1,6 @@
 # F11 — Daily editing and navigation implementation
 
-Status: in progress; latest checkpoint: property types, persistent search and Reading find (2026-10-16). F5 is closed; no later phase is being started here.
+Current status (2026-10-18): integration and requirement acceptance are required across all fourteen audits. The [audit and completion plan](../2026-10-18-STABILIZALASI-TERV.md) is the current execution supplement; [CHECKLIST.md](CHECKLIST.md) explains the historical 94-row checkpoint and the newer 59-row inventory. The sections below preserve the earlier implementation decisions and checkpoint history; their statements about missing audits or the then-next work are historical, not the current backlog. The frontend suite/build failed at audit start; the [S0 report](../S0-INTEGRACIO.md) records the fresh passing UI gate, integration evidence and remaining gates. It does not establish full F11 parity or release closure.
 
 The product objective is an easy, dependable editor that can compete with Obsidian while retaining Manifold's existing tools and AI gates. The original v2 checkout and the real vault remain read-only. All verification uses synthetic data. The source audits are evidence and implementation proposals; product constraints in CLAUDE.md and the user's request remain authoritative.
 

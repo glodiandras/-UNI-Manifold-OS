@@ -16,13 +16,15 @@ from dataclasses import dataclass, field
 
 import yaml
 
+from ..hibakod import angol_uzenet, json_param
 from ..index.elemzo import _Betolto
 from .kifejezes import KifejezesHiba, elemez
 from .kiertekelo import KepletTar, fordit, futtat
 from .ertekek import FutasHiba, igaz_e
 
-UJ_SZOVEG = "views:\n  - type: table\n    name: Táblázat\n"
-TIPUSOK = ("table", "cards", "kanban")
+UJ_SZOVEG = "views:\n  - type: table\n    name: Table\n"
+TIPUSOK = ("table", "cards", "list", "kanban")
+NEZET_NEVEK = {"table": "Table", "cards": "Cards", "list": "List", "kanban": "Kanban"}   # az új nézet alapneve (fájladat: angol)
 _TIPUS_ALIAS = {"board": "kanban"}                    # a Kanban `type` szava feltételezés (K12)
 ALAP_OSZLOPOK = ["file.name"]
 TERMEK = ("file", "note", "formula")
@@ -30,8 +32,19 @@ OSSZESITOK = ("Average", "Min", "Max", "Sum", "Range", "Median", "Stddev", "Earl
               "Unchecked", "Empty", "Filled", "Unique")
 
 
-def hiba(hely: str, uzenet: str, **kieg) -> dict:
+def hiba(hely: str, uzenet: str | None = None, **kieg) -> dict:
+    """Egy hiba / figyelmeztetés: `{hely, uzenet, kod?, param?, …}`. Ha `kod` van, az `uzenet` az angol tartalék-mondat
+    a `hibakodok.BAZIS_ANGOL` szerint (10-bases-01); a kliens a `kod` + `param` szerint fordít."""
+    kod = kieg.get("kod")
+    if kod:
+        uzenet = angol_uzenet(kod, kieg.get("param"), uzenet or kod)
+        kieg["param"] = json_param(kieg.get("param"))
     return {"hely": hely, "uzenet": uzenet, **kieg}
+
+
+def hiba_kivetelbol(hely: str, e, **kieg) -> dict:
+    """A kódolt kivétel (`KifejezesHiba` / `FutasHiba` / `MuveletHiba`) hibasora."""
+    return hiba(hely, None, kod=e.kod, param=e.param, **kieg)
 
 
 # ================================================================ tulajdonság-azonosító
@@ -71,14 +84,14 @@ def szuro_fa(nyers, hely: str) -> tuple[Szuro | None, list[dict]]:
     if isinstance(nyers, list):                         # lista: implicit `and`
         nyers = {"and": nyers}
     if not isinstance(nyers, dict):
-        return None, [hiba(hely, "a szűrő szöveg vagy and/or/not szerkezet", kod="bazis.modell.szuro_szerkezet")]
+        return None, [hiba(hely, "Filter", kod="bazis.modell.szuro_szerkezet")]
     if len(nyers) != 1 or next(iter(nyers)) not in ("and", "or", "not"):
-        return None, [hiba(hely, "a szűrő objektum pontosan egy `and`, `or` vagy `not` kulcsot tartalmaz", kod="bazis.modell.szuro_objektum_kulcs")]
+        return None, [hiba(hely, "Filter object", kod="bazis.modell.szuro_objektum_kulcs")]
     kulcs, lista = next(iter(nyers.items()))
     if lista is None:
         lista = []
     if not isinstance(lista, list):
-        return None, [hiba(f"{hely}.{kulcs}", f"a `{kulcs}` értéke lista", kod="bazis.modell.kulcs_erteke_lista", param={"kulcs": kulcs})]
+        return None, [hiba(f"{hely}.{kulcs}", "List", kod="bazis.modell.kulcs_erteke_lista", param={"kulcs": kulcs})]
     gyerekek = []
     for i, e in enumerate(lista):
         sz, h = szuro_fa(e, f"{hely}.{kulcs}[{i}]")
@@ -91,8 +104,8 @@ def szuro_fa(nyers, hely: str) -> tuple[Szuro | None, list[dict]]:
 class SzuroHiba(FutasHiba):
     """Egy szűrő-utasítás futási hibája; a `hely` azonosítja az utasítást (a hibaszámláló kulcsa)."""
 
-    def __init__(self, hely: str, uzenet: str):
-        super().__init__(uzenet)
+    def __init__(self, hely: str, szoveg: str, reszlet: str):
+        super().__init__("bazis.modell.szuro_utasitas", {"szoveg": szoveg, "reszlet": reszlet})
         self.hely = hely
 
 
@@ -108,14 +121,14 @@ def szuro_fordit(sz: Szuro | None) -> tuple:
             try:
                 f = fordit(elemez(n.szoveg))
             except KifejezesHiba as e:
-                hibak.append(hiba(n.hely, f"{n.szoveg}: {e}"))
+                hibak.append(hiba(n.hely, kod="bazis.modell.szuro_utasitas", param={"szoveg": n.szoveg, "reszlet": str(e)}))
                 return lambda kor: False
 
             def utasitas(kor):
                 try:
                     return igaz_e(futtat(f, kor))
                 except FutasHiba as e:
-                    raise SzuroHiba(n.hely, f"{n.szoveg}: {e.uzenet}") from None
+                    raise SzuroHiba(n.hely, n.szoveg, e.uzenet) from None
             return utasitas
         gy = [ford(x) for x in n.gyerekek]
         if n.fajta == "es":
@@ -152,6 +165,12 @@ class Nezet:
             if isinstance(e, dict) and isinstance(e.get("property"), str):
                 ki.append((e["property"], "DESC" if str(e.get("direction", "ASC")).upper() == "DESC" else "ASC"))
         return ki
+
+    def csoport_sorrend(self) -> list | None:
+        """A `groupOrder` lista (a csoport-értékek megjelenő sorrendje; `None` elem = az „üres érték” csoport), vagy `None`,
+        ha a kulcs hiányzik / nem lista: ekkor minden csoport látszik a `groupBy` sorrendjében (10-bases-05)."""
+        g = self.nyers.get("groupOrder")
+        return list(g) if isinstance(g, list) else None
 
     def csoport(self) -> tuple[str, str] | None:
         g = self.nyers.get("groupBy")
@@ -209,10 +228,12 @@ def _nezet(i: int, n: dict, figy: list) -> Nezet:
     tipus = _TIPUS_ALIAS.get(eredeti.lower(), eredeti.lower())
     ismert = tipus in TIPUSOK
     if not ismert:
-        figy.append(hiba(f"views[{i}]", f"ismeretlen nézettípus: {eredeti} — táblázatként jelenik meg", kod="bazis.modell.ismeretlen_nezettipus", param={"eredeti": eredeti}))
+        figy.append(hiba(f"views[{i}]", "Unknown view type", kod="bazis.modell.ismeretlen_nezettipus", param={"eredeti": eredeti}))
         tipus = "table"
+    if n.get("groupOrder") is not None and not isinstance(n.get("groupOrder"), list):
+        figy.append(hiba(f"views[{i}].groupOrder", "List", kod="bazis.modell.csoportrend_lista"))
     nev = n.get("name")
-    return Nezet(i, n, str(nev) if nev not in (None, "") else f"Nézet {i + 1}", tipus, eredeti, ismert)
+    return Nezet(i, n, str(nev) if nev not in (None, "") else f"View {i + 1}", tipus, eredeti, ismert)
 
 
 def _yaml(szoveg: str):
@@ -226,30 +247,30 @@ def betolt(szoveg: str) -> tuple[Bazis, list[dict]]:
     try:
         nyers = _yaml(szoveg)
     except yaml.YAMLError as e:
-        return Bazis({}, [], vegzetes=True), [hiba("yaml", " ".join(str(e).split())[:300])]
+        return Bazis({}, [], vegzetes=True), [hiba("yaml", kod="bazis.modell.yaml_hiba", param={"e": " ".join(str(e).split())[:300]})]
     if nyers is None:
         nyers = {}
     if not isinstance(nyers, dict):
-        return Bazis({}, [], vegzetes=True), [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll", kod="bazis.modell.base_gyoker")]
+        return Bazis({}, [], vegzetes=True), [hiba("yaml", "Root", kod="bazis.modell.base_gyoker")]
     nyers = {str(k): v for k, v in nyers.items()}
     figy: list[dict] = []
     for kulcs in ("formulas", "properties", "summaries"):
         if nyers.get(kulcs) is not None and not isinstance(nyers[kulcs], dict):
-            hibak.append(hiba(kulcs, f"a `{kulcs}` kulcs–érték párokból áll", kod="bazis.modell.kulcs_ertek_parok", param={"kulcs": kulcs}))
+            hibak.append(hiba(kulcs, "Key-value pairs", kod="bazis.modell.kulcs_ertek_parok", param={"kulcs": kulcs}))
     nezetek_nyers = nyers.get("views")
     if nezetek_nyers is None:
         nezetek_nyers = []
     if not isinstance(nezetek_nyers, list):
-        hibak.append(hiba("views", "a `views` lista", kod="bazis.modell.views_lista"))
+        hibak.append(hiba("views", "List", kod="bazis.modell.views_lista"))
         nezetek_nyers = []
     nezetek = []
     for i, n in enumerate(nezetek_nyers):
         if not isinstance(n, dict):
-            hibak.append(hiba(f"views[{i}]", "a nézet kulcs–érték párokból áll", kod="bazis.modell.nezet_ertek_parok"))
+            hibak.append(hiba(f"views[{i}]", "Pairs", kod="bazis.modell.nezet_ertek_parok"))
             continue
         nezetek.append(_nezet(len(nezetek), n, figy))
     if not nezetek and not hibak:                   # üres fájl / üres lista: az alap nézet csak megjelenítés
-        nezetek = [_nezet(0, {"type": "table", "name": "Táblázat"}, figy)]
+        nezetek = [_nezet(0, {"type": "table", "name": "Table"}, figy)]
     b = Bazis(nyers, nezetek, figy)
     # szűrők és képletek ellenőrzése (elemzés, ismeretlen függvény, körkörös hivatkozás)
     hely_szurok = [("filters", nyers.get("filters"))] + [
@@ -259,15 +280,15 @@ def betolt(szoveg: str) -> tuple[Bazis, list[dict]]:
         hibak += h
         hibak += szuro_fordit(fa)[1]
     kt = KepletTar(b.kepletek)
-    for nev, uz in kt.hiba.items():
-        hibak.append(hiba(f"formulas.{nev}", uz))
+    for nev in kt.hiba:
+        hibak.append(hiba(f"formulas.{nev}", kod="bazis.modell.keplet_hiba", param={"reszlet": kt.hiba_szoveg(nev)}))
     for nev, kif in b.osszesitok.items():
         try:
             fordit(elemez(kif))
         except KifejezesHiba as e:
-            hibak.append(hiba(f"summaries.{nev}", str(e)))
+            hibak.append(hiba(f"summaries.{nev}", kod="bazis.modell.osszesito_hiba", param={"reszlet": str(e)}))
         except Exception:                           # a nem szöveg kifejezés
-            hibak.append(hiba(f"summaries.{nev}", "az összesítő nem kifejezés-szöveg", kod="bazis.modell.osszesito_szoveg"))
+            hibak.append(hiba(f"summaries.{nev}", "Text", kod="bazis.modell.osszesito_szoveg"))
     return b, hibak
 
 
@@ -288,14 +309,18 @@ def szerializal(nyers) -> str:
 # ================================================================ módosítás
 
 class MuveletHiba(ValueError):
-    """Érvénytelen módosítási művelet (hiányzó vagy rossz paraméter)."""
+    """Érvénytelen módosítási művelet (hiányzó vagy rossz paraméter): `kod` + `param`, az angol tartalék az üzenet."""
+
+    def __init__(self, kod: str, param: dict | None = None):
+        self.kod, self.param = kod, json_param(param)
+        super().__init__(angol_uzenet(kod, param, kod))
 
 
 def _nezet_hely(nyers: dict, index) -> dict:
     nezetek = nyers.get("views")
     if not isinstance(index, int) or isinstance(index, bool) or not isinstance(nezetek, list) \
             or not 0 <= index < len(nezetek) or not isinstance(nezetek[index], dict):
-        raise MuveletHiba(f"nincs ilyen nézet: {index!r}")
+        raise MuveletHiba("bazis.modell.nincs_nezet", {"nezet": repr(index)})
     return nezetek[index]
 
 
@@ -303,7 +328,7 @@ def _szuro_szovegbol(szoveg) -> object:
     """A szűrő-mező szövegéből a `filters` értéke: üres → nincs; YAML-szerkezet (and/or/not, lista) vagy egyetlen
     kifejezés. A YAML-ként nem olvasható szöveg (pl. `"a" == b`) egyetlen kifejezés."""
     if not isinstance(szoveg, str):
-        raise MuveletHiba("a szűrő szöveg")
+        raise MuveletHiba("bazis.modell.szuro_szoveg_kell")
     if not szoveg.strip():
         return None
     try:
@@ -349,7 +374,7 @@ def _alkalmaz(nyers: dict, m: dict) -> str:
         n = _nezet_hely(nyers, m.get("nezet"))
         kulcs = m.get("kulcs")
         if not isinstance(kulcs, str) or not kulcs:
-            raise MuveletHiba("hiányzó kulcs")
+            raise MuveletHiba("bazis.modell.hianyzik_kulcs")
         alkulcs, ertek = m.get("alkulcs"), m.get("ertek")
         if alkulcs is not None:
             cel = n.get(kulcs)
@@ -364,31 +389,31 @@ def _alkalmaz(nyers: dict, m: dict) -> str:
             n.pop(kulcs, None)
         else:
             n[kulcs] = ertek
-        return f"nézet {kulcs}"
+        return f"view {kulcs}"
     if fajta == "nezet_uj":
         nezetek = nyers.setdefault("views", [])
         if not isinstance(nezetek, list):
-            raise MuveletHiba("a `views` nem lista")
+            raise MuveletHiba("bazis.modell.views_lista")
         tipus = m.get("tipus") or "table"
-        nev = m.get("nev") or {"table": "Táblázat", "cards": "Kártyák", "kanban": "Kanban"}.get(tipus, "Nézet")
+        nev = m.get("nev") or NEZET_NEVEK.get(tipus, "View")
         nevek = {str(n.get("name")) for n in nezetek if isinstance(n, dict)}
         alap, i = nev, 2
         while nev in nevek:
             nev, i = f"{alap} {i}", i + 1
         uj = {"type": tipus, "name": nev}
         nezetek.append(uj)
-        return "új nézet"
+        return "new view"
     if fajta == "nezet_torol":
         _nezet_hely(nyers, m.get("nezet"))
         del nyers["views"][m["nezet"]]
-        return "nézet törlése"
+        return "view deleted"
     if fajta == "nezet_mozgat":
         _nezet_hely(nyers, m.get("nezet"))
         ujindex = m.get("ujindex")
         if not isinstance(ujindex, int) or not 0 <= ujindex < len(nyers["views"]):
-            raise MuveletHiba("érvénytelen új hely")
+            raise MuveletHiba("bazis.modell.ervenytelen_hely")
         nyers["views"].insert(ujindex, nyers["views"].pop(m["nezet"]))
-        return "nézet áthelyezése"
+        return "view moved"
     if fajta == "szuro_beallit":
         hol = m.get("hol", "globalis")
         ertek = _szuro_szovegbol(m.get("yaml"))
@@ -397,11 +422,11 @@ def _alkalmaz(nyers: dict, m: dict) -> str:
             cel.pop("filters", None)
         else:
             cel["filters"] = ertek
-        return "szűrő"
+        return "filter"
     if fajta == "keplet_beallit":
         nev = m.get("nev")
         if not isinstance(nev, str) or not nev.strip():
-            raise MuveletHiba("hiányzó képletnév")
+            raise MuveletHiba("bazis.modell.hianyzik_kepletnev")
         kif = m.get("kifejezes")
         kepletek = nyers.get("formulas")
         if kif is None:
@@ -410,17 +435,17 @@ def _alkalmaz(nyers: dict, m: dict) -> str:
                 if not kepletek:
                     del nyers["formulas"]
                 _kepelt_hivatkozas_torles(nyers, nev)
-            return "képlet törlése"
+            return "formula deleted"
         if not isinstance(kif, str):
-            raise MuveletHiba("a képlet szöveg")
+            raise MuveletHiba("bazis.modell.keplet_szoveg_kell")
         if not isinstance(kepletek, dict):
             kepletek = nyers["formulas"] = {}
         kepletek[nev] = kif
-        return "képlet"
+        return "formula"
     if fajta == "megjelenites_beallit":
         azon, nev = m.get("id"), m.get("displayName")
         if not isinstance(azon, str) or not azon:
-            raise MuveletHiba("hiányzó tulajdonság")
+            raise MuveletHiba("bazis.modell.hianyzik_tulajdonsag")
         tul = nyers.get("properties")
         if not isinstance(tul, dict):
             tul = nyers["properties"] = {}
@@ -435,8 +460,8 @@ def _alkalmaz(nyers: dict, m: dict) -> str:
             if not isinstance(tul.get(azon), dict):
                 tul[azon] = {}
             tul[azon]["displayName"] = str(nev)
-        return "megjelenítés"
-    raise MuveletHiba(f"ismeretlen művelet: {fajta!r}")
+        return "display"
+    raise MuveletHiba("bazis.modell.ismeretlen_muvelet", {"fajta": repr(fajta)})
 
 
 def _forras_csere(regi: str, uj) -> tuple[str, list[dict], str]:
@@ -444,14 +469,14 @@ def _forras_csere(regi: str, uj) -> tuple[str, list[dict], str]:
     **új** hiba akadályoz: a YAML-hiba mindig, a szűrő-, képlet-, összesítő-hiba csak ha a régi szövegben még nem
     volt (így a már hibás fájl javítható lépésenként)."""
     if not isinstance(uj, str):
-        return regi, [hiba("muvelet", "hiányzik a szöveg", kod="bazis.modell.hianyzik_szoveg")], ""
+        return regi, [hiba("muvelet", "Text", kod="bazis.modell.hianyzik_szoveg")], ""
     _, regi_hibak = betolt(regi)
     _, uj_hibak = betolt(uj)
     regiek = {(h["hely"], h["uzenet"]) for h in regi_hibak}
     uj_csak = [h for h in uj_hibak if (h["hely"], h["uzenet"]) not in regiek or h["hely"] == "yaml"]
     if uj_csak:
         return regi, uj_csak, ""
-    return uj, [], "forrás"
+    return uj, [], "source"
 
 
 def modosit(szoveg: str, muvelet: dict) -> tuple[str, list[dict], str]:
@@ -461,32 +486,32 @@ def modosit(szoveg: str, muvelet: dict) -> tuple[str, list[dict], str]:
     képlethiba), vagy a visszaolvasás eltér. Az érvényes, de **már korábban is hibás** részek (egy másik nézet
     hibás szűrője) nem akadályozzák az új módosítást: csak az új hibák számítanak."""
     if not isinstance(muvelet, dict):
-        return szoveg, [hiba("muvelet", "a művelet objektum", kod="bazis.modell.muvelet_objektum")], ""
+        return szoveg, [hiba("muvelet", "Object", kod="bazis.modell.muvelet_objektum")], ""
     if muvelet.get("fajta") == "forras_csere":
         return _forras_csere(szoveg, muvelet.get("szoveg"))
     try:
         nyers = _yaml(szoveg)
     except yaml.YAMLError as e:
-        return szoveg, [hiba("yaml", "a `.base` nem értelmezhető: " + " ".join(str(e).split())[:300])], ""
+        return szoveg, [hiba("yaml", kod="bazis.modell.nem_ertelmezheto", param={"e": " ".join(str(e).split())[:300]})], ""
     if nyers is None:
         nyers = {}
     if not isinstance(nyers, dict):
-        return szoveg, [hiba("yaml", "a `.base` gyökere kulcs–érték párokból áll", kod="bazis.modell.base_gyoker")], ""
+        return szoveg, [hiba("yaml", "Root", kod="bazis.modell.base_gyoker")], ""
     nyers = copy.deepcopy({str(k): v for k, v in nyers.items()})
     if not nyers.get("views") and muvelet.get("fajta") not in ("nezet_uj",):
-        nyers["views"] = [{"type": "table", "name": "Táblázat"}]      # az üres fájl alap nézete így lesz valódi
+        nyers["views"] = [{"type": "table", "name": "Table"}]      # az üres fájl alap nézete így lesz valódi
     try:
         valtozas = _alkalmaz(nyers, muvelet)
     except MuveletHiba as e:
-        return szoveg, [hiba("muvelet", str(e))], ""
+        return szoveg, [hiba_kivetelbol("muvelet", e)], ""
     uj = szerializal(nyers)
     # visszaolvasás-próba: ugyanazt a szerkezetet kell adnia
     try:
         vissza = _yaml(uj)
     except yaml.YAMLError as e:
-        return szoveg, [hiba("yaml", f"a kiírt szöveg nem olvasható vissza: {e}", kod="bazis.modell.kiirt_nem_olvashato", param={"e": e})], ""
+        return szoveg, [hiba("yaml", "Unreadable", kod="bazis.modell.kiirt_nem_olvashato", param={"e": e})], ""
     if vissza != nyers:
-        return szoveg, [hiba("yaml", "a kiírt szöveg visszaolvasva eltér", kod="bazis.modell.kiirt_elter")], ""
+        return szoveg, [hiba("yaml", "Differs", kod="bazis.modell.kiirt_elter")], ""
     _, regi_hibak = betolt(szoveg)
     _, uj_hibak = betolt(uj)
     regiek = {(h["hely"], h["uzenet"]) for h in regi_hibak}

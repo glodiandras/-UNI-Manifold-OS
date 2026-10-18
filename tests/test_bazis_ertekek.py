@@ -413,7 +413,7 @@ class AuditHataroktTest(unittest.TestCase):
         self.assertEqual(e.kerekit(1.2345, 2), 1.23)
         self.assertEqual(e.kerekit(1.5, 10), 1.5)
         for jegyek in (101, 3_000_000, -101):
-            with self.assertRaisesRegex(FutasHiba, "100 közti"):
+            with self.assertRaisesRegex(FutasHiba, "-100 to 100"):
                 e.kerekit(1.5, jegyek)
 
 

@@ -18,15 +18,19 @@ import tomllib
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import config, csatolmany, fejleszto, tartos, workspace
+from . import billentyu_forras, config, csatolmany, fejleszto, tartos, workspace
+from .index import kizaras
 from .utvonalak import HttpError
 
 MODULOK = tuple("hivatkozasok vazlat tulajdonsagok gyorsvalto kereses perjel cimkek sablonok napi canvas bazis graf pdf media kartya kviz osszefoglalas matek kod fuzet video kerdezz asszisztens naptar felkeszultseg tracker".split())
 ALAP = {
     "altalanos": {"nyelv": "auto", "inditas": "utolso"},
-    "szerkeszto": {"mod": "elo", "olvashato_szelesseg": True, "helyesiras": True, "tab_meret": 2, "perjel": True},
-    "fajlok": {"uj_mappa": "", "csatolmany_mappa": "", "sablon_mappa": "_Template", "napi_ut": "[Daily]/YYYY-MM-DD", "link_formatum": "rovid", "wikilinkek": True},
-    "megjelenes": {"tema": "rendszer", "betumeret": 16, "csend": False},
+    "szerkeszto": {"mod": "elo", "olvashato_szelesseg": True, "helyesiras": True, "tab_meret": 2, "perjel": True,
+                   "auto_par_zarojel": True, "auto_par_idezojel": True, "auto_par_jeloles": True},
+    "fajlok": {"uj_mappa": "", "csatolmany_mappa": "", "sablon_mappa": "_Template", "napi_ut": "[Daily]/YYYY-MM-DD", "link_formatum": "rovid", "wikilinkek": True,
+               "kizart": [], "sablon_datum": "YYYY-MM-DD", "sablon_ido": "HH:mm", "napi_sablon": "", "napi_inditaskor": False,
+               "kivonas_utana": "link", "kivonas_sablon": ""},
+    "megjelenes": {"tema": "rendszer", "betumeret": 16, "csend": False, "betu_szoveg": "", "betu_mono": ""},
     "modulok": dict.fromkeys(MODULOK, True),
     "adatvedelem": {"asszisztens": True, "tracker": True, "ertesitesek": True, "naptar": False},
     "billentyuk": {}, "setup": {"kesz": False, "elmeny": "egyeni"},
@@ -36,6 +40,7 @@ VALASZTEK = {
     ("altalanos", "nyelv"): ("auto", "hu", "en"), ("altalanos", "inditas"): ("utolso", "valaszto"),
     ("szerkeszto", "mod"): ("elo", "forras"), ("fajlok", "link_formatum"): ("rovid", "relativ", "abszolut"),
     ("megjelenes", "tema"): ("rendszer", "vilagos", "sotet"),
+    ("fajlok", "kivonas_utana"): ("link", "beagyazas", "semmi"),
     ("setup", "elmeny"): ("diak", "tudasmunka", "fejleszto", "kutato", "egyeni"),
 }
 
@@ -45,6 +50,21 @@ def egyesit(alap: dict, uj: dict) -> dict:
     for k, v in uj.items():
         ki[k] = egyesit(ki[k], v) if isinstance(v, dict) and isinstance(ki.get(k), dict) else copy.deepcopy(v)
     return ki
+
+
+MAX_BETU_NEV = 80
+
+
+def betu_nev_hiba(nev) -> bool:
+    """Igaz, ha a betűcsalád-név nem fogadható el. Üres = alapértelmezett. Csak egy telepített család neve lehet: betűk, számjegyek,
+    szóköz, kötőjel, pont, aláhúzás, plusz. Idézőjel, `;{}()\\,:/@` és vezérlőkarakter nem, így a név sosem lehet CSS vagy URL."""
+    if not isinstance(nev, str):
+        return True
+    if nev == "":
+        return False
+    if len(nev) > MAX_BETU_NEV or nev != nev.strip() or "  " in nev:
+        return True
+    return not all(c.isalnum() or c in " ._-+" for c in nev)
 
 
 def _hiba(kod="beallitas.hibas", *, kulcs=""):
@@ -83,7 +103,11 @@ def ellenoriz(valtozas) -> dict:
                     f_gomb = bool(re.fullmatch(r"f\d{1,2}", gomb))
                     if not (len(gomb) == 1 or gomb in nevek or f_gomb) or not (modok & {"mod", "ctrl", "alt"} or f_gomb):
                         _hiba(kulcs=nev)
-                    if (modok == {"mod"} and gomb == "," and kulcs != "beallitasok.megnyit") or (modok == {"mod", "shift"} and gomb == "o"):
+                    try:        # the native menu's chords (⌘C, ⌘V, ⌘Z, …) are generated from the shell source (13-palette-02)
+                        tulajdonos = billentyu_forras.fenntartott().get(billentyu_forras.kanonikus(ertek), kulcs)
+                    except ValueError:
+                        _hiba(kulcs=nev)
+                    if tulajdonos != kulcs:
                         _hiba(kulcs=nev)
                 if kulcs == "beallitasok.megnyit" and ertek != "Mod+,":
                     _hiba(kulcs=nev)
@@ -96,9 +120,21 @@ def ellenoriz(valtozas) -> dict:
                 _hiba(kulcs=nev)
             if tabla == "megjelenes" and kulcs == "betumeret" and not 12 <= ertek <= 28:
                 _hiba(kulcs=nev)
+            if tabla == "megjelenes" and kulcs in ("betu_szoveg", "betu_mono") and betu_nev_hiba(ertek):
+                _hiba(kulcs=nev)
+            if tabla == "fajlok" and kulcs == "kizart":
+                try:
+                    ki[tabla][kulcs] = kizaras.lista_ellenoriz(ertek)
+                except kizaras.MintaHiba:
+                    _hiba(kulcs=nev)
+                continue
             if isinstance(ertek, str) and (len(ertek) > 1000 or re.search(r"[\x00-\x1f\x7f]", ertek)):
                 _hiba(kulcs=nev)
-            if tabla == "fajlok" and kulcs not in ("link_formatum", "wikilinkek"):
+            if tabla == "fajlok" and kulcs in ("sablon_datum", "sablon_ido"):
+                if not ertek.strip() or len(ertek) > 200:      # moment-formátum: `\\` és `{}` szabályos benne, út-ellenőrzés nincs
+                    _hiba(kulcs=nev)
+                continue
+            if tabla == "fajlok" and kulcs not in ("link_formatum", "wikilinkek", "napi_inditaskor"):
                 ellenorzendo = ertek
                 if kulcs == "uj_mappa" and ertek == ".":
                     ellenorzendo = ""
@@ -156,10 +192,14 @@ def _ertek(cfg, lemez: dict) -> dict:
         pass
     ki["fajlok"]["sablon_mappa"] = cfg.section("sablon").get("mappa", "_Template")
     ki["fajlok"]["napi_ut"] = cfg.section("naplo").get("ut", "[Daily]/YYYY-MM-DD")
+    ki["fajlok"]["sablon_datum"] = cfg.section("sablon").get("datum") or "YYYY-MM-DD"
+    ki["fajlok"]["sablon_ido"] = cfg.section("sablon").get("ido") or "HH:mm"
+    ki["fajlok"]["napi_sablon"] = cfg.section("naplo").get("sablon", "")
     if "vault" in cfg.utak:
         o = workspace._obsidian_beallitasok(cfg.path("vault")).get("app", {})
         ki["fajlok"]["uj_mappa"] = (o.get("newFileFolderPath", "") if o.get("newFileLocation") == "folder"
                                        else "." if o.get("newFileLocation") == "current" else "")
+        ki["fajlok"]["kizart"] = kizaras.obsidian_lista(cfg.path("vault"))      # az Obsidian-vault kizárásai, amíg a felhasználó sajátot nem ment
         ki["fajlok"]["csatolmany_mappa"] = csatolmany.beallitas(cfg.path("vault"))
         if ki["fajlok"]["csatolmany_mappa"] == "/":
             ki["fajlok"]["csatolmany_mappa"] = ""
@@ -271,7 +311,9 @@ def ir(cfg, rev, valtozas) -> dict:
         ertek = egyesit(_ertek(cfg, regi), valtozas)
         ellenoriz(ertek)
         modositas = {"beallitasok": ertek, "modulok": ertek["modulok"],
-                     "sablon": {"mappa": ertek["fajlok"]["sablon_mappa"]}, "naplo": {"ut": ertek["fajlok"]["napi_ut"]}}
+                     "sablon": {"mappa": ertek["fajlok"]["sablon_mappa"], "datum": ertek["fajlok"]["sablon_datum"],
+                                "ido": ertek["fajlok"]["sablon_ido"]},
+                     "naplo": {"ut": ertek["fajlok"]["napi_ut"], "sablon": ertek["fajlok"]["napi_sablon"]}}
         if cfg.elrendezes == "termek":
             modositas["workspace"] = {"nyelv": "" if ertek["altalanos"]["nyelv"] == "auto" else ertek["altalanos"]["nyelv"]}
         # Automatic means no content-language hint, including after a previous explicit choice.
@@ -304,7 +346,30 @@ def utvonalak(r):
         d = k.torzs()
         if not isinstance(d, dict) or set(d) != {"rev", "valtozas"}:
             _hiba()
+        elozo = kizaras.jel(k.app.cfg)
         v = ir(k.app.cfg, d["rev"], d["valtozas"])
         k.app.bus.publish({"tipus": "beallitasok", **v})
+        index = getattr(k.app, "index", None)
+        if index is not None and kizaras.jel(k.app.cfg) != elozo:
+            # A kizárási lista láthatóságot változtat (fa, gráf, kereső, gyorsváltó): a fogyasztók újratöltenek.
+            index.kizaras_valtozott()
         return v
+
+    def kizart_elonezet(k):
+        """A vázlat kizárási listája: mintánként az érvényesség és a találatok száma (az index fájljain, semmit sem ír)."""
+        d = k.torzs()
+        if not isinstance(d, dict) or set(d) != {"mintak"} or not isinstance(d["mintak"], list) or len(d["mintak"]) > kizaras.MAX_DB:
+            _hiba(kulcs="fajlok.kizart")
+        utak = k.app.index.fajl_halmaz()
+        sorok, ervenyes = [], []
+        for minta in d["mintak"]:
+            try:
+                m = kizaras.minta_ellenoriz(minta)
+            except kizaras.MintaHiba as e:
+                sorok.append({"minta": minta if isinstance(minta, str) else "", "hiba": e.kod, "db": 0})
+                continue
+            ervenyes.append(m)
+            sorok.append({"minta": m, "hiba": None, "db": kizaras.fordit([m]).egyezo(utak)})
+        return {"osszes": len(utak), "kizart": kizaras.fordit(ervenyes).egyezo(utak), "mintak": sorok}
     r.put("/api/beallitasok", mentes)
+    r.post("/api/beallitasok/kizart-elonezet", kizart_elonezet)

@@ -7,10 +7,12 @@
   import { t } from '../lib/i18n';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { Check } from '../lib/ikon/ikonok';
+  import { linkek } from '../lib/vault/linkek.svelte';
   import { kulsoLink } from '../szerkeszto/linkek/kulso';
   import { linkMegnyit, nyitasMod } from '../szerkeszto/linkek/navigacio';
   import Cella from './Cella.svelte';
   import { datumSzoveg, ertekSzoveg, fajta, szamSzoveg } from './ertek';
+  import { biztosKepUt, biztosSzin, htmlBeszur, ikonKeres } from './gazdagCella';
   import type { Ertek } from './tipusok';
 
   /** `forras`: a sor fájlja (a feloldatlan link ebből jön létre); `ez`: a nézetet tartalmazó fájl (`this`): a már
@@ -18,6 +20,38 @@
   let { ertek, forras, ez = null }: { ertek: Ertek; forras: string; ez?: string | null } = $props();
   const f = $derived(fajta(ertek));
   const tv = $derived(ertek !== null && typeof ertek === 'object' ? ertek : null);
+
+  /** a `kep()` értékének vault-helyi képútja (a külső URL és a szabálytalan út nem tölthető); a média-URL a core tokenes végpontjáról jön */
+  const kepSzin = $derived(tv?.t === 'kep' ? biztosSzin(tv.szin) : null);
+  const kepUt = $derived(tv?.t === 'kep' ? biztosKepUt(tv.ut) : null);
+  let kepSrc = $state<string | null>(null);
+  $effect(() => {
+    const ut = kepUt;
+    let el = true;
+    if (ut) void linkek.mediaUrl(ut, 96).then((u) => el && (kepSrc = u), () => el && (kepSrc = null));
+    else kepSrc = null;
+    return () => {
+      el = false;
+    };
+  });
+  const ikon = $derived(tv?.t === 'ikon' ? ikonKeres(tv.nev) : null);
+
+  /** a szanitizált HTML-be a cellában csak a külső link kattintható (a héj megnyitója; `href` nincs) */
+  function htmlAkcio(node: HTMLElement, forras: string) {
+    htmlBeszur(node, forras);
+    return {
+      update: (uj: string) => htmlBeszur(node, uj),
+      destroy: () => node.replaceChildren(),
+    };
+  }
+
+  function htmlKattint(e: MouseEvent) {
+    const a = (e.target as Element | null)?.closest<HTMLElement>('[data-url]');
+    if (!a?.dataset.url) return;
+    e.preventDefault();
+    e.stopPropagation();
+    kulsoLink(a.dataset.url);
+  }
 
   function linkKattint(e: MouseEvent, l: { cel: string; ut: string | null; alcel?: string; kulso?: boolean }) {
     e.preventDefault();
@@ -61,7 +95,24 @@
 {:else if tv?.t === 'hiba'}
   <span class="hiba" title={tv.u}>{t('Hiba')}</span>
 {:else if tv?.t === 'kep'}
-  <span class="szoveg" title={ertekSzoveg(ertek)}>{ertekSzoveg(ertek)}</span>
+  {#if kepSzin}
+    <span class="szin" role="img" aria-label={kepSzin} title={kepSzin} style:background={kepSzin}></span>
+  {:else if kepUt && kepSrc}
+    <img class="kep" src={kepSrc} alt="" title={kepUt} decoding="async" loading="lazy" />
+  {:else if tv.url}
+    <span class="szoveg kulso" title={tv.url}>{t('külső kép — nem tölthető be')}</span>
+  {:else}
+    <span class="szoveg" title={ertekSzoveg(ertek)}>{ertekSzoveg(ertek)}</span>
+  {/if}
+{:else if tv?.t === 'ikon'}
+  {#if ikon}
+    <span class="ikon-cella" role="img" aria-label={tv.nev} title={tv.nev}><Ikon {ikon} meret={14} /></span>
+  {:else}
+    <span class="szoveg" title={tv.nev}>{tv.nev}</span>
+  {/if}
+{:else if tv?.t === 'html'}
+  <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+  <span class="html" title={ertekSzoveg(ertek)} use:htmlAkcio={tv.v} onclick={htmlKattint}></span>
 {:else}
   <span class="szoveg" title={ertekSzoveg(ertek)}>{ertekSzoveg(ertek)}</span>
 {/if}
@@ -124,6 +175,45 @@
 
   .hiba {
     color: var(--hiba);
+  }
+
+  .szin {
+    flex: none;
+    width: var(--t-4);
+    height: var(--t-4);
+    border: var(--keret-vastag) solid var(--keret-eros);
+    border-radius: var(--kerekites-kicsi);
+  }
+
+  .kep {
+    flex: none;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: var(--kerekites-kicsi);
+  }
+
+  .kulso {
+    color: var(--szoveg-halvany);
+  }
+
+  .ikon-cella {
+    display: inline-flex;
+    color: var(--szoveg-masodlagos);
+  }
+
+  .html {
+    display: inline-block;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  .html :global(a[data-url]) {
+    color: var(--akcent-szoveg);
+    cursor: pointer;
+    text-decoration: underline;
   }
 
 </style>

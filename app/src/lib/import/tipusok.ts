@@ -14,7 +14,7 @@ export interface FajlSor { ut: string; fajta: string; meret: number; muvelet: 'm
 export interface KihagyottSor { ut: string; ok: string }
 export interface UtkozesSor { ut: string; masik?: string; ok: 'kis_nagy' | 'normalizalas' | 'cel_elter' | string }
 export interface BeallitasSor { kulcs: string; ertek: unknown; forras: string; mod: 'ir' | 'azonos' | 'munkater' | 'kozvetlen' | string }
-export interface NemAtvettSor { forras?: string; kulcs?: string; ok: string }
+export interface NemAtvettSor { forras?: string; kulcs?: string; ok: string; akkord?: string; masik?: string }
 export interface PluginSor { id: string; be: boolean; allapot: 'tamogatott' | 'beepitett' | 'nem_tamogatott' | string; modul?: string | null }
 
 export interface ObsidianElonezet {

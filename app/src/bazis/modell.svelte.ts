@@ -123,20 +123,30 @@ export class BazisModell {
   }
 
   private async alkalmazMost(muvelet: Muvelet, ujNezet?: number): Promise<ModositValasz & { irva: boolean }> {
+    const alap = this.forras.szoveg();
     const tiltas = this.forras.csakOlvashato();
     if (tiltas) {
       this.irasHiba = tiltas;
       return { ok: false, szoveg_uj: this.forras.szoveg(), valtozas: '', hibak: [{ hely: 'iras', uzenet: tiltas }], irva: false };
     }
     try {
-      const r = await this.modosit(muvelet);
+      const r = await this.api.modosit(alap, muvelet);
+      // A számoló csak az elküldött szövegből dolgozik. Egy másik szerkesztő vagy külső frissítés közben új alapot adhat:
+      // az aktuális Dokumentum hash-e azt már nem védené a régi eredményünktől. A no-op ág előtt is ellenőrzünk.
+      const mostani = this.forras.szoveg();
+      const mostaniTiltas = this.forras.csakOlvashato();
+      if (mostaniTiltas || mostani !== alap) {
+        const uzenet = mostaniTiltas ?? t('A szöveg közben változott; próbáld újra.');
+        this.irasHiba = uzenet;
+        return { ok: false, szoveg_uj: mostani, valtozas: '', hibak: [{ hely: 'iras', uzenet }], irva: false };
+      }
       if (!r.ok) {
         this.irasHiba = r.hibak[0]?.uzenet ?? t('A módosítás nem alkalmazható.');
         return { ...r, irva: false };
       }
-      if (r.szoveg_uj === this.forras.szoveg()) return { ...r, irva: true };
-      if (ujNezet !== undefined) this.nezet = ujNezet; // a nézet-művelet után az új sorszám már a következő lekérdezésben él
-      const irva = await this.forras.ir(r.szoveg_uj);
+      const irva = r.szoveg_uj === alap || await this.forras.ir(r.szoveg_uj);
+      // Sikertelen mentésnél marad az előző nézet. A forrás mentése előtt is jelezhet változást, ezért siker után az új nézetet külön lekérjük.
+      if (irva && ujNezet !== undefined) this.nezetValt(ujNezet);
       this.irasHiba = irva ? null : t('A módosítás nem íródott be.');
       return { ...r, irva };
     } catch (e) {

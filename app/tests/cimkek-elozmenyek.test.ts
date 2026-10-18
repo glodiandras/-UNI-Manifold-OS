@@ -161,14 +161,14 @@ describe('az előzmények', () => {
     expect(elemek[1].querySelector('.cimke')!.textContent).toContain('Kézi változás');
   });
 
-  it('csak md-jegyzethez és csak nyitott szakaszban kérdez', async () => {
+  it('csak támogatott szöveges fájlhoz és csak nyitott szakaszban kérdez', async () => {
     elozmenyek(false);
     await Promise.resolve();
     expect(kerelmek.some((r) => r.url.startsWith('/api/vault/elozmeny'))).toBe(false);
     cleanup();
     const k = kornyezet();
     render(Elozmenyek, { props: { ut: 'Kep.png', nyitva: true }, context: k.context });
-    expect(await screen.findByText(/Markdown-jegyzetekhez/)).toBeTruthy();
+    expect(await screen.findByText(/jegyzetekhez, canvasokhoz és adatbázis-nézetekhez/)).toBeTruthy();
     expect(kerelmek.some((r) => r.url.startsWith('/api/vault/elozmeny'))).toBe(false);
   });
 

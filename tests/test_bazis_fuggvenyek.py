@@ -2,6 +2,7 @@
 esetekkel — normál, üres és rossz típusú bemenet."""
 import math
 import unittest
+from datetime import datetime
 
 from core.bazis import ertekek as e
 from core.bazis.ertekek import Cimke, Datum, Fajl, FutasHiba, Html, Idotartam, Ikon, Kep, Link
@@ -16,7 +17,7 @@ def D(s: str) -> Datum:
 S = sor("A/Jegyzet.md",
         {"price": 4.5, "Status": "Done", "NN": ["[[Cél]]", "[[Másik]]"], "szoveg": "Hello World", "lista": [3, 1, 2, 2],
          "ures": None, "szamok": [1, 2, 3, 4], "tags": ("tags", ["Book", "math/algebra"])},
-        cimkek=["Book", "math/algebra", "inline", "BOOK"],
+        cimkek=["Book", "math/algebra", "inline", "BOOK"], ctime=datetime(2026, 8, 30, 7, 0, 0),
         linkek=[{"cel_nyers": "Cél", "alias": "mutat"}, {"cel_nyers": "Nincs ilyen"},
                 {"cel_nyers": "kep.png", "beagyazas": True}])
 SOROK = [S, sor("Cél.md", {"Ora": 2}), sor("Másik.md", {"Ora": 5}), sor("B/Más.md", linkek=["Jegyzet"]),

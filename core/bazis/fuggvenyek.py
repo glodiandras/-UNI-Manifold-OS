@@ -25,6 +25,7 @@ from .ertekek import (
 GLOBALIS: dict = {}
 METODUSOK: dict[str, dict] = {}
 LUSTA_METODUSOK: dict[str, dict] = {}
+ALAIRAS: dict[tuple, tuple] = {}         # (típus | "global", név) → (legkevesebb, legtöbb argumentum; `None` = nincs korlát / nem ellenőrzött)
 LUSTA_NEVEK = ("filter", "map", "reduce")
 _KULSO_RE = re.compile(r"^(?:[a-z][a-z0-9+.-]*://|mailto:)", re.I)
 _SZIN_RE = re.compile(r"^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
@@ -39,10 +40,10 @@ def _db_ellenor(nev: str, args, kell: int, max_: int | None) -> None:
         if max_ == kell:
             var = f"{kell}"
         elif max_ is None:
-            var = f"legalább {kell}"
+            var = f"at least {kell}"
         else:
             var = f"{kell}–{max_}"
-        raise FutasHiba(f"`{nev}`: {var} argumentum kell, {n} van")
+        raise FutasHiba("bazis.futas.argumentum_db", {"nev": nev, "var": var, "n": n})
 
 
 def glob(nev: str, kell: int = 0, max_: int | None = -1):
@@ -53,6 +54,7 @@ def glob(nev: str, kell: int = 0, max_: int | None = -1):
             _db_ellenor(nev, args, kell, max_)
             return f(kor, *args)
         GLOBALIS[nev] = hiv
+        ALAIRAS[("global", nev)] = (kell, max_)
         return f
     return dek
 
@@ -65,6 +67,7 @@ def met(tipus: str, nev: str, kell: int = 0, max_: int | None = -1):
             _db_ellenor(nev, args, kell, max_)
             return f(kor, obj, *args)
         METODUSOK.setdefault(tipus, {})[nev] = hiv
+        ALAIRAS[(tipus, nev)] = (kell, max_)
         return f
     return dek
 
@@ -72,6 +75,7 @@ def met(tipus: str, nev: str, kell: int = 0, max_: int | None = -1):
 def lusta(tipus: str, nev: str):
     def dek(f):
         LUSTA_METODUSOK.setdefault(tipus, {})[nev] = f
+        ALAIRAS.setdefault((tipus, nev), (None, None))        # a lusta metódus argumentumszáma nem ellenőrzött
         return f
     return dek
 
@@ -80,7 +84,7 @@ def _szoveg_arg(x, nev: str) -> str:
     if isinstance(x, str):
         return x
     if x is None or isinstance(x, (list, dict)):
-        raise FutasHiba(f"`{nev}`: szöveg kell, {tipus_neve(x)} van")
+        raise FutasHiba("bazis.futas.szoveg_kell", {"nev": nev, "tipus": tipus_neve(x)})
     return szovegge(x)
 
 
@@ -88,7 +92,7 @@ def _egesz(x, nev: str, alap=None):
     if x is None:
         return alap
     if not _szam_e(x) or (isinstance(x, float) and (math.isnan(x) or math.isinf(x))):
-        raise FutasHiba(f"`{nev}`: szám kell, {tipus_neve(x)} van")
+        raise FutasHiba("bazis.futas.szam_kell", {"nev": nev, "tipus": tipus_neve(x)})
     return int(x)
 
 
@@ -104,10 +108,10 @@ def _date(kor, s):
     if isinstance(s, Datum):
         return s
     if not isinstance(s, str):
-        raise FutasHiba(f"`date`: szöveg kell, {tipus_neve(s)} van")
+        raise FutasHiba("bazis.futas.szoveg_kell", {"nev": "date", "tipus": tipus_neve(s)})
     d = datum_szovegbol(s)
     if d is None:
-        raise FutasHiba(f"`date`: hibás dátum: {s!r} (YYYY-MM-DD HH:mm:ss)")
+        raise FutasHiba("bazis.futas.datum_hibas", {"ertek": repr(s)})
     return d
 
 
@@ -117,7 +121,7 @@ def _duration(kor, s):
         return s
     i = idotartam(s) if isinstance(s, str) else None
     if i is None:
-        raise FutasHiba(f"`duration`: hibás időtartam: {szovegge(s)!r}")
+        raise FutasHiba("bazis.futas.idotartam_hibas", {"ertek": repr(szovegge(s))})
     return i
 
 
@@ -127,7 +131,7 @@ def _link_keszit(kor, cel, kijelzes=None) -> Link:
     if isinstance(cel, Link):
         return Link(cel.cel, kijelzes if kijelzes is not None else cel.megjelenites, cel.ut, cel.alcel, cel.kulso)
     if not isinstance(cel, str):
-        raise FutasHiba(f"`link`: szöveg vagy fájl kell, {tipus_neve(cel)} van")
+        raise FutasHiba("bazis.futas.link_cel", {"tipus": tipus_neve(cel)})
     s = cel.strip()
     if _KULSO_RE.match(s):
         return Link(s, kijelzes, None, None, True)
@@ -158,7 +162,7 @@ def _file(kor, x):
             return None
         f = kor.tabla.fajl(x.strip().lstrip("/"))
         return f if f is not None else kor.tabla.fajl(_link_keszit(kor, x).ut)
-    raise FutasHiba(f"`file`: út, link vagy fájl kell, {tipus_neve(x)} van")
+    raise FutasHiba("bazis.futas.file_cel", {"tipus": tipus_neve(x)})
 
 
 @glob("html", 1)
@@ -182,7 +186,7 @@ def _image(kor, x):
             return Kep(szin=s)
         l = _link_keszit(kor, s)
         return Kep(url=l.cel) if l.kulso else Kep(ut=l.ut) if l.ut else None
-    raise FutasHiba(f"`image`: út, link vagy fájl kell, {tipus_neve(x)} van")
+    raise FutasHiba("bazis.futas.image_cel", {"tipus": tipus_neve(x)})
 
 
 @glob("icon", 1)
@@ -205,7 +209,7 @@ def _szamok(args, nev):
         if a is None:
             continue
         if not _szam_e(a):
-            raise FutasHiba(f"`{nev}`: szám kell, {tipus_neve(a)} van")
+            raise FutasHiba("bazis.futas.szam_kell", {"nev": nev, "tipus": tipus_neve(a)})
         ki.append(a)
     return ki
 
@@ -244,7 +248,7 @@ def _number(kor, x):
         return datum_ms(x)
     if isinstance(x, str) and _SZAM_RE.match(x.strip()):
         return szam(float(x.strip()))
-    raise FutasHiba(f"`number`: nem alakítható számmá: {szovegge(x)!r}")
+    raise FutasHiba("bazis.futas.number_alakitas", {"ertek": repr(szovegge(x))})
 
 
 @glob("random", 0)
@@ -354,7 +358,7 @@ def _sz_trim(kor, s):
 def _sz_repeat(kor, s, n):
     n = _egesz(n, "repeat")
     if n < 0 or len(s) * n > 1_000_000:
-        raise FutasHiba("`repeat`: érvénytelen ismétlésszám")
+        raise FutasHiba("bazis.futas.repeat_szam")
     if kor.keret is not None:
         kor.keret.fogyaszt(len(s) * n)                  # T041: a hívásonkénti 1 MB mellett lekérdezésenkénti összkeret
     return s * n
@@ -397,7 +401,7 @@ def _sz_replace(kor, s, minta, csere):
             return minta.rx.sub(_csere_kif(csere), s, count=0 if minta.globalis else 1, concurrent=True,
                                 timeout=Regex.IDOKORLAT_MP)
         except TimeoutError:
-            raise FutasHiba("a regex túl lassú") from None
+            raise FutasHiba("bazis.futas.regex_lassu") from None
     return s.replace(_szoveg_arg(minta, "replace"), csere)
 
 
@@ -408,7 +412,7 @@ def _sz_split(kor, s, sep, n=None):
         try:
             r = sep.rx.split(s, concurrent=True, timeout=Regex.IDOKORLAT_MP)
         except TimeoutError:
-            raise FutasHiba("a regex túl lassú") from None
+            raise FutasHiba("bazis.futas.regex_lassu") from None
     else:
         sep = _szoveg_arg(sep, "split")
         r = list(s) if sep == "" else s.split(sep)
@@ -446,7 +450,7 @@ def _sz_round(kor, x, jegyek=0):
 def _sz_to_fixed(kor, x, pontossag):
     p = _egesz(pontossag, "toFixed")
     if not 0 <= p <= 100:
-        raise FutasHiba("`toFixed`: a pontosság 0 és 100 közti egész")
+        raise FutasHiba("bazis.futas.tofixed_pontossag")
     return fixre(x, p)
 
 
@@ -612,7 +616,7 @@ def _cel_ut(kor, cel, forras_ut: str):
         if ut is None and kor.tabla is not None and cel.strip().lstrip("/") in kor.tabla.ut_szerint:
             ut = cel.strip().lstrip("/")
         return ut, l.cel
-    raise FutasHiba(f"fájl, link vagy út kell, {tipus_neve(cel)} van")
+    raise FutasHiba("bazis.futas.fajl_cel", {"tipus": tipus_neve(cel)})
 
 
 def _van_link(kor, sor, cel) -> bool:
@@ -688,6 +692,14 @@ def metodus_nevek() -> set:
     return {n for t in (METODUSOK, LUSTA_METODUSOK) for d in t.values() for n in d}
 
 
+def fuggveny_lista() -> list[dict]:
+    """A szerkesztő-segítség függvénylistája (10-bases-10): minden globális függvény és metódus az argumentumszámával,
+    név és típus szerint rendezve. `tipus`: `global` vagy a metódus tulajdonosa (`string`, `list`, `date`, `file`…);
+    `min`/`max`: az argumentumok száma (`max: null` = nincs felső korlát; mindkettő `null` = nem ellenőrzött)."""
+    return [{"nev": nev, "tipus": tipus, "min": kell, "max": max_}
+            for (tipus, nev), (kell, max_) in sorted(ALAIRAS.items(), key=lambda kv: (kv[0][1].casefold(), kv[0][0]))]
+
+
 def keres_metodus(obj, nev: str):
     """(függvény, lusta?, átalakított objektum) vagy `None`."""
     if isinstance(obj, Cimke) and nev not in METODUSOK.get("tag", {}):
@@ -714,19 +726,19 @@ def hivas_metodus(kor, obj, nev: str, args: list):
         if nev == "isType":
             _db_ellenor("isType", args, 1, 1)
             return args[0] in ("null", "empty")
-        raise FutasHiba(f"üres értéken nem hívható: {nev}()")
+        raise FutasHiba("bazis.futas.ures_hivas", {"nev": nev})
     r = keres_metodus(obj, nev)
     if r is None or r[1]:
-        raise FutasHiba(f"{tipus_neve(obj)} típuson nincs `{nev}()` metódus")
+        raise FutasHiba("bazis.futas.nincs_metodus", {"tipus": tipus_neve(obj), "nev": nev})
     return r[0](kor, r[2], *args)
 
 
 def hivas_lusta(kor, obj, nev: str, argok: list):
     if obj is None:
-        raise FutasHiba(f"üres értéken nem hívható: {nev}()")
+        raise FutasHiba("bazis.futas.ures_hivas", {"nev": nev})
     r = keres_metodus(obj, nev)
     if r is None or not r[1]:
-        raise FutasHiba(f"{tipus_neve(obj)} típuson nincs `{nev}()` metódus")
+        raise FutasHiba("bazis.futas.nincs_metodus", {"tipus": tipus_neve(obj), "nev": nev})
     return r[0](kor, r[2], argok)
 
 
@@ -804,4 +816,4 @@ def index(kor, obj, k):
         return obj[i] if 0 <= i < len(obj) else None
     if isinstance(k, str):
         return mezo(kor, obj, k)
-    raise FutasHiba(f"{tipus_neve(obj)} nem indexelhető {tipus_neve(k)} értékkel")
+    raise FutasHiba("bazis.futas.nem_indexelheto", {"tipus": tipus_neve(obj), "kulcs": tipus_neve(k)})

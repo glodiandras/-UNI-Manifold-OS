@@ -17,6 +17,10 @@ export interface GrafJson {
   meret_szorzo?: number;
   vonal_szorzo?: number;
   szoveg_halvanyitas?: number;
+  /** `showTags`: a címkék csúcsként (az Obsidian alapja: nem). */
+  mutat_cimkek?: boolean;
+  /** `hideUnresolved`: csak a létező fájlok (a feloldatlan link-célok nem csúcsok). */
+  csak_letezo?: boolean;
   erok?: { kozep?: number; taszitas?: number; rugo?: number; tavolsag?: number };
   szincsoportok?: { lekerdezes: string; szin: string; alfa?: number }[];
 }
@@ -33,6 +37,15 @@ export const EROK_TARTOMANY: Record<ErokKulcs, { min: number; max: number; lepes
 
 export const EROK_KULCSOK = Object.keys(EROK_TARTOMANY) as ErokKulcs[];
 
+/** A megjelenítés csúszkái (11-graph-04): a csúcsméret és a vonalvastagság szorzó (1 = alap), a szöveg-halványítás az Obsidian
+ *  „Text fade threshold” tartománya (−3 … 3; a nagyobb érték csak a nagyobb / közelebbi csúcsra ír feliratot). */
+export type MegjelenesKulcs = 'meretSzorzo' | 'vonalSzorzo' | 'szovegHalvany';
+export const MEGJELENES_TARTOMANY: Record<MegjelenesKulcs, { min: number; max: number; lepes: number; alap: number }> = {
+  meretSzorzo: { min: 0.5, max: 2, lepes: 0.05, alap: 1 },
+  vonalSzorzo: { min: 0.3, max: 3, lepes: 0.05, alap: 1 },
+  szovegHalvany: { min: -3, max: 3, lepes: 0.1, alap: 0 },
+};
+
 export const MAX_LEKERDEZES = 500;
 export const MAX_SZINCSOPORT = 30;
 
@@ -42,6 +55,13 @@ export interface GrafFeluliras {
   mellekletek?: boolean;
   arvak?: boolean;
   nyilak?: boolean;
+  /** A címkék csúcsként (11-graph-03). */
+  cimkek?: boolean;
+  /** Csak létező fájlok: a feloldatlan link-célok nem csúcsok (11-graph-02). */
+  letezoCsak?: boolean;
+  meretSzorzo?: number;
+  vonalSzorzo?: number;
+  szovegHalvany?: number;
   erok?: Partial<Record<ErokKulcs, number>>;
   szincsoportok?: SzinCsoport[];
 }
@@ -51,12 +71,16 @@ export interface GrafEffektiv {
   mellekletek: boolean;
   arvak: boolean;
   nyilak: boolean;
+  cimkek: boolean;
+  letezoCsak: boolean;
   erok: Record<ErokKulcs, number>;
   szincsoportok: SzinCsoport[];
   /** A graph.json-ból jött színcsoport (nem a felhasználó felülírása). */
   szincsoportForras: 'sajat' | 'graph.json' | 'nincs';
   meretSzorzo: number;
   vonalSzorzo: number;
+  /** A feliratok halványítási küszöbe (−3 … 3, 0 = alap). */
+  szovegHalvany: number;
 }
 
 const korlat = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
@@ -74,6 +98,14 @@ export function erokGraphJsonbol(j: GrafJson | null | undefined): Record<ErokKul
   };
 }
 
+/** A csúszka tényleges értéke: a felülírás (a tartományon belül), ennek hiányában a graph.json értéke (változatlanul: a
+ *  rajzoló a saját tartományára szorítja, a csúszka a szélén áll), annak hiányában az alap. */
+function megjelenes(kulcs: MegjelenesKulcs, felulir: number | undefined, json: number | undefined): number {
+  const t = MEGJELENES_TARTOMANY[kulcs];
+  if (veges(felulir)) return korlat(felulir, t.min, t.max);
+  return veges(json) ? json : t.alap;
+}
+
 export function effektiv(j: GrafJson | null | undefined, f: GrafFeluliras): GrafEffektiv {
   const van = !!j?.van;
   const alapErok = erokGraphJsonbol(j);
@@ -89,11 +121,14 @@ export function effektiv(j: GrafJson | null | undefined, f: GrafFeluliras): Graf
     mellekletek: f.mellekletek ?? (van ? (j!.mutat_mellekletek ?? true) : true),
     arvak: f.arvak ?? (van ? (j!.mutat_arvak ?? true) : true),
     nyilak: f.nyilak ?? (van ? (j!.nyil ?? false) : false),
+    cimkek: f.cimkek ?? (van ? (j!.mutat_cimkek ?? false) : false),
+    letezoCsak: f.letezoCsak ?? (van ? (j!.csak_letezo ?? true) : true),
     erok,
     szincsoportok: sajat ?? jsonCsoportok,
     szincsoportForras: sajat ? 'sajat' : jsonCsoportok.length ? 'graph.json' : 'nincs',
-    meretSzorzo: van ? (j!.meret_szorzo ?? 1) : 1,
-    vonalSzorzo: van ? (j!.vonal_szorzo ?? 1) : 1,
+    meretSzorzo: megjelenes('meretSzorzo', f.meretSzorzo, van ? j!.meret_szorzo : undefined),
+    vonalSzorzo: megjelenes('vonalSzorzo', f.vonalSzorzo, van ? j!.vonal_szorzo : undefined),
+    szovegHalvany: megjelenes('szovegHalvany', f.szovegHalvany, van ? j!.szoveg_halvanyitas : undefined),
   };
 }
 
@@ -106,6 +141,12 @@ export function feluliras(x: unknown): GrafFeluliras {
   if (typeof o.mellekletek === 'boolean') ki.mellekletek = o.mellekletek;
   if (typeof o.arvak === 'boolean') ki.arvak = o.arvak;
   if (typeof o.nyilak === 'boolean') ki.nyilak = o.nyilak;
+  if (typeof o.cimkek === 'boolean') ki.cimkek = o.cimkek;
+  if (typeof o.letezoCsak === 'boolean') ki.letezoCsak = o.letezoCsak;
+  for (const k of ['meretSzorzo', 'vonalSzorzo', 'szovegHalvany'] as const) {
+    const v = o[k];
+    if (veges(v)) ki[k] = korlat(v, MEGJELENES_TARTOMANY[k].min, MEGJELENES_TARTOMANY[k].max);
+  }
   if (o.erok && typeof o.erok === 'object') {
     const e: Partial<Record<ErokKulcs, number>> = {};
     for (const k of EROK_KULCSOK) {

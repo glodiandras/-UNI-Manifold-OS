@@ -68,7 +68,7 @@
   "beallitasok.abszolut": "Absolute path in workspace",
   "beallitasok.wikilinkek": "Use [[Wikilinks]]",
   "beallitasok.link_leiras": "Applies to links inserted from now on, such as link suggestions, dragged attachments and the Link button. When Wikilinks is off, links are written as [text](path.md). Existing links keep their style when a note is renamed.",
-  "beallitasok.kuka_leiras": "Deleted files go to the system Trash. Existing exclusion rules are preserved.",
+  "beallitasok.kuka_leiras": "Deleted files go to the system Trash.",
   "beallitasok.tema": "Theme",
   "beallitasok.rendszer": "System",
   "beallitasok.vilagos": "Light",

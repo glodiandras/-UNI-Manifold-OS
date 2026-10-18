@@ -12,6 +12,7 @@ import time
 from ..vaultio import Invalid, norm_path
 from .adat import Tar
 from .ertekek import ErtekKeretHiba, IdokeretHiba
+from .fuggvenyek import fuggveny_lista
 from .lekerdezes import MAX_SOR, futtat
 from .modell import betolt, hiba, modosit
 from ..hibakod import kodol
@@ -40,15 +41,17 @@ class Bazisok:
                 self._utolso.pop(next(iter(self._utolso)))
         return lambda: self._utolso.get(azon, kerdes) > kerdes
 
-    def _kesz_hiba(self, hely: str, uzenet: str, megszakitva: bool = False) -> dict:
+    def _kesz_hiba(self, hely: str, kod: str, param: dict | None = None, megszakitva: bool = False) -> dict:
         """A lekérdezés leállt (időkeret, értékkeret, szélsőséges érték): a YAML-hiba szerződése szerint 200, `ok: false`."""
         return {"ok": False, "nezetek": [], "nezet": None, "oszlopok": [], "sorok": [], "csoportok": None,
-                "osszesitok": {}, "osszes": 0, "levagva": False, "hibak": [hiba(hely, uzenet)], "figyelmeztetesek": [],
+                "osszesitok": {}, "osszes": 0, "levagva": False, "hibak": [hiba(hely, kod=kod, param=param)], "figyelmeztetesek": [],
                 "ido_ms": 0, "generacio": self.index.generacio, "megszakitva": megszakitva}
 
     def lekerdez(self, t: dict) -> dict:
-        """`{szoveg, ez?, nezet?, max_sor?}` → a sorok, oszlopok, csoportok, összesítők (200 YAML-hibánál is:
+        """`{szoveg, ez?, nezet?, max_sor?}` (vagy `{segitseg: true}` → `{ok, fuggvenyek}`, lekérdezés nélkül) → a sorok, oszlopok, csoportok, összesítők (200 YAML-hibánál is:
         `ok: false` és a `hibak`). 400: hiányzó szöveg; 503: az index nincs kész."""
+        if t.get("segitseg") is True:                       # 10-bases-10: a szerkesztő-segítség függvénylistája, lekérdezés nélkül
+            return {"ok": True, "fuggvenyek": fuggveny_lista()}
         szoveg = t.get("szoveg")
         if not isinstance(szoveg, str):
             raise kodol(Invalid("hiányzik a `.base` szövege (szoveg)"), "bazis.api.hianyzik_base_szovege_szoveg")
@@ -75,7 +78,7 @@ class Bazisok:
         figy = []
         if n is None:
             n = bazis.nezetek[0]
-            figy.append({"hely": "nezet", "uzenet": f"nincs ilyen nézet: {nezet!r} — az első nézet látszik"})
+            figy.append(hiba("nezet", kod="bazis.api.nincs_nezet", param={"nezet": repr(nezet)}))
         megszakitva = self._megszakitva(azon, kerdes)
         # T179: a `Tabla` (hideg: írás után) építése külön mérve — az `ido_ms` csak a lekérdezésé
         t0 = time.perf_counter()
@@ -85,11 +88,11 @@ class Bazisok:
             v = futtat(bazis, tabla, n, ez, max_sor=max_sor,
                        hatarido_mp=self.idokeret if self.idokeret > 0 else None, megszakitva=megszakitva)
         except IdokeretHiba as e:
-            return self._kesz_hiba("idokeret", e.uzenet, e.megszakitva)
+            return self._kesz_hiba("idokeret", e.kod, e.param, e.megszakitva)
         except ErtekKeretHiba as e:
-            return self._kesz_hiba("ertekkeret", e.uzenet)
+            return self._kesz_hiba("ertekkeret", e.kod, e.param)
         except (OverflowError, ValueError, RecursionError) as e:       # szélsőséges érték (T041): hiba, nem 500
-            return self._kesz_hiba("kifejezes", f"a lekérdezés szélsőséges értéken elakadt: {type(e).__name__}: {e}")
+            return self._kesz_hiba("kifejezes", "bazis.futas.szelsoseges", {"tipus": type(e).__name__, "e": e})
         v["hibak"] = hibak + v["hibak"]
         v["figyelmeztetesek"] += figy
         return {"ok": True, **v, "tabla_ms": tabla_ms, "tabla_mod": self.tar.utolso_mod}

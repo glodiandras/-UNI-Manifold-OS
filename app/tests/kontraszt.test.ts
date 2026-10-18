@@ -59,7 +59,7 @@ const PAROK: [string, string, number][] = [
   ['szoveg-masodlagos', 'hatter-kod', 4.5],
   ['akcent', 'hatter-aktiv', 3],
   // a gráfnézet (C13): a csúcsszínek UI-elemek (≥ 3) a vászon hátterén
-  ...['jegyzet', 'canvas', 'melleklet'].map((n): [string, string, number] => [`graf-${n}`, 'hatter', 3]),
+  ...['jegyzet', 'canvas', 'melleklet', 'cimke', 'feloldatlan'].map((n): [string, string, number] => [`graf-${n}`, 'hatter', 3]),
   // a canvas (C14): a preset szín a kártya fejlécének szövege a halvány kitöltésen (≥ 4,5), és keretként, élként
   // a vászon hátterén (UI-elem, ≥ 3); a kártya szövege a kitöltésen
   ...['1', '2', '3', '4', '5', '6'].flatMap((n): [string, string, number][] => [

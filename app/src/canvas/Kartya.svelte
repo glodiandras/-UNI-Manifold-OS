@@ -13,7 +13,7 @@
   import { sima } from './beagyazas';
   import { FOGOK } from './geometria';
   import { OLDALAK, szinCss, type Csomopont } from './modell';
-  import { fajlTipus, jegyzetRajzol, kepRajzol, linkRajzol, mediaRajzol, szovegRajzol } from './tartalom';
+  import { beagyazottRajzol, fajlTipus, jegyzetRajzol, kepRajzol, linkRajzol, mediaRajzol, szovegRajzol } from './tartalom';
 
   let {
     c,
@@ -21,6 +21,7 @@
     kijelolt = false,
     fogok = false,
     kapcsolhato = false,
+    irhato = false,
     reszletes = false,
     z = 1,
     frissites = 0,
@@ -28,6 +29,7 @@
     szerkeszt = false,
     szerkesztoHely,
     onfokusz,
+    onfeladat,
   }: {
     c: Csomopont;
     canvasUt: string;
@@ -36,6 +38,8 @@
     fogok?: boolean;
     /** az él-fogók az oldalakon (írható canvas; rámutatásra és kijelöléskor látszanak) */
     kapcsolhato?: boolean;
+    /** a canvas írható (a szövegkártya feladat-jelölői csak ekkor kapcsolhatók, 09-canvas-01) */
+    irhato?: boolean;
     reszletes?: boolean;
     z?: number;
     frissites?: number;
@@ -45,6 +49,8 @@
     szerkeszt?: boolean;
     szerkesztoHely?: (el: HTMLElement) => () => void;
     onfokusz?: (id: string) => void;
+    /** a szövegkártya feladat-jelölője átkapcsolt: (kártya, a `[` helye a szövegben, a négyzet) */
+    onfeladat?: (id: string, pos: number, jel: HTMLInputElement) => void;
   } = $props();
 
   let torzs: HTMLElement | undefined = $state();
@@ -85,7 +91,11 @@
       el.replaceChildren();
       return;
     }
-    if (c.type === 'text') return szovegRajzol(el, String(c.text ?? ''), canvasUt);
+    if (c.type === 'text')
+      return szovegRajzol(el, String(c.text ?? ''), canvasUt, {
+        csakOlvashato: !irhato,
+        cim: t('This canvas is read-only. Fix the file or resolve the conflict, then tick the task.'),
+      });
     if (c.type === 'link') return linkRajzol(el, String(c.url ?? ''));
     if (c.type !== 'file' || !letezik) {
       el.replaceChildren();
@@ -93,6 +103,7 @@
     }
     const ut = String(c.file ?? '');
     if (tipus === 'md') return jegyzetRajzol(el, ut, typeof c.subpath === 'string' ? c.subpath : undefined, canvasUt);
+    if (tipus === 'pdf' || tipus === 'base') return beagyazottRajzol(el, ut, typeof c.subpath === 'string' ? c.subpath : undefined, canvasUt);
     if (tipus === 'kep') return kepRajzol(el, ut, vodor);
     if (tipus === 'video' || tipus === 'hang') return mediaRajzol(el, ut, tipus);
     el.replaceChildren();
@@ -101,6 +112,13 @@
   $effect(() => {
     if (szerkeszt && szerkHely && szerkesztoHely) return szerkesztoHely(szerkHely);
   });
+
+  /** A szövegkártya saját feladat-jelölője (nem a beágyazott jegyzeté: annak saját kezelője van). */
+  function feladatValt(e: Event) {
+    const jel = e.target as HTMLInputElement | null;
+    if (c.type !== 'text' || !jel?.matches?.('input.feladat-jelolo') || jel.closest('.beagyazas-torzs')) return;
+    onfeladat?.(c.id, Number(jel.dataset.jelolo), jel);
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex (a kártya a vászon billentyűs útja: Tab lép, ↩ szerkeszt/megnyit) -->
@@ -109,6 +127,7 @@
   class:kijelolt
   class:szines={!!szin}
   class:hianyzik={c.type === 'file' && !letezik}
+  class:interaktiv-tartalom={tipus === 'pdf' || tipus === 'base'}
   class:szerkeszt
   data-id={c.id}
   style:left="{c.x}px"
@@ -134,12 +153,12 @@
   {#if szerkeszt}
     <div class="kartya-torzs kartya-szerk szerkeszto" bind:this={szerkHely}></div>
   {:else}
-    <div class="kartya-torzs" class:gorgetheto={reszletes && (tipus === 'md' || c.type === 'text')} bind:this={torzs}></div>
+    <div class="kartya-torzs" class:gorgetheto={reszletes && (tipus === 'md' || c.type === 'text')} bind:this={torzs} onchange={feladatValt}></div>
   {/if}
 
   {#if c.type === 'file' && !letezik}
     <div class="kartya-uzenet hiba">{t('Nem található: {fajl}', { fajl: String(c.file ?? '') })}</div>
-  {:else if c.type === 'file' && reszletes && tipus !== 'md' && tipus !== 'kep' && tipus !== 'video' && tipus !== 'hang'}
+  {:else if c.type === 'file' && reszletes && tipus !== 'md' && tipus !== 'kep' && tipus !== 'video' && tipus !== 'hang' && tipus !== 'pdf' && tipus !== 'base'}
     <div class="kartya-uzenet"><Ikon ikon={fajlIkon(tipus ?? 'egyeb')} meret={20} /><span>{nev}</span></div>
   {:else if !reszletes && c.type !== 'group'}
     <div class="kartya-vazlat">{nev}</div>

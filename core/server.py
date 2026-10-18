@@ -47,7 +47,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import (__version__, atirat, atnevezes, binaris_naplo, config, corenaplo, cpp_utvonal, elozmeny, events, felulet, frame, fuzet, fuzet_api, fuzet_figyelo, gepi_iras, grafikon_api, lepes_kapu, ma, media, mentes, naplo, naptar_api,
+from . import (__version__, atirat, atnevezes, binaris_naplo, config, corenaplo, cpp_utvonal, elozmeny, events, felulet, frame, fuzet, fuzet_api, fuzet_figyelo, gepi_iras, grafikon_api, komponalo, lepes_kapu, ma, media, mentes, naplo, naptar_api,
                naptar_szolgalat, sablon, pdfkiemeles, snapshot, tasks, tracker, tulajdonsagok, utvonalak, vaultio, video_api, videolanc,
                websocket)
 from .bazis import api as bazis_api
@@ -119,7 +119,7 @@ from . import epites, csatolmany, teljes_mentes, termek_beallitasok, modulkapu, 
 from . import doku, importalas
 
 UTVONAL_MODULOK = (termek_beallitasok, egeszseg, adatvedelem, demo, doku, importalas, epites, csatolmany, teljes_mentes, vaultio, atnevezes, tulajdonsagok, elozmeny, felulet, tasks, media, index_api, bazis_api, modell_api,
-                   sablon, naplo, ma, atirat, pdfkiemeles, gepi_iras, tracker, naptar_api,
+                   sablon, naplo, komponalo, ma, atirat, pdfkiemeles, gepi_iras, tracker, naptar_api,
                    grafikon_api, higienia, asszisztens_api, kviz_api, felkeszultseg_api, cpp_utvonal, kereses_api,
                    matek_api, fuzet_api, kartya_api, osszefoglalas_api, video_api)
 
