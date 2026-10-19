@@ -1,12 +1,14 @@
 # Manifold — PDF-audit és befejezési terv
 
-Dátum: 2026-10-18. Állapot: **az audit és a terv elkészült; a termék javítása és a kiadási kapuk lezárása még hátravan**.
+Dátum: 2026-10-18. Állapot: **S0 integráció lezárva; S1 végrehajtás és ellenőrzés folyamatban; az önálló letöltési csomag még nem kiadott termék**.
+
+Az S0 friss bizonyítékai az [integrációs jelentésben](S0-INTEGRACIO.md): 3 169 UI-teszt sikeres; 5 292 core/natív esetből 5 219 sikeres, 73 indokolt kihagyás; egyező production UI és release héj. Az alábbi 1. fejezet az audit **kezdeti**, javítás előtti állapotát őrzi, nem a mostani hibaszámokat. A felhasználó kérésére a munka a teljes kiadási előkészítésig folytatódik, a fázisváltások külön naplózásával.
 
 Ez a [Master Plan](../PLAN.md) kiegészítése. Az F1–F11 eredeti céljai megmaradnak; az alábbi S0–S6 munkaszakaszok azok integrációját, a felhasználói PDF megállapításait, a RAM-optimalizációt és a macOS 27 felé közelítő megjelenést rendezik végrehajtható sorrendbe. Az audit három párhuzamos agent vizsgálatát és a koordinátor teljes, 13 oldalas vizuális PDF-ellenőrzését egyesíti.
 
 Megfigyelési forrás: a felhasználó `Manifold-OS_UI&infrastructural problems.pdf` című, 13 képes oldalból álló dokumentuma; nincs benne kinyerhető szövegréteg. A személyes képek a helyi forrásban maradnak, az alábbi leltár csak a termékre vonatkozó észrevételeket rögzíti.
 
-## 1. Mi bizonyított most?
+## 1. Az audit kezdetén rögzített bizonyítékok
 
 1. **A vizsgálatkor a v2 app futott.** A folyamatlista a `v2:Manifold.app/Contents/MacOS/Manifold` binárist és a v2 Python-hátterét mutatta. Ez igazolja a másik változat használatát; önmagában nem bizonyítja, hogy a v2 saját buildje elavult. A PDF v2-n tapasztalt hibáit külön ellenőrizni kell az UNI-n.
 2. **Az UNI lemezen álló felülete és héja az audit kezdetén elavult volt.** A forrásujjlenyomat eltért a buildek jegyzékétől. A héj újrafordítása és ad-hoc aláírás-ellenőrzése sikerült; a frontend új buildjét jelenleg fordítási hibák állítják meg.
@@ -98,7 +100,7 @@ Ez az első végrehajtandó szakasz. Nagyobb vizuális módosítás előtt a meg
 | **S3 — asszisztens és vizuális tartalom** | U08–11 kontextus/cooldown/plot scroll + builder; U14 korlátos interaktív embed. | Működő napi szerkesztés és az S1 must-kapu után; az új P2 builder/embed az S2 költségkeretéhez igazodik. A kontextus-/ismétlődési hibajavítás külön, korábban is futhat. D9/írási kapuk sértetlenek. |
 | **S4 — egységes macOS megjelenés** | Az alábbi design-szerződés; minden fő modul és állapot; U17 statistics. | A tokentervezés már S1 előtt közös, az app-szintű vizuális elfogadás S1–S3 után. Jó minőségű alapélmény csökkentett effektussal is. |
 | **S5 — F11 és F6–F10 összesített igazolása** | A korábban bekötött 14 audit deduplikált sorainak végellenőrzése, megmaradó should tételek és release-rések, AI-telepítés/mérés útjai. | Nem halasztja idáig az editor must-integrációt. Minden sor saját bizonyítékkal; must 100%, should legalább 80% a hitelesített, egyesített scope-on. Tudatos halasztásnak indoka és vissza nem regresszáló viselkedése van. |
-| **S6 — kiadhatóság** | Befagyasztott build, önálló runtime/Git, csomag/DMG, tiszta-fiókos telepítés, teljes restore, natív vizuális és teljesítménykör. | A Master Plan 15 pontos DoD-je végigjátszható; sem ad-hoc csomag, sem unit-teszt önmagában nem kiadásigazolás. |
+| **S6 — kiadhatóság** | Befagyasztott build, önálló runtime/Git, teljes Manifold.app DMG-ben és ZIP-ben, tiszta-fiókos telepítés, teljes restore, natív vizuális és teljesítménykör. | GitHubon terjeszthető, tanúsítvány nélküli csomag a felhasználó kérése szerint; a Master Plan funkcionális/adatbiztonsági kapui maradnak. Az ad-hoc aláírás ténye önmagában nem igazolja a kiadást. |
 
 Nincs előre becsült óraszám: S0 és a teljesítmény-alapmérés után adható hiteles becslés. Fázisváltáskor NAPLO-bejegyzés rögzíti a változást, teszteket, tényleges maradékot és kockázatot. A régi F1–F11 számok/célok nem íródnak át.
 
@@ -170,13 +172,15 @@ A meglévő `var/build` próba-csomag jegyzéke régi `86d2d78` commitot, piszko
 
 ### S6 végső kiadási kapu
 
+**Terjesztési döntés (felhasználói pontosítás, 2026-10-18):** nincs Developer ID-tanúsítvány; a kért cél GitHubról letölthető teljes Mac-alkalmazás. Elsődleges artifact a tömörített DMG, benne a `Manifold.app` és az `Applications` hivatkozás; alternatív artifact a macOS jogosultságokat/symlinkeket megőrző ZIP. Saját Python/venv, Node/ffmpeg és hordozható Git kerül a csomagba: a használathoz nem kell checkout, Terminal vagy Command Line Tools. Az első célplatform a meglévő arm64/macOS 26 minimum; Intel-támogatást nem állítunk más architektúra buildje és tesztje nélkül. A csomag mellé SHA-256 ellenőrzőösszeg, telepítési/leltári útmutató és pontos aláírási státusz kell. A karanténos letöltés várható macOS-figyelmeztetését teszteljük és dokumentáljuk; rendszerbiztonságot globálisan kikapcsoló kerülőút nem kerül az útmutatóba. A Developer ID/notarizáció opcionális későbbi terjesztési mód, hiánya önmagában nem állítja le az itt kért csomag elkészítését. A felhasználó a licencválasztást a koordinátorra bízta; döntés: a saját projektkód AGPL-3.0-only licencű nyílt kiadás, a függőségek saját licenceinek megtartásával, licencjegyzékkel és megfelelő forráscsomagokkal. A privát biztonsági elérhetőséget nem találjuk ki.
+
 1. Friss core/UI/regressziós tesztek azonos checkpointból; 0 nem indokolt skip, 0 kezeletlen UI-kivétel; engedély-/adatbiztonsági kapuk zöldek.
 2. Egyező production UI + release héj + core/csomagjegyzék; build csak az ismert forrást tartalmazza. `--elavult-ok` és `--git-nelkul` nélkül készült önálló csomag.
 3. macOS 26 támogatási alap és macOS 27 célkör ellenőrzése; tiszta fiókban, fejlesztői runtime/CLT nélkül telepítés és újraindítás.
 4. A Master Plan 15 DoD-pontja végigjátszva, köztük safe-save, import, helyi AI próbával/méréssel, PDF, sandbox, backup és teljes restore médiával együtt. Külső tesztelői kör.
 5. Függőségek online auditja a megfelelő körben, licenc- és szállíthatósági ellenőrzés; a helyi offline teszt nem helyettesíti ezt.
 6. Natív vizuális/trackpad/keyboard/zoom kör és S2 RAM/soak riport; nincs screenshot alapján bemondott teljesítményjavulás.
-7. Ad-hoc helyi jelölt és Developer ID/notarizált nyilvános kiadás külön státusz. A szükséges identitás és tanúsítvány valódi külső feltétel; nincs „kész” jelölés a hiányában. RC tag csak a releváns kapuk után.
+7. A GitHub-csomag aláírási státusza explicit ad-hoc, nem Developer ID/notarizált. A teljes technikai készültséget a fenti funkcionális/telepítési kapuk igazolják; az opcionális notarizált mód külön, későbbi tanúsítványt igényel. RC tag csak a releváns kapuk után.
 
 ## 9. Hatékony agent-munka és átadás
 
@@ -186,4 +190,4 @@ A meglévő `var/build` próba-csomag jegyzéke régi `86d2d78` commitot, piszko
 - Újraírás előtt keresés a jelenlegi munkafában és meglévő tesztekben. Minden követelmény státusza: **kész és frissen igazolt / megvan, nincs bekötve / hibás / hiányzik / natív reprodukcióra vár / külső feltétel**. Régi log és általános Verified címke nem helyettesíti ezt.
 - Minden lezárt munkaszakasz: pontos diff, friss log és fingerprint, NAPLO, követelményhez rendelt bizonyíték és megmaradó kockázat. A valódi vaulton vagy a futó v2-n nem végzünk automatikus QA-t.
 
-**Következő konkrét munka:** S0 — a jelenlegi integrációs hibák javítása, a Bases/list bekötésével és a safe-write kapuk megtartásával; utána egyező UNI-buildből natív szintetikus ellenőrzés. A teljes alkalmazás elkészültét ez a tervezési dokumentum nem állítja.
+**Folyamatban:** S1 — a napi munkafelület és a már létező daily/composer funkciók bekötése; komment/index szemantikai egyezés; egyező UNI-buildből natív szintetikus ellenőrzés. S0 készültségét a külön jelentés igazolja; a teljes alkalmazás elkészültét ez a tervezési dokumentum nem állítja.

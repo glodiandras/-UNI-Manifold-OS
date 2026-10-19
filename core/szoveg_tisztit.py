@@ -18,7 +18,7 @@ import re
 
 from .index import maszk
 
-_KOMMENT = re.compile(r"%%.*?%%|<!--.*?-->", re.S)
+_HTML_KOMMENT = re.compile(r"<!--.*?-->", re.S)
 _CIMSOR = re.compile(r"^#{1,6}(?:\s|$)")
 _VONAL = re.compile(r"^(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$")
 _TABLA_ELVALASZTO = re.compile(r"^\|?[\s:|-]*-[\s:|-]*\|?$")
@@ -98,5 +98,6 @@ def _sor(sor: str) -> str:
 
 def egyszeru(szoveg: str) -> str:
     """A Markdown-szöveg (frontmatter nélkül) egyetlen sorba fűzött, jelölés nélküli alakja."""
-    szoveg = _KOMMENT.sub("", _kerites_nelkul(szoveg.replace("\r\n", "\n").replace("\r", "\n")))
+    szoveg = maszk.megjegyzes_nelkul(szoveg.replace("\r\n", "\n").replace("\r", "\n"), frontmatter=False)
+    szoveg = _HTML_KOMMENT.sub("", _kerites_nelkul(szoveg))
     return " ".join(s for s in (_sor(x) for x in szoveg.split("\n")) if s)

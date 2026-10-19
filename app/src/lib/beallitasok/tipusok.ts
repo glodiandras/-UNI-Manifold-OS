@@ -6,6 +6,8 @@ export interface Beallitasok {
     /** Auto-pair, külön-külön: zárójelek `( { [`, idézőjelek `" ' `` ` ``, Markdown-jelek `* _ ~ = $` (14-appearance-05). */
     auto_par_zarojel: boolean; auto_par_idezojel: boolean; auto_par_jeloles: boolean };
   fajlok: { uj_mappa: string; csatolmany_mappa: string; sablon_mappa: string; napi_ut: string; link_formatum: 'rovid'|'relativ'|'abszolut'; wikilinkek: boolean;
+    sablon_datum: string; sablon_ido: string; napi_sablon: string; napi_inditaskor: boolean;
+    kivonas_utana: 'link'|'beagyazas'|'semmi'; kivonas_sablon: string;
     /** Excluded files (14-appearance-06): útvonal-előtag vagy `/regex/`; csak láthatóságot szűr, a fájl érintetlen. */
     kizart: string[] };
   megjelenes: { tema: 'rendszer'|'vilagos'|'sotet'; betumeret: number; csend: boolean;
@@ -33,7 +35,7 @@ export function alapBeallitasok(): Beallitasok {
   return {
     altalanos: { nyelv: 'auto', inditas: 'utolso' },
     szerkeszto: { mod: 'elo', olvashato_szelesseg: true, helyesiras: true, tab_meret: 2, perjel: true, auto_par_zarojel: true, auto_par_idezojel: true, auto_par_jeloles: true },
-    fajlok: { uj_mappa: '', csatolmany_mappa: 'Attachments', sablon_mappa: '_Template', napi_ut: '[Daily]/YYYY-MM-DD', link_formatum: 'rovid', wikilinkek: true, kizart: [] },
+    fajlok: { uj_mappa: '', csatolmany_mappa: 'Attachments', sablon_mappa: '_Template', napi_ut: '[Daily]/YYYY-MM-DD', link_formatum: 'rovid', wikilinkek: true, kizart: [], sablon_datum: 'YYYY-MM-DD', sablon_ido: 'HH:mm', napi_sablon: '', napi_inditaskor: false, kivonas_utana: 'link', kivonas_sablon: '' },
     megjelenes: { tema: 'rendszer', betumeret: 16, csend: false, betu_szoveg: '', betu_mono: '' },
     modulok: Object.fromEntries(MODULOK.map(k => [k, true])) as Record<ModulId, boolean>,
     adatvedelem: { asszisztens: true, tracker: true, ertesitesek: true, naptar: false },

@@ -18,7 +18,7 @@ from dataclasses import asdict, dataclass, field
 import yaml
 
 from .feloldas import MD_RE, WIKI_RE, md_reszek
-from .maszk import FM_RE, KEPLET_BLOKK as _KEPLET_BLOKK, KEPLET_SOR as _KEPLET_SOR, keritesek, link_maszk, maszkok
+from .maszk import FM_RE, KEPLET_BLOKK as _KEPLET_BLOKK, KEPLET_SOR as _KEPLET_SOR, keritesek, link_maszk, maszkok, megjegyzes_nelkul
 _FM_KULCS = re.compile(r"^([^\s#:\-][^:]*):")
 _FEJEZET = re.compile(r"^(#{1,6})[ \t]+(.*?)[ \t]*$", re.M)
 # setext fejezet (CommonMark): a címsor közvetlenül a `=`/`-` aláhúzás felett; nem címsor, ha a felső sor üres, ATX-címsor,
@@ -326,7 +326,8 @@ def _blokk_eleje(sorok: list[str], sor: int) -> int:
 def elemez(txt: str, tipusok: dict | None = None) -> Jegyzet:
     """Egy `.md` elemzése. `txt`: a `feloldas.szoveg` szerinti szöveg (`\\n` sorvégek). `tipusok`: a vault
     `.obsidian/types.json` `types` táblája."""
-    j = Jegyzet(tartalom=txt)
+    lathato = megjegyzes_nelkul(txt)
+    j = Jegyzet(tartalom=lathato)
     poz = _Sorok(txt)
     maszk, linkmaszk = maszkok(txt)            # kód; kód + képlet (a linkekhez)
     fm = FM_RE.match(txt)
@@ -374,7 +375,7 @@ def elemez(txt: str, tipusok: dict | None = None) -> Jegyzet:
         j.fejezetek.append({"szint": 1 if m.group(2)[0] == "=" else 2, "szoveg": szoveg, "sor": poz(m.start(1))[0]})
     j.fejezetek.sort(key=lambda f: f["sor"])      # a `fejezet_tartomany` sor szerint rendezett bemenetet kér
 
-    sorok = txt.split("\n")
+    sorok = lathato.split("\n")
     for m in _BLOKK.finditer(torzs):
         sor = poz(m.start(1))[0]
         kezdo = sor
@@ -431,7 +432,7 @@ def elemez_canvas(adat: dict | None, hiba: str | None) -> Jegyzet:
             reszek.append(str(node["file"]))
         text = node.get("text") or ""
         if text:
-            reszek.append(str(text))
+            reszek.append(megjegyzes_nelkul(str(text), frontmatter=False))
             for L in _wiki_rekordok(link_maszk(text, frontmatter=False), text, None, "canvas_szoveg"):
                 L.csomopont = nid
                 j.linkek.append(L)

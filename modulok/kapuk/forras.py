@@ -18,7 +18,7 @@ import re
 import unicodedata
 from dataclasses import dataclass
 
-from core.index.maszk import FM_RE, mask_code
+from core.index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 from modulok.eval.kozos import idezet as _idezet
 
 from . import tokenek
@@ -45,7 +45,6 @@ _BLOKKAZON = re.compile(r"[ \t]+\^[A-Za-z0-9-]+[ \t]*$")
 _IDEZET_JEL = re.compile(r"^\s*(?:>\s?)+(?:\[![^\]]*\][+-]?\s*)?")
 _LISTA_JEL = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?")
 _KIEMELES = re.compile(r"\*\*|__|~~|==")                  # vastag, aláhúzott, áthúzott, kiemelt: a jelölés nem tartalom
-_MEGJEGYZES = re.compile(r"%%.*?%%", re.S)
 _HTML_MEGJEGYZES = re.compile(r"<!--.*?-->", re.S)
 # az Obsidian-link horgonyát ezek a jelek törik; ilyenkor a link csak a jegyzetre mutat
 _HORGONY_TILOS = re.compile(r"[#|^\[\]:\\%$]")
@@ -74,6 +73,16 @@ def _kiurit(szoveg: str, maszk: str, minta: re.Pattern) -> tuple[str, str]:
     return "".join(ki), "".join(mk)
 
 
+def _torzs_nezetek(md: str) -> tuple[str, str]:
+    """Látható törzs és szerkezeti maszk azonos eltolásokkal; a valódi kód tartalma megmarad."""
+    md = nfc(md).replace("\r\n", "\n").replace("\r", "\n")
+    fm = FM_RE.match(md)
+    torzs = md[fm.end():] if fm else md
+    maszk = mask_code(torzs, frontmatter=False)
+    lathato = megjegyzes_nelkul(torzs, frontmatter=False)
+    return _kiurit(lathato, maszk, _HTML_MEGJEGYZES)
+
+
 def _sor_tisztit(s: str) -> str:
     """Egy törzssor a jelölés nélkül: idézet- és callout-jel, lista- és feladatjel, beágyazás, link, lábjegyzet, `^blokk`."""
     s = _IDEZET_JEL.sub("", s)
@@ -92,12 +101,7 @@ def elokeszit(md: str, min_karakter: int = 0, kihagy: tuple[str, ...] | None = N
     beágyazás és a `kihagy` nevű fejezetek (az alfejezeteikkel); a kódblokk szövege megmarad, de nem fejezet. A
     legalább `min_karakter` nem szóköz karakteres szakaszok maradnak (0: minden nem üres). `kihagy` hiányában az alap
     (`KIHAGYOTT_SZAKASZOK`); a konfigurációból a `kihagyott_szakaszok(cfg)` adja."""
-    md = nfc(md).replace("\r\n", "\n").replace("\r", "\n")
-    fm = FM_RE.match(md)
-    torzs = md[fm.end():] if fm else md
-    maszk = mask_code(torzs, frontmatter=False)
-    torzs, maszk = _kiurit(torzs, maszk, _MEGJEGYZES)
-    torzs, maszk = _kiurit(torzs, maszk, _HTML_MEGJEGYZES)
+    torzs, maszk = _torzs_nezetek(md)
     kihagy = {nfc(k) for k in (KIHAGYOTT_SZAKASZOK if kihagy is None else kihagy)}
 
     ki: list[Szakasz] = []
@@ -119,7 +123,8 @@ def elokeszit(md: str, min_karakter: int = 0, kihagy: tuple[str, ...] | None = N
         if m:
             lezar()
             szint = len(m.group(1))
-            cim = nfc(sor[m.start(2):m.end(2)].strip())
+            # A kódmaszk csak a fejezet helyét adja: a címben álló inline kód is tartalom.
+            cim = nfc(_FEJ.match(sor).group(2).strip())
             if szint == 1:
                 verem, kihagy_szint = [], None
                 continue
@@ -139,14 +144,14 @@ def elokeszit(md: str, min_karakter: int = 0, kihagy: tuple[str, ...] | None = N
 
 
 def h1_cim(md: str) -> str | None:
-    """A jegyzet első `# cím` sora (a kódblokkon kívül), ha van."""
-    md = nfc(md).replace("\r\n", "\n")
-    fm = FM_RE.match(md)
-    torzs = md[fm.end():] if fm else md
-    for sor, mk in zip(torzs.split("\n"), mask_code(torzs, frontmatter=False).split("\n")):
+    """A jegyzet első látható `# cím` sora (kódblokk és megjegyzés nélkül), ha van."""
+    torzs, maszk = _torzs_nezetek(md)
+    for sor, mk in zip(torzs.split("\n"), maszk.split("\n")):
         m = re.match(r"^#[ \t]+(.+?)[ \t]*#*[ \t]*$", mk)
         if m and mk.strip():
-            return nfc(sor[m.start(1):m.end(1)].strip()) or None
+            cim = _FEJ.match(sor).group(2).strip()
+            if cim:
+                return nfc(cim)
     return None
 
 

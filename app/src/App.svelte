@@ -21,6 +21,9 @@
   import { fokuszVisszaallit, utolsoFokuszKovet } from './lib/fokusz/fokusz';
   import { grafTelepit } from './graf';
   import { maTelepit } from './ma';
+  import { napiIndito } from './ma/inditas';
+  import Komponalo from './ma/Komponalo.svelte';
+  import { komponaloAblak } from './ma/komponaloAllapot.svelte';
   import { hidTelepit } from './lib/core/hid';
   import { dolgozatTelepit } from './dolgozat';
   import { kornyezetBeallit } from './lib/kornyezet';
@@ -53,6 +56,7 @@
 
   const props: { felulet: Felulet } = $props();
   const felulet = untrack(() => props.felulet); // egyszer adódik át, nem változik
+  const napiIndit = napiIndito(felulet);
 
   let setupNyitva = $state(false);
   let setupElhalasztva = $state(false);
@@ -130,8 +134,20 @@
     if (beallitasAblak.nyitva || egeszsegAblak.nyitva) untrack(() => felulet.atfedes = null);
   });
   $effect(() => {
+    if (beallitasAblak.nyitva || egeszsegAblak.nyitva || setupNyitva || felulet.atfedes) komponaloAblak.keres = null;
+  });
+  $effect(() => {
     if (beallitasok.adat?.setup_szukseges && !setupElhalasztva) setupNyitva = true;
   });
+  $effect(() => {
+    const adat = beallitasok.adat;
+    const kesz = felulet.betoltve;
+    const varakozik = setupNyitva || beallitasAblak.nyitva || egeszsegAblak.nyitva;
+    untrack(() => napiIndit(adat, kesz, varakozik));
+  });
+  function napiInditasProba() {
+    napiIndit(beallitasok.adat, felulet.betoltve, setupNyitva || beallitasAblak.nyitva || egeszsegAblak.nyitva);
+  }
   function rendszerMegnyit(szakasz: string) {
     felulet.manifoldFeladat = null;
     if (szakasz === 'elozmenyek') { regiszter.futtat('elozmenyek.megnyit', 'gomb'); return; }
@@ -164,7 +180,7 @@
       // a naptár és az emlékeztetők (C29): állapot, értesítések, az engedély-híd válasza, parancsok
       naptarTelepit(regiszter, felulet, kapcsolat),
       // a bukott induló betöltés pótlása, amikor a core él (minden `hello`-n, amíg nem sikerül)
-      kapcsolat.figyel('hello', () => void betoltesPotol(felulet, mento)),
+      kapcsolat.figyel('hello', () => void betoltesPotol(felulet, mento).then(napiInditasProba)),
       // a munkatér kísérőmappái (kártya, kvíz, összefoglaló): minden `hello`-n újra, hogy a munkatér-váltás után is stimmeljenek
       kapcsolat.figyel('hello', () => void kiserokBetolt()),
     ];
@@ -200,6 +216,7 @@
 </script>
 
 <Hej />
+{#if komponaloAblak.keres}{#key komponaloAblak.keres}<Komponalo />{/key}{/if}
 {#if beallitasAblak.nyitva}
   <Beallitasok onbezar={() => beallitasAblak.nyitva = false} onsetup={() => setupNyitva = true} onrendszer={rendszerMegnyit} />
 {:else if setupNyitva}

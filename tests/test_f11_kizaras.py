@@ -171,8 +171,9 @@ class ErvenyesitesTest(unittest.TestCase):
 
     def test_vault_valasz_jeloltek_es_hasonlo_jegyzetek_kihagyjak(self):
         """AI context builders: the "Ask your vault" candidates and the similar-notes list skip excluded notes."""
-        from core.index.hibrid import hasonlo
+        from core.index.hibrid import frissites, hasonlo
         from core.index.kizaras import betolt
+        from tests.hibrid_segedek import AlBeagyazo
         kr = hibrid_kereso.HibridKereso(self.ix.olvaso)
         self.assertIn("Secret.md", {j.darab.ut for j in kr.darab_jeloltek("zebra text", 20)})
         self.kizar("Secret.md", "Archive/")
@@ -182,6 +183,9 @@ class ErvenyesitesTest(unittest.TestCase):
         self.assertFalse({"Secret.md", "Archive/Old.md"} & utak)
 
         class Tar:                                          # a vektortár hamisítványa: minden jegyzet hasonló a Public.md-hez
+            def modell_kulcs(self):
+                return frissites.modell_kulcs(AlBeagyazo())
+
             def jegyzet_hasonlosag(self, ut):
                 return {u: 0.5 for u in FAJLOK}
 

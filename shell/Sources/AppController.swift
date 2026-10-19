@@ -957,9 +957,34 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, WK
         case "szerkesztes":
             if ures { return finishSelftest(ok: false, note: "a szerkesztés forgatókönyve felületet kér (nincs app/dist)") }
             szerkesztesForgatokonyv()
+        case "munkafelulet":
+            if ures { return finishSelftest(ok: false, note: "a munkafelület forgatókönyve felületet kér (nincs app/dist)") }
+            buildWindow()  // Ez a geometriai próba a termék valódi ablakkonténerét használja; a többi selftest rejtett marad.
+            window?.setContentSize(NSSize(width: 760, height: 600))
+            webView.callAsyncJavaScript(SelftestSzkript.munkafelulet, arguments: [:], in: nil, in: .page) { [weak self] r in
+                switch r {
+                case .success(let v): self?.finishSelftest(ok: true, note: "munkafelület: \(v as? String ?? "?")")
+                case .failure(let e):
+                    let reszlet = (e as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
+                    self?.finishSelftest(ok: false, note: "munkafelület: \(reszlet)")
+                }
+            }
         case "core-halal", "core-ujraindul":
             // a héj maga öli meg a core-t; a `coreExited` → `coreLeallt` ágnak kell jeleznie (vagy újraindítania)
             if let pid = core?.pid { kill(pid, SIGKILL) } else { finishSelftest(ok: false, note: "nincs core, amit megölhetnénk") }
+        case "napi-integracio":
+            if ures { return finishSelftest(ok: false, note: "a napi-integracio forgatókönyve felületet kér (nincs app/dist)") }
+            guard let titok, Eletciklus.titokJs(titok) != nil else { return finishSelftest(ok: false, note: "nincs érvényes API-titok") }
+            buildWindow()
+            window?.setContentSize(NSSize(width: 1080, height: 760))
+            webView.callAsyncJavaScript(SelftestSzkript.napiIntegracio, arguments: ["titok": titok], in: nil, in: .page) { [weak self] r in
+                switch r {
+                case .success(let v): self?.finishSelftest(ok: true, note: "napi-integracio: \(v as? String ?? "?")")
+                case .failure(let e):
+                    let reszlet = (e as NSError).userInfo["WKJavaScriptExceptionMessage"] as? String ?? e.localizedDescription
+                    self?.finishSelftest(ok: false, note: "napi-integracio: \(reszlet)")
+                }
+            }
         case "kezfogas-ido":
             finishSelftest(ok: false, note: "a core jelentkezett, pedig a kézfogás időtúllépését vártuk")
         default:

@@ -140,7 +140,7 @@ describe('07-explorer-04: többes kijelölés', () => {
     expect(sor('B.md').getAttribute('aria-selected')).toBe('true');
     await fireEvent.click(screen.getByText('B'), { metaKey: true });
     expect(kijeloltek()).toEqual(['A.md', 'C.md']);
-    await fireEvent.click(screen.getByText('pic.png'), { ctrlKey: true });
+    await fireEvent.click(sor('pic.png'), { ctrlKey: true });
     expect(kijeloltek()).toEqual(['A.md', 'C.md', 'pic.png']);
     expect(k.felulet.munkaterulet.aktivFul?.ut).toBe('A.md'); // a kijelölés nem nyitott meg semmit
     await fireEvent.click(screen.getByText('B')); // egyszerű kattintás: kijelölés megszűnik, a fájl megnyílik

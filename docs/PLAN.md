@@ -4,7 +4,7 @@ Dátum: 2026-10-15. Forrás: `/Volumes/Work/Manifold-OS v2` (**csak olvasva**, a
 
 **Aktuális kiegészítés (2026-10-18):** a [PDF-audit és stabilizálási/befejezési terv](plan/2026-10-18-STABILIZALASI-TERV.md) a felhasználó 13 oldalas UI-észrevételeit összeveti a jelenlegi UNI-munkafával, és rögzíti a RAM-, macOS 27 design-, integrációs és kiadási kapukat. Az eredeti F1–F11 célok megmaradnak. A régi zöld naplók nem igazolják a mostani munkafát; először a frissen kimutatott build-/teszthibákat és a részben kész fejlesztések bekötését kell rendezni.
 
-**Kivitelezés:** az [S0 integrációs jelentés](plan/S0-INTEGRACIO.md) követi az első javítási szakaszt és annak friss kapuit. A további PDF-, RAM- és designfeladatok a kiegészítő terv szerinti S1–S6 szakaszokban maradnak.
+**Kivitelezés:** az [S0 integrációs jelentés](plan/S0-INTEGRACIO.md) lezárja az első javítási szakaszt. Az [S1 munkafelület-jelentés](plan/S1-MUNKAFELULET.md) rögzíti a napi felület, a daily/composer és komment/index integráció friss kapuit; végső core-köre folyamatban. A további RAM-, design- és önálló DMG/ZIP-feladatok a kiegészítő terv szerinti S2–S6 szakaszokban maradnak.
 
 A részletes auditok (fájl:sor hivatkozásokkal, a terv bizonyítéka) a `docs/plan/audit/` alatt:
 `01-personal-coupling.md` · `02-core-architektura.md` · `03-felulet.md` · `04-hej-build-installer.md` · `05-ai-reteg.md` · `06-tesztek-es-vault-konvenciok.md`.

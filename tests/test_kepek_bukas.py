@@ -4,6 +4,7 @@ import contextlib
 import io
 import os
 import stat
+import subprocess
 import time
 import unittest
 from pathlib import Path
@@ -83,18 +84,31 @@ class BukasMemoTest(unittest.TestCase):
         return ff
 
     def test_a_poszter_idotullepese_egyszer_futtatja_az_ffmpeget(self):
-        naplo = self.d / "hivasok.txt"
-        ff = self._ffmpeg(f'#!/bin/sh\necho x >> "{naplo}"\nsleep 5\n')
+        ff = self._ffmpeg('#!/bin/sh\nexec /bin/sleep 5\n')
         video = self.d / "v.mp4"
         video.write_bytes(b"\0" * 64)
         hiba = io.StringIO()
+        eredeti_futtat = subprocess.run
+        idotullepesek = []
+
+        def futtat(*a, **k):
+            try:
+                return eredeti_futtat(*a, **k)
+            except subprocess.TimeoutExpired:
+                idotullepesek.append(True)
+                raise
+
         with mock.patch.object(kepek, "_ffmpeg", lambda cfg: ff), mock.patch.object(kepek, "POSZTER_IDOKORLAT_MP", 0.3), \
+                mock.patch.object(kepek.subprocess, "run", wraps=futtat) as futas, \
                 contextlib.redirect_stderr(hiba):
             t0 = time.monotonic()
             self.assertIsNone(kepek.poszter(self.cfg, video))
             self.assertIsNone(kepek.poszter(self.cfg, video))           # a memóból: nem indít ffmpeg-et
             self.assertLess(time.monotonic() - t0, 3)
-        self.assertEqual(naplo.read_text().count("x"), 1)               # a 0. kockára nem próbálkozott újra
+        # A timeout még a gyermek első mellékhatása előtt is lejárhat terhelt gépen.
+        # A tényleges indítási kísérletet mérjük, valódi OS-időtúllépéssel; nincs második kocka vagy memo-retry.
+        self.assertEqual(futas.call_count, 1)
+        self.assertEqual(idotullepesek, [True])
         self.assertEqual(hiba.getvalue().count("[kepek]"), 1)
 
     def test_a_poszter_hibaja_a_memoba_kerul(self):

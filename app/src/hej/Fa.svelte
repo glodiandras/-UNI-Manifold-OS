@@ -10,10 +10,10 @@
   import { onDestroy, tick, untrack } from 'svelte';
   import { ApiHiba, kerdez } from '../lib/core/api';
   import Atfedes from '../lib/ui/Atfedes.svelte';
+  import FigyelmeztetoParbeszed from '../lib/ui/FigyelmeztetoParbeszed.svelte';
   import { fajlImport, VAULT_HUZAS } from '../szerkeszto/csatolmany';
   import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
-  import { ArrowUpDown, ChevronDown, ChevronRight, ChevronsDownUp, CircleAlert, FilePlus, Folder, FolderOpen, ListTree } from '../lib/ikon/ikonok';
-  import JegyzetIkon from '../lib/ui/JegyzetIkon.svelte';
+  import { ArrowUpDown, ChevronDown, ChevronRight, ChevronsDownUp, CircleAlert, FilePlus, Folder, ListTree, Trash2 } from '../lib/ikon/ikonok';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { kornyezet } from '../lib/kornyezet';
   import { keresoMegnyit } from '../lib/kereses/kereso';
@@ -669,15 +669,24 @@
   }
 
   const tipusNev = (cs: FaCsomopont) => (cs.mappa ? `${tp('{n} jegyzet', cs.jegyzetek)} · ${tp('{n} fájl', cs.fajlok)}` : cs.ut);
+
+  /** Csak a fa prezentációja: az eredeti út, a fa rendezése és az átnevezés kiterjesztés-védelme érintetlen. */
+  function sorNev(cs: FaCsomopont): { nev: string; kiterjesztes: string; eredeti: string } {
+    const eredeti = cs.ut.slice(cs.ut.lastIndexOf('/') + 1);
+    if (cs.mappa) return { nev: cs.nev, kiterjesztes: '', eredeti };
+    const pont = eredeti.lastIndexOf('.');
+    return pont > 0 && pont < eredeti.length - 1
+      ? { nev: eredeti.slice(0, pont), kiterjesztes: eredeti.slice(pont + 1).toUpperCase(), eredeti }
+      : { nev: eredeti, kiterjesztes: '', eredeti };
+  }
 </script>
 
 <div class="fa-doboz">
   {#if torlendo}
-    <Atfedes cimke={t('Áthelyezés a Kukába')} nev="kuka" onbezar={() => { if (!torlesFut) torlendo = null; }}>
-      <div class="kuka-kerdes">
-        <h2>{t('Áthelyezés a Kukába')}</h2>
+    <FigyelmeztetoParbeszed cim={t('Áthelyezés a Kukába')} nev="kuka" megerosit={t('Áthelyezés a Kukába')} ikon={Trash2}
+      folyamat={torlesFut} hiba={torlesHiba} onbezar={() => (torlendo = null)} onmegerosit={() => void kukaba()}>
         {#if torlendo.length === 1}
-          <p>{torlendo[0]}</p>
+          <p class="kuka-ut">{torlendo[0]}</p>
         {:else}
           <p>{tp('{n} kijelölt elem', torlendo.length)}</p>
           <ul class="kuka-lista">
@@ -686,11 +695,7 @@
           </ul>
         {/if}
         <p>{t('A fájl vagy mappa a macOS Kukájából visszahozható. A rá mutató hivatkozások megmaradnak.')}</p>
-        {#if torlesHiba}<p role="alert" class="dialog-hiba"><Ikon ikon={CircleAlert} meret={14} /> {torlesHiba}</p>{/if}
-        <button class="m-gomb semleges" disabled={torlesFut} onclick={() => torlendo = null}>{t('Mégse')}</button>
-        <button class="m-gomb" disabled={torlesFut} onclick={() => void kukaba()}>{t('Áthelyezés a Kukába')}</button>
-      </div>
-    </Atfedes>
+    </FigyelmeztetoParbeszed>
   {/if}
   {#if tomeges}
     <Atfedes cimke={t('Elemek áthelyezése')} nev="tomeges-athelyezes" onbezar={() => { if (!tomeges?.folyamat) tomeges = null; }}>
@@ -766,6 +771,7 @@
     {/if}
     {#each sorok as s (s.cs.ut)}
       {@const cs = s.cs}
+      {@const cim = sorNev(cs)}
       <!-- svelte-ignore a11y_click_events_have_key_events -->
       <div
         class="sor"
@@ -785,6 +791,7 @@
         aria-setsize={s.testverek}
         aria-expanded={cs.mappa ? nyitott.has(cs.ut) : undefined}
         aria-selected={(!cs.mappa && cs.ut === aktivUt) || kijeloltSet.has(cs.ut)}
+        aria-label={cim.eredeti}
         title={!cs.mappa && fajlok.info(cs.ut)?.kizart === true ? `${tipusNev(cs)} · ${t('beallitasok.kizart_fa')}` : tipusNev(cs)}
         style:padding-left={`${8 + s.melyseg * 16}px`}
         draggable={atnevezesSor?.ut === cs.ut ? 'false' : 'true'}
@@ -796,10 +803,8 @@
       >
         {#if cs.mappa}
           <span class="nyil"><Ikon ikon={nyitott.has(cs.ut) ? ChevronDown : ChevronRight} meret={14} /></span>
-          <Ikon ikon={nyitott.has(cs.ut) ? FolderOpen : Folder} meret={16} />
         {:else}
           <span class="nyil"></span>
-          <JegyzetIkon ut={cs.ut} tipus={cs.tipus} meret={16} />
         {/if}
         {#if atnevezesSor?.ut === cs.ut}
           <input
@@ -816,8 +821,9 @@
             onblur={() => { if (atnevezesSor && !atnevezesSor.folyamat) atnevezesBezar(false); }}
           />
         {:else}
-          <span class="nev">{cs.nev}</span>
+          <span class="nev">{cim.nev}</span>
         {/if}
+        {#if cim.kiterjesztes}<span class="kiterjesztes" aria-hidden="true">{cim.kiterjesztes}</span>{/if}
         {#if cs.mappa && cs.fajlok}<span class="db">{cs.fajlok}</span>{/if}
       </div>
       {#if atnevezesSor?.ut === cs.ut && atnevezesSor.hiba}
@@ -987,6 +993,20 @@
     color: var(--szoveg-halvany);
     font-variant-numeric: tabular-nums;
   }
+
+  .kiterjesztes {
+    flex: none;
+    white-space: nowrap;
+    margin-left: var(--t-1);
+    padding: 0 var(--t-1);
+    border-radius: var(--kerekites-kicsi);
+    background: var(--hatter-hover);
+    color: var(--szoveg-masodlagos);
+    font-size: var(--betu-kicsi);
+    line-height: var(--magassag-gomb-kicsi);
+  }
+
+  .kuka-ut { margin: 0 0 var(--t-3); color: var(--szoveg); overflow-wrap: anywhere; }
 
   .ures {
     margin: var(--t-2) var(--t-3);

@@ -129,6 +129,8 @@ class HibridKereso:
         k = self.tar.modell_kulcs()
         if not k:
             return "ures_vektortar"
+        if not frissites.aktualis_darabolas(k):
+            return "mas_modell_vektorai"     # a dimenzió-próba modellt is kérhetne: régi szemantikánál erre sincs szükség
         if k.get("nev") != self.beagyazo.nev or int(k.get("dim") or 0) != int(self.beagyazo.dim) \
                 or k.get("elotag") != self.beagyazo.elotag:
             return "mas_modell_vektorai"
@@ -211,7 +213,7 @@ class HibridKereso:
     def legjobb_szoveg(self, ut: str, q: str) -> str:
         """A reranker szövege egy jegyzetre (C25b): a kérdéshez lexikailag (BM25) legjobb darabja a címmel és a címsor-úttal.
         A jegyzet első darabja rossz képviselő (a C25b mérésén a reranker így a FTS-sorrendet rontotta: recall@5 0,86 → 0,70)."""
-        darabok = self.tar.darabok(ut=ut) if self.tar is not None else []
+        darabok = self.tar.darabok(ut=ut) if self.tar is not None and frissites.aktualis_darabolas(self.tar.modell_kulcs()) else []
         if not darabok:
             with self.index_olvaso() as c:
                 darabok = [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut, kihagyott=self.b.kihagyott)]
@@ -246,7 +248,7 @@ class HibridKereso:
         with self.index_olvaso() as c:
             lex = self._lexikai(c, kerdes)
             for ut in lex["utak"][:self.b.lexikai_jegyzet_darab]:
-                tarbeli = self.tar.darabok(ut=ut) if self.tar is not None else []
+                tarbeli = self.tar.darabok(ut=ut) if self.tar is not None and frissites.aktualis_darabolas(self.tar.modell_kulcs()) else []
                 for d in tarbeli or [_darabsor(x) for x in frissites.jegyzet_darabjai(c, ut, kihagyott=self.b.kihagyott)]:
                     jeloltek.setdefault((d.ut, d.sorszam), d)
         if not jeloltek:

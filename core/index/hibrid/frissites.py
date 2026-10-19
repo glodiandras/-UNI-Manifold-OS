@@ -24,6 +24,7 @@ from .vektortar import Vektortar
 
 # a kapu (`core/modell/kapu.py`) `admit`-ja ezt a két mezőt nézi: automatikus, modellt igénylő munka
 AUTOMATIKUS_FELADAT = SimpleNamespace(id="vektorindex", automatikus=True, resources=frozenset({"modell"}))
+DARABOLAS_VERZIO = 'd2'  # S1: a %% komment a TS parserrel azonos tartományban kiesik a szemantikus szövegből.
 
 
 class Beagyazo(Protocol):
@@ -35,7 +36,12 @@ class Beagyazo(Protocol):
 
 
 def modell_kulcs(b: Beagyazo, darab_max: int = darabolas.DARAB_MAX) -> dict:
-    return {"nev": b.nev, "dim": int(b.dim), "elotag": b.elotag, "darabolas": f"d1-{darab_max}"}
+    return {"nev": b.nev, "dim": int(b.dim), "elotag": b.elotag, "darabolas": f"{DARABOLAS_VERZIO}-{darab_max}"}
+
+
+def aktualis_darabolas(kulcs: dict | None) -> bool:
+    """Régi cache a változatlan forrás-SHA ellenére elavult; olvasáskor sem szolgálhat ki d1 darabokat."""
+    return bool(kulcs) and str(kulcs.get('darabolas', '')).startswith(f'{DARABOLAS_VERZIO}-')
 
 
 def kapu_folytathat(kapu) -> Callable[[], bool]:

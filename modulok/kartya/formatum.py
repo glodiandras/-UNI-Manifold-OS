@@ -28,7 +28,7 @@ import yaml
 
 from core import kiserok
 from core.index.elemzo import _BLOKK
-from core.index.maszk import FM_RE, mask_code
+from core.index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 
 UTOTAG = " — kártyák"
 ALAP_MAPPA = kiserok.alap_mappa("kartya")   # a kísérőjegyzetek mappája, ha a `[kartya] mappa` hiányzik (a forrás: core/kiserok.py)
@@ -124,7 +124,10 @@ def elemez(txt: str) -> Elemzes:
     txt = txt.replace("\r\n", "\n").replace("\r", "\n")
     e = Elemzes()
     fm_sorok = _frontmatter(txt, e)
-    sorok = txt.split("\n")
+    eredeti = txt.split("\n")
+    # A mezők a teljes jegyzet kommentkontextusából jönnek: a kérdésben nyílt
+    # komment a választ/azonosítót is rejtheti. A kódmaszk csak szerkezeti kapu.
+    sorok = megjegyzes_nelkul(txt).split("\n")
     maszk = mask_code(txt).split("\n")
     i = fm_sorok
     n = len(sorok)
@@ -137,8 +140,10 @@ def elemez(txt: str) -> Elemzes:
         nyitas, kerdes = m.group(1), m.group(2)
         torzs: list[str] = []
         i += 1
-        while i < n and sorok[i].startswith(">"):
-            torzs.append(_SORELO.sub("", sorok[i], count=1))
+        while i < n and eredeti[i].startswith(">"):
+            # Többsoros komment a belső sor quote-prefixét is kitakarhatja.
+            # A fizikai tároló a nyers soré, a visszaadott tartalom a láthatóé.
+            torzs.append(sorok[i][_SORELO.match(eredeti[i]).end():])
             i += 1
         azon = None
         # az azonosító a callout utolsó sorának végén (a címsor is lehet az)

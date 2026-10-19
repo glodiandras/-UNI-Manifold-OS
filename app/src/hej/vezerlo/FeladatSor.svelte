@@ -1,6 +1,8 @@
 <!-- Egy feladat sora a „Most” szakaszban (C17): cím, állapot, haladássáv; kattintásra a részlet nyílik. -->
 <script lang="ts">
-  import { t } from '../../lib/i18n';
+  import { t, tp } from '../../lib/i18n';
+  import Ikon from '../../lib/ikon/Ikon.svelte';
+  import { TriangleAlert } from '../../lib/ikon/ikonok';
   import { allapotCimke, feladatSzoveg, haladasSzoveg, idoRovid, idotartam } from '../../lib/vezerlo/megjelenites';
   import type { Feladat } from '../../lib/vezerlo/tipusok';
 
@@ -18,7 +20,10 @@
 <button type="button" class="sor" data-allapot={feladat.allapot} onclick={() => onnyit(feladat.id)}>
   <span class="fej">
     <span class="cim">{feladatSzoveg(feladat.cim)}</span>
-    <span class="allapot">{allapotCimke(feladat.allapot)}</span>
+    <span class="allapot">
+      {#if feladat.allapot === 'hiba' || feladat.allapot === 'megszakadt' || feladat.figyelmeztetes.length}<Ikon ikon={TriangleAlert} meret={14} />{/if}
+      {allapotCimke(feladat.allapot)}
+    </span>
   </span>
   {#if fut}
     <span class="sav" role="progressbar" aria-label={t('Haladás')} aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(feladat.szazalek)}>
@@ -26,6 +31,7 @@
     </span>
   {/if}
   {#if meta}<span class="meta">{meta}</span>{/if}
+  {#if feladat.figyelmeztetes.length}<span class="figyelmeztetes"><Ikon ikon={TriangleAlert} meret={14} />{tp('{n} figyelmeztetés', feladat.figyelmeztetes.length)}</span>{/if}
 </button>
 
 <style>
@@ -69,6 +75,9 @@
   }
 
   .allapot {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--t-1);
     flex: none;
     font-size: var(--betu-kicsi);
     color: var(--szoveg-halvany);
@@ -108,4 +117,5 @@
     color: var(--szoveg-halvany);
     font-variant-numeric: tabular-nums;
   }
+  .figyelmeztetes { display: inline-flex; align-items: center; gap: var(--t-1); color: var(--figyelmeztetes); font-size: var(--betu-kicsi); }
 </style>

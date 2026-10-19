@@ -52,7 +52,7 @@ describe('FajlCim (CX-005)', () => {
     await fireEvent.input(mezo, { target: { value: '  Új név  ' } });
     await fireEvent.keyDown(mezo, { key: 'Enter' });
     await fireEvent.blur(mezo);
-    await waitFor(() => expect(atnev.vegrehajt).toHaveBeenCalledWith('Mappa/Régi név.md', 'Mappa/Új név.md', 'h1'));
+    await waitFor(() => expect(atnev.vegrehajt).toHaveBeenCalledWith('Mappa/Régi név.md', 'Mappa/Új név.md', 'h1', expect.any(Function)));
     expect(atnev.terv).toHaveBeenCalledWith('Mappa/Régi név.md', 'Mappa/Új név.md');
     expect(szerkesztok.dokumentumok.mindLezar).toHaveBeenCalled(); // előbb minden mentetlen szerkesztés lezárul
     expect(atnev.ertesites).toHaveBeenCalledOnce();
@@ -78,7 +78,7 @@ describe('FajlCim (CX-005)', () => {
     expect(atnev.terv).not.toHaveBeenCalled();
   });
 
-  it('a blokkolt terv hibát mutat (ikonos hibasor), és a név visszaáll', async () => {
+  it('a blokkolt terv ikonos hibát mutat, a javítható név megmarad', async () => {
     atnev.terv.mockResolvedValue({ ok: false, blokkolok: ['A cél foglalt.'], terv_hash: '' });
     const mezo = megjelenit();
     await fireEvent.input(mezo, { target: { value: 'Foglalt' } });
@@ -86,7 +86,7 @@ describe('FajlCim (CX-005)', () => {
     const hiba = await screen.findByRole('alert');
     expect(hiba.textContent).toContain('A cél foglalt.');
     expect(hiba.classList.contains('hiba')).toBe(true);
-    expect(mezo.value).toBe('Régi név');
+    expect(mezo.value).toBe('Foglalt');
     expect(atnev.vegrehajt).not.toHaveBeenCalled();
   });
 

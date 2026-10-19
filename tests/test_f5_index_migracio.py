@@ -10,7 +10,7 @@ from tests.index_segedek import index_indit
 
 
 class F5IndexMigracioTest(unittest.TestCase):
-    def test_v4_relativ_linkek_ujraoldodnak_restartkor_a_tobbi_cache_megmarad(self):
+    def test_v4_relativ_linkek_ujraoldodnak_restartkor_a_binaris_cache_megmarad(self):
         with tmpdir() as t:
             cfg, root, vault = alg_core(t)
             fajlok = {
@@ -19,9 +19,10 @@ class F5IndexMigracioTest(unittest.TestCase):
                 "Dir/Target.md": "# Target\n",
                 "Other/Note.md": "# Other note\n",
                 "Ordinary.md": "[[Dir/Target]]\n",
+                "image.png": b"\x89PNG\r\n",
             }
             for ut, tartalom in fajlok.items():
-                ir(vault, ut, tartalom)
+                ir(vault, ut, tartalom, "wb" if isinstance(tartalom, bytes) else "w")
             eredeti = lenyomat(vault, kihagy=())
             felold = feloldas.Feloldo.resolve
 
@@ -50,8 +51,10 @@ class F5IndexMigracioTest(unittest.TestCase):
                 utana = {r["ut"]: (r["hash"], r["mtime_ns"]) for r in c.execute("SELECT ut, hash, mtime_ns FROM fajl")}
                 for ut in ("Dir/Source.md", "Dir/Board.canvas"):
                     self.assertEqual(utana[ut], (None, None), ut)
+                # S1/v7 új komment-szemantikája minden szöveges cache-t érvénytelenít, a v5 célzott lépése után is.
                 for ut in ("Dir/Target.md", "Other/Note.md", "Ordinary.md"):
-                    self.assertEqual(utana[ut], elotte[ut], ut)
+                    self.assertEqual(utana[ut], (None, None), ut)
+                self.assertEqual(utana['image.png'], elotte['image.png'])
             finally:
                 c.close()
 
@@ -72,7 +75,7 @@ class F5IndexMigracioTest(unittest.TestCase):
                 tar.migral(c)
                 ujra = {r["ut"]: (r["hash"], r["mtime_ns"]) for r in c.execute("SELECT ut, hash, mtime_ns FROM fajl")}
                 self.assertEqual(ujra, friss)
-                self.assertTrue(all(h is not None and m is not None for h, m in friss.values()))
+                self.assertTrue(all(h is not None and m is not None for ut, (h, m) in friss.items() if ut.endswith(('.md', '.canvas'))))
             finally:
                 c.close()
 

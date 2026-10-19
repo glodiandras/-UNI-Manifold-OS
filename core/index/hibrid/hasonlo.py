@@ -21,6 +21,7 @@ import unicodedata
 from ... import kiserok
 from ...vaultio import Invalid, NotFound
 from ...hibakod import kodol
+from .frissites import aktualis_darabolas
 
 MAX_CEL = 500
 
@@ -50,6 +51,8 @@ def _alap(index_olvaso, tar, ut) -> tuple[dict, dict | None, set[str], int | Non
         return {**alap, "allapot": "nem_jegyzet"}, None, elo, fid
     if tar is None:
         return {**alap, "allapot": "nincs_tar"}, None, elo, fid
+    if not aktualis_darabolas(tar.modell_kulcs()):
+        return {**alap, "allapot": "nincs_vektor", "elavult": True}, None, elo, fid
     pontok = tar.jegyzet_hasonlosag(ut)
     if pontok is None:
         return {**alap, "allapot": "nincs_vektor"}, None, elo, fid

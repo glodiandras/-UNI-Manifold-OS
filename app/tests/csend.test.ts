@@ -98,20 +98,22 @@ describe('az állapotsor láthatósága', () => {
 });
 
 describe('a tartós kapcsoló', () => {
-  it('az első C38-as indulás: csend be, a jobb panel zárva, a tulajdonságok összecsukva — egyszer', () => {
+  it('az első indulás: csend be, a jobb panel zárva; a tulajdonságok nyitottsága megmarad', () => {
     const f = new Felulet({ jobbPanel: { nyitva: true }, tulajdonsagok: { nyitva: true } });
     expect(f.csend).toEqual({ be: true, bemutatva: false });
     expect(f.jobbPanel.nyitva).toBe(false);
-    expect(f.tulajdonsagok.nyitva).toBe(false);
+    expect(f.tulajdonsagok.nyitva).toBe(true);
     // a felhasználó kinyitja: a következő indulás megtartja
     f.jobbPanel.nyitva = true;
     const ujra = new Felulet(JSON.parse(JSON.stringify(f.sorosit())));
     expect(ujra.csend.be).toBe(true);
     expect(ujra.jobbPanel.nyitva).toBe(true);
-    expect(ujra.tulajdonsagok.nyitva).toBe(false);
+    expect(ujra.tulajdonsagok.nyitva).toBe(true);
+    f.tulajdonsagok.nyitva = false;
+    expect(new Felulet(JSON.parse(JSON.stringify(f.sorosit()))).tulajdonsagok.nyitva).toBe(false);
   });
 
-  it('a kapcsoló: ki → mindent mutat; be → a csend alapállapota; az oldalsáv a felhasználóé', () => {
+  it('a kapcsoló a jobb panelt váltja; a tulajdonságok és az oldalsáv kézi állapota megmarad', () => {
     const f = new Felulet({});
     f.oldalsav.nyitva = false;
     f.csendKapcsol();
@@ -122,6 +124,9 @@ describe('a tartós kapcsoló', () => {
     f.csendKapcsol();
     expect(f.csend.be).toBe(true);
     expect(f.jobbPanel.nyitva).toBe(false);
+    expect(f.tulajdonsagok.nyitva).toBe(true);
+    f.tulajdonsagok.nyitva = false;
+    f.csendKapcsol(false);
     expect(f.tulajdonsagok.nyitva).toBe(false);
     expect(new Felulet({ csend: { be: false, bemutatva: true } }).csend).toEqual({ be: false, bemutatva: true });
   });

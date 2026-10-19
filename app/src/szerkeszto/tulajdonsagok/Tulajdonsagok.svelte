@@ -15,7 +15,7 @@
   import { onMount, tick, untrack } from 'svelte';
   import { csend } from '../../lib/elrendezes/csend.svelte';
   import Ikon from '../../lib/ikon/Ikon.svelte';
-  import { Calendar, Check, ChevronRight, ClipboardPaste, Copy, FileClock, Hash, Link, List, Pencil, Plus, Scissors, SlidersHorizontal, Tags, Trash2, TriangleAlert, Type } from '../../lib/ikon/ikonok';
+  import { Calendar, Check, ChevronRight, ClipboardPaste, Copy, FileClock, Hash, Link, List, Pencil, Plus, Scissors, Tags, Trash2, TriangleAlert, Type } from '../../lib/ikon/ikonok';
   import type { Csere } from '../dokumentum/kulonbseg';
   import { linkMegnyit, nyitasMod } from '../linkek/navigacio';
   import { lebegoMenu, type MenuElem } from '../notion/menu';
@@ -418,8 +418,8 @@
       {#each fuggo.problemak as p, i (i)}<p>{p.uzenet}</p>{/each}
       <p class="figy-info">{tx('A vault sémája szerint ez eltérés; a vault-ellenőrző találatot ad rá.')}</p>
       <div class="figy-gombok">
-        <button type="button" class="m-gomb semleges gomb" onclick={() => void m.megerosit()}>{tx('Mégis beírom')}</button>
-        <button type="button" class="m-gomb semleges gomb halvany" onclick={() => m.elvet()}>{tx('Mégse')}</button>
+        <button type="button" class="m-gomb semleges gomb" disabled={!irhato || m.dolgozik || m.tipusDolgozik} onclick={() => void m.megerosit()}>{tx('Mégis beírom')}</button>
+        <button type="button" class="m-gomb semleges gomb halvany" disabled={m.dolgozik || m.tipusDolgozik} onclick={() => m.elvet()}>{tx('Mégse')}</button>
       </div>
     </div>
   </div>
@@ -430,7 +430,7 @@
 {/snippet}
 
 <section class="tul" aria-labelledby="{id}-cim">
-  <header class="fej" data-csend-terulet>
+  <header class="fej">
     <h2 class="cim" id="{id}-cim">
       <button type="button" class="kapcsolo" class:halk aria-expanded={nyitva} aria-controls="{id}-lista" onclick={() => (nyitva = !nyitva)}>
         <span class="nyil" class:nyitva><Ikon ikon={ChevronRight} meret={14} /></span>
@@ -438,7 +438,6 @@
           <!-- C38: csendben az összecsukott panel egy halvány sor -->
           <span>{tul.length ? tpx('{n} tulajdonság', tul.length) : tx('Tulajdonságok')}</span>
         {:else}
-          <Ikon ikon={SlidersHorizontal} meret={14} />
           <span>{tx('Tulajdonságok')}</span>
           {#if tul.length}<span class="db">{tul.length}</span>{/if}
         {/if}
@@ -460,23 +459,41 @@
     {/if}
     <span class="tavoltarto"></span>
     {#if irhato}
-      <button type="button" class="uj-gomb" aria-expanded={ujNyitva} data-csend-rejt onclick={() => ((ujNyitva = !ujNyitva), (nyitva = true))}>
+      <button type="button" class="uj-gomb" aria-expanded={ujNyitva}
+        title={m.elemzes && !m.elemzes.van ? `${tx('A jegyzetnek nincs frontmattere')}; ${tx('az „Új tulajdonság” létrehozza.')}` : undefined}
+        onclick={() => ((ujNyitva = !ujNyitva), (nyitva = true))}>
         <Ikon ikon={Plus} meret={14} /> {tx('Új tulajdonság')}
       </button>
     {/if}
   </header>
 
-  <div class="torzs" id="{id}-lista" hidden={!nyitva}>
-    {#if m.hiba}<p class="hiba" role="alert">{m.hiba}</p>{/if}
-    {#if m.tipusFigyelmeztetes}<p class="tipus-figyelmeztetes" role="status"><Ikon ikon={TriangleAlert} meret={14} />{m.tipusFigyelmeztetes}</p>{/if}
+  {#if m.hiba}<p class="hiba panel-jelzes" role="alert"><Ikon ikon={TriangleAlert} meret={14} />{m.hiba}</p>{/if}
+  {#if m.tipusFigyelmeztetes}<p class="tipus-figyelmeztetes panel-jelzes" role="status"><Ikon ikon={TriangleAlert} meret={14} />{m.tipusFigyelmeztetes}</p>{/if}
+  {#if !nyitva}
+    <div class="osszefoglalo">
+      {#if problemak.some((p) => p.szint === 'hiba')}
+        <ul class="problemak" aria-label={tx('Séma-eltérések')}>
+          {#each problemak.filter((p) => p.szint === 'hiba') as p, i (i)}
+            <li class="hiba" role="alert"><Ikon ikon={TriangleAlert} meret={14} />{p.uzenet}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#each tul.filter((t) => !t.ervenyes) as t (t.kulcs)}
+        <p class="tipus-info ervenytelen-info" role="status"><Ikon ikon={TriangleAlert} meret={14} /><span>{t.kulcs}: {tx('A meglévő érték ehhez a típushoz nem érvényes; a forrásban megmaradt.')}</span></p>
+      {/each}
+      {#if m.tipusHiba}
+        <p class="tipus-hiba" role="alert"><Ikon ikon={TriangleAlert} meret={14} /><span>{tipusKulcs ? `${tipusKulcs}: ` : ''}{m.tipusHiba}</span></p>
+        <button type="button" class="m-gomb semleges gomb" disabled={m.tipusBetolt || m.tipusDolgozik} onclick={() => void m.tipusokatTolt()}>{tx('Típusok újratöltése')}</button>
+      {/if}
+      {#if m.elutasitott}<div class="fuggo-kulcs">{m.elutasitott.kulcs}</div>{@render elutasitas(m.elutasitott.uzenet)}{/if}
+      {#if m.fuggo}<div class="fuggo-kulcs">{m.fuggo.muvelet.kulcs}</div>{@render megerosites(m.fuggo)}{/if}
+    </div>
+  {/if}
+  <div class="torzs" class:ures={!tul.length && !ujNyitva && !problemakNyitva} id="{id}-lista" hidden={!nyitva}>
     {#if problemakNyitva && problemak.length}
       <ul class="problemak" id="{id}-problemak" aria-label={tx('Séma-eltérések')}>
         {#each problemak as p, i (i)}<li class:hiba={p.szint === 'hiba'}>{p.uzenet}</li>{/each}
       </ul>
-    {/if}
-
-    {#if m.elemzes && !m.elemzes.van && !ujNyitva}
-      <p class="ures">{tx('A jegyzetnek nincs frontmattere')}{irhato ? '; ' + tx('az „Új tulajdonság” létrehozza.') : '.'}</p>
     {/if}
 
     {#each tul as t (t.kulcs)}
@@ -664,7 +681,7 @@
     display: flex;
     align-items: center;
     gap: var(--t-2);
-    min-height: var(--magassag-sor);
+    min-height: var(--magassag-suru);
     padding: 0 var(--t-4);
   }
 
@@ -677,7 +694,7 @@
     display: flex;
     align-items: center;
     gap: var(--t-2);
-    height: var(--magassag-sor);
+    height: var(--magassag-suru);
     padding: 0 var(--t-1);
     border-radius: var(--kerekites);
     color: var(--szoveg-masodlagos);
@@ -756,13 +773,15 @@
     display: none;
   }
 
+  .torzs.ures { padding: 0; }
+
   .sor {
     display: grid;
-    grid-template-columns: 104px minmax(0, 1fr) 24px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) var(--magassag-suru);
     align-items: start;
     gap: var(--t-2);
-    min-height: var(--magassag-sor);
-    padding: 2px 0;
+    min-height: var(--magassag-suru);
+    padding: 0;
   }
 
   .kulcs {
@@ -915,10 +934,11 @@
     color: var(--hiba);
   }
 
-  .ures {
-    margin: var(--t-1) 0;
-    color: var(--szoveg-halvany);
-  }
+  .panel-jelzes { display: flex; align-items: start; gap: var(--t-2); margin: 0; padding: var(--t-2) var(--t-4); overflow-wrap: anywhere; }
+  .osszefoglalo { padding: 0 var(--t-4); }
+  .osszefoglalo:empty { display: none; }
+  .osszefoglalo :global(.hiba), .osszefoglalo :global(.figyelmeztetes) { margin-left: 0; }
+  .fuggo-kulcs { margin-top: var(--t-2); color: var(--szoveg-masodlagos); font-size: var(--betu-kicsi); }
 
   .figyelmeztetes {
     display: flex;

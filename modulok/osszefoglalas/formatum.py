@@ -36,7 +36,7 @@ from datetime import datetime
 import yaml
 
 from core import kiserok
-from core.index.maszk import FM_RE, mask_code
+from core.index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 from modulok.kartya.formatum import kiseronev as _kiseronev
 
 SZINTEK = ("jegyzet", "mappa", "video", "kontextus")
@@ -230,8 +230,11 @@ def elemez(txt: str, azon_tartalek: str = "OSSZ-00000000-000000-kezi") -> Elemze
     txt = nfc(txt).replace("\r\n", "\n")
     e = Elemzes(None)
     adat, torzs_kezd = _frontmatter(txt, e)
-    sorok = txt.split("\n")
-    maszk = mask_code("\n".join(sorok[torzs_kezd:]), frontmatter=False).split("\n")
+    torzs = "\n".join(txt.split("\n")[torzs_kezd:])
+    # Azonos hossz és sorszám: tartalmi mező csak kommentmentes nézetből,
+    # kódbeli szerkezeti jelek kizárása a külön kódmaszkkal.
+    sorok = megjegyzes_nelkul(torzs, frontmatter=False).split("\n")
+    maszk = mask_code(torzs, frontmatter=False).split("\n")
     forrasok = _forrasok(adat.get("Source"))
     if not forrasok:
         e.hibak.append({"sor": 1, "fajta": "forras_hiany", "szoveg": "a `Source` üres: az összefoglalónak forrása kell legyen"})
@@ -242,7 +245,7 @@ def elemez(txt: str, azon_tartalek: str = "OSSZ-00000000-000000-kezi") -> Elemze
     cim, szakaszban, allitasok = "", False, []
     i = 0
     while i < len(maszk):
-        sor, mk = sorok[torzs_kezd + i], maszk[i]
+        sor, mk = sorok[i], maszk[i]
         szam = torzs_kezd + i + 1
         kod = bool(sor.strip()) and not mk.strip()
         fej = None if kod else _FEJ.match(sor)
@@ -263,7 +266,7 @@ def elemez(txt: str, azon_tartalek: str = "OSSZ-00000000-000000-kezi") -> Elemze
             e.hibak.append({"sor": szam, "fajta": "allitas_forras_nelkul", "szoveg": tartalom[:80]})
             i += 1
             continue
-        mi = _IDEZET.match(sorok[torzs_kezd + i + 1]) if i + 1 < len(maszk) else None
+        mi = _IDEZET.match(sorok[i + 1]) if i + 1 < len(maszk) and maszk[i + 1].strip() else None
         if not mi or not mi.group(1).strip():
             e.hibak.append({"sor": szam, "fajta": "idezet_hiany", "szoveg": ml.group(1)[:80]})
             i += 1

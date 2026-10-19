@@ -2,6 +2,8 @@
 // megnyitás, a kurzor és a hibák felülete van.
 
 import { ApiHiba, kerdez } from '../lib/core/api';
+import { EditorSelection } from '@codemirror/state';
+import { isolateHistory } from '@codemirror/commands';
 import { t } from '../lib/i18n';
 import type { Felulet } from '../lib/elrendezes/felulet.svelte';
 import { ertesitesek } from '../lib/ertesites/ertesites.svelte';
@@ -15,6 +17,7 @@ import { blokkCsere, fmBlokk } from '../szerkeszto/tulajdonsagok/fm';
 import type { OsszefesulesEredmeny } from '../szerkeszto/tulajdonsagok/tipusok';
 import { beszurasTerv } from './sablon';
 import type { NaploValasz, SablonKimenet } from './tipusok';
+import { mostSzoveg } from './api';
 
 const uzenet = (e: unknown) => (e instanceof ApiHiba ? e.message : e instanceof Error ? e.message : String(e));
 
@@ -31,6 +34,11 @@ export async function napiJegyzetNyit(felulet: Felulet): Promise<void> {
     ertesitesek.ertesit({ szint: 'hiba', cim: t('A napi jegyzet nem nyitható meg'), szoveg: uzenet(e) });
     return;
   }
+  napiValaszNyit(felulet, d);
+}
+
+/** Mindkét napi belépési pont ugyanúgy nyit és ugyanazokat a különálló figyelmeztetéseket mutatja. */
+function napiValaszNyit(felulet: Felulet, d: NaploValasz): void {
   felulet.atfedes = null;
   const m = felulet.munkaterulet;
   m.megnyit(d.ut, 'aktiv');
@@ -39,6 +47,38 @@ export async function napiJegyzetNyit(felulet: Felulet): Promise<void> {
   felulet.megmutatFaban(d.ut);
   if (d.letrejott) ertesitesek.ertesit({ szint: 'siker', cim: t('Napi jegyzet létrehozva'), szoveg: fajlNev(d.ut) });
   if (d.figyelmeztetes) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('Pillanatkép nélkül mentve'), szoveg: d.figyelmeztetes });
+  if (d.letrejott && d.sablon_hiany) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('s1.napi.sablon_hiany'), szoveg: t('A(z) {ut} sablon nem használható. A napi jegyzet a beépített vázból készült.', { ut: d.sablon_hiany }) });
+}
+
+export async function naploSzomszedNyit(felulet: Felulet, irany: 'elozo'|'kovetkezo'): Promise<void> {
+  try {
+    const ut = felulet.munkaterulet.aktivFul?.ut;
+    const d = await kerdez<NaploValasz>('/api/naplo/szomszed', { metodus: 'POST', torzs: { irany, ...(ut ? { ut } : {}) }, idokorlat: 15000 });
+    napiValaszNyit(felulet, d);
+  } catch (e) {
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('A napi jegyzet nem nyitható meg'), szoveg: uzenet(e) });
+  }
+}
+
+/** A core szövege minden kijelölés helyére egy tranzakcióban kerül. Késői válasz nem ír megváltozott dokumentumba/kijelölésbe. */
+export async function datumIdoBeszur(fajta: 'date'|'time'): Promise<void> {
+  const p = szerkesztok.aktiv;
+  const v = p?.nezet();
+  if (!p || !v || p.mod() === 'olvaso' || !irhato(v)) return;
+  const alap = v.state;
+  try {
+    const r = await mostSzoveg(fajta);
+    if (szerkesztok.aktiv !== p || p.nezet() !== v || p.mod() === 'olvaso' || !irhato(v) || v.state.doc !== alap.doc || !v.state.selection.eq(alap.selection)) {
+      ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('s1.napi.beszuras_elmaradt'), szoveg: t('s1.napi.szerkeszto_valtozott') });
+      return;
+    }
+    if (r.ismeretlen.length) ertesitesek.ertesit({ szint: 'figyelmeztetes', cim: t('s1.napi.formatum_figyelmeztetes'), szoveg: t('Nem támogatott formátumjelek: {tokenek}', { tokenek: r.ismeretlen.join(', ') }) });
+    const valtozas = v.state.changeByRange((tartomany) => ({ changes: { from: tartomany.from, to: tartomany.to, insert: r.szoveg }, range: EditorSelection.cursor(tartomany.from + r.szoveg.length) }));
+    v.dispatch({ ...valtozas, annotations: isolateHistory.of('full'), userEvent: 'input.paste', scrollIntoView: true });
+    v.focus();
+  } catch (e) {
+    ertesitesek.ertesit({ szint: 'hiba', cim: t('s1.napi.beszuras_hiba'), szoveg: uzenet(e) });
+  }
 }
 
 /** „Új jegyzet sablonból” (C32b): a sablon-választó megnyitása új-jegyzet módban; a választás után a fájlfa kéri be a nevet

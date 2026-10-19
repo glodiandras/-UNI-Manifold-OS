@@ -13,7 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-VERZIO = 6
+VERZIO = 7
 # C33 (T171): a sérült adatbázis jele — SQLITE_CORRUPT (11) és SQLITE_NOTADB (26), a kiterjesztett kód alsó bájtja
 SERULT_KODOK = (11, 26)
 
@@ -244,6 +244,14 @@ def migral(c: sqlite3.Connection) -> None:
         if not any(r[1] == "ctime_ns" for r in c.execute("PRAGMA table_info(fajl)")):
             c.execute("ALTER TABLE fajl ADD COLUMN ctime_ns INTEGER")
         c.execute("PRAGMA user_version = 6")
+        c.execute("COMMIT")
+    if v < 7:
+        # S1: a %% komment most a szerkesztővel azonos tartományban rejtett. A v6 származtatott link/tag/task/
+        # codeblock/FTS sorai még a komment tartalmát is tartalmazhatják. Mindkét gyors kihagyás érvénytelenítendő;
+        # a következő szinkron újraelemzi a Markdown- és canvas-szöveget. Fájlazonosság és tombstone megmarad.
+        c.execute("BEGIN")
+        c.execute("UPDATE fajl SET hash = NULL, mtime_ns = NULL WHERE tipus IN ('md', 'canvas')")
+        c.execute("PRAGMA user_version = 7")
         c.execute("COMMIT")
 
 

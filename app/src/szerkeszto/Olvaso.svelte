@@ -23,8 +23,9 @@
   import { OlvasoKereses } from './olvaso/kereses';
   import { beagyazasFrissitesFigyel } from './beagyazas/rajzol';
   import { olvasoHajtas } from './olvaso/hajtas';
+  import { cimTartalmaz, osszevontCim } from './cim';
 
-  let { view, dok, ut, valtozat, nyelv = '' }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string } = $props();
+  let { view, dok, ut, valtozat, nyelv = '', oncim }: { view: EditorView; dok: Dokumentum; ut: string; valtozat: number; nyelv?: string; oncim?: () => void } = $props();
 
   let gorgeto: HTMLDivElement | undefined = $state();
   let tartalom: HTMLElement | undefined = $state();
@@ -78,12 +79,24 @@
     tartalom.replaceChildren(f);
     feloldatlanJelol(tartalom, lusta.jel);
     olvasoHajtas(tartalom, view);
+    cimElrejt();
     gorgeto.scrollTop = gorgetes;
   }
 
+  function cimElrejt() {
+    if (!tartalom || !oncim) return;
+    const c = osszevontCim(view.state, ut);
+    if (!c) return;
+    const h = [...tartalom.children].find(e => e instanceof HTMLElement && e.tagName === 'H1' && e.dataset.from === String(c.from)) as HTMLElement | undefined;
+    // A forrásbeli heading/összecsukás megmarad, de sem a keresés, sem az akadálymentes fa nem duplázza a látható címet.
+    if (h) { h.hidden = true; h.style.display = 'none'; }
+  }
+
+  export function torzsFokusz(): void { tartalom?.focus({ preventScroll: true }); }
+
   /** A szerkesztő hajtás-állapotának változása (parancs, másik nézet): a gombok és a rejtés újra (újrarajzolás nélkül). */
   export function hajtasFrissit(): void {
-    if (tartalom) olvasoHajtas(tartalom, view);
+    if (tartalom) { olvasoHajtas(tartalom, view); cimElrejt(); }
   }
 
   /** A legfelső látható blokk forrásbeli helye (a módváltás ide görget). */
@@ -98,6 +111,7 @@
   }
 
   export function gorget(pos: number): void {
+    if (oncim && cimTartalmaz(osszevontCim(view.state, ut), pos)) { oncim(); return; }
     if (!tartalom || !gorgeto) return;
     let cel: HTMLElement | null = null;
     for (const e of tartalom.children) {

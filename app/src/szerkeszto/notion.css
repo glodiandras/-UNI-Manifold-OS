@@ -116,10 +116,12 @@
 /* a `/` menü a CodeMirror tooltipjében, a blokkmenü a body-n lebeg */
 
 .szerkeszto .cm-editor .cm-tooltip.nt-perjel,
-.szerkeszto .cm-editor .cm-tooltip.nt-eszkoztar {
+.szerkeszto .cm-editor .cm-tooltip.nt-eszkoztar,
+.szerkeszto .cm-editor .cm-tooltip.nt-linkmenu {
   border: none;
   border-radius: var(--kerekites-nagy);
   background: var(--hatter-emelt);
+  color: var(--szoveg);
   box-shadow: var(--arnyek-atfedes);
 }
 

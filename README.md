@@ -16,6 +16,8 @@ Manifold is a local-first knowledge OS for macOS (Apple Silicon): a Markdown wor
 
 Pre-release. This repository is the productization of Manifold-OS 2.0 into an installable, multi-user product. The work is planned and tracked in [docs/PLAN.md](docs/PLAN.md); progress and per-phase reports are in [docs/plan/NAPLO.md](docs/plan/NAPLO.md).
 
+The current [S1 integration report](docs/plan/S1-MUNKAFELULET.md) records the fresh workspace/editor checks and the remaining release gates. A complete downloadable app package is being prepared; there is no published release artifact yet.
+
 ## Requirements (target)
 
 - Apple Silicon Mac, macOS 26 or newer, 16 GB RAM recommended for local AI (the app works without AI on 8 GB).

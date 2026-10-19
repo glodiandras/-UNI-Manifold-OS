@@ -1,0 +1,4 @@
+{
+  "s1.cim.rename_failed": "The note could not be renamed",
+  "s1.cim.rename_cancelled": "The name was not changed because the requesting note is no longer editable."
+}

@@ -245,10 +245,15 @@ describe('írásvédett és új tulajdonság', () => {
 });
 
 describe('frontmatter nélkül', () => {
-  it('az üres jegyzet jelzése', async () => {
+  it('az üres jegyzet csak hozzáadási műveletet kínál, diagnosztikai szövegblokk nélkül', async () => {
     api.elemez = vi.fn(async () => ({ van: false, tulajdonsagok: [], hiba: null, kulcsok: [], problemak: [], osztaly: 'normal' }));
     alkalmaz = vi.fn<(c: Csere) => void>();
     render(Tulajdonsagok, { props: { ut: 'J.md', szoveg: () => Text.of(['# Cím']), alkalmaz, valtozat: 0, irhato: true, api } });
-    expect(await screen.findByText(/nincs frontmattere/)).toBeTruthy();
+    const hozzaad = await screen.findByRole('button', { name: 'Új tulajdonság' });
+    await waitFor(() => expect(hozzaad.title).toContain('nincs frontmattere'));
+    expect(screen.queryByText(/nincs frontmattere/)).toBeNull();
+    expect(alkalmaz).not.toHaveBeenCalled();
+    await fireEvent.click(hozzaad);
+    expect(await screen.findByRole('combobox', { name: 'Új tulajdonság neve' })).toBeTruthy();
   });
 });

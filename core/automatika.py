@@ -196,7 +196,12 @@ CREATE INDEX allapot_kimenet ON allapot (kimenet);
 _MIGRACIO_2 = """
 ALTER TABLE allapot ADD COLUMN adat TEXT;   -- fogyasztó-specifikus JSON az utoljára feldolgozott változatról (C35b: a képletkulcsok)
 """
-MIGRACIOK = [_MIGRACIO_1, _MIGRACIO_2]
+_MIGRACIO_3 = """
+-- S1: a d2 kommentmentes vektorindex a forrás fájlhash-változása nélkül is újraépítendő.
+-- Csak elbírált hash-cache: a felhasználó tiltása, a kimenet és minden más fogyasztó állapota változatlan.
+UPDATE allapot SET hash = NULL WHERE fogyaszto = 'vektorindex';
+"""
+MIGRACIOK = [_MIGRACIO_1, _MIGRACIO_2, _MIGRACIO_3]
 _ZAR = threading.Lock()
 
 
@@ -288,7 +293,13 @@ class Tar:
         with olvaso(self.cfg) as c:
             if c is None:
                 return {}
-            return {r["ut"]: dict(r) for r in c.execute("SELECT * FROM allapot WHERE fogyaszto = ?", (fogyaszto,))}
+            sorok = {r["ut"]: dict(r) for r in c.execute("SELECT * FROM allapot WHERE fogyaszto = ?", (fogyaszto,))}
+            if fogyaszto == 'vektorindex' and _verzio(c) < 3:
+                # Az első normál ütem már a d2 feladatot jelölje: a read-only olvasó nem várhat egy másik írásra,
+                # amely majd migrál. A tényleges migráció a meglévő mentés/zár alatt, bekuldve()-kor történik.
+                for sor in sorok.values():
+                    sor['hash'] = None
+            return sorok
 
     def sor(self, fogyaszto: str, ut_: str) -> dict | None:
         with olvaso(self.cfg) as c:

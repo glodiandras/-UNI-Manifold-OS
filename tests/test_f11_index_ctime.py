@@ -79,7 +79,7 @@ class SzuletesiIdoTest(_Alap):
         self.assertEqual(self.fa_ctime(ix), elotte)
         self.assertEqual(sor_utana["ctime_ns"], sor_elotte["ctime_ns"])
 
-    def test_v5_index_migracio_kitolti_a_ctime_t_ujraelemzes_nelkul(self):
+    def test_v5_index_migracio_kitolti_a_ctime_t_es_alkalmazza_a_v7_kommentmaszkot(self):
         ix = self.indit()
         db = ix.db_ut
         elotte = self.sorok(ix)
@@ -90,15 +90,18 @@ class SzuletesiIdoTest(_Alap):
         c.execute("PRAGMA user_version = 5")
         c.close()
 
-        c = tar.nyit(db, iro=True)                                         # migration 5 -> 6
+        c = tar.nyit(db, iro=True)                                         # migration 5 -> 6 -> 7
         try:
-            self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], 6)
-            self.assertEqual(tar.VERZIO, 6)
+            self.assertEqual(c.execute("PRAGMA user_version").fetchone()[0], 7)
+            self.assertEqual(tar.VERZIO, 7)
             sorok = {r["ut"]: dict(r) for r in c.execute("SELECT * FROM fajl")}
             for ut, r in sorok.items():
                 self.assertIsNone(r["ctime_ns"], ut)
-                self.assertEqual((r["hash"], r["mtime_ns"], r["indexelve"]),
-                                 (elotte[ut]["hash"], elotte[ut]["mtime_ns"], elotte[ut]["indexelve"]), ut)
+                self.assertEqual(r['indexelve'], elotte[ut]['indexelve'], ut)
+                if ut.endswith('.md'):
+                    self.assertEqual((r['hash'], r['mtime_ns']), (None, None), ut)
+                else:
+                    self.assertEqual((r['hash'], r['mtime_ns']), (elotte[ut]['hash'], elotte[ut]['mtime_ns']), ut)
             tar.migral(c)                                                  # idempotent
         finally:
             c.close()
@@ -114,12 +117,30 @@ class SzuletesiIdoTest(_Alap):
             ix2 = self.indit()
             utana = self.sorok(ix2)
             fa = self.fa_ctime(ix2)
-        self.assertEqual(hivasok, [], "the ctime backfill must not re-analyse any file")
+        self.assertEqual(set(hivasok), {'Alpha.md', 'Dir/Beta.md'}, "only the v7-invalidated Markdown is re-analysed")
         for ut in FAJLOK:
             self.assertIsNotNone(utana[ut]["ctime_ns"], ut)
             self.assertAlmostEqual(fa[ut], _birth(self.vault / ut), delta=1.0, msg=ut)
-            self.assertEqual((utana[ut]["hash"], utana[ut]["mtime_ns"], utana[ut]["indexelve"]),
-                             (elotte[ut]["hash"], elotte[ut]["mtime_ns"], elotte[ut]["indexelve"]), ut)
+            self.assertEqual((utana[ut]["hash"], utana[ut]["mtime_ns"]),
+                             (elotte[ut]["hash"], elotte[ut]["mtime_ns"]), ut)
+            if not ut.endswith('.md'):
+                self.assertEqual(utana[ut]['indexelve'], elotte[ut]['indexelve'], ut)
+
+    def test_friss_index_ctime_backfill_nem_elemezi_ujra_a_fajlokat(self):
+        ix = self.indit()
+        db, elotte = ix.db_ut, self.sorok(ix)
+        ix.leallit()
+        c = tar.nyit(db, iro=True)
+        c.execute('UPDATE fajl SET ctime_ns = NULL')
+        c.close()
+        with mock.patch.object(indexelo.Index, '_fajl_ir', side_effect=AssertionError('ctime backfill must not re-analyse')):
+            ix2 = self.indit()
+            utana = self.sorok(ix2)
+            self.assertIsNone(ix2.allapot()['hiba'])
+        for ut in FAJLOK:
+            self.assertIsNotNone(utana[ut]['ctime_ns'], ut)
+            self.assertEqual((utana[ut]['hash'], utana[ut]['mtime_ns'], utana[ut]['indexelve']),
+                             (elotte[ut]['hash'], elotte[ut]['mtime_ns'], elotte[ut]['indexelve']), ut)
 
 
 class NincsSzuletesiIdoTest(_Alap):

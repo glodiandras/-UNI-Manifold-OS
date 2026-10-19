@@ -94,8 +94,9 @@ export function regiDokumentumokKikerulnek(regi: string, mappa: boolean): void {
 
 /** Végrehajtás: előtte minden nyitott dokumentum lezárul (mentés), hogy a core ne ütközzön a függő szerkesztéssel. Ha a core
  *  mégis mentetlennek látja a forrást (409 `nyitott`: a WS-jelentés egy pillanattal lemaradhat a mentés mögött), egyszer újrapróbál. */
-export async function atnevezesVegrehajt(ut: string, uj: string, tervHash: string): Promise<Eredmeny> {
+export async function atnevezesVegrehajt(ut: string, uj: string, tervHash: string, mehet: () => boolean = () => true): Promise<Eredmeny> {
   await szerkesztok.dokumentumok.mindLezar();
+  if (!mehet()) throw new Error(t('s1.cim.rename_cancelled'));
   const keres = () => kerdez<Eredmeny>('/api/vault/atnevezes', { metodus: 'POST', torzs: { ut, uj, terv_hash: tervHash }, idokorlat: 300000 });
   try {
     return await keres();
@@ -103,6 +104,7 @@ export async function atnevezesVegrehajt(ut: string, uj: string, tervHash: strin
     if (!(e instanceof ApiHiba && e.statusz === 409 && e.adat.nyitott === true)) throw e;
     await new Promise((r) => setTimeout(r, 400));
     await szerkesztok.dokumentumok.mindLezar();
+    if (!mehet()) throw new Error(t('s1.cim.rename_cancelled'));
     return keres();
   }
 }

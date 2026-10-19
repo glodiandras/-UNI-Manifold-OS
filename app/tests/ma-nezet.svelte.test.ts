@@ -70,6 +70,17 @@ afterEach(() => {
 
 const szakasz = (nev: string | RegExp) => screen.getByRole('region', { name: nev });
 
+it('a kezdőlap három fő művelete a meglévő parancsokat hívja, a technikai panel zárva marad', async () => {
+  const futtat = vi.spyOn(regiszter, 'futtat');
+  await megjelenit();
+  const gyors = within(screen.getByRole('navigation', { name: 'Gyors műveletek' }));
+  await fireEvent.click(gyors.getByRole('button', { name: 'Fájl megnyitása' }));
+  await fireEvent.click(gyors.getByRole('button', { name: 'Mai jegyzet' }));
+  await fireEvent.click(gyors.getByRole('button', { name: 'beallitasok.cim' }));
+  expect(futtat.mock.calls.map((c) => c[0])).toEqual(['hej.valto', 'naplo.napi', 'beallitasok.megnyit']);
+  expect(document.querySelector('#manifold-lap')).toBeNull();
+});
+
 describe('szakaszok', () => {
   it('a dátumfej és az öt szakasz a jóváhagyott sorrendben', async () => {
     await megjelenit();

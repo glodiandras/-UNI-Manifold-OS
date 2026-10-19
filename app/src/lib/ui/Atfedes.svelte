@@ -16,7 +16,9 @@
     onbezar,
     children,
     szeles = false,
-  }: { cimke: string; nev: string; onbezar: () => void; children: Snippet; szeles?: boolean } = $props();
+    szerep = 'dialog',
+    leirasId,
+  }: { cimke: string; nev: string; onbezar: () => void; children: Snippet; szeles?: boolean; szerep?: 'dialog' | 'alertdialog'; leirasId?: string } = $props();
 
   const megnyito = fokuszban(); // init közben: a mező autofókusza előtt
 
@@ -67,9 +69,10 @@
   <div
     class="ablak"
     class:szeles
-    role="dialog"
+    role={szerep}
     aria-modal="true"
     aria-label={cimke}
+    aria-describedby={leirasId}
     tabindex="-1"
     use:csapda={megnyito}
     onkeydown={billentyu}

@@ -17,7 +17,7 @@ import re
 import unicodedata
 
 from core.index.elemzo import _BLOKK
-from core.index.maszk import FM_RE, mask_code
+from core.index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 from modulok.kapuk import forras as KF
 
 _FEJEZET = re.compile(r"^\s{0,3}#{1,6}[ \t]")
@@ -34,7 +34,7 @@ def _szavak(s: str) -> list[str]:
 
 def bekezdesek(md: str) -> list[tuple[int, int]]:
     """A horgonyozható bekezdések sortartományai `(első, utolsó)` (0-tól, zárt) a `\\n`-re hozott szövegben."""
-    sorok = md.split("\n")
+    sorok = megjegyzes_nelkul(md).split("\n")
     maszk = mask_code(md).split("\n")
     fm = FM_RE.match(md)
     kezd = md[:fm.end()].count("\n") if fm else 0
@@ -44,6 +44,11 @@ def bekezdesek(md: str) -> list[tuple[int, int]]:
         s, m = sorok[i], maszk[i]
         kod = bool(s.strip()) and not m.strip()
         t = s.strip()
+        if not t or kod:
+            if cur:
+                ki.append((cur[0], cur[-1]))
+                cur = []
+            continue
         nyit = t.startswith("$$") and not (len(t) > 2 and t.endswith("$$"))
         zar = matek and t.endswith("$$")
         if nyit or zar or matek:                    # a `$$ … $$` képletblokk belseje nem bekezdés
@@ -52,7 +57,7 @@ def bekezdesek(md: str) -> list[tuple[int, int]]:
                 ki.append((cur[0], cur[-1]))
                 cur = []
             continue
-        if not t or kod or _FEJEZET.match(s) or t.startswith("|") or t in ("---", "***"):
+        if _FEJEZET.match(s) or t.startswith("|") or t in ("---", "***"):
             if cur:
                 ki.append((cur[0], cur[-1]))
                 cur = []
@@ -72,7 +77,7 @@ def keres(md: str, idezet: str, min_fedes: float = 0.6) -> tuple[int, int] | Non
     cel = _szavak(idezet)
     if not cel:
         return None
-    sorok = md.split("\n")
+    sorok = megjegyzes_nelkul(md).split("\n")
     legjobb, pont = None, 0.0
     for a, b in bekezdesek(md):
         szavak = _tiszta(sorok[a:b + 1])
@@ -108,8 +113,9 @@ def horgonyoz(md: str, idezetek: list[str]) -> tuple[str, list[str | None]]:
     crlf = "\r\n" in md
     lf = md.replace("\r\n", "\n") if crlf else md
     sorok = lf.split("\n")
+    maszk_sorok = mask_code(lf).split("\n")
     foglalt = azonositok(lf)
-    kiosztva: dict[tuple[int, int], str] = {}
+    kiosztva: dict[tuple[int, int], str | None] = {}
     ki: list[str | None] = []
     for idezet in idezetek:
         hely = keres(lf, idezet)
@@ -118,13 +124,21 @@ def horgonyoz(md: str, idezetek: list[str]) -> tuple[str, list[str | None]]:
             continue
         if hely not in kiosztva:
             utolso = sorok[hely[1]]
-            m = _BLOKK.search(utolso)
+            m = _BLOKK.search(maszk_sorok[hely[1]])
             if m:
                 kiosztva[hely] = m.group(1)
             else:
                 a = _uj_azon("\n".join(sorok[hely[0]:hely[1] + 1]), foglalt)
+                uj_sor = utolso.rstrip() + f" ^{a}"
+                proba = "\n".join([*sorok[:hely[1]], uj_sor, *sorok[hely[1] + 1:]])
+                # Az EOF-ig nyitott komment a sor végére írt azonosítót is elrejtené.
+                # A tényleges beszúrást a közös parserrel ellenőrizzük, a nyers forrást nem tisztítjuk át.
+                if not mask_code(proba).split("\n")[hely[1]].rstrip().endswith(f" ^{a}"):
+                    kiosztva[hely] = None
+                    ki.append(None)
+                    continue
                 foglalt.add(a)
-                sorok[hely[1]] = utolso.rstrip() + f" ^{a}"
+                sorok[hely[1]] = uj_sor
                 kiosztva[hely] = a
         ki.append(kiosztva[hely])
     uj = "\n".join(sorok)

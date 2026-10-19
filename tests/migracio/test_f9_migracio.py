@@ -1,6 +1,6 @@
 """F9 migration level (PLAN §8 „Migráció”): what an older Manifold leaves behind must open in this one.
 
-1. **Index schema v1–v5 → v6** (`core/index/tar.migral`): a real index is rebuilt in the exact table shape of each older version
+1. **Index schema v1–v6 → v7** (`core/index/tar.migral`): a real index is rebuilt in the exact table shape of each older version
    (v1–v3 without the PDF/subtitle tables, v1–v5 without `fajl.ctime_ns`), reopened by the current writer: it migrates in place,
    keeps the file rows, re-parses what the step requires, and search, links and birth times work; the notes are not touched.
 2. **Old settings and workspace files**: a minimal F3-era `workspace.toml` (only the id), one with unknown or legacy sections, an
@@ -56,8 +56,8 @@ def _regi_alak(db: Path, verzio: int) -> None:
 
 
 class IndexSemaMigracioTest(unittest.TestCase):
-    def test_v1_tol_v5_ig_minden_regi_index_v6_ra_all(self):
-        for verzio in range(1, 6):
+    def test_v1_tol_v6_ig_minden_regi_index_v7_re_all(self):
+        for verzio in range(1, 7):
             with self.subTest(verzio=verzio), tmpdir() as t:
                 cfg, _, vault = alg_core(t)
                 for ut, s in JEGYZETEK.items():
@@ -71,7 +71,10 @@ class IndexSemaMigracioTest(unittest.TestCase):
                 ix.leallit()
                 _regi_alak(db, verzio)
                 c = sqlite3.connect(str(db))
-                self.assertNotIn("ctime_ns", [r[1] for r in c.execute("PRAGMA table_info(fajl)")])
+                if verzio < 6:
+                    self.assertNotIn("ctime_ns", [r[1] for r in c.execute("PRAGMA table_info(fajl)")])
+                else:
+                    self.assertIn("ctime_ns", [r[1] for r in c.execute("PRAGMA table_info(fajl)")])
                 c.close()
 
                 ix, _ = index_indit(cfg)

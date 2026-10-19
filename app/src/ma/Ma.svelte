@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import { kodUzenet } from '../lib/core/api';
   import { t } from '../lib/i18n';
+  import { modulEngedelyezett } from '../lib/beallitasok/allapot.svelte';
   import Ikon from '../lib/ikon/Ikon.svelte';
   import { CalendarCheck, FileText, GraduationCap } from '../lib/ikon/ikonok';
   import type { NezetProps } from '../lib/elrendezes/nezetek.svelte';
@@ -72,6 +73,14 @@
     <p class="datum">{adat?.felirat ?? ' '}</p>
     {#if regi}<p class="regi" role="status">{szinkronSzoveg(szinkron)}</p>{/if}
   </header>
+
+  <nav class="gyors-muveletek" aria-label={t('Gyors műveletek')}>
+    <button type="button" class="m-gomb semleges" onclick={() => regiszter.futtat('hej.valto', 'gomb')}>{t('Fájl megnyitása')}</button>
+    {#if modulEngedelyezett('napi')}
+      <button type="button" class="m-gomb semleges" onclick={() => regiszter.futtat('naplo.napi', 'gomb')}>{t('Mai jegyzet')}</button>
+    {/if}
+    <button type="button" class="m-gomb semleges" onclick={() => regiszter.futtat('beallitasok.megnyit', 'gomb')}>{t('beallitasok.cim')}</button>
+  </nav>
 
   {#if maAdat.hiba && !adat}
     <p class="hiba" role="alert">{t('A Ma oldal adata nem tölthető be:')} {maAdat.hiba}</p>
@@ -228,6 +237,7 @@
 </div>
 
 <style>
+  .gyors-muveletek { display: flex; flex-wrap: wrap; gap: var(--t-2); margin-block: var(--t-4); }
   .datum { margin: var(--t-2) 0; color: var(--szoveg-halvany); }
   .rendszer { margin-top: var(--t-8); border-top: var(--keret-vastag) solid var(--keret); padding-top: var(--t-4); }
   summary { cursor: pointer; color: var(--szoveg-halvany); }

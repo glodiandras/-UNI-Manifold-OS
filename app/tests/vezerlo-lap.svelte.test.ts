@@ -275,6 +275,7 @@ describe('a feladatlista és a részlet', () => {
   });
 
   it('a futó és várakozó elöl, a legutóbbiak alatt; a futó haladássávval', () => {
+    fejlesztoMod(true);
     const { context } = kornyezet();
     render(ManifoldLap, { context });
     const elo = within(screen.getByRole('list', { name: 'Futó és várakozó feladatok' }));
@@ -287,16 +288,62 @@ describe('a feladatlista és a részlet', () => {
   });
 
   it('a törölt feladat nem látszik a legutóbbiak közt', () => {
+    fejlesztoMod(true);
     feladatsor.lista = [feladat('F-7', { allapot: 'torolve', cim: 'Töröltem' })];
     const { context } = kornyezet();
     render(ManifoldLap, { context });
     expect(screen.queryByText('Töröltem')).toBeNull();
   });
 
+  it('normál módban a lezárt technikai előzmény helyett a hibák és figyelmeztetések maradnak láthatók', async () => {
+    fejlesztoMod(false);
+    feladatsor.lista = [
+      feladat('rendben', { allapot: 'kesz', cim: 'Csendben kész' }),
+      feladat('hiba', { allapot: 'hiba', cim: 'Hibás mentés' }),
+      feladat('megszakadt', { allapot: 'megszakadt', cim: 'Megszakadt munka' }),
+      feladat('figyelmeztetes', { allapot: 'kesz', cim: 'Ellenőrizendő eredmény', figyelmeztetes: ['Review the output.'] }),
+    ];
+    const { context, felulet } = kornyezet();
+    render(ManifoldLap, { context });
+    const lista = within(screen.getByRole('list', { name: 'Figyelmet igénylő feladatok' }));
+    expect(lista.getAllByRole('button')).toHaveLength(3);
+    expect(screen.queryByText('Csendben kész')).toBeNull();
+    expect(lista.getByText('Hibás mentés')).toBeTruthy();
+    expect(lista.getByText('Megszakadt munka')).toBeTruthy();
+    expect(lista.getByText('1 figyelmeztetés')).toBeTruthy();
+    await fireEvent.click(lista.getByRole('button', { name: /Ellenőrizendő eredmény/ }));
+    expect(felulet.manifoldFeladat).toBe('figyelmeztetes');
+  });
+
+  it('a Developer kapcsoló élőben visszahozza a teljes előzményt', async () => {
+    fejlesztoMod(false);
+    const { context } = kornyezet();
+    render(ManifoldLap, { context });
+    expect(screen.queryByText('Mentés')).toBeNull();
+    fejlesztoMod(true);
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Legutóbbi feladatok' })).toBeTruthy());
+    expect(screen.getByText('Mentés')).toBeTruthy();
+    fejlesztoMod(false);
+    await waitFor(() => expect(screen.queryByText('Mentés')).toBeNull());
+  });
+
   function reszletValaszok(f: Partial<Feladat> = {}, sorok = ['── 1/2. lépés: a', 'Kész: _Proba/egy.md']) {
     valaszok['GET /api/feladatok/F-1'] = () => valasz({ ...feladat('F-1', { allapot: 'fut', ...f }), sorok, tol: 0, osszes_sor: sorok.length } satisfies FeladatReszlet);
     valaszok['GET /api/feladatok/F-1/valtozasok'] = () => valasz(VALTOZAS);
   }
+
+  it('normál módban az összecsukott előzmény újraindítás után is elérhetővé teszi a sikeres kézi munka kör-Undo-ját', async () => {
+    fejlesztoMod(false);
+    feladatsor.lista = [feladat('F-1', { allapot: 'kesz', cim: 'Kézi import', vault_ir: true })];
+    reszletValaszok({ allapot: 'kesz', cim: 'Kézi import' });
+    const { context, felulet } = kornyezet();
+    render(ManifoldLap, { context });
+    expect(screen.queryByRole('button', { name: /Kézi import/ })).toBeNull();
+    await fireEvent.click(screen.getByText('Legutóbbi feladatok'));
+    await fireEvent.click(await screen.findByRole('button', { name: /Kézi import/ }));
+    expect(felulet.manifoldFeladat).toBe('F-1');
+    expect(await screen.findByRole('button', { name: /Visszavonás/ })).toBeTruthy();
+  });
 
   it('a sorra kattintva a részlet nyílik: napló, változások; a vissza-gomb a listához visz', async () => {
     reszletValaszok();
@@ -428,6 +475,7 @@ describe('a feladatlista és a részlet', () => {
   });
 
   it('a más eredetű (importált) feladat semleges magyarázatot kap a hiányzó változásról és naplóról', async () => {
+    fejlesztoMod(true);
     const regi = feladat('F-9', { allapot: 'kesz', cim: 'Régi', forras: 'import' });
     feladatsor.lista = [regi];
     valaszok['GET /api/feladatok/F-9'] = () => valasz({ ...regi, sorok: [], tol: 0, osszes_sor: 0 });

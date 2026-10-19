@@ -1,0 +1,1243 @@
+[
+  {
+    "nev": "inline",
+    "szoveg": "Visible %%hidden #secret [[Hidden]]%% after #visible",
+    "utf16_szakaszok": [
+      [
+        8,
+        37
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden #secret [[Hidden]]%%"
+    ]
+  },
+  {
+    "nev": "multiline",
+    "szoveg": "Before %%hidden\n\nstill hidden%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        7,
+        31
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\nstill hidden%%"
+    ]
+  },
+  {
+    "nev": "unclosed-paragraph",
+    "szoveg": "Visible %%rest\n\n# Hidden\n\n- [ ] hidden [[Hidden]] #hidden\n\nTail",
+    "utf16_szakaszok": [
+      [
+        8,
+        63
+      ]
+    ],
+    "megjegyzesek": [
+      "%%rest\n\n# Hidden\n\n- [ ] hidden [[Hidden]] #hidden\n\nTail"
+    ]
+  },
+  {
+    "nev": "unclosed-only",
+    "szoveg": "%%open",
+    "utf16_szakaszok": [
+      [
+        0,
+        6
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open"
+    ]
+  },
+  {
+    "nev": "multiple",
+    "szoveg": "a %%1%% b %%2\n\n3%% c %%4\n\n5%% d\n\nE %%6%% F\n\nG %%7",
+    "utf16_szakaszok": [
+      [
+        2,
+        7
+      ],
+      [
+        10,
+        18
+      ],
+      [
+        21,
+        29
+      ],
+      [
+        35,
+        40
+      ],
+      [
+        46,
+        49
+      ]
+    ],
+    "megjegyzesek": [
+      "%%1%%",
+      "%%2\n\n3%%",
+      "%%4\n\n5%%",
+      "%%6%%",
+      "%%7"
+    ]
+  },
+  {
+    "nev": "block",
+    "szoveg": "Before\n\n%%hidden\n\n# Hidden\n%%  \n\nAfter",
+    "utf16_szakaszok": [
+      [
+        8,
+        31
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\n# Hidden\n%%  "
+    ]
+  },
+  {
+    "nev": "block-inline-tail",
+    "szoveg": "%%hidden\n\nstill%% tail\n\nAfter",
+    "utf16_szakaszok": [
+      [
+        0,
+        17
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\nstill%%"
+    ]
+  },
+  {
+    "nev": "comment-first-fence",
+    "szoveg": "Before %%open\n```py\n# Hidden\n```\n%% after\n\n```js\nvisible\n```",
+    "utf16_szakaszok": [
+      [
+        7,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n```py\n# Hidden\n```\n%%"
+    ]
+  },
+  {
+    "nev": "comment-first-math",
+    "szoveg": "Before %%open\n$$\n[[Hidden]]\n%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        7,
+        30
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n$$\n[[Hidden]]\n%%"
+    ]
+  },
+  {
+    "nev": "fence-first",
+    "szoveg": "```md\n%%fence\n```\n\nVisible %%real%% after",
+    "utf16_szakaszok": [
+      [
+        27,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "tilde-fence-first",
+    "szoveg": "~~~~ md\n%%fence\n~~~\n%%%%\n~~~~\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "quote-fence-first",
+    "szoveg": "> ```\n> %%fence\n> ```\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        31,
+        39
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "list-fence-first",
+    "szoveg": "- ```\n  %%fence\n  ```\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        31,
+        39
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "indented",
+    "szoveg": "    %%code\n\t%%code\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        28,
+        36
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "indented-after-paragraph",
+    "szoveg": "Text\n    %%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        9,
+        21
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "list-indented-continuation",
+    "szoveg": "- item\n\n    %%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        12,
+        24
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "inline-code",
+    "szoveg": "`a %% b` c\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "multiple-backtick",
+    "szoveg": "``a %% ` b`` c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        24,
+        32
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "multiline-code",
+    "szoveg": "Before `a\n%% b` after\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "inline-math",
+    "szoveg": "$a %% b$ c\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "display-inline",
+    "szoveg": "$$a %% b$$ c\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "display-block",
+    "szoveg": "$$\n%%\n$$\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        18,
+        26
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "frontmatter",
+    "szoveg": "---\nk: \"%%yaml [[Yaml]]\"\n---\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        38,
+        46
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "frontmatter-empty",
+    "szoveg": "---\n---\n%%real%%",
+    "utf16_szakaszok": [
+      [
+        8,
+        16
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "crlf-bom-unicode",
+    "szoveg": "﻿---\r\nk: \"%%yaml\"\r\n---\r\n\r\n😀 Árvíztűrő %%rejtett\r\n\r\n𐐀%% látszik",
+    "utf16_szakaszok": [
+      [
+        39,
+        56
+      ]
+    ],
+    "megjegyzesek": [
+      "%%rejtett\r\n\r\n𐐀%%"
+    ]
+  },
+  {
+    "nev": "wiki-targets",
+    "szoveg": "[[A%%B]] ![[C%%D|alias]] c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        36,
+        44
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "md-destination",
+    "szoveg": "[label](a%%b.md) c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        28,
+        36
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "md-angle-destination",
+    "szoveg": "[label](<a %% b.md>) c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        32,
+        40
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "md-nested-destination",
+    "szoveg": "[label](a(b%%c).md \"title %%\") c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        42,
+        50
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "md-comment-label",
+    "szoveg": "[a %%hidden%% b](Target.md) after",
+    "utf16_szakaszok": [
+      [
+        3,
+        13
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "inline-html",
+    "szoveg": "<span title=\"%%\">x</span> c\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        37,
+        45
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-text",
+    "szoveg": "Before <span>%%hidden%% text</span> after",
+    "utf16_szakaszok": [
+      [
+        13,
+        23
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "html-block",
+    "szoveg": "<div>\n%%html\n</div>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        29,
+        37
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-comment",
+    "szoveg": "<!-- %%html\n\nmore -->\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        31,
+        39
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-raw-block",
+    "szoveg": "<script>\n\n%%script\n\n</script>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        39,
+        47
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "escaped",
+    "szoveg": "\\%%a\\%% c\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "escaped-slash",
+    "szoveg": "\\\\%%hidden%% Visible",
+    "utf16_szakaszok": [
+      [
+        2,
+        12
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "unclosed-heading",
+    "szoveg": "# Heading %%literal\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "closed-heading",
+    "szoveg": "# Heading %%hidden%% visible\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        10,
+        20
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "heading-then-comment",
+    "szoveg": "# Heading %%literal\n\nParagraph %%open",
+    "utf16_szakaszok": [
+      [
+        31,
+        37
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open"
+    ]
+  },
+  {
+    "nev": "unclosed-table",
+    "szoveg": "| a %%literal | b |\n| --- | --- |\n| c | d |\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "closed-table",
+    "szoveg": "| a %%hidden%% | b |\n| --- | --- |\n| c | d |\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        4,
+        14
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "cross-cell-table",
+    "szoveg": "| a %%literal | b %%literal |\n| --- | --- |\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "task",
+    "szoveg": "- [ ] do %%hidden\n\n  more%% done\n- [x] next",
+    "utf16_szakaszok": [
+      [
+        9,
+        27
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\n  more%%"
+    ]
+  },
+  {
+    "nev": "unclosed-task",
+    "szoveg": "- [ ] do %%hidden\n\n# Hidden\n\nTail",
+    "utf16_szakaszok": [
+      [
+        9,
+        33
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\n# Hidden\n\nTail"
+    ]
+  },
+  {
+    "nev": "quote",
+    "szoveg": "> a %%hidden\n>\n> more%% b\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        4,
+        23
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n>\n> more%%"
+    ]
+  },
+  {
+    "nev": "quote-block-boundary",
+    "szoveg": "> %%hidden\nOutside%%\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        10
+      ],
+      [
+        18,
+        29
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden",
+      "%%\n\nVisible"
+    ]
+  },
+  {
+    "nev": "list-block-boundary",
+    "szoveg": "- %%hidden\n\nOutside%%\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        11
+      ],
+      [
+        19,
+        30
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n",
+      "%%\n\nVisible"
+    ]
+  },
+  {
+    "nev": "setext-heading",
+    "szoveg": "Heading %%literal\n===\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "closed-setext-heading",
+    "szoveg": "Heading %%hidden%%\n---\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        8,
+        18
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden%%"
+    ]
+  },
+  {
+    "nev": "plain-pipe-paragraph",
+    "szoveg": "Text | %%hidden\n\nmore%% Visible",
+    "utf16_szakaszok": [
+      [
+        7,
+        23
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\nmore%%"
+    ]
+  },
+  {
+    "nev": "protected-before-comment",
+    "szoveg": "`%%` [label](a%%b) %%open\n\nhidden%% shown",
+    "utf16_szakaszok": [
+      [
+        19,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nhidden%%"
+    ]
+  },
+  {
+    "nev": "matrix-paragraph-closed",
+    "szoveg": "Lead %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        5,
+        15
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-paragraph-unclosed",
+    "szoveg": "Lead %%secret\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        5,
+        22
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-paragraph-cross-block",
+    "szoveg": "Lead %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        5,
+        30
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\n# Hidden\n\nend%%"
+    ]
+  },
+  {
+    "nev": "matrix-heading-closed",
+    "szoveg": "# Heading %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        10,
+        20
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-heading-unclosed",
+    "szoveg": "# Heading %%secret\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "matrix-heading-cross-block",
+    "szoveg": "# Heading %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        33,
+        50
+      ]
+    ],
+    "megjegyzesek": [
+      "%% after\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-quote-closed",
+    "szoveg": "> %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        12
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-quote-unclosed",
+    "szoveg": "> %%secret\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        19
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-quote-cross-block",
+    "szoveg": "> %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        27
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\n# Hidden\n\nend%%"
+    ]
+  },
+  {
+    "nev": "matrix-quote-heading-closed",
+    "szoveg": "> # Heading %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        12,
+        22
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-quote-heading-unclosed",
+    "szoveg": "> # Heading %%secret\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "matrix-quote-heading-cross-block",
+    "szoveg": "> # Heading %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        35,
+        52
+      ]
+    ],
+    "megjegyzesek": [
+      "%% after\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-list-closed",
+    "szoveg": "- %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        12
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-list-unclosed",
+    "szoveg": "- %%secret\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        19
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-list-cross-block",
+    "szoveg": "- %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        2,
+        27
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\n# Hidden\n\nend%%"
+    ]
+  },
+  {
+    "nev": "matrix-task-closed",
+    "szoveg": "- [ ] %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        6,
+        16
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret%%"
+    ]
+  },
+  {
+    "nev": "matrix-task-unclosed",
+    "szoveg": "- [ ] %%secret\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        6,
+        23
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\nVisible"
+    ]
+  },
+  {
+    "nev": "matrix-task-cross-block",
+    "szoveg": "- [ ] %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        6,
+        31
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n\n# Hidden\n\nend%%"
+    ]
+  },
+  {
+    "nev": "matrix-indented-closed",
+    "szoveg": "    %%secret%% after\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "matrix-indented-unclosed",
+    "szoveg": "    %%secret\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "matrix-indented-cross-block",
+    "szoveg": "    %%secret\n\n# Hidden\n\nend%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        27,
+        44
+      ]
+    ],
+    "megjegyzesek": [
+      "%% after\n\nVisible"
+    ]
+  },
+  {
+    "nev": "quote-indented-code",
+    "szoveg": ">     %%code\n>\n> after\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        32,
+        40
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "nested-quote",
+    "szoveg": "> > Lead %%secret\n> >\n> > more%% after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        9,
+        32
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n> >\n> > more%%"
+    ]
+  },
+  {
+    "nev": "multiline-setext",
+    "szoveg": "Heading %%literal\ncontinued\n===\n\nVisible",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "html-custom-block",
+    "szoveg": "<custom>\n%%html\n</custom>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        35,
+        43
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-processing",
+    "szoveg": "<?xml\n%%html\n?>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        25,
+        33
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-cdata",
+    "szoveg": "<![CDATA[\n%%html\n]]>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        30,
+        38
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "html-declaration",
+    "szoveg": "<!DOCTYPE html\n%%html\n>\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        33,
+        41
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "table-invalid-header",
+    "szoveg": "| only %%open |\n| --- | --- |\n\nTail",
+    "utf16_szakaszok": [
+      [
+        7,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open |\n| --- | --- |\n\nTail"
+    ]
+  },
+  {
+    "nev": "table-escaped-pipe",
+    "szoveg": "| a \\| %%literal | b |\n| --- | --- |\n| c %%real%% | d |\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        41,
+        49
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "table-math-pipe",
+    "szoveg": "| $|x|$ %%literal | b |\n| --- | --- |\n| c %%real%% | d |\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        42,
+        50
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "block-crlf",
+    "szoveg": "%%secret\r\n\r\nend%%  \r\n\r\nVisible",
+    "utf16_szakaszok": [
+      [
+        0,
+        20
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\r\n\r\nend%%  \r"
+    ]
+  },
+  {
+    "nev": "md-invalid-destination",
+    "szoveg": "[label](a%%b c) after\n\nTail",
+    "utf16_szakaszok": [
+      [
+        9,
+        27
+      ]
+    ],
+    "megjegyzesek": [
+      "%%b c) after\n\nTail"
+    ]
+  },
+  {
+    "nev": "md-invalid-angle-destination",
+    "szoveg": "[label](<a %% b) after\n\nTail",
+    "utf16_szakaszok": [
+      [
+        11,
+        28
+      ]
+    ],
+    "megjegyzesek": [
+      "%% b) after\n\nTail"
+    ]
+  },
+  {
+    "nev": "md-reference-target",
+    "szoveg": "[label][a%%b] after\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "unclosed-inline-html-comment",
+    "szoveg": "Before <!--unclosed %%hidden\n\nTail",
+    "utf16_szakaszok": [
+      [
+        20,
+        34
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\nTail"
+    ]
+  },
+  {
+    "nev": "quote-indented-after-paragraph",
+    "szoveg": "> Before\n>     %%open\n>\n> Tail",
+    "utf16_szakaszok": [
+      [
+        15,
+        30
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n>\n> Tail"
+    ]
+  },
+  {
+    "nev": "indented-fence-after-paragraph",
+    "szoveg": "Before\n    ```\n%%hidden\n```\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "list-nested-code",
+    "szoveg": "- item\n\n      %%code\n\nTail %%real%%",
+    "utf16_szakaszok": [
+      [
+        27,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  },
+  {
+    "nev": "setext-spanning-comment",
+    "szoveg": "Heading %%hidden\ncontinued%%\n===\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        8,
+        28
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\ncontinued%%"
+    ]
+  },
+  {
+    "nev": "comment-through-setext",
+    "szoveg": "Lead %%hidden\n\nHeader\n===\n%%after\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        5,
+        28
+      ]
+    ],
+    "megjegyzesek": [
+      "%%hidden\n\nHeader\n===\n%%"
+    ]
+  },
+  {
+    "nev": "quote-html-boundary",
+    "szoveg": "> <div>\n> html\nOutside %%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        23,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "list-html-boundary",
+    "szoveg": "- <div>\n  html\nOutside %%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        23,
+        35
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "list-fence-boundary",
+    "szoveg": "- ```\n  code\nOutside %%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        21,
+        33
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "html-invalid-attribute",
+    "szoveg": "Before <span %%open>\n\nTail",
+    "utf16_szakaszok": [
+      [
+        13,
+        26
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open>\n\nTail"
+    ]
+  },
+  {
+    "nev": "html-textarea-blank",
+    "szoveg": "<textarea>\n\n%%open\n\nTail",
+    "utf16_szakaszok": [
+      [
+        12,
+        24
+      ]
+    ],
+    "megjegyzesek": [
+      "%%open\n\nTail"
+    ]
+  },
+  {
+    "nev": "autolink-other-scheme",
+    "szoveg": "<app:hello%%target> after\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "autolink-email",
+    "szoveg": "<foo%%bar@example.org> after\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "multiline-md-label",
+    "szoveg": "Before [label\ntext](a%%b) after\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "multiline-heading-md-label",
+    "szoveg": "Heading [label\ntext](a%%b)\n===\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "inline-processing",
+    "szoveg": "Before <?xml %%hidden ?> after\n\nTail",
+    "utf16_szakaszok": [],
+    "megjegyzesek": []
+  },
+  {
+    "nev": "quote-list-block",
+    "szoveg": "> - %%secret\n>   more\n>   %%\n\nVisible",
+    "utf16_szakaszok": [
+      [
+        4,
+        28
+      ]
+    ],
+    "megjegyzesek": [
+      "%%secret\n>   more\n>   %%"
+    ]
+  },
+  {
+    "nev": "quote-list-fence",
+    "szoveg": "> - ```\n>   %%code\n>   ```\n\nVisible %%real%%",
+    "utf16_szakaszok": [
+      [
+        36,
+        44
+      ]
+    ],
+    "megjegyzesek": [
+      "%%real%%"
+    ]
+  }
+]

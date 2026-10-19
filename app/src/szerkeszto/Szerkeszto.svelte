@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { t } from '../lib/i18n';
-  import { EditorState, StateEffect, Transaction } from '@codemirror/state';
+  import { Compartment, EditorState, StateEffect, Transaction } from '@codemirror/state';
   import { EditorView } from '@codemirror/view';
   import { onMount, untrack } from 'svelte';
   import { ApiHiba } from '../lib/core/api';
@@ -42,11 +42,13 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   import Tulajdonsagok from './tulajdonsagok/Tulajdonsagok.svelte';
   import { eloKurzorIgazit, eloTulajdonsagForras } from './tulajdonsagok/elo.svelte';
   import { szerkesztok, type Mod, type SzerkesztoPeldany } from './szerkesztok.svelte';
-  import { hajtasValtozott, hajtasVisszaallit, hajtottSorok } from './hajtogatas';
+  import { hajtasValtozott, hajtasVisszaallit, hajtottSorok, hajthatoTartomany, hajtottAzonSoron, sorHajtasValt } from './hajtogatas';
   import MentesJelzes from './MentesJelzes.svelte';
   import FajlCim from './FajlCim.svelte';
   import { csatolmanyBovitmeny } from './csatolmany';
   import Utkozes from './Utkozes.svelte';
+  import { cimTartalmaz, osszevontCim } from './cim';
+  import { cimElo } from './cimElo';
 
   let { ful, aktiv }: NezetProps = $props();
   const { felulet, fajlok } = kornyezet();
@@ -60,7 +62,25 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   let cmHely: HTMLDivElement | undefined = $state();
   let olvaso: Olvaso | undefined = $state();
   let view = $state.raw<EditorView | null>(null);
+  let fajlCim: FajlCim | undefined = $state();
+  const cimKapcsolo = new Compartment();
+  let hajtasVerzio = $state(0);
   let docValtozat = $state(0);
+  const cim = $derived.by(() => {
+    void docValtozat;
+    return view && mod !== 'forras' ? osszevontCim(view.state, ut) : null;
+  });
+  const cimHajtas = $derived.by(() => {
+    void hajtasVerzio;
+    return cim && view ? { van: !!hajthatoTartomany(view.state, cim.from), csukva: !!hajtottAzonSoron(view.state, cim.from) } : null;
+  });
+  function cimFokusz() { if (aktiv && ful.ut === ut) fajlCim?.fokusz(); }
+  function cimTorzsFokusz() {
+    if (!view || !aktiv || ful.ut !== ut) return;
+    if (mod === 'olvaso') { olvaso?.torzsFokusz(); return; }
+    if (cim) view.dispatch({ selection: { anchor: cim.utan }, effects: EditorView.scrollIntoView(cim.utan) });
+    view.focus();
+  }
   let tartalmiKod = $state('');
   $effect(() => {
     if (aktiv && dok && beallitasok.ertek.modulok.cimkek) return untrack(() => cimkek.igenyel());
@@ -149,7 +169,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
           cimke: t('Jegyzet: {nev}', { nev: fajlNev(ut) }),
           linkNev,
           kiegeszites: { fajlok: () => fajlok.lista, legutobbi: () => felulet.legutobbiFajlok, tanul: asszisztensTanulLink },
-          tovabbi: [folytatasBovitmeny(), folytatasForras.of({ ...folytatasKliens,
+          tovabbi: [cimKapcsolo.of(szerkMod === 'elo' ? cimElo(ut, cimFokusz) : []), folytatasBovitmeny(), folytatasForras.of({ ...folytatasKliens,
             kapcsolo: () => vezerloKapcsolok.ertek.asszisztens,
             jelzes: szoveg => ertesitesek.ertesit({ szint: 'info', cim: t('Asszisztens'), szoveg }),
           }), kartyaUtemezo(), kartyaUtemezoForras.of(kartyaBeallitas), csatolmanyBovitmeny(ut), eloTulajdonsagForras.of({ ut, nyitottsag: felulet.tulajdonsagok,
@@ -191,7 +211,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
     tartalmiKod = view.state.field(felismertNyelv);
     statisztikaUtemez(view);
     if (tarolt) {
-      view.dispatch({ effects: modKapcsolo.reconfigure(szerkMod === 'elo' ? elonezetMod() : forrasMod()) });
+      view.dispatch({ effects: [modKapcsolo.reconfigure(szerkMod === 'elo' ? elonezetMod() : forrasMod()), cimKapcsolo.reconfigure(szerkMod === 'elo' ? cimElo(ut, cimFokusz) : [])] });
       const g = tarolt.gorgetes;
       requestAnimationFrame(() => view && (view.scrollDOM.scrollTop = g));
     } else {
@@ -201,6 +221,8 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
         view.dispatch({ effects: EditorView.scrollIntoView(state.doc.line(sor).from, { y: 'start' }) });
     }
     eloKurzorIgazit(view); // CX-006: a kurzor nem marad a tulajdonság-widget mögötti, láthatatlan helyen
+    const kezdoCim = szerkMod === 'elo' ? osszevontCim(view.state, ut) : null;
+    if (kezdoCim && cimTartalmaz(kezdoCim, view.state.selection.main.head)) view.dispatch({ selection: { anchor: kezdoCim.utan } });
     view.scrollDOM.addEventListener('scroll', allapotUtemez, { passive: true });
     view.contentDOM.addEventListener('keyup', allapotUtemez);
     view.contentDOM.addEventListener('mouseup', allapotUtemez);
@@ -220,6 +242,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   // az összecsukás nézet-állapot: az Olvasó azonnal követi, a fül tartós állapotába rövid késleltetéssel kerül (minden módban)
   let hajtasIdozito: ReturnType<typeof setTimeout> | null = null;
   function hajtasValtott() {
+    hajtasVerzio++;
     if (mod === 'olvaso') olvaso?.hajtasFrissit();
     if (hajtasIdozito) clearTimeout(hajtasIdozito);
     hajtasIdozito = setTimeout(() => {
@@ -263,7 +286,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
     const felso = mod === 'olvaso' ? olvaso?.felsoPozicio() : view ? view.state.doc.line(felsoSor()).from : 0;
     if (uj === 'olvaso') void dok?.lezar(); // az olvasóra váltás lezárja a szerkesztést (legacy)
     else {
-      view?.dispatch({ effects: modKapcsolo.reconfigure(uj === 'elo' ? elonezetMod() : forrasMod()) });
+      view?.dispatch({ effects: [modKapcsolo.reconfigure(uj === 'elo' ? elonezetMod() : forrasMod()), cimKapcsolo.reconfigure(uj === 'elo' ? cimElo(ut, cimFokusz) : [])] });
       felulet.szerkesztoMod = uj;
     }
     mod = uj;
@@ -297,6 +320,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
       if (!view) return;
       const d = view.state.doc;
       const s = d.line(Math.min(Math.max(1, Math.floor(sor)), d.lines));
+      if (mod !== 'forras' && cimTartalmaz(osszevontCim(view.state, ut), s.from)) { cimFokusz(); return; }
       if (mod === 'olvaso') {
         olvaso?.gorget(s.from);
         return;
@@ -440,7 +464,9 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   {/if}
 
   <Boritokep {ut} />
-  <FajlCim {ut} irhato={!!dok && !dok.csakOlvashato && dok.allapot !== 'utkozes' && dok.allapot !== 'eltunt'} />
+  <FajlCim bind:this={fajlCim} {ut} {aktiv} irhato={!!dok && !dok.csakOlvashato && dok.allapot !== 'utkozes' && dok.allapot !== 'eltunt'}
+    hajthato={cimHajtas?.van ?? false} hajtott={cimHajtas?.csukva ?? false}
+    onhajtas={() => { if (view && cim) sorHajtasValt(view, cim.from); }} onkesz={cimTorzsFokusz} />
   {#if dok && view && mod === 'olvaso' && beallitasok.ertek.modulok.tulajdonsagok}
     <Tulajdonsagok
       {ut}
@@ -456,7 +482,7 @@ import { athelyezTerv, athelyezTilt, elemIndex } from './vazlat';
   <div class="cm-hely" bind:this={cmHely} hidden={mod === 'olvaso'}></div>
 
   {#if mod === 'olvaso' && dok && view}
-    <Olvaso bind:this={olvaso} {view} {dok} {ut} valtozat={docValtozat} nyelv={tartalmiKod} />
+    <Olvaso bind:this={olvaso} {view} {dok} {ut} valtozat={docValtozat} nyelv={tartalmiKod} oncim={cimFokusz} />
   {/if}
 
   {#if dok?.allapot === 'utkozes' && utkozesNyitva && aktiv}

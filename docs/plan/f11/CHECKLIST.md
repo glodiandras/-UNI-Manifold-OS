@@ -8,6 +8,8 @@ Inventory source: all fourteen audit files now exist in the current working tree
 
 S0 provides fresh implementation/test evidence for Canvas tasks and selection zoom, Bases List and shared controls, Outline operations and deleted-note recovery; some of these requirements remain only partly covered. `Open` in the newer files therefore means full requirement acceptance is pending, not that every underlying implementation is absent. Use the S0 report before implementing a row again. Native per-view interaction and complete 14-audit parity are separate gates.
 
+The [S1 report](../S1-MUNKAFELULET.md) adds current editor/index comment parity (105 shared cases, source bytes unchanged), daily/composer consumers, Graph/Outline component acceptance and real WKWebView Canvas task/zoom and Bases List checks across file/LP/Reading/canvas. Its full core gate is still running; complete 14-audit acceptance is not asserted here. The old comment/index limitation in the historical row below is superseded by the S1 implementation and fresh evidence.
+
 ## 01-rendering
 
 | Gap | Priority | Status | Audit requirement | Evidence / remainder |

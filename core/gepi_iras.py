@@ -63,7 +63,7 @@ from . import binaris_naplo, config, csatolmany, frame, fuzet, mediatipus, ossze
 from .tartos import fsync_ir as _fsync_ir, fsync_mappa as _fsync_mappa
 from .index import elemzo
 from .index.feloldas import canvas_bajtbol
-from .index.maszk import FM_RE, mask_code
+from .index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 from .modell import kalibracio
 from .modell.halmaz import Verziok
 from .tulajdonsagok import Tulajdonsagok
@@ -102,12 +102,13 @@ def _video_e(ut: str) -> bool:
 
 def _fejezetek(lf: str) -> list[tuple[int, int, int, str]]:
     """(sor eleje, sor vége, szint, szöveg) a törzs fejezeteire — a core kódmaszkjával (kódblokkban álló `## X`
-    nem fejezet), a frontmatter nélkül; a szöveg az eredetiből (a soron belüli kód a címben megmarad)."""
+    nem fejezet), a frontmatter nélkül; a cím a komment nélküli nézetből (inline kóddal), az offsetek a nyers LF-ből."""
     maszk = mask_code(lf)
+    lathato = megjegyzes_nelkul(lf)
     fm = FM_RE.match(lf)
     ki = []
     for m in elemzo._FEJEZET.finditer(maszk, fm.end() if fm else 0):
-        e = elemzo._FEJEZET.match(lf[m.start():m.end()])
+        e = elemzo._FEJEZET.match(lathato[m.start():m.end()])
         szoveg = re.sub(r"[ \t]+#+$", "", e.group(2)).strip() if e else ""
         if szoveg:
             ki.append((m.start(), m.end(), len(m.group(1)), szoveg))

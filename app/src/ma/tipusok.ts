@@ -126,6 +126,8 @@ export interface NaploValasz {
   /** a kurzor helye az új jegyzetben (UTF-16 egység); meglévő jegyzetnél null */
   kurzor: number | null;
   figyelmeztetes: string | null;
+  /** A konfigurált sablon nem található; csak új napi jegyzet fallbackjénél. Régi core nem adja. */
+  sablon_hiany?: string | null;
 }
 
 export interface SablonInfo {

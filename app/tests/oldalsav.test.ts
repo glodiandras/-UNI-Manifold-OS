@@ -91,7 +91,8 @@ describe('a fa megjelenése', () => {
   it('a nyitott mappák (tartós állapotból) és a behúzás/szint', () => {
     const { context } = kornyezet({ oldalsav: { szelesseg: 264, nyitva: true, nyitott: ['F02 - Dinamika', 'F02 - Dinamika/Elmélet'] } });
     render(Oldalsav, { context });
-    expect(sorok()).toEqual(['ATTCHMNTS', 'F02 - Dinamika', 'Elmélet', '02 - Newton II. törvénye', '10 - Vége', 'Vászon.canvas', 'Üres', 'Alma', 'Árvíz', 'Zöld']);
+    expect(sorok()).toEqual(['ATTCHMNTS', 'F02 - Dinamika', 'Elmélet', '02 - Newton II. törvénye', '10 - Vége', 'Vászon', 'Üres', 'Alma', 'Árvíz', 'Zöld']);
+    expect(screen.getByRole('treeitem', { name: 'Vászon.canvas' }).querySelector('.kiterjesztes')?.textContent).toBe('CANVAS');
     const szintek = screen.getAllByRole('treeitem').map((e) => e.getAttribute('aria-level'));
     expect(szintek).toEqual(['1', '1', '2', '3', '3', '2', '1', '1', '1', '1']);
   });
@@ -307,7 +308,7 @@ describe('húzás: link-változásnál (vagy hibánál) a terv-átfedést nyitja
   it('fájl a gyökérre (a fa üres helyére) húzva: a célmappa a gyökér', async () => {
     const { felulet, context } = kornyezet({ oldalsav: { szelesseg: 264, nyitva: true, nyitott: ['F02 - Dinamika'] } });
     render(Oldalsav, { context });
-    huz(screen.getByText('Vászon.canvas').closest<HTMLElement>('[role=treeitem]')!, screen.getByRole('tree'));
+    huz(screen.getByRole('treeitem', { name: 'Vászon.canvas' }), screen.getByRole('tree'));
     await waitFor(() => expect(felulet.atnevezes).toEqual({ ut: 'F02 - Dinamika/Vászon.canvas', mod: 'hely', mappa: false, cel: '' }));
   });
 });

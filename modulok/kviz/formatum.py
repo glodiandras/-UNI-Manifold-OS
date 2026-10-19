@@ -55,7 +55,7 @@ from datetime import datetime, timezone, tzinfo
 import yaml
 
 from core import kiserok
-from core.index.maszk import FM_RE, mask_code
+from core.index.maszk import FM_RE, mask_code, megjegyzes_nelkul
 
 BETUK = "ABCD"
 AZON_RE = re.compile(r"^KVIZ-\d{8}-\d{6}(?:-[0-9a-z]{1,12})*$")
@@ -239,11 +239,15 @@ def _frontmatter(txt: str, e: Elemzes) -> tuple[dict, int]:
     return (d if isinstance(d, dict) else {}), txt[:m.end()].count("\n")
 
 
-def _callout_torzs(sorok: list[str], i: int, maszk: list[str]) -> tuple[list[str], int]:
+def _callout_torzs(sorok: list[str], i: int, maszk: list[str], eredeti: list[str]) -> tuple[list[str], int]:
     torzs, n = [], len(sorok)
     i += 1
-    while i < n and sorok[i].startswith(">") and maszk[i].lstrip().startswith(">"):
-        torzs.append(_SORELO.sub("", sorok[i], count=1))
+    while i < n and eredeti[i].startswith(">"):
+        # A komment elrejtheti a köztes quote-prefixet is, de nem zárja le a
+        # fizikai calloutot. A valódi kód meglévő kizárása ettől külön kapu.
+        if sorok[i].strip() and not maszk[i].strip():
+            break
+        torzs.append(sorok[i][_SORELO.match(eredeti[i]).end():])
         i += 1
     return torzs, i
 
@@ -254,7 +258,8 @@ def elemez(txt: str, azon_tartalek: str | None = None) -> Elemzes:
     txt = txt.replace("\r\n", "\n").replace("\r", "\n")
     e = Elemzes()
     fm, fm_sorok = _frontmatter(txt, e)
-    sorok = txt.split("\n")
+    eredeti = txt.split("\n")
+    sorok = megjegyzes_nelkul(txt).split("\n")
     maszk = mask_code(txt).split("\n")
 
     forras_ertek = fm.get("Source")
@@ -268,7 +273,9 @@ def elemez(txt: str, azon_tartalek: str | None = None) -> Elemzes:
     for s, mk in zip(sorok, maszk):
         h1 = re.match(r"^#[ \t]+(.+?)[ \t]*$", mk)
         if h1 and UTOTAG in mk:
-            cim = cim or s[h1.start(1):h1.end(1)].split(UTOTAG)[0]
+            # A maszk capture-határa a cím eleji inline kódot is üresnek látná;
+            # a felismerés után a teljes látható címsor adja a tartalmat.
+            cim = cim or re.sub(r"^#[ \t]+", "", s).split(UTOTAG)[0].strip()
             break
     k = Kviz(azon=azon, forras=forras, cim=nfc(cim), modell="" if fm.get("Modell") is None else str(fm["Modell"]),
              keszult="" if fm.get("Keszult") is None else str(fm["Keszult"]))
@@ -283,7 +290,7 @@ def elemez(txt: str, azon_tartalek: str | None = None) -> Elemzes:
             i += 1
             continue
         tipus, cimsor = m.group(1).lower(), m.group(3)
-        torzs, kov = _callout_torzs(sorok, i, maszk)
+        torzs, kov = _callout_torzs(sorok, i, maszk, eredeti)
         if tipus == "question":
             jelenlegi = {"sor": i + 1, "cimsor": cimsor, "torzs": torzs, "megoldas": None}
             kerdesek.append(jelenlegi)

@@ -267,7 +267,6 @@ export class Felulet {
     if (m.kenyelmiVerzio !== 1 && cs?.be !== false) {
       this.oldalsav.nyitva = false;
       this.jobbPanel.nyitva = false;
-      this.tulajdonsagok.nyitva = false;
     }
   }
 
@@ -290,11 +289,9 @@ export class Felulet {
     this.betoltve = true;
   }
 
-  /** A csend mód alapállapota: bekapcsolva a jobb panel zárva és a tulajdonságok összecsukva; kikapcsolva mind
-   *  nyitva (a mindent mutató felület). Az oldalsáv a felhasználóé, nem változik. */
+  /** A csend mód a jobb panelt csukja be. A tulajdonságok és az oldalsáv kézzel választott állapota megmarad. */
   private csendAlap(be: boolean): void {
     this.jobbPanel.nyitva = !be;
-    this.tulajdonsagok.nyitva = !be;
   }
 
   /** A „Csend mód be/ki” kapcsoló (C38): a mód és az alapállapota. */

@@ -5,9 +5,10 @@
   import Kapcsolo from '../lib/ui/Kapcsolo.svelte';
   import BetuMezo from './BetuMezo.svelte';
   import KizartSzerkeszto from './KizartSzerkeszto.svelte';
+  import SablonFormatum from './SablonFormatum.svelte';
   import { betuNevJo } from '../lib/elrendezes/betutipus';
   import { beallitasok, type BeallitasokTar } from '../lib/beallitasok/allapot.svelte';
-  import { MODULOK, type Beallitasok, type BeallitasokValtozas } from '../lib/beallitasok/tipusok';
+  import { MODULOK, alapBeallitasok, type Beallitasok, type BeallitasokValtozas } from '../lib/beallitasok/tipusok';
   import { parancsNev, regiszter } from '../lib/parancsok/regiszter';
   import { esemenybol, kanonikus, megjelenit } from '../lib/parancsok/billentyuk';
   import { epitesAllapot } from '../lib/vezerlo/epites.svelte';
@@ -22,7 +23,7 @@
   import ModellKezelo from '../modellek/ModellKezelo.svelte';
   import Kalibracio from '../modellek/Kalibracio.svelte';
   let { tar = beallitasok, onbezar, onsetup, onrendszer }: { tar?: BeallitasokTar; onbezar: () => void; onsetup: () => void; onrendszer: (szakasz: string) => void } = $props();
-  const masolat = (v: Beallitasok) => { const m = JSON.parse(JSON.stringify(v)) as Beallitasok; m.fejleszto ??= { mod: false }; m.fajlok.kizart ??= []; m.megjelenes.betu_szoveg ??= ''; m.megjelenes.betu_mono ??= ''; for (const k of ['auto_par_zarojel', 'auto_par_idezojel', 'auto_par_jeloles'] as const) m.szerkeszto[k] ??= true; return m; };
+  const masolat = (v: Beallitasok) => { const m = JSON.parse(JSON.stringify(v)) as Beallitasok; m.fejleszto ??= { mod: false }; m.fajlok = { ...alapBeallitasok().fajlok, ...m.fajlok }; m.megjelenes.betu_szoveg ??= ''; m.megjelenes.betu_mono ??= ''; for (const k of ['auto_par_zarojel', 'auto_par_idezojel', 'auto_par_jeloles'] as const) m.szerkeszto[k] ??= true; return m; };
   let alap = $state(masolat(untrack(() => tar.ertek)));
   let vazlat = $state(masolat(untrack(() => tar.ertek)));
   let rev = $state(untrack(() => tar.adat?.rev ?? ''));
@@ -142,6 +143,13 @@
             <p class="leiras">{t('beallitasok.fajlok_leiras')}</p>
             {#each FAJL_MEZOK as m}<label>{t(m.cim)}<input type="text" bind:value={vazlat.fajlok[m.id]} spellcheck="false" /></label>{/each}
             <p class="leiras">{t('beallitasok.napi_leiras')}</p>
+            <SablonFormatum fajta="date" cimke={t('s1.napi.datum_formatum')} bind:ertek={vazlat.fajlok.sablon_datum} />
+            <SablonFormatum fajta="time" cimke={t('s1.napi.ido_formatum')} bind:ertek={vazlat.fajlok.sablon_ido} />
+            <label>{t('s1.napi.napi_sablon')}<input type="text" bind:value={vazlat.fajlok.napi_sablon} spellcheck="false" /></label>
+            <p class="leiras">{t('s1.napi.sablon_ut_leiras')}</p>
+            <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.fajlok.napi_inditaskor} />{t('s1.napi.inditaskor')}</label>
+            <label>{t('s1.napi.kivonas_utana')}<select bind:value={vazlat.fajlok.kivonas_utana}><option value="link">{t('s1.napi.link')}</option><option value="beagyazas">{t('s1.napi.beagyazas')}</option><option value="semmi">{t('s1.napi.semmi')}</option></select></label>
+            <label>{t('s1.napi.kivonas_sablon')}<input type="text" bind:value={vazlat.fajlok.kivonas_sablon} spellcheck="false" /></label>
             <label>{t('beallitasok.link_formatum')}<select bind:value={vazlat.fajlok.link_formatum}><option value="rovid">{t('beallitasok.rovid')}</option><option value="relativ">{t('beallitasok.relativ')}</option><option value="abszolut">{t('beallitasok.abszolut')}</option></select></label>
             <label class="kapcsolo"><input type="checkbox" bind:checked={vazlat.fajlok.wikilinkek} />{t('beallitasok.wikilinkek')}</label>
             <p class="leiras">{t('beallitasok.link_leiras')}</p>
